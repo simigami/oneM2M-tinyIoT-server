@@ -1,67 +1,67 @@
 --------------------
 ./configure
-2022. 05. 22. (일) 09:28:06 KST
-=== ztest65211.c ===
+2022. 05. 23. (월) 08:08:54 KST
+=== ztest79801.c ===
 extern int getchar();
 int hello() {return getchar();}
 ===
--c ztest65211.c
+-c ztest79801.c
 ... using cc
 
 Checking for obsessive-compulsive compiler options...
-=== ztest65211.c ===
+=== ztest79801.c ===
 int foo() { return 0; }
 ===
-cc -c -O2 -fomit-frame-pointer -pipe ztest65211.c
+cc -c -O2 -fomit-frame-pointer -pipe ztest79801.c
 
 Checking for shared library support...
-=== ztest65211.c ===
+=== ztest79801.c ===
 extern int getchar();
 int hello() {return getchar();}
 ===
-cc -w -c -O2 -fomit-frame-pointer -pipe ztest65211.c
-cc -shared -O2 -fomit-frame-pointer -pipe -o ztest65211.so ztest65211.o
+cc -w -c -O2 -fomit-frame-pointer -pipe ztest79801.c
+cc -shared -O2 -fomit-frame-pointer -pipe -o ztest79801.so ztest79801.o
 Building shared library libz.so.1.2.12 with cc.
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <stdio.h>
 #include <stdlib.h>
 size_t dummy = 0;
 ===
-cc -c -O2 -fomit-frame-pointer -pipe ztest65211.c
+cc -c -O2 -fomit-frame-pointer -pipe ztest79801.c
 Checking for size_t... Yes.
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <sys/types.h>
 off64_t dummy = 0;
 ===
-cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest65211.c
+cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest79801.c
 Checking for off64_t... Yes.
 Checking for fseeko... Yes.
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <string.h>
 #include <errno.h>
 int main() { return strlen(strerror(errno)); }
 ===
-cc -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 -o ztest65211 ztest65211.c
+cc -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 -o ztest79801 ztest79801.c
 Checking for strerror... Yes.
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <unistd.h>
 int main() { return 0; }
 ===
-cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest65211.c
+cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest79801.c
 Checking for unistd.h... Yes.
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <stdarg.h>
 int main() { return 0; }
 ===
-cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest65211.c
+cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest79801.c
 Checking for stdarg.h... Yes.
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <stdio.h>
 #include <stdarg.h>
 #include "zconf.h"
@@ -73,10 +73,10 @@ int main()
   return 0;
 }
 ===
-cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest65211.c
+cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest79801.c
 Checking whether to use vs[n]printf() or s[n]printf()... using vs[n]printf().
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <stdio.h>
 #include <stdarg.h>
 int mytest(const char *fmt, ...)
@@ -93,10 +93,10 @@ int main()
   return (mytest("Hello%d\n", 1));
 }
 ===
-cc -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 -o ztest65211 ztest65211.c
+cc -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 -o ztest79801 ztest79801.c
 Checking for vsnprintf() in stdio.h... Yes.
 
-=== ztest65211.c ===
+=== ztest79801.c ===
 #include <stdio.h>
 #include <stdarg.h>
 int mytest(const char *fmt, ...)
@@ -114,7 +114,7 @@ int main()
   return (mytest("Hello%d\n", 1));
 }
 ===
-cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest65211.c
+cc -c -O2 -fomit-frame-pointer -pipe -D_LARGEFILE64_SOURCE=1 ztest79801.c
 Checking for return value of vsnprintf()... Yes.
 
 ALL = static shared all64

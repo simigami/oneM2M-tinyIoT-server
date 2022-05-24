@@ -1,4 +1,4 @@
-prefix=/home/eom/Desktop/Sejong-IoT-Project/OpenSource/nginx-1.20.1/../openssl-1.1.1l/.openssl
+prefix=/home/eom/Desktop/Sejong-IoT-Project/OpenSource/nginx-1.12.0/../openssl-1.1.1l/.openssl
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
@@ -8,5 +8,5 @@ Name: OpenSSL-libcrypto
 Description: OpenSSL cryptography library
 Version: 1.1.1l
 Libs: -L${libdir} -lcrypto
-Libs.private: -ldl 
+Libs.private: -ldl -pthread 
 Cflags: -I${includedir}
