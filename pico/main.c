@@ -1,4 +1,5 @@
 #include "httpd.h"
+#include "onem2m.h"
 #include <sys/stat.h>
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
@@ -49,6 +50,7 @@ void route() {
     if (request_header("X-M2M-Origin") && request_header("X-M2M-RI")) {
 	    if (payload_size > 0){
 		    char json_payload[payload_size];
+		    char exjson[100] = "api : \"tiny_project\"\nrr : true";
 		    int index = 0;
 		    for(int i=0; i<payload_size; i++) {
 			    if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
@@ -57,7 +59,7 @@ void route() {
 		    }
 		    json_payload[index] = '\0';
 		    printf("%s\n", json_payload);
-		    fprintf(stderr, "%s\n", json_payload);
+		    fprintf(stderr, "%s", exjson);
 	    }
     }
     else

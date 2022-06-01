@@ -1,4 +1,5 @@
 #include "httpd.h"
+#include "onem2m.h"
 
 #include <arpa/inet.h>
 #include <ctype.h>
