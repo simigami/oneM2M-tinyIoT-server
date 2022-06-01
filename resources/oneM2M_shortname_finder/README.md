@@ -1,0 +1,1 @@
+# just open 'finder.html'
