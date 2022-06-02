@@ -1,54 +1,55 @@
 #include <stdio.h>
+#include <stdbool.h>
 
 // OneM2M Resource struct
 typedef struct {
+	char ct[16];
+	char lt[16];
 	char *rn;
 	char *ri;
-	char *ty;
 	char *pi;
-	char *ct;
-	char *lt;
 	char *csi;
-} cse;
+	int ty;
+} CSE;
 
 typedef struct {
+	char et[16];
+	char ct[16];
+	char lt[16];
 	char *rn;
 	char *ri;
-	char *ty;
 	char *pi;
-	char *et;
-	char *ct;
-	char *lt;
 	char *api;
 	char *aei;
-	char *rr;
+	int ty;
+	bool rr;
 } AE;
 
 typedef struct {
+	char et[16];
+	char ct[16];
+	char lt[16];
 	char *rn;
 	char *ri;
-	char *ty;
 	char *pi;
-	char *et;
-	char *ct;
-	char *lt;
-	char *st;
-	char *cni;
-	char *cbs;
+	int ty;
+	int st;
+	int cni;
+	int cbs;
 } Container;
 
 typedef struct {
+	char et[16];
+	char ct[16];
+	char lt[16];
 	char *rn;
 	char *ri;
-	char *ty;
 	char *pi;
-	char *et;
-	char *ct;
-	char *lt;
-	char *st;
 	char *csi;
 	char *con;	
+	int ty;
+	int st;
 } contentInstance;
 
 // OneM2M Resource function
-AE create_AE(char *parsed_json);
+AE Create_AE(char *parsed_json);
