@@ -45,6 +45,8 @@ AE Create_AE(char *parsed_json) {
 			created_ae.rr = false;
 		    }
 		}
+
+		if(strcmp)
 	}
 
 	return created_ae;
