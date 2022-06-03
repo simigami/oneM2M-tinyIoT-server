@@ -50,7 +50,6 @@ void route() {
 		if (request_header("X-M2M-Origin") && request_header("X-M2M-RI")) {
 			if (payload_size > 0) { 
 				char json_payload[payload_size];
-				char exjson[100] = "api : \"tiny_project\"\nrr : true\nrn : \"ae_test\"";
 				int index = 0;
 				for(int i=0; i<payload_size; i++) {
 					if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
@@ -58,8 +57,7 @@ void route() {
 					}
 				}
 				json_payload[index] = '\0';
-				AE temp = Create_AE(exjson);
-				printf("%s %d", temp.api, temp.rr);
+				AE *temp = Create_AE(json_payload);
 			}
 		}
 		else

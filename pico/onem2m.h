@@ -52,4 +52,4 @@ typedef struct {
 } contentInstance;
 
 // OneM2M Resource function
-AE Create_AE(char *parsed_json);
+AE* Create_AE(char *parsed_json);
