@@ -45,6 +45,6 @@ void route();
 #define POST(URI) ROUTE("POST", URI)
 #define ROUTE_END()                                                            \
   }                                                                            \
-  else HTTP_500;
+  else HTTP_500
 
 #endif
