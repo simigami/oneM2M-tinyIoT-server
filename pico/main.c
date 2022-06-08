@@ -46,6 +46,11 @@ int read_file(const char *file_name) {
 }
 
 void route() {
+	Operation op;
+
+	op = Parse_Operation(method);
+	fprintf(stderr,"%d\n",op);
+
 	if (strcmp("/", uri) == 0 && strcmp("POST", method) == 0) {
 		HTTP_201;
 		if (request_header("X-M2M-Origin") && request_header("X-M2M-RI")) {

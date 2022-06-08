@@ -7,6 +7,16 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+Operation Parse_Operation(char *method) {
+	Operation ty;
+
+	if(strcmp(method, "POST") == 0) ty = o_CREATE;
+	else if(strcmp(method, "GET") == 0) ty = o_RETRIEVE;
+	else if (strcmp(method, "PUT") == 0) ty = o_UPDATE;
+	else if (strcmp(method, "DELETE") == 0) ty = o_DELETE;
+
+	return ty;	
+}
 
 static int print_preallocated(cJSON *root)
 {

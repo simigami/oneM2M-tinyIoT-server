@@ -1,6 +1,20 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+typedef enum {
+	o_CREATE = 1,
+	o_RETRIEVE,
+	o_UPDATE,
+	o_DELETE
+}Operation;
+
+typedef enum {
+	t_AE = 2,
+	t_CNT,
+	t_CIN,
+	t_CSE
+}ObjectType;
+
 // OneM2M Resource struct
 typedef struct {
 	char ct[16];
@@ -52,4 +66,6 @@ typedef struct {
 } contentInstance;
 
 // OneM2M Resource function
+Operation Parse_Operation(char *method);
+ObjectType Parse_ObjectType(char *content_type);
 AE* Create_AE(char *parsed_json);
