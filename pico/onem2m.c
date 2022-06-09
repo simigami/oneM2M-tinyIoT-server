@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-Operation Parse_Operation(char *method) {
+Operation Parse_Operation(){
 	Operation ty;
 
 	if(strcmp(method, "POST") == 0) ty = o_CREATE;
@@ -16,6 +16,22 @@ Operation Parse_Operation(char *method) {
 	else if (strcmp(method, "DELETE") == 0) ty = o_DELETE;
 
 	return ty;	
+}
+
+ObjectType Parse_ObjectType() {
+	ObjectType ty;
+	char *ct = request_header("Content-Type");
+	int tail = strlen(ct) - 1;
+	
+	switch(ct[tail]) {
+	case '2' : ty = t_AE; break;
+	case '3' : ty = t_CNT; break;
+	case '4' : ty = t_CIN; break;
+	case '5' : ty = t_CSE; break;
+	default : ty = 0;
+	}
+	
+	return ty;
 }
 
 static int print_preallocated(cJSON *root)

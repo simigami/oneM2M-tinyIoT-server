@@ -66,6 +66,6 @@ typedef struct {
 } contentInstance;
 
 // OneM2M Resource function
-Operation Parse_Operation(char *method);
-ObjectType Parse_ObjectType(char *content_type);
-AE* Create_AE(char *parsed_json);
+Operation Parse_Operation();
+ObjectType Parse_ObjectType();
+AE* Create_AE(char *json_payload);

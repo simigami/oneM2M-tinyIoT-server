@@ -227,3 +227,19 @@ void respond(int slot) {
 
   free(buf);
 }
+
+// get json in POST payload *- corrupted size vs. prev_size error
+char *json_payload() {
+	char *j_payload = malloc(sizeof(payload));
+	int index = 0;
+	
+	for(int i=0; i<payload_size; i++) {
+		if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
+			j_payload[index++] =  payload[i];
+		}
+	}
+	
+	j_payload[index] = '\0';
+	
+	return j_payload;
+}

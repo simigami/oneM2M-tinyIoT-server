@@ -17,6 +17,7 @@ extern int payload_size;
 void serve_forever(const char *PORT);
 
 char *request_header(const char *name);
+char *json_payload();
 
 typedef struct {
   char *name, *value;

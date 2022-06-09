@@ -9,9 +9,6 @@
 #define INDEX_HTML "/index.html"
 #define NOT_FOUND_HTML "/404.html"
 
-char s[2][10] = {"/sensor", "/test"};
-int i=0;
-
 int main(int c, char **v) {
   char *port = c == 1 ? "3000" : v[1];
   serve_forever(port);
@@ -46,32 +43,21 @@ int read_file(const char *file_name) {
 }
 
 void route() {
+	char *j_payload;
+	if(payload_size > 0) {
+		j_payload = json_payload();
+	}
+
 	Operation op;
 
-	op = Parse_Operation(method);
-	fprintf(stderr,"%d\n",op);
-
-	if (strcmp("/", uri) == 0 && strcmp("POST", method) == 0) {
-		HTTP_201;
-		if (request_header("X-M2M-Origin") && request_header("X-M2M-RI")) {
-			if (payload_size > 0) { 
-				char json_payload[payload_size];
-				int index = 0;
-				for(int i=0; i<payload_size; i++) {
-					if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
-						json_payload[index++] = payload[i];
-					}
-				}
-				json_payload[index] = '\0';
-				AE *temp = Create_AE(json_payload);
-			}
+	op = Parse_Operation();	
+	
+	if(op == o_CREATE) {
+		ObjectType ty;
+		ty = Parse_ObjectType();
+		
+		switch(ty) {
+		case t_AE : HTTP_201; printf("AE Create");
 		}
-		else printf("request is not OneM2M Standard.");
-	} else if(strcmp("/", uri) == 0 && strcmp("GET", method) == 0) {
-	    HTTP_200;
- 	    printf("CSE Discovery");
-	} else if(uri) {
-	    HTTP_200;
-	    printf("%s", uri);
-	} else HTTP_500;	
+	}
 }
