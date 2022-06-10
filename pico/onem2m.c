@@ -99,7 +99,7 @@ static int print_preallocated(cJSON *root)
 	return 0;
 }
 
-static void create_objects(AE* ae_object)
+void Print_AE_json(AE* ae_object)
 {
 	/* declare a few. */
 	cJSON *root = NULL;
@@ -181,8 +181,6 @@ AE* Create_AE(char *json_payload) {
 	
 	end:
 	    cJSON_Delete(json);
-	    
-	create_objects(created_ae);
 	
 	return created_ae;
 }

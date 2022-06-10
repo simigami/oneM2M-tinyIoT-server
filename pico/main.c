@@ -44,6 +44,7 @@ int read_file(const char *file_name) {
 
 void route() {
 	char *j_payload;
+	
 	if(payload_size > 0) {
 		j_payload = json_payload();
 	}
@@ -57,7 +58,11 @@ void route() {
 		ty = Parse_ObjectType();
 		
 		switch(ty) {
-		case t_AE : HTTP_201; printf("AE Create");
+		case t_AE : 
+			HTTP_201; 
+			AE* ae = Create_AE(j_payload);
+			Print_AE_json(ae);
+			break;
 		}
 	}
 }

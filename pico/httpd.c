@@ -230,7 +230,7 @@ void respond(int slot) {
 
 // get json in POST payload *- corrupted size vs. prev_size error
 char *json_payload() {
-	char *j_payload = malloc(sizeof(payload));
+	char *j_payload = malloc(sizeof(char)*payload_size);
 	int index = 0;
 	
 	for(int i=0; i<payload_size; i++) {

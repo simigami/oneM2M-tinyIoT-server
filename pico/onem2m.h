@@ -69,3 +69,4 @@ typedef struct {
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 AE* Create_AE(char *json_payload);
+void Print_AE_json(AE* ae_object);
