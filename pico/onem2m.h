@@ -50,7 +50,7 @@ typedef struct {
 	int st;
 	int cni;
 	int cbs;
-} Container;
+} CNT;
 
 typedef struct {
 	char et[16];
@@ -63,10 +63,12 @@ typedef struct {
 	char *con;	
 	int ty;
 	int st;
-} contentInstance;
+} CIN;
 
 // OneM2M Resource function
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 AE* Create_AE(char *json_payload);
+CNT* Create_CNT(char *json_payload);
+CIN* Create_CIN(char *json_payload);
 void Print_AE_json(AE* ae_object);

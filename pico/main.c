@@ -46,7 +46,10 @@ void route() {
 	char *j_payload;
 	
 	if(payload_size > 0) {
-		j_payload = json_payload();
+		if(!(j_payload = json_payload())) {
+			HTTP_500;
+			return;
+		}
 	}
 
 	Operation op;
@@ -58,11 +61,40 @@ void route() {
 		ty = Parse_ObjectType();
 		
 		switch(ty) {
+		
 		case t_AE : 
-			HTTP_201; 
-			AE* ae = Create_AE(j_payload);
-			Print_AE_json(ae);
+			HTTP_201;
+			AE* ae = Create_AE(j_payload);			
+			Print_AE_json(ae);	
+			break;			
+		case t_CNT :
+			HTTP_201;
+			/*
+			CNT* cnt = Create_CNT(j_payload);
+			Print_CNT_json(cnt);
+			*/
 			break;
+			
+		case t_CIN :
+			HTTP_201;
+			/*
+			CIN* cin = Create_CIN(j_payload);
+			Print_CNT_json(cin);
+			*/
+			break;
+			
+		case t_CSE :
+			/*No Definition such request*/
+			break;
+			
+		default : 
+			HTTP_500;
 		}
+	}
+	else if(op == o_RETRIEVE) {
+	}
+	else if(op == o_UPDATE) {
+	}
+	else if(op == o_DELETE) {
 	}
 }
