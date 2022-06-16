@@ -66,7 +66,8 @@ void route() {
 			HTTP_201;
 			AE* ae = Create_AE(j_payload);			
 			Print_AE_json(ae);	
-			break;			
+			break;	
+					
 		case t_CNT :
 			HTTP_201;
 			/*
@@ -92,9 +93,84 @@ void route() {
 		}
 	}
 	else if(op == o_RETRIEVE) {
+		/*
+		switch(ty) {
+		
+		case t_AE : 
+			HTTP_200;
+			Retrieve_AE(j_payload);				
+			break;	
+					
+		case t_CNT :
+			HTTP_200;
+			Retrieve_CNT(j_payload);			
+			break;
+			
+		case t_CIN :
+			HTTP_200;
+			Retrieve_CIN(j_payload);			
+			break;
+			
+		case t_CSE :
+			break;
+			
+		default : 
+			HTTP_500;
+		}
+		*/
 	}
 	else if(op == o_UPDATE) {
+		/*
+		switch(ty) {
+		
+		case t_AE : 
+			HTTP_200;
+			Update_AE(j_payload);				
+			break;
+						
+		case t_CNT :
+			HTTP_200;
+			Update_CNT(j_payload);		
+			break;
+			
+		case t_CIN :
+			HTTP_200;
+			Update_CIN(j_payload);			
+			break;
+						
+		case t_CSE :
+			break;
+			
+		default : 
+			HTTP_500;
+		}
+		*/
 	}
 	else if(op == o_DELETE) {
+		/*
+		switch(ty) {
+		
+		case t_AE : 
+			HTTP_200;
+			Delete_AE(j_payload);				
+			break;	
+					
+		case t_CNT :
+			HTTP_200;
+			Delete_CNT(j_payload);			
+			break;
+			
+		case t_CIN :
+			HTTP_200;		
+			Delete_CIN(j_payload);
+			break;
+			
+		case t_CSE :
+			break;
+			
+		default : 
+			HTTP_500;
+		}
+		*/
 	}
 }
