@@ -52,9 +52,8 @@ void route() {
 		}
 	}
 
-	Operation op;
-
-	op = Parse_Operation();	
+	Operation op = Parse_Operation();
+	ObjectType type_by_uri = Parse_ObjectType_By_URI();	
 	
 	if(op == o_CREATE) {
 		ObjectType ty;
@@ -65,7 +64,7 @@ void route() {
 		case t_AE : 
 			HTTP_201;
 			AE* ae = Create_AE(j_payload);			
-			Print_AE_json(ae);	
+			Retrieve_AE(ae);	
 			break;	
 					
 		case t_CNT :

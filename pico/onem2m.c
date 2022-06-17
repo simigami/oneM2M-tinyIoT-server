@@ -34,7 +34,30 @@ ObjectType Parse_ObjectType() {
 	return ty;
 }
 
-static int print_preallocated(cJSON *root)
+ObjectType Parse_ObjectType_By_URI() {
+	ObjectType ty;
+	int cnt = 0;
+	
+	int uri_len = strlen(uri);
+	
+	for(int i=0; i<uri_len; i++) {
+		if(uri[i] == '/') cnt++;
+	}
+	
+	if(uri[uri_len-1] == '/') cnt = cnt - 1;
+	
+	switch(cnt) {
+	case 0 : ty = t_CSE; break;
+	case 1 : ty = t_AE; break;
+	case 2 : ty = t_CNT; break;
+	case 3 : ty = t_CIN; break;
+	default : ty = 0;
+	}
+	
+	return ty;
+}
+
+char* print_preallocated(cJSON *root)
 {
 	/* declarations */
 	char *out = NULL;
@@ -80,7 +103,7 @@ static int print_preallocated(cJSON *root)
 	}
 
 	/* success */
-	printf("%s\n", buf);
+	printf("%s\n",buf);
 
 	/* force it to fail */
 	if (cJSON_PrintPreallocated(root, buf_fail, (int)len_fail, 1)) {
@@ -99,7 +122,7 @@ static int print_preallocated(cJSON *root)
 	return 0;
 }
 
-void Print_AE_json(AE* ae_object)
+void Retrieve_AE(AE* ae_object)
 {
 	/* declare a few. */
 	cJSON *root = NULL;

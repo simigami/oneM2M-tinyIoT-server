@@ -68,7 +68,15 @@ typedef struct {
 // OneM2M Resource function
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
+ObjectType Parse_ObjectType_By_URI();
 AE* Create_AE(char *json_payload);
 CNT* Create_CNT(char *json_payload);
 CIN* Create_CIN(char *json_payload);
-void Print_AE_json(AE* ae_object);
+void Retrieve_CSE(CSE* cse_object);
+void Retrieve_AE(AE* ae_object);
+void Retrieve_CNT(CNT* ae_object);
+void Retrieve_CIN(CIN* ae_object);
+CSE* Update_CSE(char *json_payload);
+AE* Update_AE(char *json_payload);
+CNT* Update_CNT(char *json_payload);
+CIN* Update_CIN(char *json_payload);
