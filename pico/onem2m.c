@@ -8,14 +8,14 @@
 #include <stdbool.h>
 
 Operation Parse_Operation(){
-	Operation ty;
+	Operation op;
 
-	if(strcmp(method, "POST") == 0) ty = o_CREATE;
-	else if(strcmp(method, "GET") == 0) ty = o_RETRIEVE;
-	else if (strcmp(method, "PUT") == 0) ty = o_UPDATE;
-	else if (strcmp(method, "DELETE") == 0) ty = o_DELETE;
+	if(strcmp(method, "POST") == 0) op = o_CREATE;
+	else if(strcmp(method, "GET") == 0) op = o_RETRIEVE;
+	else if (strcmp(method, "PUT") == 0) op = o_UPDATE;
+	else if (strcmp(method, "DELETE") == 0) op = o_DELETE;
 
-	return ty;	
+	return op;	
 }
 
 ObjectType Parse_ObjectType() {

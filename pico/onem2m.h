@@ -3,7 +3,7 @@
 
 typedef enum {
 	o_CREATE = 1,
-	o_RETRIEVE,
+	o_RETRIEVE,S
 	o_UPDATE,
 	o_DELETE
 }Operation;
@@ -69,14 +69,43 @@ typedef struct {
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_By_URI();
+
 AE* Create_AE(char *json_payload);
 CNT* Create_CNT(char *json_payload);
 CIN* Create_CIN(char *json_payload);
-void Retrieve_CSE(CSE* cse_object);
-void Retrieve_AE(AE* ae_object);
-void Retrieve_CNT(CNT* ae_object);
-void Retrieve_CIN(CIN* ae_object);
+
+CSE* Retrieve_CSE();
+AE* Retrieve_AE();
+CNT* Retrieve_CNT();
+CIN* Retrieve_CIN();
+
 CSE* Update_CSE(char *json_payload);
 AE* Update_AE(char *json_payload);
 CNT* Update_CNT(char *json_payload);
 CIN* Update_CIN(char *json_payload);
+
+CSE* Delete_CSE();
+AE* Delete_AE();
+CNT* Delete_CNT();
+CIN* Delete_CIN();
+
+CSE* Json_to_CSE(char *json_payload);
+AE* Json_to_AE(char *json_payload);
+CNT* Json_to_CNT(char *json_payload);
+CIN* Json_to_CIN(char *json_payload);
+
+char* CSE_to_json(CSE* cse_object);
+char* AE_to_json(AE* ae_object);
+char* CNT_to_json(CNT* cnt_object);
+char* CIN_to_json(CIN* cin_object);
+
+int Load_CSE(CSE* cse_object);
+int Load_AE(AE* ae_object);
+int Load_CNT(CNT* cnt_object);
+int Load_CIN(CIN* cin_object);
+
+CSE* Get_CSE();
+AE* Get_AE();
+CNT* Get_CNT();
+CIN* Get_CIN();
+
