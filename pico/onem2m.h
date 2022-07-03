@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <db.h>
 
 typedef enum {
 	o_CREATE = 1,

@@ -1,6 +1,7 @@
 #include "httpd.h"
 #include "onem2m.h"
 #include "cJSON.h"
+#include <db.h>
 
 #include <stdio.h>
 #include <string.h>
