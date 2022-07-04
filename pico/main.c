@@ -1,6 +1,9 @@
 #include "httpd.h"
 #include "onem2m.h"
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
 
@@ -9,7 +12,11 @@
 #define INDEX_HTML "/index.html"
 #define NOT_FOUND_HTML "/404.html"
 
+RT *rt;
+
 int main(int c, char **v) {
+  rt = (RT*)malloc(sizeof(RT));
+  rt->root = Create_Node(Get_sample_CSE("TinyIoT"),NULL,NULL,NULL);
   char *port = c == 1 ? "3000" : v[1];
   serve_forever(port);
   return 0;
@@ -53,34 +60,36 @@ void route() {
 	}
 
 	Operation op = Parse_Operation();
-	ObjectType type_by_uri = Parse_ObjectType_By_URI();	
+	ObjectType type_by_uri = Parse_ObjectType_By_URI();
 	
 	if(op == o_CREATE) {
-		ObjectType ty;
-		ty = Parse_ObjectType();
+		ObjectType ty = Parse_ObjectType();
 		
 		switch(ty) {
 		
 		case t_AE : 
 			HTTP_201;
-			AE* ae = Create_AE(j_payload);			
-			Retrieve_AE(ae);	
+			double start = clock();
+			AE* ae = Get_sample_AE("AE_1");
+			//int result = Store_AE(ae, "AE_1");
+			
+			Node *parent = Find_Node(rt,uri);
+			Add_child(parent, Create_Node(NULL,ae,NULL,NULL));
+
+			double end = clock();
+			double duration = (double)(end - start) / CLOCKS_PER_SEC;
+			fprintf(stderr,"%f seconds\n",duration);
+			
 			break;	
 					
 		case t_CNT :
 			HTTP_201;
-			/*
-			CNT* cnt = Create_CNT(j_payload);
-			Print_CNT_json(cnt);
-			*/
+
 			break;
 			
 		case t_CIN :
 			HTTP_201;
-			/*
-			CIN* cin = Create_CIN(j_payload);
-			Print_CNT_json(cin);
-			*/
+
 			break;
 			
 		case t_CSE :
@@ -151,17 +160,17 @@ void route() {
 		
 		case t_AE : 
 			HTTP_200;
-			Delete_AE(j_payload);				
+			Delete_AE();				
 			break;	
 					
 		case t_CNT :
 			HTTP_200;
-			Delete_CNT(j_payload);			
+			Delete_CNT();			
 			break;
 			
 		case t_CIN :
 			HTTP_200;		
-			Delete_CIN(j_payload);
+			Delete_CIN();
 			break;
 			
 		case t_CSE :

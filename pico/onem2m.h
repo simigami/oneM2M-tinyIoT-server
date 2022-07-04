@@ -4,7 +4,7 @@
 
 typedef enum {
 	o_CREATE = 1,
-	o_RETRIEVE,S
+	o_RETRIEVE,
 	o_UPDATE,
 	o_DELETE
 }Operation;
@@ -18,8 +18,8 @@ typedef enum {
 
 // OneM2M Resource struct
 typedef struct {
-	char ct[16];
-	char lt[16];
+	char *ct;
+	char *lt;
 	char *rn;
 	char *ri;
 	char *pi;
@@ -28,9 +28,9 @@ typedef struct {
 } CSE;
 
 typedef struct {
-	char et[16];
-	char ct[16];
-	char lt[16];
+	char *et;
+	char *ct;
+	char *lt;
 	char *rn;
 	char *ri;
 	char *pi;
@@ -41,9 +41,9 @@ typedef struct {
 } AE;
 
 typedef struct {
-	char et[16];
-	char ct[16];
-	char lt[16];
+	char *et;
+	char *ct;
+	char *lt;
 	char *rn;
 	char *ri;
 	char *pi;
@@ -54,9 +54,9 @@ typedef struct {
 } CNT;
 
 typedef struct {
-	char et[16];
-	char ct[16];
-	char lt[16];
+	char *et;
+	char *ct;
+	char *lt;
 	char *rn;
 	char *ri;
 	char *pi;
@@ -65,6 +65,22 @@ typedef struct {
 	int ty;
 	int st;
 } CIN;
+
+typedef struct Node{
+	struct Node *child;
+	struct Node *sibling;
+	
+	char *rn;
+	
+	CSE *cse;
+	AE *ae;
+	CNT *cnt;
+	CIN *cin;
+}Node;
+
+typedef struct {  
+	Node *root;
+}RT;
 
 // OneM2M Resource function
 Operation Parse_Operation();
@@ -99,13 +115,21 @@ char* AE_to_json(AE* ae_object);
 char* CNT_to_json(CNT* cnt_object);
 char* CIN_to_json(CIN* cin_object);
 
-int Store_CSE(CSE* cse_object);
-int Store_AE(AE* ae_object);
-int Store_CNT(CNT* cnt_object);
-int Store_CIN(CIN* cin_object);
+int Store_CSE(CSE* cse_object, char* database);
+int Store_AE(AE* ae_object, char* database);
+int Store_CNT(CNT* cnt_object, char* database);
+int Store_CIN(CIN* cin_object, char* database);
 
-CSE* Get_CSE();
-AE* Get_AE();
-CNT* Get_CNT();
-CIN* Get_CIN();
+CSE* Get_CSE(char *database);
+AE* Get_AE(char *database);
+CNT* Get_CNT(char *database);
+CIN* Get_CIN(char *database);
 
+CSE* Get_sample_CSE();
+AE* Get_sample_AE();
+CNT* Get_sample_CNT();
+CIN* Get_sample_CIN();
+
+Node* Create_Node(CSE *cse, AE *ae, CNT *cnt, CIN *cin);
+Node* Find_Node(RT *rt);
+int Add_child(Node *parent, Node *child);
