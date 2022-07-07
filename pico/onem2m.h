@@ -105,25 +105,25 @@ AE* Delete_AE();
 CNT* Delete_CNT();
 CIN* Delete_CIN();
 
-CSE* Json_to_CSE(char *json_payload);
-AE* Json_to_AE(char *json_payload);
-CNT* Json_to_CNT(char *json_payload);
-CIN* Json_to_CIN(char *json_payload);
+CSE* JSON_to_CSE(char *json_payload);
+AE* JSON_to_AE(char *json_payload);
+CNT* JSON_to_CNT(char *json_payload);
+CIN* JSON_to_CIN(char *json_payload);
 
 char* CSE_to_json(CSE* cse_object);
 char* AE_to_json(AE* ae_object);
 char* CNT_to_json(CNT* cnt_object);
 char* CIN_to_json(CIN* cin_object);
 
-int Store_CSE(CSE* cse_object, char* database);
-int Store_AE(AE* ae_object, char* database);
-int Store_CNT(CNT* cnt_object, char* database);
-int Store_CIN(CIN* cin_object, char* database);
+int Store_CSE(CSE* cse_object);
+int Store_AE(AE* ae_object);
+int Store_CNT(CNT* cnt_object);
+int Store_CIN(CIN* cin_object);
 
-CSE* Get_CSE(char *database);
-AE* Get_AE(char *database);
-CNT* Get_CNT(char *database);
-CIN* Get_CIN(char *database);
+CSE* Get_CSE(char *ri);
+AE* Get_AE(char *ri);
+CNT* Get_CNT(char *ri);
+CIN* Get_CIN(char *ri);
 
 CSE* Get_sample_CSE();
 AE* Get_sample_AE();
@@ -133,3 +133,6 @@ CIN* Get_sample_CIN();
 Node* Create_Node(CSE *cse, AE *ae, CNT *cnt, CIN *cin);
 Node* Find_Node(RT *rt);
 int Add_child(Node *parent, Node *child);
+
+int display(char* database);
+void print_AE(AE* gae);

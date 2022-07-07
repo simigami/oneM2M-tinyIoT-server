@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
+
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
 
 // Public directory settings
@@ -16,9 +17,11 @@ RT *rt;
 
 int main(int c, char **v) {
   rt = (RT*)malloc(sizeof(RT));
-  rt->root = Create_Node(Get_sample_CSE("TinyIoT"),NULL,NULL,NULL);
+  rt->root = Create_Node(Get_sample_CSE("sample"),NULL,NULL,NULL);
+  
   char *port = c == 1 ? "3000" : v[1];
   serve_forever(port);
+  
   return 0;
 }
 
@@ -49,7 +52,8 @@ int read_file(const char *file_name) {
   return err;
 }
 
-void route() {
+void route(int slot) {
+	bindfd(slot);
 	char *j_payload;
 	
 	if(payload_size > 0) {
@@ -68,17 +72,25 @@ void route() {
 		switch(ty) {
 		
 		case t_AE : 
+			AE* ae = JSON_to_AE(j_payload);
+			ae->ri = "2-20220707";
+			ae->et = "202207070416";
+			ae->ct = "202207070416";
+			ae->lt = "202207070416";
+			ae->pi = "2342304";
+			ae->aei = "1234234";
+			ae->ty = 2;
+			int result = Store_AE(ae);
 			HTTP_201;
-			double start = clock();
-			AE* ae = Get_sample_AE("AE_1");
-			//int result = Store_AE(ae, "AE_1");
+			AE* gae = Get_AE(ae->ri);
+			char *resjson = AE_to_json(gae);
 			
-			Node *parent = Find_Node(rt,uri);
+			printf("%s",resjson);
+			
+			/*
+			Node *parent = Find_Node(rt);
 			Add_child(parent, Create_Node(NULL,ae,NULL,NULL));
-
-			double end = clock();
-			double duration = (double)(end - start) / CLOCKS_PER_SEC;
-			fprintf(stderr,"%f seconds\n",duration);
+			*/
 			
 			break;	
 					

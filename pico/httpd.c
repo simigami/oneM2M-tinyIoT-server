@@ -92,7 +92,7 @@ void start_server(const char *port) {
     perror("getaddrinfo() error");
     exit(1);
   }
-  // socket and bind
+  // socket and 
   for (p = res; p != NULL; p = p->ai_next) {
     int option = 1;
     listenfd = socket(p->ai_family, p->ai_socktype, 0);
@@ -212,12 +212,12 @@ void respond(int slot) {
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
 
     // bind clientfd to stdout, making it easier to write
-    int clientfd = clients[slot];
-    dup2(clientfd, STDOUT_FILENO);
-    close(clientfd);
+    //int clientfd = clients[slot];
+    //dup2(clientfd, STDOUT_FILENO);
+    //close(clientfd);
 
     // call router
-    route();
+    route(slot);
 
     // tidy up
     fflush(stdout);
@@ -226,6 +226,12 @@ void respond(int slot) {
   }
 
   free(buf);
+}
+
+void bindfd(int slot) {
+    int clientfd = clients[slot];
+    dup2(clientfd, STDOUT_FILENO);
+    close(clientfd);
 }
 
 // get json in POST payload *- corrupted size vs. prev_size error
