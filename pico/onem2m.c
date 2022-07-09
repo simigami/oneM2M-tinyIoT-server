@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 
 Operation Parse_Operation(){
 	Operation op;
@@ -29,29 +30,6 @@ ObjectType Parse_ObjectType() {
 	case '3' : ty = t_CNT; break;
 	case '4' : ty = t_CIN; break;
 	case '5' : ty = t_CSE; break;
-	default : ty = 0;
-	}
-	
-	return ty;
-}
-
-ObjectType Parse_ObjectType_By_URI() {
-	ObjectType ty;
-	int cnt = 0;
-	
-	int uri_len = strlen(uri);
-	
-	for(int i=0; i<uri_len; i++) {
-		if(uri[i] == '/') cnt++;
-	}
-	
-	if(uri[uri_len-1] == '/') cnt = cnt - 1;
-	
-	switch(cnt) {
-	case 0 : ty = t_CSE; break;
-	case 1 : ty = t_AE; break;
-	case 2 : ty = t_CNT; break;
-	case 3 : ty = t_CIN; break;
 	default : ty = 0;
 	}
 	
@@ -459,6 +437,45 @@ fprintf(stderr,
 return new_ae;
 }
 
+void Set_AE(AE* ae) {
+	time_t t = time(NULL);
+	struct tm tm = *localtime(&t);
+	
+	char year[5], mon[3], day[3], hour[3], minute[3], sec[3]; 
+	
+	sprintf(year,"%d", tm.tm_year+1900);
+	sprintf(mon,"%02d",tm.tm_mon+1);
+	sprintf(day,"%02d",tm.tm_mday);
+	sprintf(hour,"%02d",tm.tm_hour);
+	sprintf(minute,"%02d",tm.tm_min);
+	sprintf(sec,"%02d",tm.tm_sec);
+	
+	char now[16] = "";
+	
+	strcat(now,year);
+	strcat(now,mon);
+	strcat(now,day);
+	strcat(now,"T");
+	strcat(now,hour);
+	strcat(now,minute);
+	strcat(now,sec);
+	
+	ae->ri = (char*)malloc(sizeof(now));
+	ae->et = (char*)malloc(sizeof(now));
+	ae->ct = (char*)malloc(sizeof(now));
+	ae->lt = (char*)malloc(sizeof(now));
+	ae->aei = (char*)malloc(sizeof(now));
+	ae->pi = (char*)malloc(sizeof(now));
+	strcpy(ae->ri, now);
+	strcpy(ae->et, now);
+	strcpy(ae->ct, now);
+	strcpy(ae->lt, now);
+	strcpy(ae->aei,now);
+	strcpy(ae->pi, now);
+	
+	ae->ty = 2;
+}
+
 CSE* Get_sample_CSE(char *ri) {
     CSE* cse = (CSE*)malloc(sizeof(CSE));
     
@@ -645,6 +662,7 @@ AE* JSON_to_AE(char *json_payload) {
 		goto end;
 	}
 	ae->api = cJSON_Print(api);
+	ae->api = strtok(ae->api, "\"");
 
 	// rr
 	rr = cJSON_GetObjectItemCaseSensitive(root, "rr");
@@ -660,7 +678,7 @@ AE* JSON_to_AE(char *json_payload) {
 	{
 		ae->rr = false;
 	}
-
+	
 	// rn
 	rn = cJSON_GetObjectItem(root, "rn");
 	if (!cJSON_IsString(rn) && (rn->valuestring == NULL))
@@ -786,7 +804,4 @@ fprintf(stderr,
 return (0);
 }
 
-void print_AE(AE* gae) {
-	printf("%s %s %s %s %s %s %d %d\n",gae->ri, gae->rn, gae->ct, gae->lt, gae->pi, gae->api, gae->rr, gae->ty);
-}
 

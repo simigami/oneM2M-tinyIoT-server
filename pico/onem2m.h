@@ -71,6 +71,7 @@ typedef struct Node{
 	struct Node *sibling;
 	
 	char *rn;
+	char *ri;
 	
 	CSE *cse;
 	AE *ae;
@@ -85,7 +86,6 @@ typedef struct {
 // OneM2M Resource function
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
-ObjectType Parse_ObjectType_By_URI();
 
 AE* Create_AE(char *json_payload);
 CNT* Create_CNT(char *json_payload);
@@ -125,6 +125,8 @@ AE* Get_AE(char *ri);
 CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);
 
+void Set_AE(AE* ae);
+
 CSE* Get_sample_CSE();
 AE* Get_sample_AE();
 CNT* Get_sample_CNT();
@@ -135,4 +137,3 @@ Node* Find_Node(RT *rt);
 int Add_child(Node *parent, Node *child);
 
 int display(char* database);
-void print_AE(AE* gae);

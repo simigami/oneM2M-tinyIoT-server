@@ -64,7 +64,6 @@ void route(int slot) {
 	}
 
 	Operation op = Parse_Operation();
-	ObjectType type_by_uri = Parse_ObjectType_By_URI();
 	
 	if(op == o_CREATE) {
 		ObjectType ty = Parse_ObjectType();
@@ -73,18 +72,12 @@ void route(int slot) {
 		
 		case t_AE : 
 			AE* ae = JSON_to_AE(j_payload);
-			ae->ri = "2-20220707";
-			ae->et = "202207070416";
-			ae->ct = "202207070416";
-			ae->lt = "202207070416";
-			ae->pi = "2342304";
-			ae->aei = "1234234";
-			ae->ty = 2;
+			Set_AE(ae);
 			int result = Store_AE(ae);
-			HTTP_201;
 			AE* gae = Get_AE(ae->ri);
 			char *resjson = AE_to_json(gae);
 			
+			HTTP_201;
 			printf("%s",resjson);
 			
 			/*
