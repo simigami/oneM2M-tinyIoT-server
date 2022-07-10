@@ -77,6 +77,8 @@ void route(int slot) {
 			AE* gae = Get_AE(ae->ri);
 			char *resjson = AE_to_json(gae);
 			
+			Find_Node(rt);
+			
 			HTTP_201;
 			printf("%s",resjson);
 			

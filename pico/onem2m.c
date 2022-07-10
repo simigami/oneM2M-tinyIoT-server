@@ -597,25 +597,23 @@ Node* Find_Node(RT *rt) {
 	char *ptr = (char*)malloc(sizeof(uri));
 	strcpy(ptr,uri);
 	
+	fprintf(stderr,"uri : %s\n",ptr);
+	
 	ptr = strtok(ptr, "/");
 	
-	fprintf(stderr,"uri : %s\n",uri);
-	
-	if(rt->root->child) fprintf(stderr,"root has child\n");
-	
 	while(ptr != NULL && node) {
-		node = node->child;
-		
-		fprintf(stderr,"%s %s\n",node->rn, ptr);
 		
 		while(node) {
 			if(!strcmp(node->rn,ptr)) break;
 			node = node->sibling;
 		}
+		
 		ptr = strtok(NULL, "/");
 	}
 	
 	free(ptr);
+	
+	fprintf(stderr,"%s\n", node->rn);
 	
 	return node;
 }
