@@ -27,7 +27,7 @@ header_t *request_headers(void);
 
 // user shall implement this function
 
-void route(int slot);
+void route();
 void bindfd(int slot);
 
 // Response

@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <db.h>
+#include "cJSON.h"
+#include "httpd.h"
 
 typedef enum {
 	o_CREATE = 1,
@@ -72,6 +74,7 @@ typedef struct Node{
 	
 	char *rn;
 	char *ri;
+	ObjectType ty;
 	
 	CSE *cse;
 	AE *ae;
@@ -132,7 +135,7 @@ AE* Get_sample_AE();
 CNT* Get_sample_CNT();
 CIN* Get_sample_CIN();
 
-Node* Create_Node(CSE *cse, AE *ae, CNT *cnt, CIN *cin);
+Node* Create_Node(char *ri, char *rn, ObjectType ty);
 Node* Find_Node(RT *rt);
 int Add_child(Node *parent, Node *child);
 

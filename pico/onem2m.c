@@ -1,7 +1,4 @@
-#include "httpd.h"
 #include "onem2m.h"
-#include "cJSON.h"
-#include <db.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -572,48 +569,48 @@ CIN* Get_sample_CIN(char *ri) {
     return cin;
 }
 
-Node* Create_Node(CSE *cse, AE *ae, CNT *cnt, CIN *cin){
+Node* Create_Node(char *ri, char *rn, ObjectType ty){
 	Node* node = (Node*)malloc(sizeof(Node));
 	
-	node->rn = (char*)malloc(sizeof(char)*32);
-	if(cse) strcpy(node->rn,cse->rn);
-	if(ae) strcpy(node->rn,ae->rn);
-	if(cnt) strcpy(node->rn,cnt->rn);
-	if(cin) strcpy(node->rn,cin->rn);
+	node->rn = (char*)malloc(sizeof(rn));
+	node->ri = (char*)malloc(sizeof(ri));
 	
-	node->cse = cse;
-	node->ae = ae;
-	node->cnt = cnt;
-	node->cin = cin;
+	strcpy(node->rn, rn);
+	strcpy(node->ri, ri);
+	
 	node->child = NULL;
 	node->sibling = NULL;
+	node->ty = ty;
 	
 	return node;
 }
 
-Node* Find_Node(RT *rt) {
+Node* Find_Node(RT *rt) { 
 	Node *node = rt->root;
 	
-	char *ptr = (char*)malloc(sizeof(uri));
-	strcpy(ptr,uri);
+	if(!strcmp("/",uri)) return node;
 	
-	fprintf(stderr,"uri : %s\n",ptr);
+	char *ptr = (char*)malloc(sizeof(uri));
+	char *ptr2 = ptr;
+	strcpy(ptr,uri);
 	
 	ptr = strtok(ptr, "/");
 	
+	node = node->child;
+	
 	while(ptr != NULL && node) {
-		
 		while(node) {
 			if(!strcmp(node->rn,ptr)) break;
 			node = node->sibling;
 		}
-		
 		ptr = strtok(NULL, "/");
+		
+		if(ptr == NULL) break;
+		
+		if(node) node = node->child;
 	}
 	
-	free(ptr);
-	
-	fprintf(stderr,"%s\n", node->rn);
+	free(ptr2);
 	
 	return node;
 }

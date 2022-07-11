@@ -1,10 +1,8 @@
-#include "httpd.h"
-#include "onem2m.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-
+#include "onem2m.h"
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
 
@@ -15,10 +13,9 @@
 
 RT *rt;
 
-int main(int c, char **v) {
-  rt = (RT*)malloc(sizeof(RT));
-  rt->root = Create_Node(Get_sample_CSE("sample"),NULL,NULL,NULL);
-  
+int main(int c, char **v) { 
+  rt = (RT *)malloc(sizeof(rt));
+  rt->root = Create_Node("1234", "TEST_CSE", t_CSE);
   char *port = c == 1 ? "3000" : v[1];
   serve_forever(port);
   
@@ -52,8 +49,7 @@ int read_file(const char *file_name) {
   return err;
 }
 
-void route(int slot) {
-	bindfd(slot);
+void route() {
 	char *j_payload;
 	
 	if(payload_size > 0) {
@@ -64,28 +60,29 @@ void route(int slot) {
 	}
 
 	Operation op = Parse_Operation();
+	ObjectType ty;
 	
 	if(op == o_CREATE) {
-		ObjectType ty = Parse_ObjectType();
+		ty = Parse_ObjectType();
 		
 		switch(ty) {
 		
 		case t_AE : 
-			AE* ae = JSON_to_AE(j_payload);
-			Set_AE(ae);
-			int result = Store_AE(ae);
-			AE* gae = Get_AE(ae->ri);
-			char *resjson = AE_to_json(gae);
-			
-			Find_Node(rt);
-			
-			HTTP_201;
-			printf("%s",resjson);
-			
-			/*
-			Node *parent = Find_Node(rt);
-			Add_child(parent, Create_Node(NULL,ae,NULL,NULL));
-			*/
+			Node* pnode = Find_Node(rt);
+			if(pnode) {
+				AE* ae = JSON_to_AE(j_payload);
+				Set_AE(ae);
+				int result = Store_AE(ae);
+				AE* gae = Get_AE(ae->ri);
+				char *resjson = AE_to_json(gae);
+				Node* node = Create_Node(ae->ri, ae->rn, t_AE);
+				Add_child(pnode,node);
+				HTTP_201;
+				printf("%s",resjson);
+			} else {
+				HTTP_500;
+				printf("Invalid URI\n");
+			}
 			
 			break;	
 					
@@ -108,31 +105,40 @@ void route(int slot) {
 		}
 	}
 	else if(op == o_RETRIEVE) {
-		/*
-		switch(ty) {
+		Node* node = Find_Node(rt);
+		if(node) {
+			ty = node->ty;
 		
-		case t_AE : 
-			HTTP_200;
-			Retrieve_AE(j_payload);				
-			break;	
-					
-		case t_CNT :
-			HTTP_200;
-			Retrieve_CNT(j_payload);			
-			break;
-			
-		case t_CIN :
-			HTTP_200;
-			Retrieve_CIN(j_payload);			
-			break;
-			
-		case t_CSE :
-			break;
-			
-		default : 
+			switch(ty) {
+		
+			case t_AE : 
+				AE* gae = Get_AE(node->ri);
+				char *resjson = AE_to_json(gae);
+				HTTP_200;	
+				printf("%s",resjson);			
+				break;	
+			/*			
+			case t_CNT :
+				HTTP_200;
+				Retrieve_CNT(j_payload);			
+				break;
+				
+			case t_CIN :
+				HTTP_200;
+				Retrieve_CIN(j_payload);			
+				break;
+				
+			case t_CSE :
+				break;
+				
+			default : 
+				HTTP_500;
+				*/
+			} 
+		} else {
 			HTTP_500;
+			printf("Invalid URI\n");
 		}
-		*/
 	}
 	else if(op == o_UPDATE) {
 		/*
