@@ -50,6 +50,13 @@ int read_file(const char *file_name) {
 }
 
 void route() {
+	Node* pnode = Find_Node(rt);
+	if(!pnode) {
+		HTTP_500;
+		printf("Invalid URI\n");
+		return;
+	}
+	
 	char *j_payload;
 	
 	if(payload_size > 0) {
@@ -68,77 +75,76 @@ void route() {
 		switch(ty) {
 		
 		case t_AE : 
-			Node* pnode = Find_Node(rt);
-			if(pnode) {
-				AE* ae = JSON_to_AE(j_payload);
-				Set_AE(ae);
-				int result = Store_AE(ae);
-				AE* gae = Get_AE(ae->ri);
-				char *resjson = AE_to_json(gae);
-				Node* node = Create_Node(ae->ri, ae->rn, t_AE);
-				Add_child(pnode,node);
-				HTTP_201;
-				printf("%s",resjson);
-			} else {
-				HTTP_500;
-				printf("Invalid URI\n");
-			}
-			
+			AE* ae = JSON_to_AE(j_payload);
+			Set_AE(ae,pnode->ri);
+			int result = Store_AE(ae);
+			AE* gae = Get_AE(ae->ri);
+			char *resjson = AE_to_json(gae);
+			Node* node = Create_Node(ae->ri, ae->rn, ty);
+			Add_child(pnode,node);
+			HTTP_201;
+			printf("%s",resjson);
 			break;	
 					
 		case t_CNT :
+		/*
+			CNT* cnt = JSON_to_CNT(j_payload);
+			Set_CNT(cnt);
+			int result = Store_CNT(cnt);
+			CNT* gcnt = Get_CNT(cnt->ri);
+			char *resjson = CNT_to_json(gcnt);
+			Node* node = Create_Node(cnt->ri, cnt->rn, ty);
+			Add_child(pnode,node);
 			HTTP_201;
-
+			printf("%s",resjson);
 			break;
+		*/
 			
 		case t_CIN :
+		/*
+			CIN* cin = JSON_to_CIN(j_payload);
+			Set_CIN(cin);
+			int result = Store_CIN(cin);
+			CIN* gcin = Get_CIN(cnt->ri);
+			char *resjson = CIN_to_json(gcin);
+			Node* node = Create_Node(cin->ri, cin->rn, ty);
+			Add_child(pnode,node);
 			HTTP_201;
-
+			printf("%s",resjson);
 			break;
+		*/
 			
 		case t_CSE :
 			/*No Definition such request*/
-			break;
-			
-		default : 
-			HTTP_500;
 		}
 	}
 	else if(op == o_RETRIEVE) {
-		Node* node = Find_Node(rt);
-		if(node) {
-			ty = node->ty;
+		char *resjson;
+		ty = pnode->ty;
 		
-			switch(ty) {
+		switch(ty) {
 		
-			case t_AE : 
-				AE* gae = Get_AE(node->ri);
-				char *resjson = AE_to_json(gae);
-				HTTP_200;	
-				printf("%s",resjson);			
-				break;	
-			/*			
-			case t_CNT :
-				HTTP_200;
-				Retrieve_CNT(j_payload);			
-				break;
+		case t_AE : 
+			AE* gae = Get_AE(pnode->ri);
+			resjson = AE_to_json(gae);			
+			break;	
+		/*			
+		case t_CNT :
+			HTTP_200;
+			Retrieve_CNT(j_payload);			
+			break;
 				
-			case t_CIN :
-				HTTP_200;
-				Retrieve_CIN(j_payload);			
-				break;
+		case t_CIN :
+			HTTP_200;
+			Retrieve_CIN(j_payload);			
+			break;
 				
-			case t_CSE :
-				break;
-				
-			default : 
-				HTTP_500;
-				*/
-			} 
-		} else {
-			HTTP_500;
-			printf("Invalid URI\n");
+		case t_CSE :
+			break;
+		*/
 		}
+		HTTP_200;	
+		printf("%s",resjson);
 	}
 	else if(op == o_UPDATE) {
 		/*
@@ -168,30 +174,8 @@ void route() {
 		*/
 	}
 	else if(op == o_DELETE) {
-		/*
-		switch(ty) {
-		
-		case t_AE : 
-			HTTP_200;
-			Delete_AE();				
-			break;	
-					
-		case t_CNT :
-			HTTP_200;
-			Delete_CNT();			
-			break;
-			
-		case t_CIN :
-			HTTP_200;		
-			Delete_CIN();
-			break;
-			
-		case t_CSE :
-			break;
-			
-		default : 
-			HTTP_500;
-		}
-		*/
+		Delete_Node(pnode,1);
+		HTTP_200;
+		printf("Deleted");
 	}
 }
