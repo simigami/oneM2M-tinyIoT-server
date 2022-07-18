@@ -69,8 +69,10 @@ typedef struct {
 } CIN;
 
 typedef struct Node{
+	struct Node *parent;
 	struct Node *child;
-	struct Node *sibling;
+	struct Node *siblingLeft;
+	struct Node *siblingRight;
 	
 	char *rn;
 	char *ri;
@@ -103,10 +105,10 @@ CSE* Update_CSE(char *json_payload);
 AE* Update_AE(char *json_payload);
 CNT* Update_CNT(char *json_payload);
 
-CSE* Delete_CSE();
-AE* Delete_AE();
-CNT* Delete_CNT();
-CIN* Delete_CIN();
+CSE* Delete_CSE(char *ri);
+AE* Delete_AE(char *ri);
+CNT* Delete_CNT(char *ri);
+CIN* Delete_CIN(char *ri);
 
 CSE* JSON_to_CSE(char *json_payload);
 AE* JSON_to_AE(char *json_payload);
@@ -128,7 +130,7 @@ AE* Get_AE(char *ri);
 CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);
 
-void Set_AE(AE* ae);
+void Set_AE(AE* ae, char *pi);
 
 CSE* Get_sample_CSE();
 AE* Get_sample_AE();
@@ -138,5 +140,6 @@ CIN* Get_sample_CIN();
 Node* Create_Node(char *ri, char *rn, ObjectType ty);
 Node* Find_Node(RT *rt);
 int Add_child(Node *parent, Node *child);
+void Delete_Node(Node *node, int flag);
 
 int display(char* database);
