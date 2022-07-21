@@ -6,6 +6,47 @@
 #include <stdbool.h>
 #include <time.h>
 
+Node* Validate_URI(RT *rt) { 
+	Node *node = rt->root;
+	
+	if(!strcmp("/",uri)) return node;
+	
+	char *ptr = (char*)malloc(sizeof(uri));
+	char *ptr2 = ptr;
+	strcpy(ptr,uri);
+	
+	ptr = strtok(ptr, "/");
+	
+	while(ptr != NULL && node) {
+		node = node->child;
+
+		while(node) {
+			if(!strcmp(node->rn,ptr)) break;
+			node = node->siblingRight;
+		}
+		ptr = strtok(NULL, "/");
+	}
+	
+	free(ptr2);
+	
+	return node;
+}
+
+char *Parse_Request_JSON() {
+	char *json_payload = malloc(sizeof(char)*payload_size);
+	int index = 0;
+	
+	for(int i=0; i<payload_size; i++) {
+		if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
+			json_payload[index++] =  payload[i];
+		}
+	}
+	
+	json_payload[index] = '\0';
+	
+	return json_payload;
+}
+
 Operation Parse_Operation(){
 	Operation op;
 
@@ -33,558 +74,62 @@ ObjectType Parse_ObjectType() {
 	return ty;
 }
 
-int Store_CSE(CSE *cse_object)
-{
-    char* DATABASE = "CSE.db";
-
-    DB* dbp;    // db handle
-    DBC* dbcp;
-    FILE* error_file_pointer;
-    DBT key, data;  // storving key and real data
-    int ret;        // template value
-
-    DBT key_ct, key_lt, key_rn, key_ri, key_pi, key_csi, key_ty;
-    DBT data_ct, data_lt, data_rn, data_ri, data_pi, data_csi, data_ty;  // storving key and real data
-
-    char* program_name = "my_prog";
-
-    ret = db_create(&dbp, NULL, 0);
-    if (ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr,"File ERROR\n");
-        exit(1);
-    }
-
-    dbp->set_errfile(dbp, error_file_pointer);
-    dbp->set_errpfx(dbp, program_name);
-
-    /*Set duplicate*/
-    ret = dbp->set_flags(dbp, DB_DUP);
-    if (ret != 0) {
-        dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        fprintf(stderr,"Flag Set ERROR\n");
-        dbp->close(dbp, 0);
-        return(ret);
-    }
-
-    /*DB Open*/
-    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", DATABASE);
-        fprintf(stderr,"DB Open ERROR\n");
-        exit(1);
-    }
-
-    /*
-  * The DB handle for a Btree database supporting duplicate data
-  * items is the argument; acquire a cursor for the database.
-  */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr,"Cursor ERROR");
-        exit(1);
-    }
- 
-    /* keyand data must initialize */
-    memset(&key_rn, 0, sizeof(DBT));
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&key_pi, 0, sizeof(DBT));
-    memset(&key_ty, 0, sizeof(DBT));
-
-    memset(&data_rn, 0, sizeof(DBT));
-    memset(&data_ri, 0, sizeof(DBT));
-    memset(&data_pi, 0, sizeof(DBT));
-    memset(&data_ty, 0, sizeof(DBT));
-
-    /* initialize the data to be the first of two duplicate records. */
-    data_rn.data = cse_object->rn;
-    data_rn.size = strlen(cse_object->rn) + 1;
-    key_rn.data = "rn";
-    key_rn.size = strlen("rn") + 1;
-
-    data_ri.data = cse_object->ri;
-    data_ri.size = strlen(cse_object->ri) + 1;
-    key_ri.data = "ri";
-    key_ri.size = strlen("ri") + 1;
-
-    data_pi.data = cse_object->pi;
-    data_pi.size = strlen(cse_object->pi) + 1;
-    key_pi.data = "pi";
-    key_pi.size = strlen("pi") + 1;
-
-    data_ty.data = &cse_object->ty;
-    data_ty.size = sizeof(cse_object->ty);
-    key_ty.data = "ty";
-    key_ty.size = strlen("ty") + 1;
-
-    /* CSE -> only one & first */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data_ri, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_rn, &data_rn, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_pi, &data_pi, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_ty, &data_ty, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-
-    dbcp->close(dbcp);
-    dbp->close(dbp, 0); //DB close
-    return 1;
+Node* Create_Node(char *ri, char *rn, ObjectType ty){
+	Node* node = (Node*)malloc(sizeof(Node));
+	
+	node->rn = (char*)malloc(sizeof(rn));
+	node->ri = (char*)malloc(sizeof(ri));
+	
+	strcpy(node->rn, rn);
+	strcpy(node->ri, ri);
+	
+	node->parent = NULL;
+	node->child = NULL;
+	node->siblingLeft = NULL;
+	node->siblingRight = NULL;
+	node->ty = ty;
+	
+	return node;
 }
 
-/* Store Success -> return 1 */
-int Store_AE(AE* ae_object) {
-    char* DATABASE = "AE.db";
-    DB* dbp;    // db handle
-    DBC* dbcp;
-    FILE* error_file_pointer;
-    DBT key_ct, key_lt, key_rn, key_ri, key_pi, key_ty, key_et, key_api, key_rr,key_aei;
-    DBT data_ct, data_lt, data_rn, data_ri, data_pi, data_ty, data_et, data_api, data_rr, data_aei;  // storving key and real data
-    int ret;        // template value
-
-    char* program_name = "my_prog";
-
-    ret = db_create(&dbp, NULL, 0);
-    if (ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr,"File ERROR\n");
-        exit(1);
-    }
-
-    dbp->set_errfile(dbp, error_file_pointer);
-    dbp->set_errpfx(dbp, program_name);
-
-    /*Set duplicate*/
-    ret = dbp->set_flags(dbp, DB_DUP);
-    if (ret != 0) {
-        dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        fprintf(stderr,"Flag Set ERROR\n");
-        dbp->close(dbp, 0);
-        return(ret);
-    }
-
-    /*DB Open*/
-    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", DATABASE);
-        fprintf(stderr,"DB Open ERROR\n");
-        exit(1);
-    }
-    
-    /*
-* The DB handle for a Btree database supporting duplicate data
-* items is the argument; acquire a cursor for the database.
-*/
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr,"Cursor ERROR");
-        exit(1);
-    }
-    
-    
-
-    /* keyand data must initialize */
-    memset(&key_rn, 0, sizeof(DBT));
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&key_pi, 0, sizeof(DBT));
-    memset(&key_ty, 0, sizeof(DBT));
-    memset(&key_ct, 0, sizeof(DBT));
-    memset(&key_lt, 0, sizeof(DBT));
-    memset(&key_et, 0, sizeof(DBT));
-    memset(&key_api, 0, sizeof(DBT));
-    memset(&key_rr, 0, sizeof(DBT));
-    memset(&key_aei, 0, sizeof(DBT));
-
-    memset(&data_rn, 0, sizeof(DBT));
-    memset(&data_ri, 0, sizeof(DBT));
-    memset(&data_pi, 0, sizeof(DBT));
-    memset(&data_ty, 0, sizeof(DBT));
-    memset(&data_ct, 0, sizeof(DBT));
-    memset(&data_lt, 0, sizeof(DBT));
-    memset(&data_et, 0, sizeof(DBT));
-    memset(&data_api, 0, sizeof(DBT));
-    memset(&data_rr, 0, sizeof(DBT));
-    memset(&data_aei, 0, sizeof(DBT));
-    
-    // Store key & data
-    data_rn.data = ae_object->rn;
-    data_rn.size = strlen(ae_object->rn) + 1;
-    key_rn.data = "rn";
-    key_rn.size = strlen("rn") + 1;
-
-    data_ri.data = ae_object->ri;
-    data_ri.size = strlen(ae_object->ri) + 1;
-    key_ri.data = "ri";
-    key_ri.size = strlen("ri") + 1;
-
-    data_pi.data = ae_object->pi;
-    data_pi.size = strlen(ae_object->pi) + 1;
-    key_pi.data = "pi";
-    key_pi.size = strlen("pi") + 1;
-
-    data_ty.data = &ae_object->ty;
-    data_ty.size = sizeof(ae_object->ty);
-    key_ty.data = "ty";
-    key_ty.size = strlen("ty") + 1;
-
-    data_ct.data = ae_object->ct;
-    data_ct.size = strlen(ae_object->ct) + 1;
-    key_ct.data = "ct";
-    key_ct.size = strlen("ct") + 1;
-
-    data_lt.data = ae_object->lt;
-    data_lt.size = strlen(ae_object->lt) + 1;
-    key_lt.data = "lt";
-    key_lt.size = strlen("lt") + 1;
-
-    data_et.data = ae_object->et;
-    data_et.size = strlen(ae_object->et) + 1;
-    key_et.data = "et";
-    key_et.size = strlen("et") + 1;
-
-    data_api.data = ae_object->api;
-    data_api.size = strlen(ae_object->api) + 1;
-    key_api.data = "api";
-    key_api.size = strlen("api") + 1;
-
-    data_rr.data = &ae_object->rr;
-    data_rr.size = sizeof(ae_object->rr);
-    key_rr.data = "rr";
-    key_rr.size = strlen("rr") + 1;
-
-    data_aei.data = ae_object->aei;
-    data_aei.size = strlen(ae_object->aei) + 1;
-    key_aei.data = "aei";
-    key_aei.size = strlen("aei") + 1;
-
-    if ((ret = dbcp->put(dbcp, &key_ri, &data_ri, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_rn, &data_rn, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_pi, &data_pi, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_ty, &data_ty, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_ct, &data_ct, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_lt, &data_lt, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_et, &data_et, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_api, &data_api, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_rr, &data_rr, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-    if ((ret = dbcp->put(dbcp, &key_aei, &data_aei, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "DB->cursor");
-
-    dbcp->close(dbcp);
-    dbp->close(dbp, 0); //DB close
-    
-    return 1;
+int Add_child(Node *parent, Node *child) {
+	Node *node = parent->child;
+	child->parent = parent;
+	
+	if(node) {
+		while(node->siblingRight) node = node->siblingRight;
+		
+		node->siblingRight = child;
+		child->siblingLeft = node;
+	}
+	else {
+		parent->child = child;
+	}
+	
+	return 1;
 }
 
-AE* Get_AE(char* ri) {
-    fprintf(stderr,"[Get AE] ri = %s\n", ri);
-
-    //store AE
-    AE* new_ae = (AE*)malloc(sizeof(AE));
-
-    char* database = "AE.db";
-
-    DB* dbp;
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return 0;
-    }
-
-    /* Open the database. */
-    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", database);
-        exit(1);
-    }
-
-    /* Acquire a cursor for the database. */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    int idx = 0;
-    int flag = 0;
-    // žî¹øÂ° AEÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
-    DBC* dbcp0;
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
-    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, "ri", key.size) == 0) {
-            idx++;
-            if (strncmp(data.data, ri, data.size) == 0) {
-                flag = 1;
-                new_ae->ri = malloc(data.size);
-                strcpy(new_ae->ri, data.data);
-                break;
-            }
-        }
-    }
-    if (flag == 0) {
-        fprintf(stderr,"Not Found\n");
-        return NULL;
-        //exit(1);
-    }
-
-    int cnt_rn = 0;
-    int cnt_pi = 0;
-    int cnt_ty = 0;
-    int cnt_et = 0;
-    int cnt_lt = 0;
-    int cnt_ct = 0;
-    int cnt_api = 0;
-    int cnt_aei = 0;
-    int cnt_rr = 0;
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, "rn", key.size) == 0) {
-            cnt_rn++;
-            if (cnt_rn == idx) {
-                new_ae->rn = malloc(data.size);
-                strcpy(new_ae->rn, data.data);
-            }
-        }
-        if (strncmp(key.data, "pi", key.size) == 0) {
-            cnt_pi++;
-            if (cnt_pi == idx) {
-                new_ae->pi = malloc(data.size);
-                strcpy(new_ae->pi, data.data);
-            }
-        }
-        if (strncmp(key.data, "api", key.size) == 0) {
-            cnt_api++;
-            if (cnt_api == idx) {
-                new_ae->api = malloc(data.size);
-                strcpy(new_ae->api, data.data);
-            }
-        }
-        if (strncmp(key.data, "aei", key.size) == 0) {
-            cnt_aei++;
-            if (cnt_aei == idx) {
-                new_ae->aei = malloc(data.size);
-                strcpy(new_ae->aei, data.data);
-            }
-        }
-        if (strncmp(key.data, "et", key.size) == 0) {
-            cnt_et++;
-            if (cnt_et == idx) {
-                new_ae->et = malloc(data.size);
-                strcpy(new_ae->et, data.data);
-            }
-        }
-        if (strncmp(key.data, "lt", key.size) == 0) {
-            cnt_lt++;
-            if (cnt_lt == idx) {
-                new_ae->lt = malloc(data.size);
-                strcpy(new_ae->lt, data.data);
-            }
-        }
-        if (strncmp(key.data, "ct", key.size) == 0) {
-            cnt_ct++;
-            if (cnt_ct == idx) {
-                new_ae->ct = malloc(data.size);
-                strcpy(new_ae->ct, data.data);
-            }
-        }
-        if (strncmp(key.data, "ty", key.size) == 0) {
-            cnt_ty++;
-            if (cnt_ty == idx) {
-                new_ae->ty = *(int*)data.data;
-            }
-        }
-        if (strncmp(key.data, "rr", key.size) == 0) {
-            cnt_rr++;
-            if (cnt_rr == idx) {
-                new_ae->rr = *(bool*)data.data;
-            }
-        }
-    }
-    //printf("[%d]\n",idx);
-
-    if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
-        fprintf(stderr,"Cursor ERROR\n");
-        exit(0);
-    }
-
-    return new_ae;
-}
-
-AE* Delete_AE(char* ri) {
-    fprintf(stderr,"[Delete AE] ri = %s\n", ri);
-
-    //store AE
-    AE* new_ae = (AE*)malloc(sizeof(AE));
-
-    char* database = "AE.db";
-
-    DB* dbp;
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return 0;
-    }
-
-    /* Open the database. */
-    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", database);
-        exit(1);
-    }
-
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    int idx = 0;
-    int flag = 0;
-    // žî¹øÂ° AEÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
-    DBC* dbcp0;
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
-
-    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, "ri", key.size) == 0) {
-            idx++;
-            if (strncmp(data.data, ri, data.size) == 0) {
-                flag = 1;
-                new_ae->ri = malloc(data.size);
-                strcpy(new_ae->ri, data.data);
-                dbcp0->del(dbcp0, 0);
-                break;
-            }
-        }
-    }
-    if (flag == 0) {
-        fprintf(stderr,"Not Found\n");
-        exit(1);
-    }
-
-    // ÇØŽç index¿¡ ŒøŒ­ÀÇ °ª Ã£ŸÆ Áö¿ò
-    int cnt_rn = 0;
-    int cnt_pi = 0;
-    int cnt_ty = 0;
-    int cnt_et = 0;
-    int cnt_lt = 0;
-    int cnt_ct = 0;
-    int cnt_api = 0;
-    int cnt_aei = 0;
-    int cnt_rr = 0;
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, "rn", key.size) == 0) {
-            cnt_rn++;
-            if (cnt_rn == idx) {
-                new_ae->rn = malloc(data.size);
-                strcpy(new_ae->rn, data.data);
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "pi", key.size) == 0) {
-            cnt_pi++;
-            if (cnt_pi == idx) {
-                new_ae->pi = malloc(data.size);
-                strcpy(new_ae->pi, data.data);
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "api", key.size) == 0) {
-            cnt_api++;
-            if (cnt_api == idx) {
-                new_ae->api = malloc(data.size);
-                strcpy(new_ae->api, data.data);
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "aei", key.size) == 0) {
-            cnt_aei++;
-            if (cnt_aei == idx) {
-                new_ae->aei = malloc(data.size);
-                strcpy(new_ae->aei, data.data);
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "et", key.size) == 0) {
-            cnt_et++;
-            if (cnt_et == idx) {
-                new_ae->et = malloc(data.size);
-                strcpy(new_ae->et, data.data);
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "lt", key.size) == 0) {
-            cnt_lt++;
-            if (cnt_lt == idx) {
-                new_ae->lt = malloc(data.size);
-                strcpy(new_ae->lt, data.data);
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "ct", key.size) == 0) {
-            cnt_ct++;
-            if (cnt_ct == idx) {
-                new_ae->ct = malloc(data.size);
-                strcpy(new_ae->ct, data.data);
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "ty", key.size) == 0) {
-            cnt_ty++;
-            if (cnt_ty == idx) {
-                new_ae->ty = *(int*)data.data;
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "rr", key.size) == 0) {
-            cnt_rr++;
-            if (cnt_rr == idx) {
-                new_ae->rr = *(bool*)data.data;
-                dbcp->del(dbcp, 0);
-            }
-        }
-    }
-
-
-    /* Cursors must be closed */
-    if (dbcp0 != NULL)
-        dbcp0->close(dbcp0);
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
-    
-
-    return new_ae;
+void Delete_Node(Node *node, int flag) {
+	Node *left = node->siblingLeft;
+	Node *right = node->siblingRight;
+	
+	if(!left) node->parent->child = right;
+	
+	if(flag == 1) {
+		if(left) left->siblingRight = node->siblingRight;
+	} else {
+		if(node->siblingRight) Delete_Node(node->siblingRight, 0);
+	}
+	
+	if(node->child) Delete_Node(node->child, 0);
+	
+	switch(node->ty) {
+	case t_AE : Delete_AE(node->ri); break;
+	}
+	
+	free(node->ri);
+	free(node->rn);
+	free(node);
 }
 
 void Set_AE(AE* ae, char *pi) {
@@ -721,262 +266,3 @@ CIN* Get_sample_CIN(char *ri) {
     
     return cin;
 }
-
-Node* Create_Node(char *ri, char *rn, ObjectType ty){
-	Node* node = (Node*)malloc(sizeof(Node));
-	
-	node->rn = (char*)malloc(sizeof(rn));
-	node->ri = (char*)malloc(sizeof(ri));
-	
-	strcpy(node->rn, rn);
-	strcpy(node->ri, ri);
-	
-	node->parent = NULL;
-	node->child = NULL;
-	node->siblingLeft = NULL;
-	node->siblingRight = NULL;
-	node->ty = ty;
-	
-	return node;
-}
-
-Node* Find_Node(RT *rt) { 
-	Node *node = rt->root;
-	
-	if(!strcmp("/",uri)) return node;
-	
-	char *ptr = (char*)malloc(sizeof(uri));
-	char *ptr2 = ptr;
-	strcpy(ptr,uri);
-	
-	ptr = strtok(ptr, "/");
-	
-	node = node->child;
-	
-	while(ptr != NULL && node) {
-		while(node) {
-			if(!strcmp(node->rn,ptr)) break;
-			node = node->siblingRight;
-		}
-		ptr = strtok(NULL, "/");
-		
-		if(ptr == NULL) break;
-		
-		if(node) node = node->child;
-	}
-	
-	free(ptr2);
-	
-	return node;
-}
-
-int Add_child(Node *parent, Node *child) {
-	Node *node = parent->child;
-	child->parent = parent;
-	
-	if(node) {
-		while(node->siblingRight) node = node->siblingRight;
-		
-		node->siblingRight = child;
-		child->siblingLeft = node;
-	}
-	else {
-		parent->child = child;
-	}
-	
-	return 1;
-}
-
-void Delete_Node(Node *node, int flag) {
-	Node *left = node->siblingLeft;
-	Node *right = node->siblingRight;
-	
-	if(!left) node->parent->child = right;
-	
-	if(flag == 1) {
-		if(left) left->siblingRight = node->siblingRight;
-	} else {
-		if(node->siblingRight) Delete_Node(node->siblingRight, 0);
-	}
-	
-	if(node->child) Delete_Node(node->child, 0);
-	
-	switch(node->ty) {
-	case t_AE : Delete_AE(node->ri); break;
-	}
-	
-	free(node->ri);
-	free(node->rn);
-	free(node);
-}
-
-AE* JSON_to_AE(char *json_payload) {
-	AE *ae = (AE *)malloc(sizeof(AE));
-
-	cJSON *root = NULL;
-	cJSON *api = NULL;
-	cJSON *rr = NULL;
-	cJSON *rn = NULL;
-
-	cJSON* json = cJSON_Parse(json_payload);
-	if (json == NULL) {
-		const char *error_ptr = cJSON_GetErrorPtr();
-		if (error_ptr != NULL)
-		{
-			fprintf(stderr, "Error before: %s\n", error_ptr);
-		}
-		goto end;
-	}
-
-	root = cJSON_GetObjectItem(json, "m2m:ae");
-
-	// api
-	api = cJSON_GetObjectItem(root, "api");
-	if (!cJSON_IsString(api) && (api->valuestring == NULL))
-	{
-		goto end;
-	}
-	ae->api = cJSON_Print(api);
-	ae->api = strtok(ae->api, "\"");
-
-	// rr
-	rr = cJSON_GetObjectItemCaseSensitive(root, "rr");
-	if (!cJSON_IsTrue(rr) && !cJSON_IsFalse(rr))
-	{
-		goto end;
-	}
-	else if (cJSON_IsTrue(rr))
-	{
-		ae->rr = true;
-	}
-	else if (cJSON_IsFalse(rr))
-	{
-		ae->rr = false;
-	}
-	
-	// rn
-	rn = cJSON_GetObjectItem(root, "rn");
-	if (!cJSON_IsString(rn) && (rn->valuestring == NULL))
-	{
-		goto end;
-	}
-	ae->rn = cJSON_Print(rn);
-	ae->rn = strtok(ae->rn, "\"");
-
-end:
-	cJSON_Delete(json);
-
-	return ae;
-}
-
-char* AE_to_json(AE *ae_object) {
-	char *json = NULL;
-
-	cJSON *root = NULL;
-	cJSON *ae = NULL;
-
-	/* Our "ae" item: */
-	root = cJSON_CreateObject();
-	cJSON_AddItemToObject(root, "m2m:ae", ae = cJSON_CreateObject());
-	cJSON_AddStringToObject(ae, "rn", ae_object->rn);
-	cJSON_AddNumberToObject(ae, "ty", ae_object->ty);
-	cJSON_AddStringToObject(ae, "pi", ae_object->pi);
-	cJSON_AddStringToObject(ae, "ri", ae_object->ri);
-	cJSON_AddStringToObject(ae, "ct", ae_object->ct);
-	cJSON_AddStringToObject(ae, "lt", ae_object->lt);
-	cJSON_AddStringToObject(ae, "et", ae_object->et);
-	cJSON_AddStringToObject(ae, "api", ae_object->api);
-	cJSON_AddBoolToObject(ae, "rr", ae_object->rr);
-	cJSON_AddStringToObject(ae, "aei", ae_object->aei);
-
-	json = cJSON_Print(root);
-
-	cJSON_Delete(root);
-
-	return json;
-}
-
-int display(char* database)
-{
-    fprintf(stderr,"[Display] %s \n", database); //DB name print
-
-    DB* dbp;
-    DBC* dbcp;
-    DBT key, data;
-    int close_db, close_dbc, ret;
-
-    close_db = close_dbc = 0;
-
-    /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return (1);
-    }
-    close_db = 1;
-
-    /* Turn on additional error output. */
-    dbp->set_errfile(dbp, stderr);
-    dbp->set_errpfx(dbp, database);
-
-    /* Open the database. */
-    if ((ret = dbp->open(dbp, NULL, database, NULL,
-        DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-        dbp->err(dbp, ret, "%s: DB->open", database);
-        goto err;
-    }
-
-    /* Acquire a cursor for the database. */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        goto err;
-    }
-    close_dbc = 1;
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    /* Walk through the database and print out the key/data pairs. */
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        //int
-        if (strncmp(key.data, "ty", key.size) == 0 ||
-            strncmp(key.data, "st", key.size) == 0 ||
-            strncmp(key.data, "cni", key.size) == 0 ||
-            strncmp(key.data, "cbs", key.size) == 0 ||
-            strncmp(key.data, "cs", key.size) == 0
-            ) {
-            fprintf(stderr,"%.*s : %d\n", (int)key.size, (char*)key.data, *(int*)data.data);
-        }
-        //bool
-        else if (strncmp(key.data, "rr", key.size) == 0) {
-            fprintf(stderr,"%.*s : ", (int)key.size, (char*)key.data);
-            if (*(bool*)data.data == true)
-                fprintf(stderr,"true\n");
-            else
-                fprintf(stderr,"false\n");
-        }
-
-        //string
-        else {
-            fprintf(stderr,"%.*s : %.*s\n",
-                (int)key.size, (char*)key.data,
-                (int)data.size, (char*)data.data);
-        }
-    }
-    if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
-        fprintf(stderr,"Cursor ERROR\n");
-        exit(0);
-    }
-
-
-err:    if (close_dbc && (ret = dbcp->close(dbcp)) != 0)
-dbp->err(dbp, ret, "DBcursor->close");
-if (close_db && (ret = dbp->close(dbp, 0)) != 0)
-fprintf(stderr,
-    "%s: DB->close: %s\n", database, db_strerror(ret));
-return (0);
-}
-
-
