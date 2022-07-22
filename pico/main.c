@@ -1,3 +1,4 @@
+#include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -99,7 +100,7 @@ void Create_Object(char *json_payload, Node *pnode) {
 		
 	switch(ty) {
 		
-	case t_AE : 
+	case t_AE :
 		Create_AE(json_payload, pnode);
 		break;	
 					
@@ -146,15 +147,12 @@ void Delete_Object(Node* pnode) {
 void Create_AE(char *json_payload, Node *pnode) {
 	AE* ae = JSON_to_AE(json_payload);
 	Set_AE(ae,pnode->ri);
-	
 	int result = Store_AE(ae);
 	if(result != 1) HTTP_500;
-
-	char *resjson = AE_to_json(ae);
 	
+	char *resjson = AE_to_json(ae);
 	Node* node = Create_Node(ae->ri, ae->rn, ae->ty);
 	Add_child(pnode,node);
-	
 	HTTP_201;
 	printf("%s",resjson);
 }
@@ -167,7 +165,20 @@ void Retrieve_AE(Node *pnode){
 }
 
 void Restruct_ResourceTree(){
+	AE **ae_list = Get_All_AE();
 	
+	int len = (int)malloc_usable_size(ae_list) / (int)sizeof(AE*) - 1;
+	
+	Node *node_list;
+	
+	if(ae_list) {
+		AE *ae = ae_list[0];
+		node_list = Create_Node(ae->ri, ae->rn, ae->ty);
+	}
+	
+	for(int i=1; i<len; i++) {
+		
+	}
 }
 
 void Restruct_childs(Node *node, Node *list) {

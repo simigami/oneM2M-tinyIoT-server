@@ -105,7 +105,6 @@ int Store_CSE(CSE *cse_object)
     return 1;
 }
 
-/* Store Success -> return 1 */
 int Store_AE(AE* ae_object) {
     char* DATABASE = "AE.db";
     DB* dbp;    // db handle
@@ -116,6 +115,19 @@ int Store_AE(AE* ae_object) {
     int ret;        // template value
 
     char* program_name = "my_prog";
+
+    // if input == NULL
+    if (ae_object->ri == NULL) ae_object->ri = "";
+    if (ae_object->rn == NULL) ae_object->rn = "";
+    if (ae_object->pi == NULL) ae_object->pi = "";
+    if (ae_object->ty == '\0') ae_object->ty = -1;
+    if (ae_object->ct == NULL) ae_object->ct = "";
+    if (ae_object->lt == NULL) ae_object->lt = "";
+    if (ae_object->et == NULL) ae_object->et = "";
+
+    if (ae_object->rr == '\0') ae_object->rr = true;
+    if (ae_object->api == NULL) ae_object->api = "";
+    if (ae_object->aei == NULL) ae_object->aei = "";
 
     ret = db_create(&dbp, NULL, 0);
     if (ret) {
@@ -138,6 +150,7 @@ int Store_AE(AE* ae_object) {
 
     /*DB Open*/
     ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
+
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
         fprintf(stderr,"DB Open ERROR\n");
@@ -150,11 +163,9 @@ int Store_AE(AE* ae_object) {
 */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr,"Cursor ERROR");
+        fprintf(stderr,"Cursor ERROR\n");
         exit(1);
     }
-    
-    
 
     /* keyand data must initialize */
     memset(&key_rn, 0, sizeof(DBT));
@@ -178,7 +189,7 @@ int Store_AE(AE* ae_object) {
     memset(&data_api, 0, sizeof(DBT));
     memset(&data_rr, 0, sizeof(DBT));
     memset(&data_aei, 0, sizeof(DBT));
-    
+
     // Store key & data
     data_rn.data = ae_object->rn;
     data_rn.size = strlen(ae_object->rn) + 1;
@@ -230,6 +241,7 @@ int Store_AE(AE* ae_object) {
     key_aei.data = "aei";
     key_aei.size = strlen("aei") + 1;
 
+
     if ((ret = dbcp->put(dbcp, &key_ri, &data_ri, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "DB->cursor");
     if ((ret = dbcp->put(dbcp, &key_rn, &data_rn, DB_KEYLAST)) != 0)
@@ -251,9 +263,10 @@ int Store_AE(AE* ae_object) {
     if ((ret = dbcp->put(dbcp, &key_aei, &data_aei, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "DB->cursor");
 
+
     dbcp->close(dbcp);
     dbp->close(dbp, 0); //DB close
-    
+
     return 1;
 }
 
@@ -288,7 +301,7 @@ int Store_CNT(CNT *cnt_object)
     ret = db_create(&dbp, NULL, 0);
     if (ret) {
         fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        printf("File ERROR\n");
+        fprintf(stderr,"File ERROR\n");
         exit(1);
     }
 
@@ -299,7 +312,7 @@ int Store_CNT(CNT *cnt_object)
     ret = dbp->set_flags(dbp, DB_DUP);
     if (ret != 0) {
         dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        printf("Flag Set ERROR\n");
+        fprintf(stderr,"Flag Set ERROR\n");
         dbp->close(dbp, 0);
         return(ret);
     }
@@ -308,7 +321,7 @@ int Store_CNT(CNT *cnt_object)
     ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
-        printf("DB Open ERROR\n");
+        fprintf(stderr,"DB Open ERROR\n");
         exit(1);
     }
 
@@ -318,7 +331,7 @@ int Store_CNT(CNT *cnt_object)
   */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        printf("Cursor ERROR");
+        fprintf(stderr,"Cursor ERROR");
         exit(1);
     }
  
@@ -457,7 +470,7 @@ int Store_CIN(CIN *cin_object)
     ret = db_create(&dbp, NULL, 0);
     if (ret) {
         fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        printf("File ERROR\n");
+        fprintf(stderr,"File ERROR\n");
         exit(1);
     }
 
@@ -468,7 +481,7 @@ int Store_CIN(CIN *cin_object)
     ret = dbp->set_flags(dbp, DB_DUP);
     if (ret != 0) {
         dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        printf("Flag Set ERROR\n");
+        fprintf(stderr,"Flag Set ERROR\n");
         dbp->close(dbp, 0);
         return(ret);
     }
@@ -477,7 +490,7 @@ int Store_CIN(CIN *cin_object)
     ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
-        printf("DB Open ERROR\n");
+        fprintf(stderr,"DB Open ERROR\n");
         exit(1);
     }
 
@@ -487,7 +500,7 @@ int Store_CIN(CIN *cin_object)
   */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        printf("Cursor ERROR");
+        fprintf(stderr,"Cursor ERROR");
         exit(1);
     }
  
@@ -605,7 +618,7 @@ int Store_CIN(CIN *cin_object)
 }
 
 CSE* Get_CSE(char* ri) {
-    //printf("[Get CSE] ri = %s\n", ri);
+    //fprintf(stderr,"[Get CSE] ri = %s\n", ri);
 
     //store CSE Object
     CSE* new_cse = (CSE*)malloc(sizeof(CSE));
@@ -683,7 +696,7 @@ CSE* Get_CSE(char* ri) {
 
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
-        printf("Cursor ERROR\n");
+        fprintf(stderr,"Cursor ERROR\n");
         exit(0);
     }
 
@@ -829,7 +842,7 @@ AE* Get_AE(char* ri) {
             }
         }
     }
-    //printf("[%d]\n",idx);
+    //fprintf(stderr,"[%d]\n",idx);
 
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
@@ -841,7 +854,7 @@ AE* Get_AE(char* ri) {
 }
 
 CNT* Get_CNT(char* ri) {
-    //printf("[Get CNT] ri = %s\n", ri);
+    //fprintf(stderr,"[Get CNT] ri = %s\n", ri);
 
     //store CNT
     CNT* new_cnt = (CNT*)malloc(sizeof(CNT));
@@ -975,11 +988,11 @@ CNT* Get_CNT(char* ri) {
             }
         }
     }
-    //printf("[%d]\n",idx);
+    //fprintf(stderr,"[%d]\n",idx);
 
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
-        printf("Cursor ERROR\n");
+        fprintf(stderr,"Cursor ERROR\n");
         exit(0);
     }
 
@@ -992,7 +1005,7 @@ return new_cnt;
 }
 
 CIN* Get_CIN(char* ri) {
-    printf("[Get CIN] ri = %s\n", ri);
+    fprintf(stderr,"[Get CIN] ri = %s\n", ri);
 
     //store CIN
     CIN* new_cin = (CIN*)malloc(sizeof(CIN));
@@ -1136,11 +1149,11 @@ CIN* Get_CIN(char* ri) {
             }
         }
     }
-    //printf("[%d]\n",idx);
+    //fprintf(stderr,"[%d]\n",idx);
 
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
-        printf("Cursor ERROR\n");
+        fprintf(stderr,"Cursor ERROR\n");
         exit(0);
     }
 

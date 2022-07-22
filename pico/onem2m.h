@@ -150,4 +150,5 @@ Node* Validate_URI(RT *rt);
 int Add_child(Node *parent, Node *child);
 void Delete_Node(Node *node, int flag);
 
+void Restruct_ResourceTree();
 void Restruct_childs(Node *node, Node *list);
