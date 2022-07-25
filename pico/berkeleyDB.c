@@ -727,7 +727,7 @@ AE* Get_AE(char* ri) {
             "%s: db_create: %s\n", database, db_strerror(ret));
         return 0;
     }
-
+	
     /* Open the database. */
     ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
@@ -1356,7 +1356,7 @@ AE** Get_All_AE(){
     memset(&data, 0, sizeof(data));
 
     int cnt = 0;
-    // žî¹øÂ° AEÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
+    // 
     DBC* dbcp0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
@@ -1380,7 +1380,7 @@ AE** Get_All_AE(){
     for (int i = 0; i < cnt; i++) {
         new_ae[i] = (AE*)malloc(sizeof(AE));
     }
-
+	fprintf(stderr,"AE cnt : %d\n",cnt);
 
     int cnt_ri = 0;
     int cnt_rn = 0;

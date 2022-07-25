@@ -64,7 +64,7 @@ end:
 	return ae;
 }
 
-CNT* Json_to_CNT(char *json_payload) {
+CNT* JSON_to_CNT(char *json_payload) {
 	CNT *cnt = (CNT *)malloc(sizeof(CNT));
 
 	cJSON *root = NULL;
