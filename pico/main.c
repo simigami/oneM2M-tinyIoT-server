@@ -16,7 +16,7 @@ RT *rt;
 
 int main(int c, char **v) { 
 	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node("1234", "TEST_CSE", t_CSE);
+ 	rt->root = Create_Node("Test_CSE_ri", "TEST_CSE", "\0", t_CSE);
  	Restruct_ResourceTree();
  	char *port = c == 1 ? "3000" : v[1];
 	serve_forever(port);
@@ -97,7 +97,7 @@ void route() {
 
 void Create_Object(char *json_payload, Node *pnode) {
 	ObjectType ty = Parse_ObjectType();
-		
+	
 	switch(ty) {
 		
 	case t_AE :
@@ -105,7 +105,7 @@ void Create_Object(char *json_payload, Node *pnode) {
 		break;	
 					
 	case t_CNT :
-		//Create_CNT(json_payload, pnode);
+		Create_CNT(json_payload, pnode);
 		break;
 			
 	case t_CIN :
@@ -149,9 +149,20 @@ void Create_AE(char *json_payload, Node *pnode) {
 	Set_AE(ae,pnode->ri);
 	int result = Store_AE(ae);
 	if(result != 1) HTTP_500;
-	
 	char *resjson = AE_to_json(ae);
-	Node* node = Create_Node(ae->ri, ae->rn, ae->ty);
+	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
+	Add_child(pnode,node);
+	HTTP_201;
+	printf("%s",resjson);
+}
+
+void Create_CNT(char *json_payload, Node *pnode) {
+	CNT* cnt = JSON_to_AE(json_payload);
+	Set_AE(ae,pnode->ri);
+	int result = Store_AE(ae);
+	if(result != 1) HTTP_500;
+	char *resjson = AE_to_json(ae);
+	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
 	Add_child(pnode,node);
 	HTTP_201;
 	printf("%s",resjson);
@@ -167,44 +178,56 @@ void Retrieve_AE(Node *pnode){
 void Restruct_ResourceTree(){
 	AE **ae_list = Get_All_AE();
 	
-	int len = (int)malloc_usable_size(ae_list) / (int)sizeof(AE*) - 1;
+	int len = (int)malloc_usable_size(ae_list) / (int)sizeof(AE*);
 	
 	Node *node_list;
 	
 	if(ae_list) {
 		AE *ae = ae_list[0];
-		node_list = Create_Node(ae->ri, ae->rn, ae->ty);
+		node_list = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
 	}
+	
+	Node *node = node_list;
 	
 	for(int i=1; i<len; i++) {
-		
+		AE *ae = ae_list[i];
+		node->siblingRight = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
+		node->siblingRight->siblingLeft = node;
+		node = node->siblingRight;
 	}
+	
+	if(node_list) Restruct_childs(rt->root, node_list);
 }
 
-void Restruct_childs(Node *node, Node *list) {
-	Node *cursor = list;
+Node* Restruct_childs(Node *pnode, Node *list) {
+	Node *node = list;
 	
-	while(cursor) {
-		if(!strcmp(node->ri, cursor->ri)) {
-			Node *left = cursor->siblingLeft;
-			Node *right = cursor->siblingRight;
+	while(node) {
+		Node *right = node->siblingRight;
+
+		if(!strcmp(pnode->ri, node->pi)) {
+			Node *left = node->siblingLeft;
+			Node *right = node->siblingRight;
+			
 			if(!left) {
-				list = list->siblingLeft;
+				list = right;
 			} else {
 				left->siblingRight = right;
-				if(right) right->siblingLeft = left;
 			}
 			
-			cursor->siblingLeft = cursor->siblingRight = NULL;
-			Add_child(node, cursor);
+			if(right) right->siblingLeft = left;
+			
+			node->siblingLeft = node->siblingRight = NULL;
+			Add_child(pnode, node);
 		}
-		cursor = cursor->siblingRight;
+		node = right;
 	}
-	
-	Node *child = node->child;
+	Node *child = pnode->child;
 	
 	while(child) {
-		Restruct_childs(child, list);
+		list = Restruct_childs(child, list);
 		child = child->siblingRight;
 	}
+	
+	return list;
 }

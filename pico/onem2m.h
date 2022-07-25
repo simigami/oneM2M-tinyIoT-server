@@ -77,6 +77,7 @@ typedef struct Node{
 	
 	char *rn;
 	char *ri;
+	char *pi;
 	ObjectType ty;
 }Node;
 
@@ -145,10 +146,11 @@ AE* Get_sample_AE();
 CNT* Get_sample_CNT();
 CIN* Get_sample_CIN();
 
-Node* Create_Node(char *ri, char *rn, ObjectType ty);
+Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
 Node* Validate_URI(RT *rt);
 int Add_child(Node *parent, Node *child);
 void Delete_Node(Node *node, int flag);
 
+void tree_data(Node *node);
 void Restruct_ResourceTree();
-void Restruct_childs(Node *node, Node *list);
+Node* Restruct_childs(Node *node, Node *list);

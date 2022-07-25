@@ -709,7 +709,7 @@ return new_cse;
 }
 
 AE* Get_AE(char* ri) {
-    fprintf(stderr,"[Get AE] ri = %s\n", ri);
+    //fprintf(stderr,"[Get AE] ri = %s\n", ri);
 
     //store AE
     AE* new_ae = (AE*)malloc(sizeof(AE));
@@ -1005,7 +1005,7 @@ return new_cnt;
 }
 
 CIN* Get_CIN(char* ri) {
-    fprintf(stderr,"[Get CIN] ri = %s\n", ri);
+    //fprintf(stderr,"[Get CIN] ri = %s\n", ri);
 
     //store CIN
     CIN* new_cin = (CIN*)malloc(sizeof(CIN));
@@ -1323,7 +1323,7 @@ AE* Delete_AE(char* ri) {
 }
 
 AE** Get_All_AE(){
-    fprintf(stderr, "[Get All AE]\n");
+    //fprintf(stderr, "[Get All AE]\n");
 
     char* database = "AE.db";
 

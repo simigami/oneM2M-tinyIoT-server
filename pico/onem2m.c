@@ -6,10 +6,10 @@
 #include <stdbool.h>
 #include <time.h>
 
+char *tree;
+
 Node* Validate_URI(RT *rt) { 
 	Node *node = rt->root;
-	
-	if(!strcmp("/",uri)) return node;
 	
 	char *ptr = (char*)malloc(sizeof(uri));
 	char *ptr2 = ptr;
@@ -17,19 +17,45 @@ Node* Validate_URI(RT *rt) {
 	
 	ptr = strtok(ptr, "/");
 	
+	int view = 0;
+	
 	while(ptr != NULL && node) {
-		node = node->child;
+		if(!strcmp(ptr,"viewer")) {
+			ptr = strtok(NULL, "/");
+			view = 1;
+			continue;
+		}
 
 		while(node) {
 			if(!strcmp(node->rn,ptr)) break;
 			node = node->siblingRight;
 		}
+		node = node->child;
 		ptr = strtok(NULL, "/");
 	}
 	
 	free(ptr2);
 	
+	if(view) {
+		tree = (char *)calloc(1000,sizeof(char));
+		tree_data(node);
+		HTTP_200;
+		printf("%s\n",tree);
+	}
+	
 	return node;
+}
+
+void tree_data(Node *node) {
+	strcat(tree,node->rn);
+	strcat(tree,"\n");
+	
+	node = node->child;
+	
+	while(node) {
+		tree_data(node);
+		node = node->siblingRight;
+	}
 }
 
 char *Parse_Request_JSON() {
@@ -74,14 +100,16 @@ ObjectType Parse_ObjectType() {
 	return ty;
 }
 
-Node* Create_Node(char *ri, char *rn, ObjectType ty){
+Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	Node* node = (Node*)malloc(sizeof(Node));
 	
 	node->rn = (char*)malloc(sizeof(rn));
 	node->ri = (char*)malloc(sizeof(ri));
+	node->pi = (char*)malloc(sizeof(pi));
 	
 	strcpy(node->rn, rn);
 	strcpy(node->ri, ri);
+	strcpy(node->pi, pi);
 	
 	node->parent = NULL;
 	node->child = NULL;
@@ -132,7 +160,7 @@ void Delete_Node(Node *node, int flag) {
 	free(node);
 }
 
-void Set_AE(AE* ae, char *pi) {
+char *Get_LocalTime() {
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
 	
@@ -145,7 +173,7 @@ void Set_AE(AE* ae, char *pi) {
 	sprintf(minute,"%02d",tm.tm_min);
 	sprintf(sec,"%02d",tm.tm_sec);
 	
-	char now[16] = "";
+	char* now = (char*)malloc(sizeof(char)*16);
 	
 	strcat(now,year);
 	strcat(now,mon);
@@ -154,6 +182,33 @@ void Set_AE(AE* ae, char *pi) {
 	strcat(now,hour);
 	strcat(now,minute);
 	strcat(now,sec);
+	
+	return now;
+}
+
+void Set_AE(AE* ae, char *pi) {
+	char *now = Get_LocalTime();
+	
+	cnt->ri = (char*)malloc(sizeof(now));
+	cnt->et = (char*)malloc(sizeof(now));
+	cnt->ct = (char*)malloc(sizeof(now));
+	cnt->lt = (char*)malloc(sizeof(now));
+	cnt->cni = (char*)malloc(sizeof(now));
+	ae->pi = (char*)malloc(sizeof(now));
+	strcpy(ae->ri, now);
+	strcpy(ae->et, now);
+	strcpy(ae->ct, now);
+	strcpy(ae->lt, now);
+	strcpy(ae->aei,now);
+	strcpy(ae->pi, pi);
+	
+	ae->ty = 2;
+	
+	free(now);
+}
+
+void Set_CNT(CNT* cnt, char *pi) {
+	char *now = Get_LocalTime();
 	
 	ae->ri = (char*)malloc(sizeof(now));
 	ae->et = (char*)malloc(sizeof(now));
@@ -169,6 +224,8 @@ void Set_AE(AE* ae, char *pi) {
 	strcpy(ae->pi, pi);
 	
 	ae->ty = 2;
+	
+	free(now);
 }
 
 CSE* Get_sample_CSE(char *ri) {
