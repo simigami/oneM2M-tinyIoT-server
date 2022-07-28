@@ -96,13 +96,13 @@ void Retrieve_Object(Node *pnode);
 void Delete_Object();
 
 void Create_AE(char *json_payload, Node *pnode);
-CNT* Create_CNT(char *json_payload);
-CIN* Create_CIN(char *json_payload);
+void Create_CNT(char *json_payload, Node *pnode);
+void Create_CIN(char *json_payload, Node *pnode);
 
 void Retrieve_CSE();
 void Retrieve_AE();
-CNT* Retrieve_CNT();
-CIN* Retrieve_CIN();
+void Retrieve_CNT();
+void Retrieve_CIN();
 
 CSE* Update_CSE(char *json_payload);
 AE* Update_AE(char *json_payload);
@@ -140,11 +140,7 @@ AE** Get_All_AE();
 
 //Resource Tree function
 void Set_AE(AE* ae, char *pi);
-
-CSE* Get_sample_CSE();
-AE* Get_sample_AE();
-CNT* Get_sample_CNT();
-CIN* Get_sample_CIN();
+void Set_CNT(CNT* cnt, char *pi);
 
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
 Node* Validate_URI(RT *rt);

@@ -11,44 +11,43 @@ char *tree;
 Node* Validate_URI(RT *rt) { 
 	Node *node = rt->root;
 	
-	char *ptr = (char*)malloc(sizeof(uri));
-	char *ptr2 = ptr;
-	strcpy(ptr,uri);
-	
-	ptr = strtok(ptr, "/");
+	uri = strtok(uri, "/");
 	
 	int view = 0;
 	
-	while(ptr != NULL && node) {
+	while(uri != NULL && node) {
+	/*
 		if(!strcmp(ptr,"viewer")) {
 			ptr = strtok(NULL, "/");
 			view = 1;
 			continue;
 		}
-
+	*/
 		while(node) {
-			if(!strcmp(node->rn,ptr)) break;
+			if(!strcmp(node->rn,uri)) break;
 			node = node->siblingRight;
 		}
+		
+		uri = strtok(NULL, "/");
+		
+		if(uri == NULL) break;
+		
 		node = node->child;
-		ptr = strtok(NULL, "/");
 	}
 	
-	free(ptr2);
-	
+	/*
 	if(view) {
 		tree = (char *)calloc(1000,sizeof(char));
 		tree_data(node);
 		HTTP_200;
 		printf("%s\n",tree);
-	}
+	}*/
 	
 	return node;
 }
 
 void tree_data(Node *node) {
-	strcat(tree,node->rn);
-	strcat(tree,"\n");
+	fprintf(stderr,"%s\n",node->rn);
 	
 	node = node->child;
 	
@@ -153,10 +152,12 @@ void Delete_Node(Node *node, int flag) {
 	
 	switch(node->ty) {
 	case t_AE : Delete_AE(node->ri); break;
+	//case t_CNT : Delete_CNT(node->ri); break;
 	}
 	
 	free(node->ri);
 	free(node->rn);
+	free(node->pi);
 	free(node);
 }
 
@@ -173,7 +174,7 @@ char *Get_LocalTime() {
 	sprintf(minute,"%02d",tm.tm_min);
 	sprintf(sec,"%02d",tm.tm_sec);
 	
-	char* now = (char*)malloc(sizeof(char)*16);
+	char* now = (char*)calloc(16,sizeof(char));
 	
 	strcat(now,year);
 	strcat(now,mon);
@@ -189,27 +190,6 @@ char *Get_LocalTime() {
 void Set_AE(AE* ae, char *pi) {
 	char *now = Get_LocalTime();
 	
-	cnt->ri = (char*)malloc(sizeof(now));
-	cnt->et = (char*)malloc(sizeof(now));
-	cnt->ct = (char*)malloc(sizeof(now));
-	cnt->lt = (char*)malloc(sizeof(now));
-	cnt->cni = (char*)malloc(sizeof(now));
-	ae->pi = (char*)malloc(sizeof(now));
-	strcpy(ae->ri, now);
-	strcpy(ae->et, now);
-	strcpy(ae->ct, now);
-	strcpy(ae->lt, now);
-	strcpy(ae->aei,now);
-	strcpy(ae->pi, pi);
-	
-	ae->ty = 2;
-	
-	free(now);
-}
-
-void Set_CNT(CNT* cnt, char *pi) {
-	char *now = Get_LocalTime();
-	
 	ae->ri = (char*)malloc(sizeof(now));
 	ae->et = (char*)malloc(sizeof(now));
 	ae->ct = (char*)malloc(sizeof(now));
@@ -223,103 +203,29 @@ void Set_CNT(CNT* cnt, char *pi) {
 	strcpy(ae->aei,now);
 	strcpy(ae->pi, pi);
 	
-	ae->ty = 2;
+	ae->ty = t_AE;
 	
 	free(now);
 }
 
-CSE* Get_sample_CSE(char *ri) {
-    CSE* cse = (CSE*)malloc(sizeof(CSE));
-    
-    cse->ct = (char*)malloc(16*sizeof(char));
-    cse->lt = (char*)malloc(16*sizeof(char));
-    cse->rn = (char*)malloc(32*sizeof(char));
-    cse->ri = (char*)malloc(32*sizeof(char));
-    cse->pi = (char*)malloc(32*sizeof(char));
-    cse->csi = (char*)malloc(16*sizeof(char));
-
-    strcpy(cse->ct, "20191210T093452");
-    strcpy(cse->lt, "20191210T093452");
-    strcpy(cse->rn, "sample_CSE");
-    strcpy(cse->pi, "NULL");
-    strcpy(cse->csi, "/Tiny_Project2");
-    strcpy(cse->ri, ri);
-    cse->ty = 5;
-    
-    return cse;
-}
-
-AE* Get_sample_AE(char *ri) {
-    AE* ae = (AE*)malloc(sizeof(AE));
-    
-    ae->pi = (char*)malloc(32*sizeof(char));
-    ae->ri = (char*)malloc(32*sizeof(char));
-    ae->ct = (char*)malloc(16*sizeof(char));
-    ae->lt = (char*)malloc(16*sizeof(char));
-    ae->et = (char*)malloc(16*sizeof(char));
-    ae->api = (char*)malloc(32*sizeof(char));
-    ae->aei = (char*)malloc(32*sizeof(char));
-    ae->rn = (char*)malloc(32*sizeof(char));
-    
-    strcpy(ae->rn, "sample_AE");
-    strcpy(ae->ct, "20220513T083900");
-    strcpy(ae->lt, "20220513T083900");
-    strcpy(ae->et, "20240513T083900");
-    strcpy(ae->api, "tinyProject");
-    strcpy(ae->aei, "TAE");
-    strcpy(ae->ri , ri);
-    ae->rr = true;
-    ae->ty = 2;
-    
-    return ae;
-}
-
-CNT* Get_sample_CNT(char *ri) {
-    CNT* cnt = (CNT*)malloc(sizeof(CNT));
-    
-    cnt->pi = (char*)malloc(32*sizeof(char));
-    cnt->ri = (char*)malloc(32*sizeof(char));
-    cnt->ct = (char*)malloc(16*sizeof(char));
-    cnt->lt = (char*)malloc(16*sizeof(char));
-    cnt->et = (char*)malloc(16*sizeof(char));
-    cnt->rn = (char*)malloc(32*sizeof(char));
-    
-    strcpy(cnt->pi, "TAE");
-    strcpy(cnt->ri, ri);
-    strcpy(cnt->ct, "202205T093154");
-    strcpy(cnt->rn, "sample_CNT");
-    strcpy(cnt->lt, "20220513T093154");
-    strcpy(cnt->et, "20220513T093154");
-    cnt->ty = 3;
-    cnt->st = 0;
-    cnt->cni = 0;
-    cnt->cbs = 0;
-    
-    return cnt;
-}
-
-CIN* Get_sample_CIN(char *ri) {
-    CIN* cin = (CIN*)malloc(sizeof(CIN));
-    
-    cin->pi = (char*)malloc(32*sizeof(char));
-    cin->ri = (char*)malloc(32*sizeof(char));
-    cin->ct = (char*)malloc(16*sizeof(char));
-    cin->lt = (char*)malloc(16*sizeof(char));
-    cin->et = (char*)malloc(16*sizeof(char));
-    cin->rn = (char*)malloc(32*sizeof(char));
-    cin->con = (char*)malloc(16*sizeof(char));
-    cin->csi = (char*)malloc(16*sizeof(char));
-    
-    strcpy(cin->pi, "3-20220513091700249586");
-    strcpy(cin->ri, ri); 
-    strcpy(cin->ct, "202205T093154");
-    strcpy(cin->rn, "sample_CIN");
-    strcpy(cin->lt, "20220513T093154");
-    strcpy(cin->et, "20220513T093154");
-    strcpy(cin->con, "ON");
-    strcpy(cin->csi, "csitest");
-    cin->ty = 4;
-    cin->st = 1;
-    
-    return cin;
+void Set_CNT(CNT* cnt, char *pi) {
+	char *now = Get_LocalTime();
+	
+	cnt->ri = (char*)malloc(sizeof(now));
+	cnt->et = (char*)malloc(sizeof(now));
+	cnt->ct = (char*)malloc(sizeof(now));
+	cnt->lt = (char*)malloc(sizeof(now));
+	cnt->pi = (char*)malloc(sizeof(now));
+	strcpy(cnt->ri, now);
+	strcpy(cnt->et, now);
+	strcpy(cnt->ct, now);
+	strcpy(cnt->lt, now);
+	strcpy(cnt->pi, pi);
+	
+	cnt->ty = t_CNT;
+	cnt->st = 0;
+	cnt->cni = 0;
+	cnt->cbs = 0;
+	
+	free(now);
 }

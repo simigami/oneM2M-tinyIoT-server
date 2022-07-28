@@ -16,8 +16,8 @@ RT *rt;
 
 int main(int c, char **v) { 
 	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node("Test_CSE_ri", "TEST_CSE", "\0", t_CSE);
- 	Restruct_ResourceTree();
+ 	rt->root = Create_Node("CSE_RI", "TinyIoT", "\0", t_CSE);
+ 	//Restruct_ResourceTree();
  	char *port = c == 1 ? "3000" : v[1];
 	serve_forever(port);
   
@@ -53,7 +53,7 @@ int read_file(const char *file_name) {
 	return err;
 }
 
-void route() {
+void route() {	
 	Node* pnode = Validate_URI(rt);
 	if(!pnode) {
 		HTTP_500;
@@ -75,20 +75,16 @@ void route() {
 	switch(op) {
 	
 	case o_CREATE:	
-		Create_Object(json_payload, pnode);
-		break;
+		Create_Object(json_payload, pnode); break;
 	
 	case o_RETRIEVE:
-		Retrieve_Object(pnode);
-		break;
+		Retrieve_Object(pnode);	break;
 		
 	case o_UPDATE: 
-		//Update_Object();
-		break;
+		//Update_Object(); break;
 		
 	case o_DELETE:
-		Delete_Object(pnode);
-		break;
+		Delete_Object(pnode); break;
 	
 	default:
 		HTTP_500;
@@ -129,7 +125,7 @@ void Retrieve_Object(Node *pnode) {
 		break;	
 			
 	case t_CNT :
-		//Retrieve_CNT(pnode);			
+		Retrieve_CNT(pnode);			
 		break;
 			
 	case t_CIN :
@@ -147,23 +143,29 @@ void Delete_Object(Node* pnode) {
 void Create_AE(char *json_payload, Node *pnode) {
 	AE* ae = JSON_to_AE(json_payload);
 	Set_AE(ae,pnode->ri);
+	
 	int result = Store_AE(ae);
 	if(result != 1) HTTP_500;
-	char *resjson = AE_to_json(ae);
+	
 	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
 	Add_child(pnode,node);
+	
+	char *resjson = AE_to_json(ae);
 	HTTP_201;
 	printf("%s",resjson);
 }
 
 void Create_CNT(char *json_payload, Node *pnode) {
-	CNT* cnt = JSON_to_AE(json_payload);
-	Set_AE(ae,pnode->ri);
-	int result = Store_AE(ae);
+	CNT* cnt = JSON_to_CNT(json_payload);
+	Set_CNT(cnt,pnode->ri);
+	
+	int result = Store_CNT(cnt);
 	if(result != 1) HTTP_500;
-	char *resjson = AE_to_json(ae);
-	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
+	
+	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, cnt->ty);
 	Add_child(pnode,node);
+	
+	char *resjson = CNT_to_json(cnt);
 	HTTP_201;
 	printf("%s",resjson);
 }
@@ -175,12 +177,21 @@ void Retrieve_AE(Node *pnode){
 	printf("%s",resjson);
 }
 
+void Retrieve_CNT(Node *pnode){
+	CNT* gcnt = Get_CNT(pnode->ri);
+	char *resjson = CNT_to_json(gcnt);
+	HTTP_201;
+	printf("%s",resjson);
+}
+
 void Restruct_ResourceTree(){
 	AE **ae_list = Get_All_AE();
 	
 	int len = (int)malloc_usable_size(ae_list) / (int)sizeof(AE*);
 	
-	Node *node_list;
+	fprintf(stderr,"len : %d\n",len);
+	
+	Node *node_list = NULL;
 	
 	if(ae_list) {
 		AE *ae = ae_list[0];
@@ -216,7 +227,7 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 			}
 			
 			if(right) right->siblingLeft = left;
-			
+			fprintf(stderr,"%s`s child : %s\n",pnode->rn, node->rn);
 			node->siblingLeft = node->siblingRight = NULL;
 			Add_child(pnode, node);
 		}
