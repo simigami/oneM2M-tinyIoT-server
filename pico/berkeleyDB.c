@@ -448,8 +448,8 @@ int Store_CIN(CIN *cin_object)
     DBT key, data;  // storving key and real data
     int ret;        // template value
 
-    DBT key_ct, key_lt, key_rn, key_ri, key_pi, key_ty, key_et, key_st, key_cs, key_con, key_csi;
-    DBT data_ct, data_lt, data_rn, data_ri, data_pi, data_ty, data_et, data_st, data_cs, data_con, data_csi;  // storving key and real data
+    DBT key_ct, key_lt, key_rn, key_ri, key_pi, key_ty, key_et, key_st, key_cs, key_con;
+    DBT data_ct, data_lt, data_rn, data_ri, data_pi, data_ty, data_et, data_st, data_cs, data_con;  // storving key and real data
 
     char* program_name = "my_prog";
 
@@ -463,14 +463,13 @@ int Store_CIN(CIN *cin_object)
     if (cin_object->et == NULL) cin_object->et = "";
 
     if (cin_object->con == NULL) cin_object->con = "";
-    if (cin_object->csi == NULL) cin_object->csi = "";
     if (cin_object->cs == '\0') cin_object->cs = -1;
     if (cin_object->st == '\0') cin_object->st = -1;
     
     ret = db_create(&dbp, NULL, 0);
     if (ret) {
         fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr,"File ERROR\n");
+        printf("File ERROR\n");
         exit(1);
     }
 
@@ -481,7 +480,7 @@ int Store_CIN(CIN *cin_object)
     ret = dbp->set_flags(dbp, DB_DUP);
     if (ret != 0) {
         dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        fprintf(stderr,"Flag Set ERROR\n");
+        printf("Flag Set ERROR\n");
         dbp->close(dbp, 0);
         return(ret);
     }
@@ -490,7 +489,7 @@ int Store_CIN(CIN *cin_object)
     ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
-        fprintf(stderr,"DB Open ERROR\n");
+        printf("DB Open ERROR\n");
         exit(1);
     }
 
@@ -500,7 +499,7 @@ int Store_CIN(CIN *cin_object)
   */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr,"Cursor ERROR");
+        printf("Cursor ERROR");
         exit(1);
     }
  
@@ -515,7 +514,6 @@ int Store_CIN(CIN *cin_object)
     memset(&key_cs, 0, sizeof(DBT));
     memset(&key_con, 0, sizeof(DBT));
     memset(&key_st, 0, sizeof(DBT));
-    memset(&key_csi, 0, sizeof(DBT));
 
     memset(&data_ct, 0, sizeof(DBT));
     memset(&data_lt, 0, sizeof(DBT));
@@ -527,7 +525,6 @@ int Store_CIN(CIN *cin_object)
     memset(&data_cs, 0, sizeof(DBT));
     memset(&data_con, 0, sizeof(DBT));
     memset(&data_st, 0, sizeof(DBT));
-    memset(&data_csi, 0, sizeof(DBT));
 
 
     /* initialize the data to be the first of two duplicate records. */
@@ -566,11 +563,6 @@ int Store_CIN(CIN *cin_object)
     key_con.data = "con";
     key_con.size = strlen("con") + 1;
 
-    data_csi.data = cin_object->csi;
-    data_csi.size = strlen(cin_object->csi) + 1;
-    key_csi.data = "csi";
-    key_csi.size = strlen("csi") + 1;
-
     data_ty.data = &cin_object->ty;
     data_ty.size = sizeof(cin_object->ty);
     key_ty.data = "ty";
@@ -608,8 +600,6 @@ int Store_CIN(CIN *cin_object)
     if ((ret = dbcp->put(dbcp, &key_cs, &data_cs, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_con, &data_con, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_csi, &data_csi, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
 
     dbcp->close(dbcp);
@@ -1077,7 +1067,6 @@ CIN* Get_CIN(char* ri) {
     int cin_st = 0;
     int cin_cs = 0;
     int cin_con = 0;
-    int cin_csi = 0;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "rn", key.size) == 0) {
@@ -1120,13 +1109,6 @@ CIN* Get_CIN(char* ri) {
             if (cin_con == idx) {
                 new_cin->con = malloc(data.size);
                 strcpy(new_cin->con, data.data);
-            }
-        }
-        if (strncmp(key.data, "csi", key.size) == 0) {
-            cin_csi++;
-            if (cin_csi == idx) {
-                new_cin->csi = malloc(data.size);
-                strcpy(new_cin->csi, data.data);
             }
         }
 
@@ -1679,6 +1661,390 @@ Node* Get_All_CNT() {
     }
 
     return head;
+}
+
+Node* Get_All_CIN() {
+    fprintf(stderr, "[Get All CIN]\n");
+
+    char* database = "CIN.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        exit(1);
+    }
+
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int cnt = 0;
+    // žî¹øÂ° CINÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            cnt++; // ¿ÀºêÁ§Æ® °³Œö
+        }
+    }
+    //fprintf(stderr, "<%d>\n",cnt);
+
+    if (cnt == 0) {
+        fprintf(stderr, "Data not exist\n");
+        return NULL;
+        exit(1);
+    }
+
+    // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
+    Node* head = (Node*)malloc(sizeof(Node));
+    Node* node_ri;
+    Node* node_pi;
+    Node* node_rn;
+    Node* node_ty;
+
+    node_ri = node_pi = node_rn = node_ty = head;
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "pi", key.size) == 0) {
+            node_pi->pi = malloc(data.size);
+            strcpy(node_pi->pi, data.data);
+            node_pi->siblingRight = (Node*)malloc(sizeof(Node));
+            node_pi->siblingRight->siblingLeft = node_pi;
+            node_pi = node_pi->siblingRight;
+        }
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            node_ri->ri = malloc(data.size);
+            strcpy(node_ri->ri, data.data);
+            node_ri = node_ri->siblingRight;
+
+        }
+        if (strncmp(key.data, "rn", key.size) == 0) {
+            node_rn->rn = malloc(data.size);
+            strcpy(node_rn->rn, data.data);
+            node_rn = node_rn->siblingRight;
+        }
+        if (strncmp(key.data, "ty", key.size) == 0) {
+            node_ty->ty = *(int*)data.data;
+            node_ty = node_ty->siblingRight;
+        }
+    }
+
+    node_pi->siblingLeft->siblingRight = NULL;
+    free(node_pi);
+    node_ri = node_pi = node_rn = node_ty = NULL;
+
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        fprintf(stderr, "Cursor ERROR\n");
+        exit(0);
+    }
+
+    return head;
+}
+
+Node* Mapping(char uri[]) {
+    Node* head = (Node*)malloc(sizeof(Node));
+    Node* node;
+    node = head;
+
+    int flag = 1;
+    char* cse_ri;
+    char* ae_ri;
+    char* cnt_ri;
+    char* cin_ri;
+
+    char* ptr = strtok(uri, "/");
+    while (ptr != NULL) {
+        //printf("%s\n", ptr);
+
+        // 1: CSE, 2: AE, 3: CNT or CIN, 4: CNT or CIN, default: ERROR
+        switch (flag) {
+        //CSE
+        case 1:
+            //printf("CSE ");
+            //¹ÝÈ¯ÇÒ ³ëµå¿¡ Ãß°¡ÇÏŽÂ °úÁ€
+            node->rn = malloc(sizeof(ptr) + 1);
+            strcpy(node->rn, ptr);
+
+            //rn¿¡ ÇØŽçÇÏŽÂ ri Ã£±â
+            cse_ri = malloc(sizeof(Find_ri("CSE.db", ptr))); 
+            strcpy(cse_ri, Find_ri("CSE.db", ptr));
+            node->ri = malloc(sizeof(cse_ri) + 1);
+            strcpy(node->ri, cse_ri);
+
+            node->siblingRight = (Node*)malloc(sizeof(Node));
+            node->siblingRight->siblingLeft = node;
+            node = node->siblingRight;
+
+            //Mapping.db¿¡ ÀúÀå
+            Store_map(ptr, cse_ri); 
+            //printf("[%s : %s]\n", ptr, cse_ri);
+
+            flag++;
+            break;
+
+        //AE
+        case 2:
+            //printf("AE ");
+
+            //¹ÝÈ¯ÇÒ ³ëµå¿¡ Ãß°¡ÇÏŽÂ °úÁ€
+            node->rn = malloc(sizeof(ptr) + 1);
+            strcpy(node->rn, ptr);
+
+            //rn¿¡ ÇØŽçÇÏŽÂ ri Ã£±â
+            ae_ri = malloc(sizeof(Find_ri("AE.db", ptr)));
+            strcpy(ae_ri, Find_ri("AE.db", ptr));
+            node->ri = malloc(sizeof(ae_ri) + 1);
+            strcpy(node->ri, ae_ri);
+
+            node->siblingRight = (Node*)malloc(sizeof(Node));
+            node->siblingRight->siblingLeft = node;
+            node = node->siblingRight;
+
+            //Mapping.db¿¡ ÀúÀå
+            Store_map(ptr, ae_ri);
+
+            //printf("[%s : %s]\n", ptr, ae_ri);
+            flag++;
+            break;
+
+        //CNT
+        case 3:
+            //printf("CNT ");
+
+            //¹ÝÈ¯ÇÒ ³ëµå¿¡ Ãß°¡ÇÏŽÂ °úÁ€
+            node->rn = malloc(sizeof(ptr) + 1);
+            strcpy(node->rn, ptr);
+
+            //rn¿¡ ÇØŽçÇÏŽÂ ri Ã£±â
+            cnt_ri = malloc(sizeof(Find_ri("CNT.db", ptr)));
+            strcpy(cnt_ri, Find_ri("CNT.db", ptr));
+            node->ri = malloc(sizeof(cnt_ri) + 1);
+            strcpy(node->ri, cnt_ri);
+
+            node->siblingRight = (Node*)malloc(sizeof(Node));
+            node->siblingRight->siblingLeft = node;
+            node = node->siblingRight;
+
+            //Mapping.db¿¡ ÀúÀå
+            Store_map(ptr, cnt_ri);
+
+            //printf("[%s : %s]\n", ptr, cnt_ri);
+            flag++;
+            break;
+
+        //CNT or CIN
+        case 4:
+            //printf("CNT or CIN ");
+
+            //4¹øÂ° ÀÌÈÄ rnÀÌ CNTÀÌžé
+            if (Find_ri("CIN.db", ptr) == NULL) {
+                //¹ÝÈ¯ÇÒ ³ëµå¿¡ Ãß°¡ÇÏŽÂ °úÁ€
+                node->rn = malloc(sizeof(ptr) + 1);
+                strcpy(node->rn, ptr);
+
+                //rn¿¡ ÇØŽçÇÏŽÂ ri Ã£±â
+                cnt_ri = malloc(sizeof(Find_ri("CNT.db", ptr)));
+                strcpy(cnt_ri, Find_ri("CNT.db", ptr));
+                node->ri = malloc(sizeof(cnt_ri) + 1);
+                strcpy(node->ri, cnt_ri);
+
+                node->siblingRight = (Node*)malloc(sizeof(Node));
+                node->siblingRight->siblingLeft = node;
+                node = node->siblingRight;
+
+                //Mapping.db¿¡ ÀúÀå
+                Store_map(ptr, cnt_ri);
+
+                //printf("[%s : %s]\n", ptr, cnt_ri);
+                break;
+            }
+            //4¹øÂ° ÀÌÈÄ rnÀÌ CINÀÌžé
+            else {
+                //¹ÝÈ¯ÇÒ ³ëµå¿¡ Ãß°¡ÇÏŽÂ °úÁ€
+                node->rn = malloc(sizeof(ptr) + 1);
+                strcpy(node->rn, ptr);
+
+                //rn¿¡ ÇØŽçÇÏŽÂ ri Ã£±â
+                cin_ri = malloc(sizeof(Find_ri("CIN.db", ptr)));
+                strcpy(cin_ri, Find_ri("CIN.db", ptr));
+                node->ri = malloc(sizeof(cin_ri) + 1);
+                strcpy(node->ri, cin_ri);
+
+                node->siblingRight = (Node*)malloc(sizeof(Node));
+                node->siblingRight->siblingLeft = node;
+                node = node->siblingRight;
+
+                //Mapping.db¿¡ ÀúÀå
+                Store_map(ptr, cin_ri);
+
+                //printf("[%s : %s]\n", ptr, cin_ri);
+                break;
+            }
+        default:
+            fprintf(stderr, "Flag ERROR\n");
+            exit(0);
+        }
+        ptr = strtok(NULL, "/");
+    }
+
+    node->siblingLeft->siblingRight = NULL;
+    free(node);
+
+    return head;
+}
+
+char* Find_ri(char* database, char* rn) {
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    /* Open the database. */
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        exit(1);
+    }
+
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int idx = 0;
+    int flag = 0;
+    // žî¹øÂ° ¿ÀºêÁ§Æ®ÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "rn", key.size) == 0) {
+            idx++;
+            if (strncmp(data.data, rn, data.size) == 0) {
+                flag = 1;
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        //printf("Not Found\n");
+        return NULL;
+        //exit(1);
+    }
+    //printf("<%d>\n", idx);
+
+    char* ri = NULL;
+    int cnt_ri = 0;
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            cnt_ri++;
+            if (cnt_ri == idx) {
+                ri = malloc(data.size);
+                strcpy(ri, data.data);
+            }
+        }
+    }
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        fprintf(stderr, "Cursor ERROR\n");
+        exit(0);
+    }
+
+    /* Cursors must be closed */
+    if (dbcp0 != NULL)
+        dbcp0->close(dbcp0);
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+
+    return ri;
+}
+
+int Store_map(char* key_str, char* data_str) {
+    char* database = "Mapping.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    /* Open the database. */
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        exit(1);
+    }
+
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    // Store key & data
+    data.data = data_str;
+    data.size = strlen(data_str) + 1;
+    key.data = key_str;
+    key.size = strlen(key_str) + 1;
+
+    if ((ret = dbcp->put(dbcp, &key, &data, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "DB->cursor");
+
+    //DB close
+    dbcp->close(dbcp);
+    dbp->close(dbp, 0);
+
+    return 1;
 }
 
 int display(char* database)

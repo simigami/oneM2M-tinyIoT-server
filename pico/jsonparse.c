@@ -97,6 +97,42 @@ end:
 	return cnt;
 }
 
+CIN* JSON_to_CIN(char *json_payload) {
+	CIN *cin = (CIN *)malloc(sizeof(CIN));
+
+	cJSON *root = NULL;
+	cJSON *con = NULL;
+
+	cJSON* json = cJSON_Parse(json_payload);
+	if (json == NULL) {
+		const char *error_ptr = cJSON_GetErrorPtr();
+		if (error_ptr != NULL)
+		{
+			fprintf(stderr, "Error before: %s\n", error_ptr);
+		}
+		goto end;
+	}
+
+	root = cJSON_GetObjectItem(json, "m2m:cin");
+
+	// con
+	con = cJSON_GetObjectItem(root, "con");
+	if (!cJSON_IsString(con) && (con->valuestring == NULL))
+	{
+		goto end;
+	}
+	cin->con = cJSON_Print(con);
+	cin->con = strtok(cin->con, "\"");
+
+	// cs
+	cin->cs = strlen(cin->con);
+
+end:
+	cJSON_Delete(json);
+
+	return cin;
+}
+
 char* Node_to_json(Node *node) {
 	char *json = NULL;
 
@@ -166,6 +202,33 @@ char* CNT_to_json(CNT* cnt_object) {
 	cJSON_AddStringToObject(cnt, "et", cnt_object->et);
 	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
+
+	json = cJSON_Print(root);
+
+	cJSON_Delete(root);
+
+	return json;
+}
+
+char* CIN_to_json(CIN* cin_object) {
+	char *json = NULL;
+
+	cJSON *root = NULL;
+	cJSON *cin = NULL;
+
+	/* Our "cin" item: */
+	root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "m2m:cin", cin = cJSON_CreateObject());
+	cJSON_AddStringToObject(cin, "rn", cin_object->rn);
+	cJSON_AddNumberToObject(cin, "ty", cin_object->ty);
+	cJSON_AddStringToObject(cin, "pi", cin_object->pi);
+	cJSON_AddStringToObject(cin, "ri", cin_object->ri);
+	cJSON_AddStringToObject(cin, "ct", cin_object->ct);
+	cJSON_AddStringToObject(cin, "lt", cin_object->lt);
+	cJSON_AddNumberToObject(cin, "st", cin_object->st);
+	cJSON_AddStringToObject(cin, "et", cin_object->et);
+	cJSON_AddNumberToObject(cin, "cs", cin_object->cs);
+	cJSON_AddStringToObject(cin, "con", cin_object->con);
 
 	json = cJSON_Print(root);
 

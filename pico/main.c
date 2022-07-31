@@ -107,7 +107,7 @@ void Create_Object(char *json_payload, Node *pnode) {
 		break;
 			
 	case t_CIN :
-		//Create_CIN(json_payload, pnode);
+		Create_CIN(json_payload, pnode);
 		break;
 	case t_CSE :
 		/*No Definition such request*/
@@ -131,7 +131,7 @@ void Retrieve_Object(Node *pnode) {
 		break;
 			
 	case t_CIN :
-		//Retrieve_CIN(pnode);			
+		Retrieve_CIN(pnode);			
 		break;
 	}	
 }
@@ -141,7 +141,13 @@ void Create_AE(char *json_payload, Node *pnode) {
 	Set_AE(ae,pnode->ri);
 	
 	int result = Store_AE(ae);
-	if(result != 1) HTTP_500;
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_AE(ae);
+		ae = NULL;
+		return;
+	}
 	
 	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
 	Add_child(pnode,node);
@@ -149,6 +155,10 @@ void Create_AE(char *json_payload, Node *pnode) {
 	char *resjson = AE_to_json(ae);
 	HTTP_201;
 	printf("%s",resjson);
+	free(resjson);
+	Free_AE(ae);
+	resjson = NULL;
+	ae = NULL;
 }
 
 void Create_CNT(char *json_payload, Node *pnode) {
@@ -156,7 +166,13 @@ void Create_CNT(char *json_payload, Node *pnode) {
 	Set_CNT(cnt,pnode->ri);
 	
 	int result = Store_CNT(cnt);
-	if(result != 1) HTTP_500;
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_CNT(cnt);
+		cnt = NULL;
+		return;
+	}
 	
 	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, cnt->ty);
 	Add_child(pnode,node);
@@ -164,6 +180,36 @@ void Create_CNT(char *json_payload, Node *pnode) {
 	char *resjson = CNT_to_json(cnt);
 	HTTP_201;
 	printf("%s",resjson);
+	free(resjson);
+	Free_CNT(cnt);
+	resjson = NULL;
+	cnt = NULL;
+}
+
+void Create_CIN(char *json_payload, Node *pnode) {
+	CIN* cin = JSON_to_CIN(json_payload);
+	Set_CIN(cin,pnode->ri);
+	
+	int result = Store_CIN(cin);
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_CIN(cin);
+		cin = NULL;
+		return;
+	}
+	
+	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, cin->ty);
+	Add_child(pnode,node);
+	
+	char *resjson = CIN_to_json(cin);
+	HTTP_201;
+	printf("%s",resjson);
+	free(resjson);
+	fprintf(stderr,"good-1\n");
+	Free_CIN(cin);
+	resjson = NULL;
+	cin = NULL;
 }
 
 void Retrieve_AE(Node *pnode){
@@ -171,6 +217,10 @@ void Retrieve_AE(Node *pnode){
 	char *resjson = AE_to_json(gae);
 	HTTP_200;
 	printf("%s",resjson);
+	free(resjson);
+	Free_AE(gae);
+	resjson = NULL;
+	gae = NULL;
 }
 
 void Retrieve_CNT(Node *pnode){
@@ -178,6 +228,21 @@ void Retrieve_CNT(Node *pnode){
 	char *resjson = CNT_to_json(gcnt);
 	HTTP_200;
 	printf("%s",resjson);
+	free(resjson);
+	Free_CNT(gcnt);
+	resjson = NULL;
+	gcnt = NULL;
+}
+
+void Retrieve_CIN(Node *pnode){
+	CIN* gcin = Get_CIN(pnode->ri);
+	char *resjson = CIN_to_json(gcin);
+	HTTP_200;
+	printf("%s",resjson);
+	free(resjson);
+	Free_CIN(gcin);
+	resjson = NULL;
+	gcin = NULL;
 }
 
 void Delete_Object(Node* pnode) {
@@ -207,6 +272,15 @@ void Restruct_ResourceTree(){
 		while(tail->siblingRight) tail = tail->siblingRight;
 	} else {
 		fprintf(stderr,"CNT.db is not exist\n");
+	}
+	
+	if(access("./CIN.db", 0) != -1) {
+		Node* cin_list = Get_All_CIN();
+		tail->siblingRight = cin_list;
+		cin_list->siblingLeft = tail;
+		while(tail->siblingRight) tail = tail->siblingRight;
+	} else {
+		fprintf(stderr,"CIN.db is not exist\n");
 	}
 	
 	Node *temp = node_list;

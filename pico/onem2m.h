@@ -62,7 +62,6 @@ typedef struct {
 	char *rn;
 	char *ri;
 	char *pi;
-	char *csi;
 	char *con;	
 	int ty;
 	int st;
@@ -112,6 +111,7 @@ CNT* Update_CNT(char *json_payload);
 
 void Set_AE(AE* ae, char *pi);
 void Set_CNT(CNT* cnt, char *pi);
+void Set_CIN(CIN* cin, char *pi);
 
 CSE* JSON_to_CSE(char *json_payload);
 AE* JSON_to_AE(char *json_payload);
@@ -144,6 +144,10 @@ CIN* Delete_CIN(char *ri);
 Node* Get_All_AE();
 Node* Get_All_CNT();
 Node* Get_All_CIN();
+
+Node* Mapping(char uri[]);
+char* Find_ri(char* database, char* rn);
+int Store_map(char* key_str, char* data_str);
 
 void Free_CSE(CSE* cse);
 void Free_AE(AE* ae);

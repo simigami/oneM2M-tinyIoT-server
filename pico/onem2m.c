@@ -28,6 +28,10 @@ Node* Validate_URI(RT *rt) {
 	}
 	
 	while(uri != NULL && node) {
+		if(!strcmp("latest",uri)) {
+			while(node->siblingRight) node = node->siblingRight;
+			break;
+		}
 		while(node) {
 			if(!strcmp(node->rn,uri)) break;
 			node = node->siblingRight;
@@ -211,19 +215,31 @@ char *Get_LocalTime() {
 
 void Set_AE(AE* ae, char *pi) {
 	char *now = Get_LocalTime();
+	char ri[18] = "2-";
+	char tmp[100];
+	strcat(ri, now);
 	
-	ae->ri = (char*)malloc(sizeof(now));
+	strcpy(tmp,ae->api);
+	ae->api = (char*)malloc(sizeof(ae->api));
+	strcpy(ae->api,tmp);
+	
+	strcpy(tmp,ae->rn);
+	ae->rn = (char*)malloc(sizeof(ae->rn));
+	strcpy(ae->rn,tmp);
+	
+	ae->ri = (char*)malloc(sizeof(ri));
+	ae->pi = (char*)malloc(sizeof(pi));
 	ae->et = (char*)malloc(sizeof(now));
 	ae->ct = (char*)malloc(sizeof(now));
 	ae->lt = (char*)malloc(sizeof(now));
 	ae->aei = (char*)malloc(sizeof(now));
-	ae->pi = (char*)malloc(sizeof(now));
-	strcpy(ae->ri, now);
+	
+	strcpy(ae->ri, ri);
+	strcpy(ae->pi, pi);
 	strcpy(ae->et, now);
 	strcpy(ae->ct, now);
 	strcpy(ae->lt, now);
 	strcpy(ae->aei,now);
-	strcpy(ae->pi, pi);
 	
 	ae->ty = t_AE;
 	
@@ -232,22 +248,58 @@ void Set_AE(AE* ae, char *pi) {
 
 void Set_CNT(CNT* cnt, char *pi) {
 	char *now = Get_LocalTime();
+	char ri[18] = "3-";
+	char tmp[100];
+	strcat(ri, now);
 	
-	cnt->ri = (char*)malloc(sizeof(now));
+	strcpy(tmp,cnt->rn);
+	cnt->rn = (char*)malloc(sizeof(cnt->rn));
+	strcpy(cnt->rn,tmp);
+	
+	cnt->ri = (char*)malloc(sizeof(ri));
+	cnt->pi = (char*)malloc(sizeof(pi));
 	cnt->et = (char*)malloc(sizeof(now));
 	cnt->ct = (char*)malloc(sizeof(now));
 	cnt->lt = (char*)malloc(sizeof(now));
-	cnt->pi = (char*)malloc(sizeof(now));
-	strcpy(cnt->ri, now);
+	strcpy(cnt->ri, ri);
+	strcpy(cnt->pi, pi);
 	strcpy(cnt->et, now);
 	strcpy(cnt->ct, now);
 	strcpy(cnt->lt, now);
-	strcpy(cnt->pi, pi);
 	
 	cnt->ty = t_CNT;
 	cnt->st = 0;
 	cnt->cni = 0;
 	cnt->cbs = 0;
+	
+	free(now);
+}
+
+void Set_CIN(CIN* cin, char *pi) {
+	char *now = Get_LocalTime();
+	char ri[18] = "4-";
+	char tmp[100];
+	strcat(ri, now);
+	
+	strcpy(tmp,cin->con);
+	cin->con = (char*)malloc(sizeof(cin->con));
+	strcpy(cin->con,tmp);
+	
+	cin->rn = (char*)malloc(sizeof(ri));
+	cin->ri = (char*)malloc(sizeof(ri));
+	cin->pi = (char*)malloc(sizeof(pi));
+	cin->et = (char*)malloc(sizeof(now));
+	cin->ct = (char*)malloc(sizeof(now));
+	cin->lt = (char*)malloc(sizeof(now));
+	strcpy(cin->rn, ri);
+	strcpy(cin->ri, ri);
+	strcpy(cin->pi, pi);
+	strcpy(cin->et, now);
+	strcpy(cin->ct, now);
+	strcpy(cin->lt, now);
+	
+	cin->ty = t_CIN;
+	cin->st = 0;
 	
 	free(now);
 }
@@ -272,4 +324,15 @@ void Free_CNT(CNT *cnt) {
 	free(cnt->ri);
 	free(cnt->pi);
 	free(cnt);
+}
+
+void Free_CIN(CIN* cin) {
+	free(cin->et);
+	free(cin->ct);
+	free(cin->lt);
+	free(cin->rn);
+	free(cin->ri);
+	free(cin->pi);
+	free(cin->con);
+	free(cin);
 }
