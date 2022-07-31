@@ -8,21 +8,26 @@
 
 char *tree;
 
+int Validate_OneM2M_Standard() {
+	if(request_header("X-M2M-RI") && request_header("X-M2M-Origin")) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 Node* Validate_URI(RT *rt) { 
 	Node *node = rt->root;
 	
 	uri = strtok(uri, "/");
 	
-	int view = 0;
+	int viewer = 0;
+	if(!strcmp("viewer",uri)) {
+		viewer = 1;
+		uri = strtok(NULL, "/");
+	}
 	
 	while(uri != NULL && node) {
-	/*
-		if(!strcmp(ptr,"viewer")) {
-			ptr = strtok(NULL, "/");
-			view = 1;
-			continue;
-		}
-	*/
 		while(node) {
 			if(!strcmp(node->rn,uri)) break;
 			node = node->siblingRight;
@@ -32,27 +37,39 @@ Node* Validate_URI(RT *rt) {
 		
 		if(uri == NULL) break;
 		
-		node = node->child;
+		if(node) node = node->child;
 	}
 	
-	/*
-	if(view) {
-		tree = (char *)calloc(1000,sizeof(char));
-		tree_data(node);
-		HTTP_200;
-		printf("%s\n",tree);
-	}*/
+	if(viewer && node) {
+		TreeViewerAPI(node);
+		return NULL;
+	} else if(!node) {
+		HTTP_400;
+		printf("Invalid URI\n");
+		return NULL;
+	}
 	
 	return node;
 }
 
-void tree_data(Node *node) {
-	fprintf(stderr,"%s\n",node->rn);
+void TreeViewerAPI(Node *node) {
+	char *viewer_data = (char *)calloc(10000,sizeof(char));
+	Tree_data(node, &viewer_data);
+	HTTP_200;
+	printf("%s",viewer_data);
+	free(viewer_data);
+	viewer_data = NULL;
+}
+
+void Tree_data(Node *node, char **viewer_data) {
+	char *json = Node_to_json(node);
+	strcat(*viewer_data, json);
+	strcat(*viewer_data, "\n");
 	
 	node = node->child;
 	
 	while(node) {
-		tree_data(node);
+		Tree_data(node, viewer_data);
 		node = node->siblingRight;
 	}
 }
@@ -152,9 +169,14 @@ void Delete_Node(Node *node, int flag) {
 	
 	switch(node->ty) {
 	case t_AE : Delete_AE(node->ri); break;
-	//case t_CNT : Delete_CNT(node->ri); break;
+	case t_CNT : Delete_CNT(node->ri); break;
 	}
 	
+	Free_Node(node);
+	node = NULL;
+}
+
+void Free_Node(Node *node) {
 	free(node->ri);
 	free(node->rn);
 	free(node->pi);
@@ -228,4 +250,26 @@ void Set_CNT(CNT* cnt, char *pi) {
 	cnt->cbs = 0;
 	
 	free(now);
+}
+
+void Free_AE(AE *ae) {
+	free(ae->et);
+	free(ae->ct);
+	free(ae->lt);
+	free(ae->rn);
+	free(ae->ri);
+	free(ae->pi);
+	free(ae->api);
+	free(ae->aei);
+	free(ae);
+}
+
+void Free_CNT(CNT *cnt) {
+	free(cnt->et);
+	free(cnt->ct);
+	free(cnt->lt);
+	free(cnt->rn);
+	free(cnt->ri);
+	free(cnt->pi);
+	free(cnt);
 }

@@ -97,29 +97,25 @@ end:
 	return cnt;
 }
 
-char* CNT_to_json(CNT* cnt_object) {
+char* Node_to_json(Node *node) {
 	char *json = NULL;
 
-	cJSON *root = NULL;
-	cJSON *cnt = NULL;
+	cJSON *obj = NULL;
+	cJSON *child = NULL;
 
-	/* Our "cnt" item: */
-	root = cJSON_CreateObject();
-	cJSON_AddItemToObject(root, "m2m:cnt", cnt = cJSON_CreateObject());
-	cJSON_AddStringToObject(cnt, "rn", cnt_object->rn);
-	cJSON_AddNumberToObject(cnt, "ty", cnt_object->ty);
-	cJSON_AddStringToObject(cnt, "pi", cnt_object->pi);
-	cJSON_AddStringToObject(cnt, "ri", cnt_object->ri);
-	cJSON_AddStringToObject(cnt, "ct", cnt_object->ct);
-	cJSON_AddStringToObject(cnt, "lt", cnt_object->lt);
-	cJSON_AddNumberToObject(cnt, "st", cnt_object->st);
-	cJSON_AddStringToObject(cnt, "et", cnt_object->et);
-	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
-	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
+	/* Our "obj" item: */
+	obj = cJSON_CreateObject();
+	cJSON_AddStringToObject(obj, "ri", node->ri);
+	cJSON_AddStringToObject(obj, "rn", node->rn);
+	cJSON_AddStringToObject(obj, "pi", node->pi);
+	cJSON_AddNumberToObject(obj, "ty", node->ty);
 
-	json = cJSON_Print(root);
+	child = cJSON_CreateArray();
+	cJSON_AddItemToObject(obj, "children", child);
 
-	cJSON_Delete(root);
+	json = cJSON_Print(obj);
+
+	cJSON_Delete(obj);
 
 	return json;
 }
@@ -143,6 +139,33 @@ char* AE_to_json(AE *ae_object) {
 	cJSON_AddStringToObject(ae, "api", ae_object->api);
 	cJSON_AddBoolToObject(ae, "rr", ae_object->rr);
 	cJSON_AddStringToObject(ae, "aei", ae_object->aei);
+
+	json = cJSON_Print(root);
+
+	cJSON_Delete(root);
+
+	return json;
+}
+
+char* CNT_to_json(CNT* cnt_object) {
+	char *json = NULL;
+
+	cJSON *root = NULL;
+	cJSON *cnt = NULL;
+
+	/* Our "cnt" item: */
+	root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "m2m:cnt", cnt = cJSON_CreateObject());
+	cJSON_AddStringToObject(cnt, "rn", cnt_object->rn);
+	cJSON_AddNumberToObject(cnt, "ty", cnt_object->ty);
+	cJSON_AddStringToObject(cnt, "pi", cnt_object->pi);
+	cJSON_AddStringToObject(cnt, "ri", cnt_object->ri);
+	cJSON_AddStringToObject(cnt, "ct", cnt_object->ct);
+	cJSON_AddStringToObject(cnt, "lt", cnt_object->lt);
+	cJSON_AddNumberToObject(cnt, "st", cnt_object->st);
+	cJSON_AddStringToObject(cnt, "et", cnt_object->et);
+	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
+	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
 
 	json = cJSON_Print(root);
 

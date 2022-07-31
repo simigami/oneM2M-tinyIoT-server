@@ -1322,8 +1322,167 @@ AE* Delete_AE(char* ri) {
     return new_ae;
 }
 
-AE** Get_All_AE(){
-    //fprintf(stderr, "[Get All AE]\n");
+CNT* Delete_CNT(char* ri) {
+    //fprintf(stderr,"[Delete CNT] ri = %s\n", ri);
+
+    //store CNT
+    CNT* new_cnt = (CNT*)malloc(sizeof(CNT));
+
+    char* database = "CNT.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    /* Open the database. */
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        exit(1);
+    }
+
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int idx = 0;
+    int flag = 0;
+    // žî¹øÂ° CNTÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            idx++;
+            if (strncmp(data.data, ri, data.size) == 0) {
+                flag = 1;
+                new_cnt->ri = malloc(data.size);
+                strcpy(new_cnt->ri, data.data);
+                dbcp0->del(dbcp0, 0);
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        printf("Not Found\n");
+        return NULL;
+        exit(1);
+    }
+
+    // ÇØŽç index¿¡ ŒøŒ­ÀÇ °ª Ã£ŸÆ Áö¿ò
+    int cnt_rn = 0;
+    int cnt_pi = 0;
+    int cnt_ty = 0;
+    int cnt_et = 0;
+    int cnt_lt = 0;
+    int cnt_ct = 0;
+    int cnt_st = 0;
+    int cnt_cni = 0;
+    int cnt_cbs = 0;
+
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "rn", key.size) == 0) {
+            cnt_rn++;
+            if (cnt_rn == idx) {
+                new_cnt->rn = malloc(data.size);
+                strcpy(new_cnt->rn, data.data);
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "pi", key.size) == 0) {
+            cnt_pi++;
+            if (cnt_pi == idx) {
+                new_cnt->pi = malloc(data.size);
+                strcpy(new_cnt->pi, data.data);
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "et", key.size) == 0) {
+            cnt_et++;
+            if (cnt_et == idx) {
+                new_cnt->et = malloc(data.size);
+                strcpy(new_cnt->et, data.data);
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "lt", key.size) == 0) {
+            cnt_lt++;
+            if (cnt_lt == idx) {
+                new_cnt->lt = malloc(data.size);
+                strcpy(new_cnt->lt, data.data);
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "ct", key.size) == 0) {
+            cnt_ct++;
+            if (cnt_ct == idx) {
+                new_cnt->ct = malloc(data.size);
+                strcpy(new_cnt->ct, data.data);
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "ty", key.size) == 0) {
+            cnt_ty++;
+            if (cnt_ty == idx) {
+                new_cnt->ty = *(int*)data.data;
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "st", key.size) == 0) {
+            cnt_st++;
+            if (cnt_st == idx) {
+                new_cnt->st = *(int*)data.data;
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "cbs", key.size) == 0) {
+            cnt_cbs++;
+            if (cnt_cbs == idx) {
+                new_cnt->cbs = *(int*)data.data;
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "cni", key.size) == 0) {
+            cnt_cni++;
+            if (cnt_cni == idx) {
+                new_cnt->cni = *(int*)data.data;
+                dbcp->del(dbcp, 0);
+            }
+        }
+
+    }
+
+
+    /* Cursors must be closed */
+    if (dbcp0 != NULL)
+        dbcp0->close(dbcp0);
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+    
+
+    return new_cnt;
+}
+
+Node* Get_All_AE() {
+    fprintf(stderr, "[Get All AE]\n");
 
     char* database = "AE.db";
 
@@ -1356,7 +1515,7 @@ AE** Get_All_AE(){
     memset(&data, 0, sizeof(data));
 
     int cnt = 0;
-    // 
+    // žî¹øÂ° AEÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
     DBC* dbcp0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
@@ -1376,72 +1535,42 @@ AE** Get_All_AE(){
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    AE** new_ae = (AE**)malloc(sizeof(AE*)*cnt);
-    for (int i = 0; i < cnt; i++) {
-        new_ae[i] = (AE*)malloc(sizeof(AE));
-    }
-	fprintf(stderr,"AE cnt : %d\n",cnt);
+    Node* head = (Node*)malloc(sizeof(Node));
+    Node* node_ri;
+    Node* node_pi;
+    Node* node_rn;
+    Node* node_ty;
 
-    int cnt_ri = 0;
-    int cnt_rn = 0;
-    int cnt_pi = 0;
-    int cnt_ty = 0;
-    int cnt_et = 0;
-    int cnt_lt = 0;
-    int cnt_ct = 0;
-    int cnt_api = 0;
-    int cnt_aei = 0;
-    int cnt_rr = 0;
+    node_ri = node_pi = node_rn = node_ty = head;
+
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "pi", key.size) == 0) {
+            node_pi->pi = malloc(data.size);
+            strcpy(node_pi->pi, data.data);
+            node_pi->siblingRight = (Node*)malloc(sizeof(Node));
+            node_pi->siblingRight->siblingLeft = node_pi;
+            node_pi = node_pi->siblingRight;
+        }
         if (strncmp(key.data, "ri", key.size) == 0) {
-            new_ae[cnt_ri]->ri = malloc(data.size);
-            strcpy(new_ae[cnt_ri]->ri, data.data);
-            cnt_ri++;
+            node_ri->ri = malloc(data.size);
+            strcpy(node_ri->ri, data.data);
+            node_ri = node_ri->siblingRight;
+
         }
         if (strncmp(key.data, "rn", key.size) == 0) {
-            new_ae[cnt_rn]->rn = malloc(data.size);
-            strcpy(new_ae[cnt_rn]->rn, data.data);
-            cnt_rn++;
-        }
-        if (strncmp(key.data, "pi", key.size) == 0) {
-            new_ae[cnt_pi]->pi = malloc(data.size);
-            strcpy(new_ae[cnt_pi]->pi, data.data);
-            cnt_pi++;
-        }
-        if (strncmp(key.data, "api", key.size) == 0) {
-            new_ae[cnt_api]->api = malloc(data.size);
-            strcpy(new_ae[cnt_api]->api, data.data);
-            cnt_api++;
-        }
-        if (strncmp(key.data, "aei", key.size) == 0) {
-            new_ae[cnt_aei]->aei = malloc(data.size);
-            strcpy(new_ae[cnt_aei]->aei, data.data);
-            cnt_aei++;
-        }
-        if (strncmp(key.data, "et", key.size) == 0) {
-            new_ae[cnt_et]->et = malloc(data.size);
-            strcpy(new_ae[cnt_et]->et, data.data);
-            cnt_et++;
-        }
-        if (strncmp(key.data, "lt", key.size) == 0) {
-            new_ae[cnt_lt]->lt = malloc(data.size);
-            strcpy(new_ae[cnt_lt]->lt, data.data);
-            cnt_lt++;
-        }
-        if (strncmp(key.data, "ct", key.size) == 0) {
-            new_ae[cnt_ct]->ct = malloc(data.size);
-            strcpy(new_ae[cnt_ct]->ct, data.data);
-            cnt_ct++;
+            node_rn->rn = malloc(data.size);
+            strcpy(node_rn->rn, data.data);
+            node_rn = node_rn->siblingRight;
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
-            new_ae[cnt_ty]->ty = *(int*)data.data;
-            cnt_ty++;
-        }
-        if (strncmp(key.data, "rr", key.size) == 0) {
-            new_ae[cnt_rr]->rr = *(bool*)data.data;
-            cnt_rr++;
+            node_ty->ty = *(int*)data.data;
+            node_ty = node_ty->siblingRight;
         }
     }
+
+    node_pi->siblingLeft->siblingRight = NULL;
+    free(node_pi);
+    node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
@@ -1449,7 +1578,107 @@ AE** Get_All_AE(){
         exit(0);
     }
 
-    return new_ae;
+    return head;
+}
+
+Node* Get_All_CNT() {
+    fprintf(stderr, "[Get All CNT]\n");
+
+    char* database = "CNT.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        exit(1);
+    }
+
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int cnt = 0;
+    // žî¹øÂ° CNTÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            cnt++; // ¿ÀºêÁ§Æ® °³Œö
+        }
+    }
+    //fprintf(stderr, "<%d>\n",cnt);
+
+    if (cnt == 0) {
+        fprintf(stderr, "Data not exist\n");
+        return NULL;
+        exit(1);
+    }
+
+    // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
+    Node* head = (Node*)malloc(sizeof(Node));
+    Node* node_ri;
+    Node* node_pi;
+    Node* node_rn;
+    Node* node_ty;
+
+    node_ri = node_pi = node_rn = node_ty = head;
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "pi", key.size) == 0) {
+            node_pi->pi = malloc(data.size);
+            strcpy(node_pi->pi, data.data);
+            node_pi->siblingRight = (Node*)malloc(sizeof(Node));
+            node_pi->siblingRight->siblingLeft = node_pi;
+            node_pi = node_pi->siblingRight;
+        }
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            node_ri->ri = malloc(data.size);
+            strcpy(node_ri->ri, data.data);
+            node_ri = node_ri->siblingRight;
+
+        }
+        if (strncmp(key.data, "rn", key.size) == 0) {
+            node_rn->rn = malloc(data.size);
+            strcpy(node_rn->rn, data.data);
+            node_rn = node_rn->siblingRight;
+        }
+        if (strncmp(key.data, "ty", key.size) == 0) {
+            node_ty->ty = *(int*)data.data;
+            node_ty = node_ty->siblingRight;
+        }
+    }
+
+    node_pi->siblingLeft->siblingRight = NULL;
+    free(node_pi);
+    node_ri = node_pi = node_rn = node_ty = NULL;
+
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        fprintf(stderr, "Cursor ERROR\n");
+        exit(0);
+    }
+
+    return head;
 }
 
 int display(char* database)

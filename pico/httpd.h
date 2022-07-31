@@ -34,6 +34,7 @@ void bindfd(int slot);
 
 #define HTTP_200 printf("%s 200 OK\n\n", RESPONSE_PROTOCOL)
 #define HTTP_201 printf("%s 201 Created\n\n", RESPONSE_PROTOCOL)
+#define HTTP_400 printf("%s 400 Bad Request\n\n", RESPONSE_PROTOCOL)
 #define HTTP_404 printf("%s 404 Not found\n\n", RESPONSE_PROTOCOL)
 #define HTTP_500 printf("%s 500 Internal Server Error\n\n", RESPONSE_PROTOCOL)
 

@@ -17,7 +17,7 @@ RT *rt;
 int main(int c, char **v) { 
 	rt = (RT *)malloc(sizeof(rt));
  	rt->root = Create_Node("CSE_RI", "TinyIoT", "\0", t_CSE);
- 	//Restruct_ResourceTree();
+ 	Restruct_ResourceTree();
  	char *port = c == 1 ? "3000" : v[1];
 	serve_forever(port);
   
@@ -54,12 +54,14 @@ int read_file(const char *file_name) {
 }
 
 void route() {	
-	Node* pnode = Validate_URI(rt);
-	if(!pnode) {
-		HTTP_500;
-		printf("Invalid URI\n");
+	if(!Validate_OneM2M_Standard()) {
+		HTTP_400;
+		printf("Not OneM2M Standard Request\n");
 		return;
 	}
+
+	Node* pnode = Validate_URI(rt);
+	if(!pnode) return;
 	
 	char *json_payload;
 	
@@ -134,12 +136,6 @@ void Retrieve_Object(Node *pnode) {
 	}	
 }
 
-void Delete_Object(Node* pnode) {
-	Delete_Node(pnode,1);
-	HTTP_200;
-	printf("Deleted");
-}
-
 void Create_AE(char *json_payload, Node *pnode) {
 	AE* ae = JSON_to_AE(json_payload);
 	Set_AE(ae,pnode->ri);
@@ -173,39 +169,50 @@ void Create_CNT(char *json_payload, Node *pnode) {
 void Retrieve_AE(Node *pnode){
 	AE* gae = Get_AE(pnode->ri);
 	char *resjson = AE_to_json(gae);
-	HTTP_201;
+	HTTP_200;
 	printf("%s",resjson);
 }
 
 void Retrieve_CNT(Node *pnode){
 	CNT* gcnt = Get_CNT(pnode->ri);
 	char *resjson = CNT_to_json(gcnt);
-	HTTP_201;
+	HTTP_200;
 	printf("%s",resjson);
 }
 
+void Delete_Object(Node* pnode) {
+	Delete_Node(pnode,1);
+	pnode = NULL;
+	HTTP_200;
+	printf("Deleted");
+}
+
 void Restruct_ResourceTree(){
-	AE **ae_list = Get_All_AE();
+	Node *node_list = Create_Node("","","",0);
+	Node *tail = node_list;
 	
-	int len = (int)malloc_usable_size(ae_list) / (int)sizeof(AE*);
-	
-	fprintf(stderr,"len : %d\n",len);
-	
-	Node *node_list = NULL;
-	
-	if(ae_list) {
-		AE *ae = ae_list[0];
-		node_list = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
+	if(access("./AE.db", 0) != -1) {
+		Node* ae_list = Get_All_AE();
+		tail->siblingRight = ae_list;
+		ae_list->siblingLeft = tail;
+		while(tail->siblingRight) tail = tail->siblingRight;
+	} else {
+		fprintf(stderr,"AE.db is not exist\n");
 	}
 	
-	Node *node = node_list;
-	
-	for(int i=1; i<len; i++) {
-		AE *ae = ae_list[i];
-		node->siblingRight = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
-		node->siblingRight->siblingLeft = node;
-		node = node->siblingRight;
+	if(access("./CNT.db", 0) != -1) {
+		Node* cnt_list = Get_All_CNT();
+		tail->siblingRight = cnt_list;
+		cnt_list->siblingLeft = tail;
+		while(tail->siblingRight) tail = tail->siblingRight;
+	} else {
+		fprintf(stderr,"CNT.db is not exist\n");
 	}
+	
+	Node *temp = node_list;
+	node_list = node_list->siblingRight;
+	if(node_list) node_list->siblingLeft = NULL;
+	Free_Node(temp);
 	
 	if(node_list) Restruct_childs(rt->root, node_list);
 }
