@@ -21,10 +21,19 @@ int Store_CSE(CSE *cse_object)
 
     char* program_name = "my_prog";
 
+    // if input == NULL
+    if (cse_object->ri == NULL) cse_object->ri = "";
+    if (cse_object->rn == NULL) cse_object->rn = "";
+    if (cse_object->pi == NULL) cse_object->pi = "NULL";
+    if (cse_object->ty == '\0') cse_object->ty = -1;
+    if (cse_object->ct == NULL) cse_object->ct = "";
+    if (cse_object->lt == NULL) cse_object->lt = "";
+    if (cse_object->csi == NULL) cse_object->csi = "";
+
     ret = db_create(&dbp, NULL, 0);
     if (ret) {
         fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr,"File ERROR\n");
+        printf("File ERROR\n");
         exit(1);
     }
 
@@ -35,7 +44,7 @@ int Store_CSE(CSE *cse_object)
     ret = dbp->set_flags(dbp, DB_DUP);
     if (ret != 0) {
         dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        fprintf(stderr,"Flag Set ERROR\n");
+        printf("Flag Set ERROR\n");
         dbp->close(dbp, 0);
         return(ret);
     }
@@ -44,7 +53,7 @@ int Store_CSE(CSE *cse_object)
     ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
-        fprintf(stderr,"DB Open ERROR\n");
+        printf("DB Open ERROR\n");
         exit(1);
     }
 
@@ -54,7 +63,7 @@ int Store_CSE(CSE *cse_object)
   */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr,"Cursor ERROR");
+        printf("Cursor ERROR");
         exit(1);
     }
  
@@ -63,11 +72,17 @@ int Store_CSE(CSE *cse_object)
     memset(&key_ri, 0, sizeof(DBT));
     memset(&key_pi, 0, sizeof(DBT));
     memset(&key_ty, 0, sizeof(DBT));
+    memset(&key_ct, 0, sizeof(DBT));
+    memset(&key_lt, 0, sizeof(DBT));
+    memset(&key_csi, 0, sizeof(DBT));
 
     memset(&data_rn, 0, sizeof(DBT));
     memset(&data_ri, 0, sizeof(DBT));
     memset(&data_pi, 0, sizeof(DBT));
     memset(&data_ty, 0, sizeof(DBT));
+    memset(&data_ct, 0, sizeof(DBT));
+    memset(&data_lt, 0, sizeof(DBT));
+    memset(&data_csi, 0, sizeof(DBT));
 
     /* initialize the data to be the first of two duplicate records. */
     data_rn.data = cse_object->rn;
@@ -85,6 +100,21 @@ int Store_CSE(CSE *cse_object)
     key_pi.data = "pi";
     key_pi.size = strlen("pi") + 1;
 
+    data_ct.data = cse_object->ct;
+    data_ct.size = strlen(cse_object->ct) + 1;
+    key_ct.data = "ct";
+    key_ct.size = strlen("ct") + 1;
+
+    data_lt.data = cse_object->lt;
+    data_lt.size = strlen(cse_object->lt) + 1;
+    key_lt.data = "lt";
+    key_lt.size = strlen("lt") + 1;
+
+    data_csi.data = cse_object->csi;
+    data_csi.size = strlen(cse_object->csi) + 1;
+    key_csi.data = "csi";
+    key_csi.size = strlen("csi") + 1;
+
     data_ty.data = &cse_object->ty;
     data_ty.size = sizeof(cse_object->ty);
     key_ty.data = "ty";
@@ -98,6 +128,13 @@ int Store_CSE(CSE *cse_object)
     if ((ret = dbcp->put(dbcp, &key_pi, &data_pi, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_ty, &data_ty, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+
+    if ((ret = dbcp->put(dbcp, &key_ct, &data_ct, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_lt, &data_lt, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_csi, &data_csi, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
 
     dbcp->close(dbcp);
@@ -1517,7 +1554,7 @@ Node* Get_All_AE() {
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    Node* head = (Node*)malloc(sizeof(Node));
+    Node* head = Create_Node("","","",0);
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -1529,7 +1566,7 @@ Node* Get_All_AE() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = (Node*)malloc(sizeof(Node));
+            node_pi->siblingRight = Create_Node("","","",0);
             node_pi->siblingRight->siblingLeft = node_pi;
             node_pi = node_pi->siblingRight;
         }
@@ -1617,7 +1654,7 @@ Node* Get_All_CNT() {
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    Node* head = (Node*)malloc(sizeof(Node));
+    Node* head = Create_Node("","","",0);
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -1629,7 +1666,7 @@ Node* Get_All_CNT() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = (Node*)malloc(sizeof(Node));
+            node_pi->siblingRight = Create_Node("","","",0);
             node_pi->siblingRight->siblingLeft = node_pi;
             node_pi = node_pi->siblingRight;
         }
@@ -1717,7 +1754,7 @@ Node* Get_All_CIN() {
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    Node* head = (Node*)malloc(sizeof(Node));
+    Node* head = Create_Node("","","",0);
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -1729,7 +1766,7 @@ Node* Get_All_CIN() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = (Node*)malloc(sizeof(Node));
+            node_pi->siblingRight = Create_Node("","","",0);
             node_pi->siblingRight->siblingLeft = node_pi;
             node_pi = node_pi->siblingRight;
         }

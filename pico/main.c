@@ -14,10 +14,8 @@
 
 RT *rt;
 
-int main(int c, char **v) { 
-	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node("CSE_RI", "TinyIoT", "\0", t_CSE);
- 	Restruct_ResourceTree();
+int main(int c, char **v) {
+	init();
  	char *port = c == 1 ? "3000" : v[1];
 	serve_forever(port);
   
@@ -53,13 +51,7 @@ int read_file(const char *file_name) {
 	return err;
 }
 
-void route() {	
-	if(!Validate_OneM2M_Standard()) {
-		HTTP_400;
-		printf("Not OneM2M Standard Request\n");
-		return;
-	}
-
+void route() {
 	Node* pnode = Validate_URI(rt);
 	if(!pnode) return;
 	
@@ -93,9 +85,26 @@ void route() {
 	}
 }
 
+void init() {
+	CSE *cse;
+	
+	if(access("./CSE.db", 0) == -1) {
+		cse = (CSE*)malloc(sizeof(CSE));
+		Set_CSE(cse);
+		Store_CSE(cse);
+	} else {
+		cse = Get_CSE("5-20220801T070241");
+	}
+	rt = (RT *)malloc(sizeof(rt));
+ 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, t_CSE);
+ 	Free_CSE(cse);
+ 	cse = NULL;
+ 	Restruct_ResourceTree();
+}
+
 void Create_Object(char *json_payload, Node *pnode) {
 	ObjectType ty = Parse_ObjectType();
-	
+
 	switch(ty) {
 		
 	case t_AE :
@@ -119,7 +128,7 @@ void Retrieve_Object(Node *pnode) {
 	switch(pnode->ty) {
 		
 	case t_CSE :
-		//Retrieve_CSE(pnode);
+		Retrieve_CSE(pnode);
 		break;
 	
 	case t_AE : 
@@ -206,10 +215,20 @@ void Create_CIN(char *json_payload, Node *pnode) {
 	HTTP_201;
 	printf("%s",resjson);
 	free(resjson);
-	fprintf(stderr,"good-1\n");
 	Free_CIN(cin);
 	resjson = NULL;
 	cin = NULL;
+}
+
+void Retrieve_CSE(Node *pnode){
+	CSE* gcse = Get_CSE(pnode->ri);
+	char *resjson = CSE_to_json(gcse);
+	HTTP_200;
+	printf("%s",resjson);
+	free(resjson);
+	Free_CSE(gcse);
+	resjson = NULL;
+	gcse = NULL;
 }
 
 void Retrieve_AE(Node *pnode){
@@ -299,7 +318,6 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 
 		if(!strcmp(pnode->ri, node->pi)) {
 			Node *left = node->siblingLeft;
-			Node *right = node->siblingRight;
 			
 			if(!left) {
 				list = right;
@@ -308,8 +326,8 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 			}
 			
 			if(right) right->siblingLeft = left;
-			fprintf(stderr,"%s`s child : %s\n",pnode->rn, node->rn);
 			node->siblingLeft = node->siblingRight = NULL;
+			fprintf(stderr,"%s`s child : %s\n",pnode->rn, node->rn);
 			Add_child(pnode, node);
 		}
 		node = right;

@@ -84,6 +84,9 @@ typedef struct {
 	Node *root;
 }RT;
 
+//init
+void init();
+
 //Request parse function
 int Validate_OneM2M_Standard();
 Node* Validate_URI(RT *rt);
@@ -109,6 +112,7 @@ CSE* Update_CSE(char *json_payload);
 AE* Update_AE(char *json_payload);
 CNT* Update_CNT(char *json_payload);
 
+void Set_CSE(CSE* cse);
 void Set_AE(AE* ae, char *pi);
 void Set_CNT(CNT* cnt, char *pi);
 void Set_CIN(CIN* cin, char *pi);

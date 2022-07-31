@@ -145,7 +145,9 @@ int Add_child(Node *parent, Node *child) {
 	child->parent = parent;
 	
 	if(node) {
-		while(node->siblingRight) node = node->siblingRight;
+		while(node->siblingRight) { 
+			node = node->siblingRight;
+		}
 		
 		node->siblingRight = child;
 		child->siblingLeft = node;
@@ -211,6 +213,31 @@ char *Get_LocalTime() {
 	strcat(now,sec);
 	
 	return now;
+}
+
+void Set_CSE(CSE* cse) {
+	char *now = Get_LocalTime();
+	char ri[18] = "5-";
+	char rn[8] = "TinyIoT";
+	strcat(ri, now);
+	
+	cse->ri = (char*)malloc(sizeof(ri));
+	cse->rn = (char*)malloc(sizeof(rn));
+	cse->ct = (char*)malloc(sizeof(now));
+	cse->lt = (char*)malloc(sizeof(now));
+	cse->csi = (char*)malloc(sizeof(now));
+	cse->pi = (char*)malloc(sizeof("NULL"));
+	
+	strcpy(cse->ri, ri);
+	strcpy(cse->rn, rn);
+	strcpy(cse->ct, now);
+	strcpy(cse->lt, now);
+	strcpy(cse->csi,now);
+	strcpy(cse->pi,"NULL");
+	
+	cse->ty = t_CSE;
+	
+	free(now);
 }
 
 void Set_AE(AE* ae, char *pi) {
@@ -302,6 +329,16 @@ void Set_CIN(CIN* cin, char *pi) {
 	cin->st = 0;
 	
 	free(now);
+}
+
+void Free_CSE(CSE *cse) {
+	free(cse->ct);
+	free(cse->lt);
+	free(cse->rn);
+	free(cse->ri);
+	free(cse->csi);
+	free(cse->pi);
+	free(cse);
 }
 
 void Free_AE(AE *ae) {
