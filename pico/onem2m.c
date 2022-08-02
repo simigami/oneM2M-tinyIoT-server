@@ -56,19 +56,42 @@ Node* Validate_URI(RT *rt) {
 	return node;
 }
 
+char *GMT_Time() {
+	struct tm *gmt, localt;
+	time_t now_time;
+	char buf[256];
+	time(&now_time);
+	localtime_r(&now_time, &localt);
+	asctime_r(&localt, buf);
+	gmt = gmtime(&now_time);
+	asctime_r(gmt, buf);
+}
+
 void TreeViewerAPI(Node *node) {
 	char *viewer_data = (char *)calloc(10000,sizeof(char));
+	strcat(viewer_data,"[");
 	Tree_data(node, &viewer_data);
-	HTTP_200;
-	printf("%s",viewer_data);
+	strcat(viewer_data,"]");
+	char res[10000] = "";
+	int index = 0;
+	
+	for(int i=0; i<10000; i++) {
+		if(i == 1) continue;
+		if(viewer_data[i] != 0 && viewer_data[i] != 32 && viewer_data[i] != 10 && viewer_data[i] != 9) {
+			res[index++] = viewer_data[i];
+		}
+	}
+
+	HTTP_200_CORS;
+	printf("%s",res);
 	free(viewer_data);
 	viewer_data = NULL;
 }
 
 void Tree_data(Node *node, char **viewer_data) {
 	char *json = Node_to_json(node);
+	strcat(*viewer_data,",");
 	strcat(*viewer_data, json);
-	strcat(*viewer_data, "\n");
 	
 	node = node->child;
 	

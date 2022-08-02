@@ -135,7 +135,7 @@ int Store_AE(AE* ae_object);
 int Store_CNT(CNT* cnt_object);
 int Store_CIN(CIN* cin_object);
 
-CSE* Get_CSE(char *ri);
+CSE* Get_CSE();
 AE* Get_AE(char *ri);
 CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);

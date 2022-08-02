@@ -197,6 +197,8 @@ void respond(int slot) {
     prot = strtok(NULL, " \t\r\n");
 
     uri_unescape(uri);
+    
+    fprintf(stderr, "\x1b[32m + [%s] %s\x1b[0m\n", method, uri);
 
     qs = strchr(uri, '?');
 
@@ -221,6 +223,8 @@ void respond(int slot) {
       h->name = key;
       h->value = val;
       h++;
+      fprintf(stderr, "[H] %s: %s\n", key, val);
+      
       t = val + 1 + strlen(val);
       if (t[1] == '\r' && t[2] == '\n')
         break;

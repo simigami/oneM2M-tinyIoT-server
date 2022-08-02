@@ -93,7 +93,7 @@ void init() {
 		Set_CSE(cse);
 		Store_CSE(cse);
 	} else {
-		cse = Get_CSE("5-20220801T070241");
+		cse = Get_CSE();
 	}
 	rt = (RT *)malloc(sizeof(rt));
  	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, t_CSE);

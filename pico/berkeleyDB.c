@@ -644,14 +644,13 @@ int Store_CIN(CIN *cin_object)
     return 1;
 }
 
-CSE* Get_CSE(char* ri) {
-    //fprintf(stderr,"[Get CSE] ri = %s\n", ri);
+CSE* Get_CSE() {
+    fprintf(stderr, "[Get CSE]\n");
 
     //store CSE Object
     CSE* new_cse = (CSE*)malloc(sizeof(CSE));
 
     char* database = "CSE.db";
-
     DB* dbp;
     DBC* dbcp;
     DBT key, data;
@@ -723,7 +722,7 @@ CSE* Get_CSE(char* ri) {
 
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
-        fprintf(stderr,"Cursor ERROR\n");
+        printf("Cursor ERROR\n");
         exit(0);
     }
 
