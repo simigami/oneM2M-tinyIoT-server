@@ -8,21 +8,30 @@
 
 char *tree;
 
+int Validate_OneM2M_Standard() {
+	if(request_header("X-M2M-RI") && request_header("X-M2M-Origin")) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 Node* Validate_URI(RT *rt) { 
 	Node *node = rt->root;
 	
 	uri = strtok(uri, "/");
 	
-	int view = 0;
+	int viewer = 0;
+	if(!strcmp("viewer",uri)) {
+		viewer = 1;
+		uri = strtok(NULL, "/");
+	}
 	
 	while(uri != NULL && node) {
-	/*
-		if(!strcmp(ptr,"viewer")) {
-			ptr = strtok(NULL, "/");
-			view = 1;
-			continue;
+		if(!strcmp("latest",uri)) {
+			while(node->siblingRight) node = node->siblingRight;
+			break;
 		}
-	*/
 		while(node) {
 			if(!strcmp(node->rn,uri)) break;
 			node = node->siblingRight;
@@ -32,27 +41,62 @@ Node* Validate_URI(RT *rt) {
 		
 		if(uri == NULL) break;
 		
-		node = node->child;
+		if(node) node = node->child;
 	}
 	
-	/*
-	if(view) {
-		tree = (char *)calloc(1000,sizeof(char));
-		tree_data(node);
-		HTTP_200;
-		printf("%s\n",tree);
-	}*/
+	if(viewer && node) {
+		TreeViewerAPI(node);
+		return NULL;
+	} else if(!node) {
+		HTTP_400;
+		printf("Invalid URI\n");
+		return NULL;
+	}
 	
 	return node;
 }
 
-void tree_data(Node *node) {
-	fprintf(stderr,"%s\n",node->rn);
+char *GMT_Time() {
+	struct tm *gmt, localt;
+	time_t now_time;
+	char buf[256];
+	time(&now_time);
+	localtime_r(&now_time, &localt);
+	asctime_r(&localt, buf);
+	gmt = gmtime(&now_time);
+	asctime_r(gmt, buf);
+}
+
+void TreeViewerAPI(Node *node) {
+	char *viewer_data = (char *)calloc(10000,sizeof(char));
+	strcat(viewer_data,"[");
+	Tree_data(node, &viewer_data);
+	strcat(viewer_data,"]");
+	char res[10000] = "";
+	int index = 0;
+	
+	for(int i=0; i<10000; i++) {
+		if(i == 1) continue;
+		if(viewer_data[i] != 0 && viewer_data[i] != 32 && viewer_data[i] != 10 && viewer_data[i] != 9) {
+			res[index++] = viewer_data[i];
+		}
+	}
+
+	HTTP_200_CORS;
+	printf("%s",res);
+	free(viewer_data);
+	viewer_data = NULL;
+}
+
+void Tree_data(Node *node, char **viewer_data) {
+	char *json = Node_to_json(node);
+	strcat(*viewer_data,",");
+	strcat(*viewer_data, json);
 	
 	node = node->child;
 	
 	while(node) {
-		tree_data(node);
+		Tree_data(node, viewer_data);
 		node = node->siblingRight;
 	}
 }
@@ -124,7 +168,9 @@ int Add_child(Node *parent, Node *child) {
 	child->parent = parent;
 	
 	if(node) {
-		while(node->siblingRight) node = node->siblingRight;
+		while(node->siblingRight) { 
+			node = node->siblingRight;
+		}
 		
 		node->siblingRight = child;
 		child->siblingLeft = node;
@@ -152,9 +198,14 @@ void Delete_Node(Node *node, int flag) {
 	
 	switch(node->ty) {
 	case t_AE : Delete_AE(node->ri); break;
-	//case t_CNT : Delete_CNT(node->ri); break;
+	case t_CNT : Delete_CNT(node->ri); break;
 	}
 	
+	Free_Node(node);
+	node = NULL;
+}
+
+void Free_Node(Node *node) {
 	free(node->ri);
 	free(node->rn);
 	free(node->pi);
@@ -187,21 +238,58 @@ char *Get_LocalTime() {
 	return now;
 }
 
+void Set_CSE(CSE* cse) {
+	char *now = Get_LocalTime();
+	char ri[18] = "5-";
+	char rn[8] = "TinyIoT";
+	strcat(ri, now);
+	
+	cse->ri = (char*)malloc(sizeof(ri));
+	cse->rn = (char*)malloc(sizeof(rn));
+	cse->ct = (char*)malloc(sizeof(now));
+	cse->lt = (char*)malloc(sizeof(now));
+	cse->csi = (char*)malloc(sizeof(now));
+	cse->pi = (char*)malloc(sizeof("NULL"));
+	
+	strcpy(cse->ri, ri);
+	strcpy(cse->rn, rn);
+	strcpy(cse->ct, now);
+	strcpy(cse->lt, now);
+	strcpy(cse->csi,now);
+	strcpy(cse->pi,"NULL");
+	
+	cse->ty = t_CSE;
+	
+	free(now);
+}
+
 void Set_AE(AE* ae, char *pi) {
 	char *now = Get_LocalTime();
+	char ri[18] = "2-";
+	char tmp[100];
+	strcat(ri, now);
 	
-	ae->ri = (char*)malloc(sizeof(now));
+	strcpy(tmp,ae->api);
+	ae->api = (char*)malloc(sizeof(ae->api));
+	strcpy(ae->api,tmp);
+	
+	strcpy(tmp,ae->rn);
+	ae->rn = (char*)malloc(sizeof(ae->rn));
+	strcpy(ae->rn,tmp);
+	
+	ae->ri = (char*)malloc(sizeof(ri));
+	ae->pi = (char*)malloc(sizeof(pi));
 	ae->et = (char*)malloc(sizeof(now));
 	ae->ct = (char*)malloc(sizeof(now));
 	ae->lt = (char*)malloc(sizeof(now));
 	ae->aei = (char*)malloc(sizeof(now));
-	ae->pi = (char*)malloc(sizeof(now));
-	strcpy(ae->ri, now);
+	
+	strcpy(ae->ri, ri);
+	strcpy(ae->pi, pi);
 	strcpy(ae->et, now);
 	strcpy(ae->ct, now);
 	strcpy(ae->lt, now);
 	strcpy(ae->aei,now);
-	strcpy(ae->pi, pi);
 	
 	ae->ty = t_AE;
 	
@@ -210,17 +298,24 @@ void Set_AE(AE* ae, char *pi) {
 
 void Set_CNT(CNT* cnt, char *pi) {
 	char *now = Get_LocalTime();
+	char ri[18] = "3-";
+	char tmp[100];
+	strcat(ri, now);
 	
-	cnt->ri = (char*)malloc(sizeof(now));
+	strcpy(tmp,cnt->rn);
+	cnt->rn = (char*)malloc(sizeof(cnt->rn));
+	strcpy(cnt->rn,tmp);
+	
+	cnt->ri = (char*)malloc(sizeof(ri));
+	cnt->pi = (char*)malloc(sizeof(pi));
 	cnt->et = (char*)malloc(sizeof(now));
 	cnt->ct = (char*)malloc(sizeof(now));
 	cnt->lt = (char*)malloc(sizeof(now));
-	cnt->pi = (char*)malloc(sizeof(now));
-	strcpy(cnt->ri, now);
+	strcpy(cnt->ri, ri);
+	strcpy(cnt->pi, pi);
 	strcpy(cnt->et, now);
 	strcpy(cnt->ct, now);
 	strcpy(cnt->lt, now);
-	strcpy(cnt->pi, pi);
 	
 	cnt->ty = t_CNT;
 	cnt->st = 0;
@@ -228,4 +323,76 @@ void Set_CNT(CNT* cnt, char *pi) {
 	cnt->cbs = 0;
 	
 	free(now);
+}
+
+void Set_CIN(CIN* cin, char *pi) {
+	char *now = Get_LocalTime();
+	char ri[18] = "4-";
+	char tmp[100];
+	strcat(ri, now);
+	
+	strcpy(tmp,cin->con);
+	cin->con = (char*)malloc(sizeof(cin->con));
+	strcpy(cin->con,tmp);
+	
+	cin->rn = (char*)malloc(sizeof(ri));
+	cin->ri = (char*)malloc(sizeof(ri));
+	cin->pi = (char*)malloc(sizeof(pi));
+	cin->et = (char*)malloc(sizeof(now));
+	cin->ct = (char*)malloc(sizeof(now));
+	cin->lt = (char*)malloc(sizeof(now));
+	strcpy(cin->rn, ri);
+	strcpy(cin->ri, ri);
+	strcpy(cin->pi, pi);
+	strcpy(cin->et, now);
+	strcpy(cin->ct, now);
+	strcpy(cin->lt, now);
+	
+	cin->ty = t_CIN;
+	cin->st = 0;
+	
+	free(now);
+}
+
+void Free_CSE(CSE *cse) {
+	free(cse->ct);
+	free(cse->lt);
+	free(cse->rn);
+	free(cse->ri);
+	free(cse->csi);
+	free(cse->pi);
+	free(cse);
+}
+
+void Free_AE(AE *ae) {
+	free(ae->et);
+	free(ae->ct);
+	free(ae->lt);
+	free(ae->rn);
+	free(ae->ri);
+	free(ae->pi);
+	free(ae->api);
+	free(ae->aei);
+	free(ae);
+}
+
+void Free_CNT(CNT *cnt) {
+	free(cnt->et);
+	free(cnt->ct);
+	free(cnt->lt);
+	free(cnt->rn);
+	free(cnt->ri);
+	free(cnt->pi);
+	free(cnt);
+}
+
+void Free_CIN(CIN* cin) {
+	free(cin->et);
+	free(cin->ct);
+	free(cin->lt);
+	free(cin->rn);
+	free(cin->ri);
+	free(cin->pi);
+	free(cin->con);
+	free(cin);
 }

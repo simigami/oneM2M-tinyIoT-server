@@ -14,10 +14,8 @@
 
 RT *rt;
 
-int main(int c, char **v) { 
-	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node("CSE_RI", "TinyIoT", "\0", t_CSE);
- 	//Restruct_ResourceTree();
+int main(int c, char **v) {
+	init();
  	char *port = c == 1 ? "3000" : v[1];
 	serve_forever(port);
   
@@ -53,13 +51,9 @@ int read_file(const char *file_name) {
 	return err;
 }
 
-void route() {	
+void route() {
 	Node* pnode = Validate_URI(rt);
-	if(!pnode) {
-		HTTP_500;
-		printf("Invalid URI\n");
-		return;
-	}
+	if(!pnode) return;
 	
 	char *json_payload;
 	
@@ -91,9 +85,26 @@ void route() {
 	}
 }
 
+void init() {
+	CSE *cse;
+	
+	if(access("./CSE.db", 0) == -1) {
+		cse = (CSE*)malloc(sizeof(CSE));
+		Set_CSE(cse);
+		Store_CSE(cse);
+	} else {
+		cse = Get_CSE();
+	}
+	rt = (RT *)malloc(sizeof(rt));
+ 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, t_CSE);
+ 	Free_CSE(cse);
+ 	cse = NULL;
+ 	Restruct_ResourceTree();
+}
+
 void Create_Object(char *json_payload, Node *pnode) {
 	ObjectType ty = Parse_ObjectType();
-	
+
 	switch(ty) {
 		
 	case t_AE :
@@ -105,7 +116,7 @@ void Create_Object(char *json_payload, Node *pnode) {
 		break;
 			
 	case t_CIN :
-		//Create_CIN(json_payload, pnode);
+		Create_CIN(json_payload, pnode);
 		break;
 	case t_CSE :
 		/*No Definition such request*/
@@ -117,7 +128,7 @@ void Retrieve_Object(Node *pnode) {
 	switch(pnode->ty) {
 		
 	case t_CSE :
-		//Retrieve_CSE(pnode);
+		Retrieve_CSE(pnode);
 		break;
 	
 	case t_AE : 
@@ -129,15 +140,9 @@ void Retrieve_Object(Node *pnode) {
 		break;
 			
 	case t_CIN :
-		//Retrieve_CIN(pnode);			
+		Retrieve_CIN(pnode);			
 		break;
 	}	
-}
-
-void Delete_Object(Node* pnode) {
-	Delete_Node(pnode,1);
-	HTTP_200;
-	printf("Deleted");
 }
 
 void Create_AE(char *json_payload, Node *pnode) {
@@ -145,7 +150,13 @@ void Create_AE(char *json_payload, Node *pnode) {
 	Set_AE(ae,pnode->ri);
 	
 	int result = Store_AE(ae);
-	if(result != 1) HTTP_500;
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_AE(ae);
+		ae = NULL;
+		return;
+	}
 	
 	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
 	Add_child(pnode,node);
@@ -153,6 +164,10 @@ void Create_AE(char *json_payload, Node *pnode) {
 	char *resjson = AE_to_json(ae);
 	HTTP_201;
 	printf("%s",resjson);
+	free(resjson);
+	Free_AE(ae);
+	resjson = NULL;
+	ae = NULL;
 }
 
 void Create_CNT(char *json_payload, Node *pnode) {
@@ -160,7 +175,13 @@ void Create_CNT(char *json_payload, Node *pnode) {
 	Set_CNT(cnt,pnode->ri);
 	
 	int result = Store_CNT(cnt);
-	if(result != 1) HTTP_500;
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_CNT(cnt);
+		cnt = NULL;
+		return;
+	}
 	
 	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, cnt->ty);
 	Add_child(pnode,node);
@@ -168,44 +189,123 @@ void Create_CNT(char *json_payload, Node *pnode) {
 	char *resjson = CNT_to_json(cnt);
 	HTTP_201;
 	printf("%s",resjson);
+	free(resjson);
+	Free_CNT(cnt);
+	resjson = NULL;
+	cnt = NULL;
+}
+
+void Create_CIN(char *json_payload, Node *pnode) {
+	CIN* cin = JSON_to_CIN(json_payload);
+	Set_CIN(cin,pnode->ri);
+	
+	int result = Store_CIN(cin);
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_CIN(cin);
+		cin = NULL;
+		return;
+	}
+	
+	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, cin->ty);
+	Add_child(pnode,node);
+	
+	char *resjson = CIN_to_json(cin);
+	HTTP_201;
+	printf("%s",resjson);
+	free(resjson);
+	Free_CIN(cin);
+	resjson = NULL;
+	cin = NULL;
+}
+
+void Retrieve_CSE(Node *pnode){
+	CSE* gcse = Get_CSE(pnode->ri);
+	char *resjson = CSE_to_json(gcse);
+	HTTP_200;
+	printf("%s",resjson);
+	free(resjson);
+	Free_CSE(gcse);
+	resjson = NULL;
+	gcse = NULL;
 }
 
 void Retrieve_AE(Node *pnode){
 	AE* gae = Get_AE(pnode->ri);
 	char *resjson = AE_to_json(gae);
-	HTTP_201;
+	HTTP_200;
 	printf("%s",resjson);
+	free(resjson);
+	Free_AE(gae);
+	resjson = NULL;
+	gae = NULL;
 }
 
 void Retrieve_CNT(Node *pnode){
 	CNT* gcnt = Get_CNT(pnode->ri);
 	char *resjson = CNT_to_json(gcnt);
-	HTTP_201;
+	HTTP_200;
 	printf("%s",resjson);
+	free(resjson);
+	Free_CNT(gcnt);
+	resjson = NULL;
+	gcnt = NULL;
+}
+
+void Retrieve_CIN(Node *pnode){
+	CIN* gcin = Get_CIN(pnode->ri);
+	char *resjson = CIN_to_json(gcin);
+	HTTP_200;
+	printf("%s",resjson);
+	free(resjson);
+	Free_CIN(gcin);
+	resjson = NULL;
+	gcin = NULL;
+}
+
+void Delete_Object(Node* pnode) {
+	Delete_Node(pnode,1);
+	pnode = NULL;
+	HTTP_200;
+	printf("Deleted");
 }
 
 void Restruct_ResourceTree(){
-	AE **ae_list = Get_All_AE();
+	Node *node_list = Create_Node("","","",0);
+	Node *tail = node_list;
 	
-	int len = (int)malloc_usable_size(ae_list) / (int)sizeof(AE*);
-	
-	fprintf(stderr,"len : %d\n",len);
-	
-	Node *node_list = NULL;
-	
-	if(ae_list) {
-		AE *ae = ae_list[0];
-		node_list = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
+	if(access("./AE.db", 0) != -1) {
+		Node* ae_list = Get_All_AE();
+		tail->siblingRight = ae_list;
+		ae_list->siblingLeft = tail;
+		while(tail->siblingRight) tail = tail->siblingRight;
+	} else {
+		fprintf(stderr,"AE.db is not exist\n");
 	}
 	
-	Node *node = node_list;
-	
-	for(int i=1; i<len; i++) {
-		AE *ae = ae_list[i];
-		node->siblingRight = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
-		node->siblingRight->siblingLeft = node;
-		node = node->siblingRight;
+	if(access("./CNT.db", 0) != -1) {
+		Node* cnt_list = Get_All_CNT();
+		tail->siblingRight = cnt_list;
+		cnt_list->siblingLeft = tail;
+		while(tail->siblingRight) tail = tail->siblingRight;
+	} else {
+		fprintf(stderr,"CNT.db is not exist\n");
 	}
+	
+	if(access("./CIN.db", 0) != -1) {
+		Node* cin_list = Get_All_CIN();
+		tail->siblingRight = cin_list;
+		cin_list->siblingLeft = tail;
+		while(tail->siblingRight) tail = tail->siblingRight;
+	} else {
+		fprintf(stderr,"CIN.db is not exist\n");
+	}
+	
+	Node *temp = node_list;
+	node_list = node_list->siblingRight;
+	if(node_list) node_list->siblingLeft = NULL;
+	Free_Node(temp);
 	
 	if(node_list) Restruct_childs(rt->root, node_list);
 }
@@ -218,7 +318,6 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 
 		if(!strcmp(pnode->ri, node->pi)) {
 			Node *left = node->siblingLeft;
-			Node *right = node->siblingRight;
 			
 			if(!left) {
 				list = right;
@@ -227,8 +326,8 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 			}
 			
 			if(right) right->siblingLeft = left;
-			fprintf(stderr,"%s`s child : %s\n",pnode->rn, node->rn);
 			node->siblingLeft = node->siblingRight = NULL;
+			fprintf(stderr,"%s`s child : %s\n",pnode->rn, node->rn);
 			Add_child(pnode, node);
 		}
 		node = right;

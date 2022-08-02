@@ -62,7 +62,6 @@ typedef struct {
 	char *rn;
 	char *ri;
 	char *pi;
-	char *csi;
 	char *con;	
 	int ty;
 	int st;
@@ -85,7 +84,12 @@ typedef struct {
 	Node *root;
 }RT;
 
+//init
+void init();
+
 //Request parse function
+int Validate_OneM2M_Standard();
+Node* Validate_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 char *Parse_Request_JSON();
@@ -108,6 +112,11 @@ CSE* Update_CSE(char *json_payload);
 AE* Update_AE(char *json_payload);
 CNT* Update_CNT(char *json_payload);
 
+void Set_CSE(CSE* cse);
+void Set_AE(AE* ae, char *pi);
+void Set_CNT(CNT* cnt, char *pi);
+void Set_CIN(CIN* cin, char *pi);
+
 CSE* JSON_to_CSE(char *json_payload);
 AE* JSON_to_AE(char *json_payload);
 CNT* JSON_to_CNT(char *json_payload);
@@ -126,7 +135,7 @@ int Store_AE(AE* ae_object);
 int Store_CNT(CNT* cnt_object);
 int Store_CIN(CIN* cin_object);
 
-CSE* Get_CSE(char *ri);
+CSE* Get_CSE();
 AE* Get_AE(char *ri);
 CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);
@@ -136,17 +145,27 @@ AE* Delete_AE(char *ri);
 CNT* Delete_CNT(char *ri);
 CIN* Delete_CIN(char *ri);
 
-AE** Get_All_AE();
+Node* Get_All_AE();
+Node* Get_All_CNT();
+Node* Get_All_CIN();
+
+Node* Mapping(char uri[]);
+char* Find_ri(char* database, char* rn);
+int Store_map(char* key_str, char* data_str);
+
+void Free_CSE(CSE* cse);
+void Free_AE(AE* ae);
+void Free_CNT(CNT* cnt);
+void Free_CIN(CIN* cin);
 
 //Resource Tree function
-void Set_AE(AE* ae, char *pi);
-void Set_CNT(CNT* cnt, char *pi);
-
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
-Node* Validate_URI(RT *rt);
 int Add_child(Node *parent, Node *child);
+char* Node_to_json(Node *node);
 void Delete_Node(Node *node, int flag);
+void Free_Node(Node *node);
 
-void tree_data(Node *node);
+void TreeViewerAPI(Node *node);
+void Tree_data(Node *node, char **viewer_data);
 void Restruct_ResourceTree();
 Node* Restruct_childs(Node *node, Node *list);
