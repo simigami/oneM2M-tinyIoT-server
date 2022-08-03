@@ -70,6 +70,14 @@ char *GMT_Time() {
 void TreeViewerAPI(Node *node) {
 	char *viewer_data = (char *)calloc(10000,sizeof(char));
 	strcat(viewer_data,"[");
+	
+	Node *p = node;
+	while(p = p->parent) {
+		char *json = Node_to_json(p);
+		strcat(viewer_data,",");
+		strcat(viewer_data,json);
+	}
+	
 	Tree_data(node, &viewer_data);
 	strcat(viewer_data,"]");
 	char res[10000] = "";
