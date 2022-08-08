@@ -56,17 +56,6 @@ Node* Validate_URI(RT *rt) {
 	return node;
 }
 
-char *GMT_Time() {
-	struct tm *gmt, localt;
-	time_t now_time;
-	char buf[256];
-	time(&now_time);
-	localtime_r(&now_time, &localt);
-	asctime_r(&localt, buf);
-	gmt = gmtime(&now_time);
-	asctime_r(gmt, buf);
-}
-
 void TreeViewerAPI(Node *node) {
 	char *viewer_data = (char *)calloc(10000,sizeof(char));
 	strcat(viewer_data,"[");
