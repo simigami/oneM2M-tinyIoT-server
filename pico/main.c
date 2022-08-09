@@ -17,6 +17,7 @@ RT *rt;
 int main(int c, char **v) {
 	init();
  	char *port = c == 1 ? "3000" : v[1];
+
 	serve_forever(port);
   
 	return 0;
@@ -104,18 +105,20 @@ void init() {
 
 void Create_Object(char *json_payload, Node *pnode) {
 	ObjectType ty = Parse_ObjectType();
-
 	switch(ty) {
 		
 	case t_AE :
+		fprintf(stderr,"\x1b[42mCreate AE\x1b[0m\n");
 		Create_AE(json_payload, pnode);
 		break;	
 					
 	case t_CNT :
+		fprintf(stderr,"\x1b[42mCreate CNT\x1b[0m\n");
 		Create_CNT(json_payload, pnode);
 		break;
 			
 	case t_CIN :
+		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
 		Create_CIN(json_payload, pnode);
 		break;
 	case t_CSE :
@@ -124,22 +127,25 @@ void Create_Object(char *json_payload, Node *pnode) {
 }
 
 void Retrieve_Object(Node *pnode) {
-
 	switch(pnode->ty) {
 		
 	case t_CSE :
+		fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
 		Retrieve_CSE(pnode);
 		break;
 	
 	case t_AE : 
+		fprintf(stderr,"\x1b[43mRetrieve AE\x1b[0m\n");
 		Retrieve_AE(pnode);			
 		break;	
 			
 	case t_CNT :
+		fprintf(stderr,"\x1b[43mRetrieve CNT\x1b[0m\n");
 		Retrieve_CNT(pnode);			
 		break;
 			
 	case t_CIN :
+		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
 		Retrieve_CIN(pnode);			
 		break;
 	}	
@@ -265,6 +271,7 @@ void Retrieve_CIN(Node *pnode){
 }
 
 void Delete_Object(Node* pnode) {
+	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
 	Delete_Node(pnode,1);
 	pnode = NULL;
 	HTTP_200;
@@ -327,7 +334,6 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 			
 			if(right) right->siblingLeft = left;
 			node->siblingLeft = node->siblingRight = NULL;
-			fprintf(stderr,"%s`s child : %s\n",pnode->rn, node->rn);
 			Add_child(pnode, node);
 		}
 		node = right;
