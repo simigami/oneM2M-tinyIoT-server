@@ -98,7 +98,7 @@ void CIN_in_period(Node *pnode) {
 	char *end = Get_LocalTime(0);
 	Node *cinList = Get_CIN_Period(start, end);
 	
-	fprintf(stderr,"period : %dsec\n",period);
+	fprintf(stderr,"period : %d seconds\n",period);
 	
 	Node *cin = cinList;
 	
@@ -110,6 +110,8 @@ void CIN_in_period(Node *pnode) {
 			printf("%s\n",resjson);
 			free(resjson);
 			Free_CIN(gcin);
+			resjson = NULL;
+			gcin = NULL;
 		}
 		cin = cin->siblingRight;
 	}

@@ -84,6 +84,8 @@ void route() {
 	default:
 		HTTP_500;
 	}
+	
+	free(json_payload);
 }
 
 void init() {
