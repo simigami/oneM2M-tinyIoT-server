@@ -6,26 +6,34 @@
 #include <stdbool.h>
 #include <time.h>
 
-char *tree;
-
 int Validate_OneM2M_Standard() {
-	if(request_header("X-M2M-RI") && request_header("X-M2M-Origin")) {
-		return 1;
-	} else {
-		return 0;
+	int ret = 1;
+
+	if(!request_header("X-M2M-RI")) {
+		fprintf(stderr,"Request has no \"X-M2M-RI\" Header\n");
+		ret = 0;
+	} 
+	if(!request_header("X-M2M-Origin")) {
+		fprintf(stderr,"Request has no \"X-M2M-Origin\" Header\n");
+		ret = 0;		
 	}
+	
+	return ret;
 }
 
-Node* Validate_URI(RT *rt) { 
-	Node *node = rt->root;
+Node* Validate_URI(RT *rt) {
+	fprintf(stderr,"Validate URI \x1b[33m%s\x1b[0m...",uri); 
+	Node *node = NULL;
 	
 	uri = strtok(uri, "/");
 	
 	int viewer = 0;
-	if(!strcmp("viewer",uri)) {
+	if(uri != NULL && !strcmp("viewer",uri)) {
 		viewer = 1;
 		uri = strtok(NULL, "/");
 	}
+	
+	if(uri != NULL && !strcmp("TinyIoT", uri)) node = rt->root;
 	
 	while(uri != NULL && node) {
 		if(!strcmp("latest",uri)) {
@@ -41,35 +49,91 @@ Node* Validate_URI(RT *rt) {
 		
 		if(uri == NULL) break;
 		
+		if(!strcmp(uri,"cinperiod")) {
+			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN in Period\x1b[0m\n");
+			CIN_in_period(node);
+			return NULL;
+		}
+		
 		if(node) node = node->child;
 	}
 	
 	if(viewer && node) {
+		fprintf(stderr,"OK\n\x1b[43mTree Viewer API\x1b[0m\n");
 		TreeViewerAPI(node);
 		return NULL;
 	} else if(!node) {
+		fprintf(stderr,"Invalid\n");
 		HTTP_400;
 		printf("Invalid URI\n");
 		return NULL;
 	}
 	
+	fprintf(stderr,"OK\n");
+	
 	return node;
 }
 
-char *GMT_Time() {
-	struct tm *gmt, localt;
-	time_t now_time;
-	char buf[256];
-	time(&now_time);
-	localtime_r(&now_time, &localt);
-	asctime_r(&localt, buf);
-	gmt = gmtime(&now_time);
-	asctime_r(gmt, buf);
+void CIN_in_period(Node *pnode) {
+	int period = 0;
+	char key[8] = "period=";
+	
+	qs = strtok(qs, "&");
+	
+	while(qs != NULL) {
+		int flag = 1;
+		if(strlen(qs) >= 8) {
+			for(int i=0; i<7; i++) {
+				if(qs[i] != key[i]) flag = 0;
+			}
+		}
+		if(flag) {
+			period = atoi(qs+7);
+			break;
+		}
+		qs = strtok(NULL, "&");
+	}
+	
+	char *start = Get_LocalTime(period);
+	char *end = Get_LocalTime(0);
+	Node *cinList = Get_CIN_Period(start, end);
+	
+	fprintf(stderr,"period : %d seconds\n",period);
+	
+	Node *cin = cinList;
+	
+	HTTP_200;
+	while(cin) {
+		if(!strcmp(cin->pi, pnode->ri)) {
+			CIN* gcin = Get_CIN(cin->ri);
+			char *resjson = CIN_to_json(gcin);
+			printf("%s\n",resjson);
+			free(resjson);
+			Free_CIN(gcin);
+			resjson = NULL;
+			gcin = NULL;
+		}
+		cin = cin->siblingRight;
+	}
+	
+	while(cinList) {
+		Node *r = cinList->siblingRight;
+		Free_Node(cinList);
+		cinList = r;
+	}
 }
 
 void TreeViewerAPI(Node *node) {
 	char *viewer_data = (char *)calloc(10000,sizeof(char));
 	strcat(viewer_data,"[");
+	
+	Node *p = node;
+	while(p = p->parent) {
+		char *json = Node_to_json(p);
+		strcat(viewer_data,",");
+		strcat(viewer_data,json);
+	}
+	
 	Tree_data(node, &viewer_data);
 	strcat(viewer_data,"]");
 	char res[10000] = "";
@@ -160,6 +224,10 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	node->siblingRight = NULL;
 	node->ty = ty;
 	
+	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) {
+		fprintf(stderr,"\nCreate Tree Node\n[rn] %s\n[ri] %s\n",node->rn,node->ri);
+	}
+	
 	return node;
 }
 
@@ -167,17 +235,30 @@ int Add_child(Node *parent, Node *child) {
 	Node *node = parent->child;
 	child->parent = parent;
 	
-	if(node) {
+	if(child->ty != t_CIN) fprintf(stderr,"\nAdd Child\n[P] %s\n[C] %s...",parent->rn, child->rn);
+	
+	
+	if(!node || (parent->ty == child->ty)) {
+		parent->child = child;
+		if(node) {
+			node->siblingLeft = child;
+			child->siblingRight = node;
+		}
+	} else if(node) {
 		while(node->siblingRight) { 
+			if(node->ty == t_CIN && child->ty == t_CIN) {
+				Free_Node(node->siblingRight);
+				node->siblingRight = NULL;
+				break;
+			}
 			node = node->siblingRight;
 		}
 		
 		node->siblingRight = child;
 		child->siblingLeft = node;
 	}
-	else {
-		parent->child = child;
-	}
+	
+	if(child->ty != t_CIN) fprintf(stderr,"OK\n");
 	
 	return 1;
 }
@@ -185,6 +266,8 @@ int Add_child(Node *parent, Node *child) {
 void Delete_Node(Node *node, int flag) {
 	Node *left = node->siblingLeft;
 	Node *right = node->siblingRight;
+	
+	fprintf(stderr,"\nDelete Tree Node\n[rn] %s\n[ri] %s\n",node->rn, node->ri);
 	
 	if(!left) node->parent->child = right;
 	
@@ -212,8 +295,8 @@ void Free_Node(Node *node) {
 	free(node);
 }
 
-char *Get_LocalTime() {
-	time_t t = time(NULL);
+char *Get_LocalTime(int diff) {
+	time_t t = time(NULL) - diff;
 	struct tm tm = *localtime(&t);
 	
 	char year[5], mon[3], day[3], hour[3], minute[3], sec[3]; 
@@ -239,7 +322,7 @@ char *Get_LocalTime() {
 }
 
 void Set_CSE(CSE* cse) {
-	char *now = Get_LocalTime();
+	char *now = Get_LocalTime(0);
 	char ri[18] = "5-";
 	char rn[8] = "TinyIoT";
 	strcat(ri, now);
@@ -264,7 +347,7 @@ void Set_CSE(CSE* cse) {
 }
 
 void Set_AE(AE* ae, char *pi) {
-	char *now = Get_LocalTime();
+	char *now = Get_LocalTime(0);
 	char ri[18] = "2-";
 	char tmp[100];
 	strcat(ri, now);
@@ -297,7 +380,7 @@ void Set_AE(AE* ae, char *pi) {
 }
 
 void Set_CNT(CNT* cnt, char *pi) {
-	char *now = Get_LocalTime();
+	char *now = Get_LocalTime(0);
 	char ri[18] = "3-";
 	char tmp[100];
 	strcat(ri, now);
@@ -326,7 +409,7 @@ void Set_CNT(CNT* cnt, char *pi) {
 }
 
 void Set_CIN(CIN* cin, char *pi) {
-	char *now = Get_LocalTime();
+	char *now = Get_LocalTime(0);
 	char ri[18] = "4-";
 	char tmp[100];
 	strcat(ri, now);

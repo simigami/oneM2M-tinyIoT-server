@@ -84,9 +84,6 @@ typedef struct {
 	Node *root;
 }RT;
 
-//init
-void init();
-
 //Request parse function
 int Validate_OneM2M_Standard();
 Node* Validate_URI(RT *rt);
@@ -149,14 +146,12 @@ Node* Get_All_AE();
 Node* Get_All_CNT();
 Node* Get_All_CIN();
 
-Node* Mapping(char uri[]);
-char* Find_ri(char* database, char* rn);
-int Store_map(char* key_str, char* data_str);
-
 void Free_CSE(CSE* cse);
 void Free_AE(AE* ae);
 void Free_CNT(CNT* cnt);
 void Free_CIN(CIN* cin);
+
+Node* Get_CIN_Period(char *start_time, char *end_time);
 
 //Resource Tree function
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
@@ -169,3 +164,8 @@ void TreeViewerAPI(Node *node);
 void Tree_data(Node *node, char **viewer_data);
 void Restruct_ResourceTree();
 Node* Restruct_childs(Node *node, Node *list);
+
+//etc
+void init();
+char* Get_LocalTime(int diff);
+void CIN_in_period(Node *pnode);
