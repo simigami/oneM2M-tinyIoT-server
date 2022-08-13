@@ -295,7 +295,7 @@ void Free_Node(Node *node) {
 	free(node);
 }
 
-char *Get_LocalTime(int diff) {
+char *Get_LocalTime(int diff) {S
 	time_t t = time(NULL) - diff;
 	struct tm tm = *localtime(&t);
 	

@@ -1597,8 +1597,9 @@ Node* Get_All_AE() {
         }
     }
 
-    node_pi->siblingLeft->siblingRight = NULL;
-    free(node_pi);
+    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    else head = NULL;
+    Free_Node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
@@ -1699,8 +1700,9 @@ Node* Get_All_CNT() {
         }
     }
 
-    node_pi->siblingLeft->siblingRight = NULL;
-    free(node_pi);
+    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    else head = NULL;
+    Free_Node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
@@ -1801,8 +1803,9 @@ Node* Get_All_CIN() {
         }
     }
 
-    node_pi->siblingLeft->siblingRight = NULL;
-    free(node_pi);
+    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    else head = NULL;
+    Free_Node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
@@ -1963,7 +1966,7 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
 
     if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
     else head = NULL;
-    free(node_pi);
+    Free_Node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
