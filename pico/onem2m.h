@@ -86,7 +86,7 @@ typedef struct {
 
 //Request parse function
 int Validate_OneM2M_Standard();
-Node* Validate_URI(RT *rt);
+Node* Parse_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 char *Parse_Request_JSON();

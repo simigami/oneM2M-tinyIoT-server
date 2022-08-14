@@ -53,7 +53,7 @@ int read_file(const char *file_name) {
 }
 
 void route() {
-	Node* pnode = Validate_URI(rt);
+	Node* pnode = Parse_URI(rt);
 	if(!pnode) return;
 	
 	char *json_payload;
@@ -61,6 +61,7 @@ void route() {
 	if(payload_size > 0) {
 		if(!(json_payload = Parse_Request_JSON())) {
 			HTTP_500;
+			fprintf(stderr,"Request Body Parse Fail\n");
 			return;
 		}
 	}

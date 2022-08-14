@@ -21,8 +21,8 @@ int Validate_OneM2M_Standard() {
 	return ret;
 }
 
-Node* Validate_URI(RT *rt) {
-	fprintf(stderr,"Validate URI \x1b[33m%s\x1b[0m...",uri); 
+Node* Parse_URI(RT *rt) {
+	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri); 
 	Node *node = NULL;
 	
 	uri = strtok(uri, "/");
@@ -36,8 +36,15 @@ Node* Validate_URI(RT *rt) {
 	if(uri != NULL && !strcmp("TinyIoT", uri)) node = rt->root;
 	
 	while(uri != NULL && node) {
-		if(!strcmp("latest",uri)) {
+		if(!strcmp("la",uri)) {
 			while(node->siblingRight) node = node->siblingRight;
+			if(node->ty != t_CIN) node = NULL;
+			break;
+		} else if(!strcmp("ol", uri)) {
+			while(node) {
+				if(node->ty == t_CIN) break;
+				node = node->siblingRight;
+			}
 			break;
 		}
 		while(node) {
@@ -153,8 +160,23 @@ void TreeViewerAPI(Node *node) {
 }
 
 void Tree_data(Node *node, char **viewer_data) {
+	/*
+	if(node->ty == t_CIN) {
+		Node *cinLatest = Get_CIN_Pi(node->pi);
+		
+		cinLatest = LatestCINs(num);
+		
+		while(cinLatest) {
+			char *json = Node_to_json(cinLatest);
+			strcat(*viewer_data, ",");
+			strcat(*viewer_data, json);
+			cinLatest = cinLatest->siblingRight;
+		}
+		return;
+	}
+	*/
 	char *json = Node_to_json(node);
-	strcat(*viewer_data,",");
+	strcat(*viewer_data, ",");
 	strcat(*viewer_data, json);
 	
 	node = node->child;
@@ -238,24 +260,30 @@ int Add_child(Node *parent, Node *child) {
 	if(child->ty != t_CIN) fprintf(stderr,"\nAdd Child\n[P] %s\n[C] %s...",parent->rn, child->rn);
 	
 	
-	if(!node || (parent->ty == child->ty)) {
+	if(!node) {
 		parent->child = child;
-		if(node) {
-			node->siblingLeft = child;
-			child->siblingRight = node;
-		}
 	} else if(node) {
-		while(node->siblingRight) { 
-			if(node->ty == t_CIN && child->ty == t_CIN) {
-				Free_Node(node->siblingRight);
-				node->siblingRight = NULL;
-				break;
+		if(child->ty < node->ty) {
+			parent->child = child;
+			child->siblingRight = node;
+			node->siblingLeft = child;
+		} else {
+			while(node->siblingRight && node->siblingRight->ty <= child->ty) { 
+				if(node->ty == t_CIN && child->ty == t_CIN) {
+					Free_Node(node->siblingRight);
+					node->siblingRight = NULL;
+					break;
+				}
+				node = node->siblingRight;
 			}
-			node = node->siblingRight;
+			
+			if(node->siblingRight) {
+				node->siblingRight->siblingLeft = child;
+				child->siblingRight = node->siblingRight;
+			}
+			node->siblingRight = child;
+			child->siblingLeft = node;
 		}
-		
-		node->siblingRight = child;
-		child->siblingLeft = node;
 	}
 	
 	if(child->ty != t_CIN) fprintf(stderr,"OK\n");
@@ -295,7 +323,7 @@ void Free_Node(Node *node) {
 	free(node);
 }
 
-char *Get_LocalTime(int diff) {S
+char *Get_LocalTime(int diff) {
 	time_t t = time(NULL) - diff;
 	struct tm tm = *localtime(&t);
 	
