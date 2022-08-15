@@ -36,11 +36,18 @@ Node* Parse_URI(RT *rt) {
 	if(uri != NULL && !strcmp("TinyIoT", uri)) node = rt->root;
 	
 	while(uri != NULL && node) {
-		if(!strcmp("la",uri)) {
+		char *cin_ri;
+		if((cin_ri = strstr(uri, "4-20")) != NULL) {
+			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN By Ri\x1b[0m\n");
+			Retrieve_CIN_Ri(cin_ri);
+			return NULL;
+		}
+	
+		if(!strcmp("la", uri) || !strcmp("latest", uri)) {
 			while(node->siblingRight) node = node->siblingRight;
 			if(node->ty != t_CIN) node = NULL;
 			break;
-		} else if(!strcmp("ol", uri)) {
+		} else if(!strcmp("ol", uri) || !strcmp("oldest", uri)) {
 			while(node) {
 				if(node->ty == t_CIN) break;
 				node = node->siblingRight;
@@ -81,6 +88,24 @@ Node* Parse_URI(RT *rt) {
 	return node;
 }
 
+void Retrieve_CIN_Ri(char *ri) {
+	CIN* gcin = Get_CIN(ri);
+	
+	if(gcin) {
+		char *resjson = CIN_to_json(gcin);
+		HTTP_200_CORS;
+		printf("%s",resjson);
+		free(resjson);
+		Free_CIN(gcin);
+		resjson = NULL;
+		gcin = NULL;
+	} else {
+		fprintf(stderr,"There is no such CIN ri = %s\n",ri);
+		HTTP_400;
+		printf("Invalid URI\n");
+	}
+}
+
 void CIN_in_period(Node *pnode) {
 	int period = 0;
 	char key[8] = "period=";
@@ -109,7 +134,7 @@ void CIN_in_period(Node *pnode) {
 	
 	Node *cin = cinList;
 	
-	HTTP_200;
+	HTTP_200_CORS;
 	while(cin) {
 		if(!strcmp(cin->pi, pnode->ri)) {
 			CIN* gcin = Get_CIN(cin->ri);
@@ -141,7 +166,14 @@ void TreeViewerAPI(Node *node) {
 		strcat(viewer_data,json);
 	}
 	
-	Tree_data(node, &viewer_data);
+	int cinSize = 1;
+	
+	char *la = strstr(qs,"la=");
+	if(la) cinSize = atoi(la+3);
+	
+	fprintf(stderr,"Latest CIN Size : %d\n",cinSize);
+	
+	Tree_data(node, &viewer_data, cinSize);
 	strcat(viewer_data,"]");
 	char res[10000] = "";
 	int index = 0;
@@ -152,6 +184,8 @@ void TreeViewerAPI(Node *node) {
 			res[index++] = viewer_data[i];
 		}
 	}
+	
+	fprintf(stderr,"TreeViewerAPI Content-Size : %ld\n",strlen(res));
 
 	HTTP_200_CORS;
 	printf("%s",res);
@@ -159,12 +193,11 @@ void TreeViewerAPI(Node *node) {
 	viewer_data = NULL;
 }
 
-void Tree_data(Node *node, char **viewer_data) {
-	/*
+void Tree_data(Node *node, char **viewer_data, int cin_num) {
 	if(node->ty == t_CIN) {
 		Node *cinLatest = Get_CIN_Pi(node->pi);
 		
-		cinLatest = LatestCINs(num);
+		cinLatest = LatestCINs(cinLatest, cin_num);
 		
 		while(cinLatest) {
 			char *json = Node_to_json(cinLatest);
@@ -174,7 +207,7 @@ void Tree_data(Node *node, char **viewer_data) {
 		}
 		return;
 	}
-	*/
+	
 	char *json = Node_to_json(node);
 	strcat(*viewer_data, ",");
 	strcat(*viewer_data, json);
@@ -182,9 +215,29 @@ void Tree_data(Node *node, char **viewer_data) {
 	node = node->child;
 	
 	while(node) {
-		Tree_data(node, viewer_data);
+		Tree_data(node, viewer_data, cin_num);
+		if(node->ty == t_CIN) break;
 		node = node->siblingRight;
 	}
+}
+
+Node *LatestCINs(Node* cinList, int num) {
+	Node *head, *tail;
+	head = tail = cinList;
+	int cnt = 1;
+	
+	while(tail->siblingRight) {
+		tail = tail->siblingRight;
+		cnt++;
+	}
+	
+	for(int i=0; i < cnt-num; i++) {
+		head = head->siblingRight;
+		Free_Node(head->siblingLeft);
+		head->siblingLeft = NULL;
+	}
+	
+	return head;
 }
 
 char *Parse_Request_JSON() {
@@ -232,6 +285,10 @@ ObjectType Parse_ObjectType() {
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	Node* node = (Node*)malloc(sizeof(Node));
 	
+	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) {
+		fprintf(stderr,"\nCreate Tree Node\n[rn] %s\n[ri] %s...", rn, ri);
+	}
+	
 	node->rn = (char*)malloc(sizeof(rn));
 	node->ri = (char*)malloc(sizeof(ri));
 	node->pi = (char*)malloc(sizeof(pi));
@@ -245,10 +302,9 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	node->siblingLeft = NULL;
 	node->siblingRight = NULL;
 	node->ty = ty;
+	node->cinSize = 0;
 	
-	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) {
-		fprintf(stderr,"\nCreate Tree Node\n[rn] %s\n[ri] %s\n",node->rn,node->ri);
-	}
+	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) fprintf(stderr,"OK\n");
 	
 	return node;
 }
@@ -258,7 +314,6 @@ int Add_child(Node *parent, Node *child) {
 	child->parent = parent;
 	
 	if(child->ty != t_CIN) fprintf(stderr,"\nAdd Child\n[P] %s\n[C] %s...",parent->rn, child->rn);
-	
 	
 	if(!node) {
 		parent->child = child;
@@ -291,28 +346,28 @@ int Add_child(Node *parent, Node *child) {
 	return 1;
 }
 
-void Delete_Node(Node *node, int flag) {
+void Delete_Node_Object(Node *node, int flag) {
 	Node *left = node->siblingLeft;
 	Node *right = node->siblingRight;
-	
-	fprintf(stderr,"\nDelete Tree Node\n[rn] %s\n[ri] %s\n",node->rn, node->ri);
 	
 	if(!left) node->parent->child = right;
 	
 	if(flag == 1) {
 		if(left) left->siblingRight = node->siblingRight;
 	} else {
-		if(node->siblingRight) Delete_Node(node->siblingRight, 0);
+		if(node->siblingRight) Delete_Node_Object(node->siblingRight, 0);
 	}
 	
-	if(node->child) Delete_Node(node->child, 0);
+	if(node->child) Delete_Node_Object(node->child, 0);
 	
 	switch(node->ty) {
 	case t_AE : Delete_AE(node->ri); break;
 	case t_CNT : Delete_CNT(node->ri); break;
 	}
 	
+	fprintf(stderr,"Free_Node : %s...",node->rn);
 	Free_Node(node);
+	fprintf(stderr,"OK\n");
 	node = NULL;
 }
 

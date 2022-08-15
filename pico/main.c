@@ -23,40 +23,11 @@ int main(int c, char **v) {
 	return 0;
 }
 
-int file_exists(const char *file_name) {
-	struct stat buffer;
-	int exists;
-
-	exists = (stat(file_name, &buffer) == 0);
-
-	return exists;
-}
-
-int read_file(const char *file_name) {
-	char buf[CHUNK_SIZE];
-	FILE *file;
-	size_t nread;
-	int err = 1;
-
-	file = fopen(file_name, "r");
-
-	if (file) {
-		while ((nread = fread(buf, 1, sizeof buf, file)) > 0) {
-			fwrite(buf, 1, nread, stdout);
-		}
-
-		err = ferror(file);
-		fclose(file);
-	}
-	
-	return err;
-}
-
 void route() {
 	Node* pnode = Parse_URI(rt);
 	if(!pnode) return;
 	
-	char *json_payload;
+	char *json_payload = NULL;
 	
 	if(payload_size > 0) {
 		if(!(json_payload = Parse_Request_JSON())) {
@@ -85,8 +56,6 @@ void route() {
 	default:
 		HTTP_500;
 	}
-	
-	free(json_payload);
 }
 
 void init() {
@@ -171,7 +140,7 @@ void Create_AE(char *json_payload, Node *pnode) {
 	Add_child(pnode,node);
 	
 	char *resjson = AE_to_json(ae);
-	HTTP_201;
+	HTTP_201_CORS;
 	printf("%s",resjson);
 	free(resjson);
 	Free_AE(ae);
@@ -196,7 +165,7 @@ void Create_CNT(char *json_payload, Node *pnode) {
 	Add_child(pnode,node);
 	
 	char *resjson = CNT_to_json(cnt);
-	HTTP_201;
+	HTTP_201_CORS;
 	printf("%s",resjson);
 	free(resjson);
 	Free_CNT(cnt);
@@ -221,7 +190,7 @@ void Create_CIN(char *json_payload, Node *pnode) {
 	Add_child(pnode,node);
 	
 	char *resjson = CIN_to_json(cin);
-	HTTP_201;
+	HTTP_201_CORS;
 	printf("%s",resjson);
 	free(resjson);
 	Free_CIN(cin);
@@ -232,7 +201,7 @@ void Create_CIN(char *json_payload, Node *pnode) {
 void Retrieve_CSE(Node *pnode){
 	CSE* gcse = Get_CSE(pnode->ri);
 	char *resjson = CSE_to_json(gcse);
-	HTTP_200;
+	HTTP_200_CORS;
 	printf("%s",resjson);
 	free(resjson);
 	Free_CSE(gcse);
@@ -243,7 +212,7 @@ void Retrieve_CSE(Node *pnode){
 void Retrieve_AE(Node *pnode){
 	AE* gae = Get_AE(pnode->ri);
 	char *resjson = AE_to_json(gae);
-	HTTP_200;
+	HTTP_200_CORS;
 	printf("%s",resjson);
 	free(resjson);
 	Free_AE(gae);
@@ -254,7 +223,7 @@ void Retrieve_AE(Node *pnode){
 void Retrieve_CNT(Node *pnode){
 	CNT* gcnt = Get_CNT(pnode->ri);
 	char *resjson = CNT_to_json(gcnt);
-	HTTP_200;
+	HTTP_200_CORS;
 	printf("%s",resjson);
 	free(resjson);
 	Free_CNT(gcnt);
@@ -265,7 +234,7 @@ void Retrieve_CNT(Node *pnode){
 void Retrieve_CIN(Node *pnode){
 	CIN* gcin = Get_CIN(pnode->ri);
 	char *resjson = CIN_to_json(gcin);
-	HTTP_200;
+	HTTP_200_CORS;
 	printf("%s",resjson);
 	free(resjson);
 	Free_CIN(gcin);
@@ -275,10 +244,11 @@ void Retrieve_CIN(Node *pnode){
 
 void Delete_Object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
-	Delete_Node(pnode,1);
+	Delete_Node_Object(pnode,1);
 	pnode = NULL;
-	HTTP_200;
+	HTTP_200_CORS;
 	printf("Deleted");
+	fprintf(stderr,"Good\n");
 }
 
 void Restruct_ResourceTree(){
@@ -349,4 +319,33 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 	}
 	
 	return list;
+}
+
+int file_exists(const char *file_name) {
+	struct stat buffer;
+	int exists;
+
+	exists = (stat(file_name, &buffer) == 0);
+
+	return exists;
+}
+
+int read_file(const char *file_name) {
+	char buf[CHUNK_SIZE];
+	FILE *file;
+	size_t nread;
+	int err = 1;
+
+	file = fopen(file_name, "r");
+
+	if (file) {
+		while ((nread = fread(buf, 1, sizeof buf, file)) > 0) {
+			fwrite(buf, 1, nread, stdout);
+		}
+
+		err = ferror(file);
+		fclose(file);
+	}
+	
+	return err;
 }

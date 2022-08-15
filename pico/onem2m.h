@@ -78,6 +78,8 @@ typedef struct Node{
 	char *ri;
 	char *pi;
 	ObjectType ty;
+	
+	int cinSize;
 }Node;
 
 typedef struct {  
@@ -104,6 +106,7 @@ void Retrieve_CSE();
 void Retrieve_AE();
 void Retrieve_CNT();
 void Retrieve_CIN();
+void Retrieve_CIN_Ri(char *ri);
 
 CSE* Update_CSE(char *json_payload);
 AE* Update_AE(char *json_payload);
@@ -152,16 +155,17 @@ void Free_CNT(CNT* cnt);
 void Free_CIN(CIN* cin);
 
 Node* Get_CIN_Period(char *start_time, char *end_time);
+Node* Get_CIN_Pi(char* pi);
 
 //Resource Tree function
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
 int Add_child(Node *parent, Node *child);
 char* Node_to_json(Node *node);
-void Delete_Node(Node *node, int flag);
+void Delete_Node_Object(Node *node, int flag);
 void Free_Node(Node *node);
 
 void TreeViewerAPI(Node *node);
-void Tree_data(Node *node, char **viewer_data);
+void Tree_data(Node *node, char **viewer_data, int cin_num);
 void Restruct_ResourceTree();
 Node* Restruct_childs(Node *node, Node *list);
 
@@ -169,3 +173,4 @@ Node* Restruct_childs(Node *node, Node *list);
 void init();
 char* Get_LocalTime(int diff);
 void CIN_in_period(Node *pnode);
+Node *LatestCINs(Node *cinList, int num);
