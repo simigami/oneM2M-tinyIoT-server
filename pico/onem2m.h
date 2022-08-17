@@ -91,16 +91,18 @@ int Validate_OneM2M_Standard();
 Node* Parse_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
+ObjectType Parse_ObjectType_Body();
 char *Parse_Request_JSON();
 
 //OneM2M CRUD function
-void Create_Object(char *json_payload, Node *pnode);
+void Create_Object(Node* pnode, char *json_payload);
 void Retrieve_Object(Node *pnode);
+void Update_Object(Node *pnode, char *json_payload);
 void Delete_Object();
 
-void Create_AE(char *json_payload, Node *pnode);
-void Create_CNT(char *json_payload, Node *pnode);
-void Create_CIN(char *json_payload, Node *pnode);
+void Create_AE(Node *pnode, char *json_payload);
+void Create_CNT(Node *pnode, char *json_payload);
+void Create_CIN(Node *pnode, char *json_payload);
 
 void Retrieve_CSE();
 void Retrieve_AE();
@@ -108,12 +110,13 @@ void Retrieve_CNT();
 void Retrieve_CIN();
 void Retrieve_CIN_Ri(char *ri);
 
-CSE* Update_CSE(char *json_payload);
-AE* Update_AE(char *json_payload);
-CNT* Update_CNT(char *json_payload);
+void Update_CSE(Node *pnode, char *json_payload);
+void Update_AE(Node *pnode, char *json_payload);
+void Update_CNT(Node *pnode, char *json_payload);
 
 void Set_CSE(CSE* cse);
 void Set_AE(AE* ae, char *pi);
+void Set_AE_Update(AE* before, AE* after);
 void Set_CNT(CNT* cnt, char *pi);
 void Set_CIN(CIN* cin, char *pi);
 
@@ -139,6 +142,8 @@ CSE* Get_CSE();
 AE* Get_AE(char *ri);
 CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);
+
+AE* Update_AE_DB(AE* ae);
 
 CSE* Delete_CSE(char *ri);
 AE* Delete_AE(char *ri);

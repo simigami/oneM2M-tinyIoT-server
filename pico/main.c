@@ -42,13 +42,13 @@ void route() {
 	switch(op) {
 	
 	case o_CREATE:	
-		Create_Object(json_payload, pnode); break;
+		Create_Object(pnode, json_payload); break;
 	
 	case o_RETRIEVE:
 		Retrieve_Object(pnode);	break;
 		
 	case o_UPDATE: 
-		//Update_Object(); break;
+		Update_Object(pnode, json_payload); break;
 		
 	case o_DELETE:
 		Delete_Object(pnode); break;
@@ -75,23 +75,23 @@ void init() {
  	Restruct_ResourceTree();
 }
 
-void Create_Object(char *json_payload, Node *pnode) {
+void Create_Object(Node *pnode, char *json_payload) {
 	ObjectType ty = Parse_ObjectType();
 	switch(ty) {
 		
 	case t_AE :
 		fprintf(stderr,"\x1b[42mCreate AE\x1b[0m\n");
-		Create_AE(json_payload, pnode);
+		Create_AE(pnode, json_payload);
 		break;	
 					
 	case t_CNT :
 		fprintf(stderr,"\x1b[42mCreate CNT\x1b[0m\n");
-		Create_CNT(json_payload, pnode);
+		Create_CNT(pnode, json_payload);
 		break;
 			
 	case t_CIN :
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
-		Create_CIN(json_payload, pnode);
+		Create_CIN(pnode, json_payload);
 		break;
 	case t_CSE :
 		/*No Definition such request*/
@@ -123,7 +123,30 @@ void Retrieve_Object(Node *pnode) {
 	}	
 }
 
-void Create_AE(char *json_payload, Node *pnode) {
+void Update_Object( Node *pnode, char *json_payload) {
+	ObjectType ty = Parse_ObjectType_Body(json_payload);
+	
+	if(ty != pnode->ty) {
+		fprintf(stderr,"Update Object Type Error\n");
+		HTTP_400;
+		printf("Object Type Error");
+		return;
+	}
+	
+	switch(ty) {
+	
+	case t_CSE :
+		break;
+	case t_AE :
+		fprintf(stderr,"\x1b[45mUpdate AE\x1b[0m\n");
+		Update_AE(pnode, json_payload);
+		break;
+	case t_CNT :
+		break;
+	}
+}
+
+void Create_AE(Node *pnode, char *json_payload) {
 	AE* ae = JSON_to_AE(json_payload);
 	Set_AE(ae,pnode->ri);
 	
@@ -141,14 +164,14 @@ void Create_AE(char *json_payload, Node *pnode) {
 	
 	char *resjson = AE_to_json(ae);
 	HTTP_201_CORS;
-	printf("%s",resjson);
+	printf("%s", resjson);
 	free(resjson);
 	Free_AE(ae);
 	resjson = NULL;
 	ae = NULL;
 }
 
-void Create_CNT(char *json_payload, Node *pnode) {
+void Create_CNT(Node *pnode, char *json_payload) {
 	CNT* cnt = JSON_to_CNT(json_payload);
 	Set_CNT(cnt,pnode->ri);
 	
@@ -166,14 +189,14 @@ void Create_CNT(char *json_payload, Node *pnode) {
 	
 	char *resjson = CNT_to_json(cnt);
 	HTTP_201_CORS;
-	printf("%s",resjson);
+	printf("%s", resjson);
 	free(resjson);
 	Free_CNT(cnt);
 	resjson = NULL;
 	cnt = NULL;
 }
 
-void Create_CIN(char *json_payload, Node *pnode) {
+void Create_CIN(Node *pnode, char *json_payload) {
 	CIN* cin = JSON_to_CIN(json_payload);
 	Set_CIN(cin,pnode->ri);
 	
@@ -191,18 +214,41 @@ void Create_CIN(char *json_payload, Node *pnode) {
 	
 	char *resjson = CIN_to_json(cin);
 	HTTP_201_CORS;
-	printf("%s",resjson);
+	printf("%s", resjson);
 	free(resjson);
 	Free_CIN(cin);
 	resjson = NULL;
 	cin = NULL;
 }
 
+void Update_AE(Node *pnode, char *json_payload) {
+	AE* before = Get_AE(pnode->ri);
+	AE* after = JSON_to_AE(json_payload);
+	
+	Set_AE(after, "5-YYYYMMDDTHHMMSS");
+	Set_AE_Update(before, after);
+	Update_AE_DB(after);
+	
+	free(pnode->rn);
+	pnode->rn = (char *)malloc(sizeof(after->rn));
+	strcpy(pnode->rn, after->rn);
+	
+	char *resjson = AE_to_json(after);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_AE(before);
+	Free_AE(after);
+	resjson = NULL;
+	before = NULL;
+	after = NULL;
+}
+
 void Retrieve_CSE(Node *pnode){
 	CSE* gcse = Get_CSE(pnode->ri);
 	char *resjson = CSE_to_json(gcse);
 	HTTP_200_CORS;
-	printf("%s",resjson);
+	printf("%s", resjson);
 	free(resjson);
 	Free_CSE(gcse);
 	resjson = NULL;
@@ -213,7 +259,7 @@ void Retrieve_AE(Node *pnode){
 	AE* gae = Get_AE(pnode->ri);
 	char *resjson = AE_to_json(gae);
 	HTTP_200_CORS;
-	printf("%s",resjson);
+	printf("%s", resjson);
 	free(resjson);
 	Free_AE(gae);
 	resjson = NULL;
@@ -224,7 +270,7 @@ void Retrieve_CNT(Node *pnode){
 	CNT* gcnt = Get_CNT(pnode->ri);
 	char *resjson = CNT_to_json(gcnt);
 	HTTP_200_CORS;
-	printf("%s",resjson);
+	printf("%s", resjson);
 	free(resjson);
 	Free_CNT(gcnt);
 	resjson = NULL;
@@ -235,7 +281,7 @@ void Retrieve_CIN(Node *pnode){
 	CIN* gcin = Get_CIN(pnode->ri);
 	char *resjson = CIN_to_json(gcin);
 	HTTP_200_CORS;
-	printf("%s",resjson);
+	printf("%s", resjson);
 	free(resjson);
 	Free_CIN(gcin);
 	resjson = NULL;

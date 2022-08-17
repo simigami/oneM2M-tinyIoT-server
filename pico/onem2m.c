@@ -88,6 +88,17 @@ Node* Parse_URI(RT *rt) {
 	return node;
 }
 
+Operation Parse_Operation(){
+	Operation op;
+
+	if(strcmp(method, "POST") == 0) op = o_CREATE;
+	else if(strcmp(method, "GET") == 0) op = o_RETRIEVE;
+	else if (strcmp(method, "PUT") == 0) op = o_UPDATE;
+	else if (strcmp(method, "DELETE") == 0) op = o_DELETE;
+
+	return op;	
+}
+
 void Retrieve_CIN_Ri(char *ri) {
 	CIN* gcin = Get_CIN(ri);
 	
@@ -255,29 +266,35 @@ char *Parse_Request_JSON() {
 	return json_payload;
 }
 
-Operation Parse_Operation(){
-	Operation op;
-
-	if(strcmp(method, "POST") == 0) op = o_CREATE;
-	else if(strcmp(method, "GET") == 0) op = o_RETRIEVE;
-	else if (strcmp(method, "PUT") == 0) op = o_UPDATE;
-	else if (strcmp(method, "DELETE") == 0) op = o_DELETE;
-
-	return op;	
-}
-
 ObjectType Parse_ObjectType() {
 	ObjectType ty;
 	char *ct = request_header("Content-Type");
-	int tail = strlen(ct) - 1;
+	ct = strstr(ct, "ty=");
+	int objType = atoi(ct+3);
 	
-	switch(ct[tail]) {
+	switch(objType) {
 	case '2' : ty = t_AE; break;
 	case '3' : ty = t_CNT; break;
 	case '4' : ty = t_CIN; break;
 	case '5' : ty = t_CSE; break;
 	default : ty = 0;
 	}
+	
+	return ty;
+}
+
+ObjectType Parse_ObjectType_Body(char *json_payload) {
+	ObjectType ty;
+	
+	char *cse, *ae, *cnt;
+	
+	cse = strstr(json_payload, "m2m:cse");
+	ae = strstr(json_payload, "m2m:ae");
+	cnt = strstr(json_payload, "m2m:cnt");
+	
+	if(cse) ty = t_CSE;
+	else if(ae) ty = t_AE;
+	else if(cnt) ty = t_CNT;
 	
 	return ty;
 }
@@ -460,6 +477,13 @@ void Set_AE(AE* ae, char *pi) {
 	ae->ty = t_AE;
 	
 	free(now);
+}
+
+void Set_AE_Update(AE* before, AE* after) {
+	strcpy(after->ct, before->ct);
+	strcpy(after->ri, before->ri);
+	strcpy(after->aei, before->aei);
+	strcpy(after->pi, before->pi);
 }
 
 void Set_CNT(CNT* cnt, char *pi) {

@@ -16,6 +16,7 @@
 #define BUF_SIZE 65535
 #define QUEUE_SIZE 1000000
 
+pthread_mutex_t mutex_lock;
 int listenfd;
 int *clients;
 static void start_server(const char *);
@@ -43,6 +44,7 @@ void *respondThread(void *s) {
 }
 
 void serve_forever(const char *PORT) {
+  pthread_mutex_init(&mutex_lock, NULL);
   struct sockaddr_in clientaddr;
   socklen_t addrlen;
   
@@ -238,8 +240,12 @@ void respond(int slot) {
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
     
+    pthread_mutex_lock(&mutex_lock);
+    
     // call router
     route();
+    
+    pthread_mutex_unlock(&mutex_lock);
 
     // tidy up
     fflush(stdout);
