@@ -56,6 +56,8 @@ void route() {
 	default:
 		HTTP_500;
 	}
+	
+	if(json_payload) free(json_payload);
 }
 
 void init() {
@@ -95,6 +97,10 @@ void Create_Object(Node *pnode, char *json_payload) {
 		break;
 	case t_CSE :
 		/*No Definition such request*/
+	default :
+		fprintf(stderr,"Object Type Error (No Content-Type Header)\n");
+		HTTP_400;
+		printf("Object Type Error (No Content-Type Header)\n");
 	}	
 }
 
@@ -221,6 +227,53 @@ void Create_CIN(Node *pnode, char *json_payload) {
 	cin = NULL;
 }
 
+void Retrieve_CSE(Node *pnode){
+	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
+	CSE* gcse = Get_CSE(pnode->ri);
+	char *resjson = CSE_to_json(gcse);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_CSE(gcse);
+	resjson = NULL;
+	gcse = NULL;
+}
+
+void Retrieve_AE(Node *pnode){
+	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
+	AE* gae = Get_AE(pnode->ri);
+	char *resjson = AE_to_json(gae);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_AE(gae);
+	resjson = NULL;
+	gae = NULL;
+}
+
+void Retrieve_CNT(Node *pnode){
+	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
+	CNT* gcnt = Get_CNT(pnode->ri);
+	char *resjson = CNT_to_json(gcnt);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_CNT(gcnt);
+	resjson = NULL;
+	gcnt = NULL;
+}
+
+void Retrieve_CIN(Node *pnode){
+	CIN* gcin = Get_CIN(pnode->ri);
+	char *resjson = CIN_to_json(gcin);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_CIN(gcin);
+	resjson = NULL;
+	gcin = NULL;
+}
+
 void Update_AE(Node *pnode, char *json_payload) {
 	AE* before = Get_AE(pnode->ri);
 	AE* after = JSON_to_AE(json_payload);
@@ -242,50 +295,6 @@ void Update_AE(Node *pnode, char *json_payload) {
 	resjson = NULL;
 	before = NULL;
 	after = NULL;
-}
-
-void Retrieve_CSE(Node *pnode){
-	CSE* gcse = Get_CSE(pnode->ri);
-	char *resjson = CSE_to_json(gcse);
-	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
-	Free_CSE(gcse);
-	resjson = NULL;
-	gcse = NULL;
-}
-
-void Retrieve_AE(Node *pnode){
-	AE* gae = Get_AE(pnode->ri);
-	char *resjson = AE_to_json(gae);
-	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
-	Free_AE(gae);
-	resjson = NULL;
-	gae = NULL;
-}
-
-void Retrieve_CNT(Node *pnode){
-	CNT* gcnt = Get_CNT(pnode->ri);
-	char *resjson = CNT_to_json(gcnt);
-	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
-	Free_CNT(gcnt);
-	resjson = NULL;
-	gcnt = NULL;
-}
-
-void Retrieve_CIN(Node *pnode){
-	CIN* gcin = Get_CIN(pnode->ri);
-	char *resjson = CIN_to_json(gcin);
-	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
-	Free_CIN(gcin);
-	resjson = NULL;
-	gcin = NULL;
 }
 
 void Delete_Object(Node* pnode) {

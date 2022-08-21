@@ -27,10 +27,13 @@ Node* Parse_URI(RT *rt) {
 	
 	uri = strtok(uri, "/");
 	
-	int viewer = 0;
-	if(uri != NULL && !strcmp("viewer",uri)) {
-		viewer = 1;
-		uri = strtok(NULL, "/");
+	int viewer = 0, test = 0;
+	
+	if(uri != NULL) {
+		if(!strcmp("test", uri)) test = 1;
+		else if(!strcmp("viewer", uri)) viewer = 1;
+		
+		if(test || viewer) uri = strtok(NULL, "/");
 	}
 	
 	if(uri != NULL && !strcmp("TinyIoT", uri)) node = rt->root;
@@ -72,10 +75,16 @@ Node* Parse_URI(RT *rt) {
 		if(node) node = node->child;
 	}
 	
-	if(viewer && node) {
-		fprintf(stderr,"OK\n\x1b[43mTree Viewer API\x1b[0m\n");
-		TreeViewerAPI(node);
-		return NULL;
+	if(node) {
+		if(viewer) {
+			fprintf(stderr,"OK\n\x1b[43mTree Viewer API\x1b[0m\n");
+			TreeViewerAPI(node);
+			return NULL;
+		} else if(test) {
+			fprintf(stderr,"OK\n\x1b[43mObject Test API\x1b[0m\n");
+			ObjectTestAPI(node);
+			return NULL;
+		}
 	} else if(!node) {
 		fprintf(stderr,"Invalid\n");
 		HTTP_400;
@@ -182,7 +191,7 @@ void TreeViewerAPI(Node *node) {
 	char *la = strstr(qs,"la=");
 	if(la) cinSize = atoi(la+3);
 	
-	fprintf(stderr,"Latest CIN Size : %d\n",cinSize);
+	fprintf(stderr,"Latest CIN Size : %d\n", cinSize);
 	
 	Tree_data(node, &viewer_data, cinSize);
 	strcat(viewer_data,"]");
@@ -208,13 +217,17 @@ void Tree_data(Node *node, char **viewer_data, int cin_num) {
 	if(node->ty == t_CIN) {
 		Node *cinLatest = Get_CIN_Pi(node->pi);
 		
+		Node *p = cinLatest;
+		
 		cinLatest = LatestCINs(cinLatest, cin_num);
 		
 		while(cinLatest) {
 			char *json = Node_to_json(cinLatest);
 			strcat(*viewer_data, ",");
 			strcat(*viewer_data, json);
-			cinLatest = cinLatest->siblingRight;
+			Node *right = cinLatest->siblingRight;
+			Free_Node(cinLatest);
+			cinLatest = right;
 		}
 		return;
 	}
@@ -251,6 +264,12 @@ Node *LatestCINs(Node* cinList, int num) {
 	return head;
 }
 
+void ObjectTestAPI(Node *node) {
+	HTTP_200_CORS;
+	printf("%d",node->cinSize);
+	return;
+}
+
 char *Parse_Request_JSON() {
 	char *json_payload = malloc(sizeof(char)*payload_size);
 	int index = 0;
@@ -269,15 +288,15 @@ char *Parse_Request_JSON() {
 ObjectType Parse_ObjectType() {
 	ObjectType ty;
 	char *ct = request_header("Content-Type");
+	if(!ct) return 0;
 	ct = strstr(ct, "ty=");
 	int objType = atoi(ct+3);
 	
 	switch(objType) {
-	case '2' : ty = t_AE; break;
-	case '3' : ty = t_CNT; break;
-	case '4' : ty = t_CIN; break;
-	case '5' : ty = t_CSE; break;
-	default : ty = 0;
+	case 2 : ty = t_AE; break;
+	case 3 : ty = t_CNT; break;
+	case 4 : ty = t_CIN; break;
+	case 5 : ty = t_CSE; break;
 	}
 	
 	return ty;
@@ -329,6 +348,8 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 int Add_child(Node *parent, Node *child) {
 	Node *node = parent->child;
 	child->parent = parent;
+	
+	if(child->ty == t_CIN) parent->cinSize++;
 	
 	if(child->ty != t_CIN) fprintf(stderr,"\nAdd Child\n[P] %s\n[C] %s...",parent->rn, child->rn);
 	

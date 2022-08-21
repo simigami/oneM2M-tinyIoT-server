@@ -2043,7 +2043,7 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
     //fprintf(stderr, "<%d>\n", cnt);
 
     //¿ÀºêÁ§Æ® °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    arr = (int*)malloc(sizeof(int) * cnt);
+    arr = (int*)calloc(cnt, sizeof(int));
     //for (int i = 0; i < cnt; i++) arr[i] = 0;
 
     // ÇØŽçÇÏŽÂ ¿ÀºêÁ§Æ®°¡ žî°³ÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
@@ -2187,7 +2187,7 @@ Node* Get_CIN_Pi(char* pi) {
     }
 
     //¿ÀºêÁ§Æ® °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    arr = (int*)malloc(sizeof(int) * cnt);
+    arr = (int*)calloc(cnt, sizeof(int));
     //for (int i = 0; i < cnt; i++) arr[i] = 0;
 
     // ÇØŽçÇÏŽÂ ¿ÀºêÁ§Æ®°¡ žî°³ÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­

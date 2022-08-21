@@ -179,3 +179,4 @@ void init();
 char* Get_LocalTime(int diff);
 void CIN_in_period(Node *pnode);
 Node *LatestCINs(Node *cinList, int num);
+void ObjectTestAPI(Node *node);
