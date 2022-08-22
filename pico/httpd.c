@@ -16,6 +16,7 @@
 #define BUF_SIZE 65535
 #define QUEUE_SIZE 1000000
 
+pthread_mutex_t mutex_lock;
 int listenfd;
 int *clients;
 static void start_server(const char *);
@@ -43,13 +44,13 @@ void *respondThread(void *s) {
 }
 
 void serve_forever(const char *PORT) {
+  pthread_mutex_init(&mutex_lock, NULL);
   struct sockaddr_in clientaddr;
   socklen_t addrlen;
   
   int slot = 0;
 
-  printf("Server started %shttp://127.0.0.1:%s%s\n", "\033[92m", PORT,
-         "\033[0m");
+  fprintf(stderr,"Server started %shttp://192.168.200.141:%s%s\n", "\033[92m", PORT, "\033[0m");
 
   // create shared memory for client slot array
   clients = mmap(NULL, sizeof(*clients) * MAX_CONNECTIONS,
@@ -239,8 +240,12 @@ void respond(int slot) {
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
     
+    pthread_mutex_lock(&mutex_lock);
+    
     // call router
     route();
+    
+    pthread_mutex_unlock(&mutex_lock);
 
     // tidy up
     fflush(stdout);

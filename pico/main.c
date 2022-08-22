@@ -23,44 +23,16 @@ int main(int c, char **v) {
 	return 0;
 }
 
-int file_exists(const char *file_name) {
-	struct stat buffer;
-	int exists;
-
-	exists = (stat(file_name, &buffer) == 0);
-
-	return exists;
-}
-
-int read_file(const char *file_name) {
-	char buf[CHUNK_SIZE];
-	FILE *file;
-	size_t nread;
-	int err = 1;
-
-	file = fopen(file_name, "r");
-
-	if (file) {
-		while ((nread = fread(buf, 1, sizeof buf, file)) > 0) {
-			fwrite(buf, 1, nread, stdout);
-		}
-
-		err = ferror(file);
-		fclose(file);
-	}
-	
-	return err;
-}
-
 void route() {
-	Node* pnode = Validate_URI(rt);
+	Node* pnode = Parse_URI(rt);
 	if(!pnode) return;
 	
-	char *json_payload;
+	char *json_payload = NULL;
 	
 	if(payload_size > 0) {
 		if(!(json_payload = Parse_Request_JSON())) {
 			HTTP_500;
+			fprintf(stderr,"Request Body Parse Fail\n");
 			return;
 		}
 	}
@@ -70,13 +42,13 @@ void route() {
 	switch(op) {
 	
 	case o_CREATE:	
-		Create_Object(json_payload, pnode); break;
+		Create_Object(pnode, json_payload); break;
 	
 	case o_RETRIEVE:
 		Retrieve_Object(pnode);	break;
 		
 	case o_UPDATE: 
-		//Update_Object(); break;
+		Update_Object(pnode, json_payload); break;
 		
 	case o_DELETE:
 		Delete_Object(pnode); break;
@@ -85,7 +57,7 @@ void route() {
 		HTTP_500;
 	}
 	
-	free(json_payload);
+	if(json_payload) free(json_payload);
 }
 
 void init() {
@@ -105,26 +77,30 @@ void init() {
  	Restruct_ResourceTree();
 }
 
-void Create_Object(char *json_payload, Node *pnode) {
+void Create_Object(Node *pnode, char *json_payload) {
 	ObjectType ty = Parse_ObjectType();
 	switch(ty) {
 		
 	case t_AE :
 		fprintf(stderr,"\x1b[42mCreate AE\x1b[0m\n");
-		Create_AE(json_payload, pnode);
+		Create_AE(pnode, json_payload);
 		break;	
 					
 	case t_CNT :
 		fprintf(stderr,"\x1b[42mCreate CNT\x1b[0m\n");
-		Create_CNT(json_payload, pnode);
+		Create_CNT(pnode, json_payload);
 		break;
 			
 	case t_CIN :
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
-		Create_CIN(json_payload, pnode);
+		Create_CIN(pnode, json_payload);
 		break;
 	case t_CSE :
 		/*No Definition such request*/
+	default :
+		fprintf(stderr,"Object Type Error (No Content-Type Header)\n");
+		HTTP_400;
+		printf("Object Type Error (No Content-Type Header)\n");
 	}	
 }
 
@@ -153,7 +129,30 @@ void Retrieve_Object(Node *pnode) {
 	}	
 }
 
-void Create_AE(char *json_payload, Node *pnode) {
+void Update_Object( Node *pnode, char *json_payload) {
+	ObjectType ty = Parse_ObjectType_Body(json_payload);
+	
+	if(ty != pnode->ty) {
+		fprintf(stderr,"Update Object Type Error\n");
+		HTTP_400;
+		printf("Object Type Error");
+		return;
+	}
+	
+	switch(ty) {
+	
+	case t_CSE :
+		break;
+	case t_AE :
+		fprintf(stderr,"\x1b[45mUpdate AE\x1b[0m\n");
+		Update_AE(pnode, json_payload);
+		break;
+	case t_CNT :
+		break;
+	}
+}
+
+void Create_AE(Node *pnode, char *json_payload) {
 	AE* ae = JSON_to_AE(json_payload);
 	Set_AE(ae,pnode->ri);
 	
@@ -170,15 +169,15 @@ void Create_AE(char *json_payload, Node *pnode) {
 	Add_child(pnode,node);
 	
 	char *resjson = AE_to_json(ae);
-	HTTP_201;
-	printf("%s",resjson);
+	HTTP_201_CORS;
+	printf("%s", resjson);
 	free(resjson);
 	Free_AE(ae);
 	resjson = NULL;
 	ae = NULL;
 }
 
-void Create_CNT(char *json_payload, Node *pnode) {
+void Create_CNT(Node *pnode, char *json_payload) {
 	CNT* cnt = JSON_to_CNT(json_payload);
 	Set_CNT(cnt,pnode->ri);
 	
@@ -195,15 +194,15 @@ void Create_CNT(char *json_payload, Node *pnode) {
 	Add_child(pnode,node);
 	
 	char *resjson = CNT_to_json(cnt);
-	HTTP_201;
-	printf("%s",resjson);
+	HTTP_201_CORS;
+	printf("%s", resjson);
 	free(resjson);
 	Free_CNT(cnt);
 	resjson = NULL;
 	cnt = NULL;
 }
 
-void Create_CIN(char *json_payload, Node *pnode) {
+void Create_CIN(Node *pnode, char *json_payload) {
 	CIN* cin = JSON_to_CIN(json_payload);
 	Set_CIN(cin,pnode->ri);
 	
@@ -220,8 +219,8 @@ void Create_CIN(char *json_payload, Node *pnode) {
 	Add_child(pnode,node);
 	
 	char *resjson = CIN_to_json(cin);
-	HTTP_201;
-	printf("%s",resjson);
+	HTTP_201_CORS;
+	printf("%s", resjson);
 	free(resjson);
 	Free_CIN(cin);
 	resjson = NULL;
@@ -229,10 +228,11 @@ void Create_CIN(char *json_payload, Node *pnode) {
 }
 
 void Retrieve_CSE(Node *pnode){
+	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CSE* gcse = Get_CSE(pnode->ri);
 	char *resjson = CSE_to_json(gcse);
-	HTTP_200;
-	printf("%s",resjson);
+	HTTP_200_CORS;
+	printf("%s", resjson);
 	free(resjson);
 	Free_CSE(gcse);
 	resjson = NULL;
@@ -240,10 +240,11 @@ void Retrieve_CSE(Node *pnode){
 }
 
 void Retrieve_AE(Node *pnode){
+	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	AE* gae = Get_AE(pnode->ri);
 	char *resjson = AE_to_json(gae);
-	HTTP_200;
-	printf("%s",resjson);
+	HTTP_200_CORS;
+	printf("%s", resjson);
 	free(resjson);
 	Free_AE(gae);
 	resjson = NULL;
@@ -251,10 +252,11 @@ void Retrieve_AE(Node *pnode){
 }
 
 void Retrieve_CNT(Node *pnode){
+	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CNT* gcnt = Get_CNT(pnode->ri);
 	char *resjson = CNT_to_json(gcnt);
-	HTTP_200;
-	printf("%s",resjson);
+	HTTP_200_CORS;
+	printf("%s", resjson);
 	free(resjson);
 	Free_CNT(gcnt);
 	resjson = NULL;
@@ -264,20 +266,44 @@ void Retrieve_CNT(Node *pnode){
 void Retrieve_CIN(Node *pnode){
 	CIN* gcin = Get_CIN(pnode->ri);
 	char *resjson = CIN_to_json(gcin);
-	HTTP_200;
-	printf("%s",resjson);
+	HTTP_200_CORS;
+	printf("%s", resjson);
 	free(resjson);
 	Free_CIN(gcin);
 	resjson = NULL;
 	gcin = NULL;
 }
 
+void Update_AE(Node *pnode, char *json_payload) {
+	AE* before = Get_AE(pnode->ri);
+	AE* after = JSON_to_AE(json_payload);
+	
+	Set_AE(after, "5-YYYYMMDDTHHMMSS");
+	Set_AE_Update(before, after);
+	Update_AE_DB(after);
+	
+	free(pnode->rn);
+	pnode->rn = (char *)malloc(sizeof(after->rn));
+	strcpy(pnode->rn, after->rn);
+	
+	char *resjson = AE_to_json(after);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_AE(before);
+	Free_AE(after);
+	resjson = NULL;
+	before = NULL;
+	after = NULL;
+}
+
 void Delete_Object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
-	Delete_Node(pnode,1);
+	Delete_Node_Object(pnode,1);
 	pnode = NULL;
-	HTTP_200;
+	HTTP_200_CORS;
 	printf("Deleted");
+	fprintf(stderr,"Good\n");
 }
 
 void Restruct_ResourceTree(){
@@ -348,4 +374,33 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 	}
 	
 	return list;
+}
+
+int file_exists(const char *file_name) {
+	struct stat buffer;
+	int exists;
+
+	exists = (stat(file_name, &buffer) == 0);
+
+	return exists;
+}
+
+int read_file(const char *file_name) {
+	char buf[CHUNK_SIZE];
+	FILE *file;
+	size_t nread;
+	int err = 1;
+
+	file = fopen(file_name, "r");
+
+	if (file) {
+		while ((nread = fread(buf, 1, sizeof buf, file)) > 0) {
+			fwrite(buf, 1, nread, stdout);
+		}
+
+		err = ferror(file);
+		fclose(file);
+	}
+	
+	return err;
 }
