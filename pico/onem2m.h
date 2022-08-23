@@ -162,6 +162,10 @@ void Free_CIN(CIN* cin);
 Node* Get_CIN_Period(char *start_time, char *end_time);
 Node* Get_CIN_Pi(char* pi);
 
+char* Label_To_URI(char* label);
+char* URI_To_Label(char* uri);
+int Store_Label(char* label, char* uri);
+
 //Resource Tree function
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
 int Add_child(Node *parent, Node *child);
@@ -180,3 +184,4 @@ char* Get_LocalTime(int diff);
 void CIN_in_period(Node *pnode);
 Node *LatestCINs(Node *cinList, int num);
 void ObjectTestAPI(Node *node);
+char* JSON_label_value(char *json_payload);

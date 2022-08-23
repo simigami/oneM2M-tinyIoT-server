@@ -24,6 +24,10 @@ int main(int c, char **v) {
 }
 
 void route() {
+	if(Label_To_URI(uri)) {
+		uri = Label_To_URI(uri);
+	}
+
 	Node* pnode = Parse_URI(rt);
 	if(!pnode) return;
 
@@ -46,8 +50,6 @@ void route() {
 	default:
 		HTTP_500;
 	}
-
-	if(payload) free(payload);
 }
 
 void init() {
@@ -68,6 +70,13 @@ void init() {
 }
 
 void Create_Object(Node *pnode, char *payload) {
+	if(!payload) {
+		HTTP_500;
+		fprintf(stderr,"Request Body Parse Error!\n");
+		printf("Request Body Parse Error!\n");
+		return;
+	}
+
 	ObjectType ty = Parse_ObjectType();
 	switch(ty) {
 		
@@ -120,6 +129,13 @@ void Retrieve_Object(Node *pnode) {
 }
 
 void Update_Object( Node *pnode, char *payload) {
+	if(!payload) {
+		HTTP_500;
+		fprintf(stderr,"Request Body Parse Error!\n");
+		printf("Request Body Parse Error!\n");
+		return;
+	}
+
 	ObjectType ty = Parse_ObjectType_Body(payload);
 	
 	if(ty != pnode->ty) {
@@ -170,7 +186,7 @@ void Create_AE(Node *pnode, char *payload) {
 void Create_CNT(Node *pnode, char *payload) {
 	CNT* cnt = JSON_to_CNT(payload);
 	Set_CNT(cnt,pnode->ri);
-	
+
 	int result = Store_CNT(cnt);
 	if(result != 1) { 
 		HTTP_500;

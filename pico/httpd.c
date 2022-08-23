@@ -34,11 +34,15 @@ char *method, // "GET" or "POST"
 int payload_size;
 
 void *respondThread(void *s) {
+  pthread_mutex_lock(&mutex_lock);
+  
 	int *slot = (int *)s;
 
 	respond(*slot);
 	close(clients[*slot]);
 	clients[*slot] = -1;
+
+  pthread_mutex_unlock(&mutex_lock);
 	
 	return NULL;
 }
@@ -234,6 +238,7 @@ void respond(int slot) {
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
+
     if(payload) payload = Remove_Specific_Asterisk();
 
     // bind clientfd to stdout, making it easier to write
@@ -241,12 +246,8 @@ void respond(int slot) {
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
     
-    pthread_mutex_lock(&mutex_lock);
-    
     // call router
     route();
-    
-    pthread_mutex_unlock(&mutex_lock);
 
     // tidy up
     fflush(stdout);
