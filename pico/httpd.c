@@ -224,7 +224,7 @@ void respond(int slot) {
       h->name = key;
       h->value = val;
       h++;
-      //fprintf(stderr, "[H] %s: %s\n", key, val);
+      //fprintf(stderr, "[H] %s: %s\n", key, val); // print request headers 
       
       t = val + 1 + strlen(val);
       if (t[1] == '\r' && t[2] == '\n')
@@ -234,6 +234,7 @@ void respond(int slot) {
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
+    if(payload) payload = Remove_Specific_Asterisk();
 
     // bind clientfd to stdout, making it easier to write
     int clientfd = clients[slot];

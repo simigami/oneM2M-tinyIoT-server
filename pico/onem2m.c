@@ -93,7 +93,7 @@ Node* Parse_URI(RT *rt) {
 	}
 	
 	fprintf(stderr,"OK\n");
-	
+
 	return node;
 }
 
@@ -270,19 +270,17 @@ void ObjectTestAPI(Node *node) {
 	return;
 }
 
-char *Parse_Request_JSON() {
-	char *json_payload = malloc(sizeof(char)*payload_size);
+char *Remove_Specific_Asterisk() {
+	char *ret = calloc(payload_size+1, sizeof(char));
 	int index = 0;
 	
 	for(int i=0; i<payload_size; i++) {
 		if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
-			json_payload[index++] =  payload[i];
+			ret[index++] =  payload[i];
 		}
 	}
 	
-	json_payload[index] = '\0';
-	
-	return json_payload;
+	return ret;
 }
 
 ObjectType Parse_ObjectType() {

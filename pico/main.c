@@ -26,29 +26,19 @@ int main(int c, char **v) {
 void route() {
 	Node* pnode = Parse_URI(rt);
 	if(!pnode) return;
-	
-	char *json_payload = NULL;
-	
-	if(payload_size > 0) {
-		if(!(json_payload = Parse_Request_JSON())) {
-			HTTP_500;
-			fprintf(stderr,"Request Body Parse Fail\n");
-			return;
-		}
-	}
 
 	Operation op = Parse_Operation();
 	
 	switch(op) {
 	
 	case o_CREATE:	
-		Create_Object(pnode, json_payload); break;
+		Create_Object(pnode, payload); break;
 	
 	case o_RETRIEVE:
 		Retrieve_Object(pnode);	break;
 		
 	case o_UPDATE: 
-		Update_Object(pnode, json_payload); break;
+		Update_Object(pnode, payload); break;
 		
 	case o_DELETE:
 		Delete_Object(pnode); break;
@@ -56,8 +46,8 @@ void route() {
 	default:
 		HTTP_500;
 	}
-	
-	if(json_payload) free(json_payload);
+
+	if(payload) free(payload);
 }
 
 void init() {
@@ -77,23 +67,23 @@ void init() {
  	Restruct_ResourceTree();
 }
 
-void Create_Object(Node *pnode, char *json_payload) {
+void Create_Object(Node *pnode, char *payload) {
 	ObjectType ty = Parse_ObjectType();
 	switch(ty) {
 		
 	case t_AE :
 		fprintf(stderr,"\x1b[42mCreate AE\x1b[0m\n");
-		Create_AE(pnode, json_payload);
+		Create_AE(pnode, payload);
 		break;	
 					
 	case t_CNT :
 		fprintf(stderr,"\x1b[42mCreate CNT\x1b[0m\n");
-		Create_CNT(pnode, json_payload);
+		Create_CNT(pnode, payload);
 		break;
 			
 	case t_CIN :
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
-		Create_CIN(pnode, json_payload);
+		Create_CIN(pnode, payload);
 		break;
 	case t_CSE :
 		/*No Definition such request*/
@@ -129,8 +119,8 @@ void Retrieve_Object(Node *pnode) {
 	}	
 }
 
-void Update_Object( Node *pnode, char *json_payload) {
-	ObjectType ty = Parse_ObjectType_Body(json_payload);
+void Update_Object( Node *pnode, char *payload) {
+	ObjectType ty = Parse_ObjectType_Body(payload);
 	
 	if(ty != pnode->ty) {
 		fprintf(stderr,"Update Object Type Error\n");
@@ -145,15 +135,15 @@ void Update_Object( Node *pnode, char *json_payload) {
 		break;
 	case t_AE :
 		fprintf(stderr,"\x1b[45mUpdate AE\x1b[0m\n");
-		Update_AE(pnode, json_payload);
+		Update_AE(pnode, payload);
 		break;
 	case t_CNT :
 		break;
 	}
 }
 
-void Create_AE(Node *pnode, char *json_payload) {
-	AE* ae = JSON_to_AE(json_payload);
+void Create_AE(Node *pnode, char *payload) {
+	AE* ae = JSON_to_AE(payload);
 	Set_AE(ae,pnode->ri);
 	
 	int result = Store_AE(ae);
@@ -177,8 +167,8 @@ void Create_AE(Node *pnode, char *json_payload) {
 	ae = NULL;
 }
 
-void Create_CNT(Node *pnode, char *json_payload) {
-	CNT* cnt = JSON_to_CNT(json_payload);
+void Create_CNT(Node *pnode, char *payload) {
+	CNT* cnt = JSON_to_CNT(payload);
 	Set_CNT(cnt,pnode->ri);
 	
 	int result = Store_CNT(cnt);
@@ -202,8 +192,8 @@ void Create_CNT(Node *pnode, char *json_payload) {
 	cnt = NULL;
 }
 
-void Create_CIN(Node *pnode, char *json_payload) {
-	CIN* cin = JSON_to_CIN(json_payload);
+void Create_CIN(Node *pnode, char *payload) {
+	CIN* cin = JSON_to_CIN(payload);
 	Set_CIN(cin,pnode->ri);
 	
 	int result = Store_CIN(cin);
@@ -274,9 +264,9 @@ void Retrieve_CIN(Node *pnode){
 	gcin = NULL;
 }
 
-void Update_AE(Node *pnode, char *json_payload) {
+void Update_AE(Node *pnode, char *payload) {
 	AE* before = Get_AE(pnode->ri);
-	AE* after = JSON_to_AE(json_payload);
+	AE* after = JSON_to_AE(payload);
 	
 	Set_AE(after, "5-YYYYMMDDTHHMMSS");
 	Set_AE_Update(before, after);

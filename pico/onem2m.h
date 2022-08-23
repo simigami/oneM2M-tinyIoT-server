@@ -92,7 +92,7 @@ Node* Parse_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_Body();
-char *Parse_Request_JSON();
+char *Remove_Specific_Asterisk();
 
 //OneM2M CRUD function
 void Create_Object(Node* pnode, char *json_payload);
