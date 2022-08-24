@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
+#define TREE_VIEWER_DATASIZE 50000
+#define URI_MAX_SIZE 256
 
 int Validate_OneM2M_Standard() {
 	int ret = 1;
@@ -22,35 +24,39 @@ int Validate_OneM2M_Standard() {
 }
 
 Node* Parse_URI(RT *rt) {
-	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri); 
+	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri);
+	char uri_array[URI_MAX_SIZE];
+	char *uri_parse = uri_array;
 	Node *node = NULL;
+
+	strcpy(uri_array, uri);
 	
-	uri = strtok(uri, "/");
+	uri_parse = strtok(uri_parse, "/");
 	
 	int viewer = 0, test = 0;
 	
-	if(uri != NULL) {
-		if(!strcmp("test", uri)) test = 1;
-		else if(!strcmp("viewer", uri)) viewer = 1;
+	if(uri_parse != NULL) {
+		if(!strcmp("test", uri_parse)) test = 1;
+		else if(!strcmp("viewer", uri_parse)) viewer = 1;
 		
-		if(test || viewer) uri = strtok(NULL, "/");
+		if(test || viewer) uri_parse = strtok(NULL, "/");
 	}
 	
-	if(uri != NULL && !strcmp("TinyIoT", uri)) node = rt->root;
+	if(uri_parse != NULL && !strcmp("TinyIoT", uri_parse)) node = rt->root;
 	
-	while(uri != NULL && node) {
+	while(uri_parse != NULL && node) {
 		char *cin_ri;
-		if((cin_ri = strstr(uri, "4-20")) != NULL) {
+		if((cin_ri = strstr(uri_parse, "4-20")) != NULL) {
 			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN By Ri\x1b[0m\n");
 			Retrieve_CIN_Ri(cin_ri);
 			return NULL;
 		}
 	
-		if(!strcmp("la", uri) || !strcmp("latest", uri)) {
+		if(!strcmp("la", uri_parse) || !strcmp("latest", uri_parse)) {
 			while(node->siblingRight) node = node->siblingRight;
 			if(node->ty != t_CIN) node = NULL;
 			break;
-		} else if(!strcmp("ol", uri) || !strcmp("oldest", uri)) {
+		} else if(!strcmp("ol", uri_parse) || !strcmp("oldest", uri_parse)) {
 			while(node) {
 				if(node->ty == t_CIN) break;
 				node = node->siblingRight;
@@ -58,15 +64,15 @@ Node* Parse_URI(RT *rt) {
 			break;
 		}
 		while(node) {
-			if(!strcmp(node->rn,uri)) break;
+			if(!strcmp(node->rn,uri_parse)) break;
 			node = node->siblingRight;
 		}
 		
-		uri = strtok(NULL, "/");
+		uri_parse = strtok(NULL, "/");
 		
-		if(uri == NULL) break;
+		if(uri_parse == NULL) break;
 		
-		if(!strcmp(uri,"cinperiod")) {
+		if(!strcmp(uri_parse, "cinperiod")) {
 			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN in Period\x1b[0m\n");
 			CIN_in_period(node);
 			return NULL;
@@ -93,7 +99,7 @@ Node* Parse_URI(RT *rt) {
 	}
 	
 	fprintf(stderr,"OK\n");
-	
+
 	return node;
 }
 
@@ -176,7 +182,7 @@ void CIN_in_period(Node *pnode) {
 }
 
 void TreeViewerAPI(Node *node) {
-	char *viewer_data = (char *)calloc(10000,sizeof(char));
+	char *viewer_data = (char *)calloc(TREE_VIEWER_DATASIZE,sizeof(char));
 	strcat(viewer_data,"[");
 	
 	Node *p = node;
@@ -195,10 +201,10 @@ void TreeViewerAPI(Node *node) {
 	
 	Tree_data(node, &viewer_data, cinSize);
 	strcat(viewer_data,"]");
-	char res[10000] = "";
+	char res[TREE_VIEWER_DATASIZE] = "";
 	int index = 0;
 	
-	for(int i=0; i<10000; i++) {
+	for(int i=0; i<TREE_VIEWER_DATASIZE; i++) {
 		if(i == 1) continue;
 		if(viewer_data[i] != 0 && viewer_data[i] != 32 && viewer_data[i] != 10 && viewer_data[i] != 9) {
 			res[index++] = viewer_data[i];
@@ -270,19 +276,17 @@ void ObjectTestAPI(Node *node) {
 	return;
 }
 
-char *Parse_Request_JSON() {
-	char *json_payload = malloc(sizeof(char)*payload_size);
+char *Remove_Specific_Asterisk() {
+	char *ret = calloc(payload_size+1, sizeof(char));
 	int index = 0;
 	
 	for(int i=0; i<payload_size; i++) {
 		if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
-			json_payload[index++] =  payload[i];
+			ret[index++] =  payload[i];
 		}
 	}
 	
-	json_payload[index] = '\0';
-	
-	return json_payload;
+	return ret;
 }
 
 ObjectType Parse_ObjectType() {

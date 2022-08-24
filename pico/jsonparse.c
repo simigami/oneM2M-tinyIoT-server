@@ -69,7 +69,7 @@ CNT* JSON_to_CNT(char *json_payload) {
 
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
-
+	
 	cJSON* json = cJSON_Parse(json_payload);
 	if (json == NULL) {
 		const char *error_ptr = cJSON_GetErrorPtr();
@@ -81,7 +81,6 @@ CNT* JSON_to_CNT(char *json_payload) {
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:cnt");
-
 	// rn
 	rn = cJSON_GetObjectItem(root, "rn");
 	if (!cJSON_IsString(rn) && (rn->valuestring == NULL))
@@ -259,4 +258,43 @@ char* CIN_to_json(CIN* cin_object) {
 	cJSON_Delete(root);
 
 	return json;
+}
+
+char* JSON_label_value(char *json_payload) {
+	char *resource = NULL;
+	char *label_value = NULL;
+
+	cJSON *root = NULL;
+	cJSON *lbl = NULL;
+
+	cJSON* json = cJSON_Parse(json_payload);
+	if (json == NULL) {
+		const char *error_ptr = cJSON_GetErrorPtr();
+		if (error_ptr != NULL)
+		{
+			fprintf(stderr, "Error before: %s\n", error_ptr);
+		}
+		goto end;
+	}
+
+	//Extracting resources from json_payload
+	resource = strstr(json_payload, "m2m:");
+	resource = strtok(resource, "\"");
+
+
+	root = cJSON_GetObjectItem(json, resource);
+
+	//lbl
+	lbl = cJSON_GetObjectItem(root, "lbl");
+	if (!cJSON_IsString(lbl) && lbl->valuestring == NULL)
+	{
+		goto end;
+	}
+	label_value = cJSON_Print(lbl);
+	label_value = strtok(label_value, "\"");
+
+end:
+	cJSON_Delete(json);
+
+	return label_value;
 }
