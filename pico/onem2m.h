@@ -38,6 +38,7 @@ typedef struct {
 	char *pi;
 	char *api;
 	char *aei;
+	char *lbl;
 	int ty;
 	bool rr;
 } AE;
@@ -49,6 +50,7 @@ typedef struct {
 	char *rn;
 	char *ri;
 	char *pi;
+	char *lbl;
 	int ty;
 	int st;
 	int cni;
