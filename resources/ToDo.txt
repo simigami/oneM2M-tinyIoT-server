@@ -1,6 +1,6 @@
 코드 주석 달기
 
-요청 헤더 유무 테스트
+요청 헤더 유무 테스트 -> content-type 없으면 segment fault
 
 오브젝트 변수 파악
 
