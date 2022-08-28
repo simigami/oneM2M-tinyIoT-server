@@ -28,8 +28,12 @@ class TestObject:
 
     def createCNT(self):
         res = requests.post(self.host + self.uri, headers=cnt_headers, data=json.dumps(cnt_data))
+
+    def retrieveObject(self):
+        res = requests.get(self.host + self.uri)
+        print(res.content)
     
 
 testCNT = TestObject('/TinyIoT/test_AE1/test_CNT1')
-testCNT.createCIN(1000)
+testCNT.retrieveObject()
 
