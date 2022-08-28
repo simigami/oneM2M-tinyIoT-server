@@ -29,7 +29,10 @@ void route() {
 	}
 
 	Node* pnode = Parse_URI(rt);
-	if(!pnode) return;
+	if(!pnode) {
+		fprintf(stderr,"Parse_URI() return NULL\n");
+		return;
+	}
 
 	Operation op = Parse_Operation();
 	
@@ -154,6 +157,8 @@ void Update_Object( Node *pnode, char *payload) {
 		Update_AE(pnode, payload);
 		break;
 	case t_CNT :
+		fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
+		//Update_CNT(pnode, payload);
 		break;
 	}
 }
@@ -284,7 +289,7 @@ void Update_AE(Node *pnode, char *payload) {
 	AE* before = Get_AE(pnode->ri);
 	AE* after = JSON_to_AE(payload);
 	
-	Set_AE(after, "5-YYYYMMDDTHHMMSS");
+	Set_AE(after, "0-YYYYMMDDTHHMMSS");
 	Set_AE_Update(before, after);
 	Update_AE_DB(after);
 	
@@ -303,13 +308,35 @@ void Update_AE(Node *pnode, char *payload) {
 	after = NULL;
 }
 
+void Update_CNT(Node *pnode, char *payload) {
+	CNT* before = Get_CNT(pnode->ri);
+	CNT* after = JSON_to_CNT(payload);
+	
+	Set_CNT(after, "0-YYYYMMDDTHHMMSS");
+	//Set_CNT_Update(before, after);
+	//Update_CNT_DB(after);
+	
+	free(pnode->rn);
+	pnode->rn = (char *)malloc(sizeof(after->rn));
+	strcpy(pnode->rn, after->rn);
+	
+	char *resjson = CNT_to_json(after);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_CNT(before);
+	Free_CNT(after);
+	resjson = NULL;
+	before = NULL;
+	after = NULL;
+}
+
 void Delete_Object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
 	Delete_Node_Object(pnode,1);
 	pnode = NULL;
 	HTTP_200_CORS;
 	printf("Deleted");
-	fprintf(stderr,"Good\n");
 }
 
 void Restruct_ResourceTree(){
