@@ -3,7 +3,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <curl/curl.h>
 #include "onem2m.h"
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
@@ -16,17 +15,6 @@
 RT *rt;
 
 int main(int c, char **v) {
-	CURL *curl;
-	CURLcode res;
-	char ur[] = "http://127.0.0.1:7000";
-	char postData[] = "hello world!";
-
-	curl = curl_easy_init();
-	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, ur);
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
-		res = curl_easy_perform(curl);
-	}
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 
@@ -42,7 +30,6 @@ void route() {
 
 	Node* pnode = Parse_URI(rt);
 	if(!pnode) {
-		fprintf(stderr,"Parse_URI() return NULL\n");
 		return;
 	}
 
@@ -108,6 +95,10 @@ void Create_Object(Node *pnode, char *payload) {
 	case t_CIN :
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
 		Create_CIN(pnode, payload);
+		break;
+	case t_SUB :
+		fprintf(stderr,"\x1b[42mCreate Sub\x1b[0m\n");
+		Create_Sub(pnode, payload);
 		break;
 	case t_CSE :
 		/*No Definition such request*/
@@ -250,6 +241,31 @@ void Create_CIN(Node *pnode, char *payload) {
 	cin = NULL;
 }
 
+void Create_Sub(Node *pnode, char *payload) {
+	Sub* sub = JSON_to_Sub(payload);
+	Set_Sub(sub, pnode->ri);
+	
+	int result = Store_Sub(sub);
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_Sub(sub);
+		sub = NULL;
+		return;
+	}
+	
+	SubNode* snode = Create_Sub_Node(sub->nu, sub->sub_bit);
+	Add_Sub_Child(pnode,snode);
+	
+	char *resjson = Sub_to_json(sub);
+	HTTP_201_CORS;
+	printf("%s", resjson);
+	free(resjson);
+	Free_Sub(sub);
+	resjson = NULL;
+	sub = NULL;
+}
+
 void Retrieve_CSE(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CSE* gcse = Get_CSE(pnode->ri);
@@ -306,7 +322,7 @@ void Update_AE(Node *pnode, char *payload) {
 	Update_AE_DB(after);
 	
 	free(pnode->rn);
-	pnode->rn = (char *)malloc(sizeof(after->rn));
+	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
 	strcpy(pnode->rn, after->rn);
 	
 	char *resjson = AE_to_json(after);
@@ -329,7 +345,7 @@ void Update_CNT(Node *pnode, char *payload) {
 	//Update_CNT_DB(after);
 	
 	free(pnode->rn);
-	pnode->rn = (char *)malloc(sizeof(after->rn));
+	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
 	strcpy(pnode->rn, after->rn);
 	
 	char *resjson = CNT_to_json(after);

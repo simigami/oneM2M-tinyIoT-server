@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <curl/curl.h>
+#include <math.h>
 #define TREE_VIEWER_DATASIZE 50000
 #define URI_MAX_SIZE 256
 
@@ -183,7 +184,7 @@ void CIN_in_period(Node *pnode) {
 }
 
 void TreeViewerAPI(Node *node) {
-	char *viewer_data = (char *)calloc(TREE_VIEWER_DATASIZE,sizeof(char));
+	char *viewer_data = (char *)malloc(TREE_VIEWER_DATASIZE * sizeof(char));
 	strcat(viewer_data,"[");
 	
 	Node *p = node;
@@ -278,7 +279,7 @@ void ObjectTestAPI(Node *node) {
 }
 
 char *Remove_Specific_Asterisk() {
-	char *ret = calloc(payload_size+1, sizeof(char));
+	char *ret = malloc((payload_size+1) * sizeof(char));
 	int index = 0;
 	
 	for(int i=0; i<payload_size; i++) {
@@ -286,6 +287,7 @@ char *Remove_Specific_Asterisk() {
 			ret[index++] =  payload[i];
 		}
 	}
+	ret[index] = '\0';
 	
 	return ret;
 }
@@ -302,6 +304,7 @@ ObjectType Parse_ObjectType() {
 	case 3 : ty = t_CNT; break;
 	case 4 : ty = t_CIN; break;
 	case 5 : ty = t_CSE; break;
+	case 23 : ty = t_SUB; break;
 	}
 	
 	return ty;
@@ -330,9 +333,9 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 		fprintf(stderr,"\nCreate Tree Node\n[rn] %s\n[ri] %s...", rn, ri);
 	}
 	
-	node->rn = (char*)malloc(sizeof(rn));
-	node->ri = (char*)malloc(sizeof(ri));
-	node->pi = (char*)malloc(sizeof(pi));
+	node->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
+	node->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
 	
 	strcpy(node->rn, rn);
 	strcpy(node->ri, ri);
@@ -340,6 +343,7 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	
 	node->parent = NULL;
 	node->child = NULL;
+	node->subChild = NULL;
 	node->siblingLeft = NULL;
 	node->siblingRight = NULL;
 	node->ty = ty;
@@ -348,6 +352,21 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) fprintf(stderr,"OK\n");
 	
 	return node;
+}
+
+SubNode *Create_Sub_Node(char *nu, int sub_bit) {
+	SubNode* snode = (SubNode*)malloc(sizeof(SubNode));
+
+	snode->nu = (char*)malloc((strlen(nu) + 1) * sizeof(char));
+
+	strcpy(snode->nu, nu);
+
+	snode->parent = NULL;
+	snode->siblingLeft = NULL;
+	snode->siblingRight = NULL;
+	snode->sub_bit = sub_bit;
+
+	return snode;
 }
 
 int Add_child(Node *parent, Node *child) {
@@ -385,6 +404,26 @@ int Add_child(Node *parent, Node *child) {
 	}
 	
 	if(child->ty != t_CIN) fprintf(stderr,"OK\n");
+	
+	return 1;
+}
+
+int Add_Sub_Child(Node *parent, SubNode *child) {
+	SubNode *node = parent->subChild;
+	child->parent = parent;
+	
+	fprintf(stderr,"\nAdd Subscription Child\n[P] %s\n[C] %s...",parent->rn, child->nu);
+	
+	if(!node) {
+		parent->subChild = child;
+	} else if(node) {
+		while(node->siblingRight) node = node->siblingRight;
+			
+		node->siblingRight = child;
+		child->siblingLeft = node;
+	}
+	
+	fprintf(stderr,"OK\n");
 	
 	return 1;
 }
@@ -434,8 +473,9 @@ char *Get_LocalTime(int diff) {
 	sprintf(minute,"%02d",tm.tm_min);
 	sprintf(sec,"%02d",tm.tm_sec);
 	
-	char* now = (char*)calloc(16,sizeof(char));
+	char* now = (char*)malloc(16 * sizeof(char));
 	
+	*now = '\0';
 	strcat(now,year);
 	strcat(now,mon);
 	strcat(now,day);
@@ -453,12 +493,12 @@ void Set_CSE(CSE* cse) {
 	char rn[8] = "TinyIoT";
 	strcat(ri, now);
 	
-	cse->ri = (char*)malloc(sizeof(ri));
-	cse->rn = (char*)malloc(sizeof(rn));
-	cse->ct = (char*)malloc(sizeof(now));
-	cse->lt = (char*)malloc(sizeof(now));
-	cse->csi = (char*)malloc(sizeof(now));
-	cse->pi = (char*)malloc(sizeof("NULL"));
+	cse->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	cse->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
+	cse->ct = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	cse->lt = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	cse->csi = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	cse->pi = (char*)malloc((strlen("NULL") + 1) * sizeof(char));
 	
 	strcpy(cse->ri, ri);
 	strcpy(cse->rn, rn);
@@ -479,19 +519,19 @@ void Set_AE(AE* ae, char *pi) {
 	strcat(ri, now);
 	
 	strcpy(tmp,ae->api);
-	ae->api = (char*)malloc(sizeof(ae->api));
+	ae->api = (char*)malloc((strlen(ae->api) + 1) * sizeof(char));
 	strcpy(ae->api,tmp);
 	
 	strcpy(tmp,ae->rn);
-	ae->rn = (char*)malloc(sizeof(ae->rn));
+	ae->rn = (char*)malloc((strlen(ae->rn) + 1) * sizeof(char));
 	strcpy(ae->rn,tmp);
 	
-	ae->ri = (char*)malloc(sizeof(ri));
-	ae->pi = (char*)malloc(sizeof(pi));
-	ae->et = (char*)malloc(sizeof(now));
-	ae->ct = (char*)malloc(sizeof(now));
-	ae->lt = (char*)malloc(sizeof(now));
-	ae->aei = (char*)malloc(sizeof(now));
+	ae->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	ae->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	ae->et = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	ae->ct = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	ae->lt = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	ae->aei = (char*)malloc((strlen(now) + 1) * sizeof(char));
 	
 	strcpy(ae->ri, ri);
 	strcpy(ae->pi, pi);
@@ -519,14 +559,14 @@ void Set_CNT(CNT* cnt, char *pi) {
 	strcat(ri, now);
 	
 	strcpy(tmp,cnt->rn);
-	cnt->rn = (char*)malloc(sizeof(cnt->rn));
+	cnt->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
 	strcpy(cnt->rn,tmp);
 	
-	cnt->ri = (char*)malloc(sizeof(ri));
-	cnt->pi = (char*)malloc(sizeof(pi));
-	cnt->et = (char*)malloc(sizeof(now));
-	cnt->ct = (char*)malloc(sizeof(now));
-	cnt->lt = (char*)malloc(sizeof(now));
+	cnt->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	cnt->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	cnt->et = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	cnt->ct = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	cnt->lt = (char*)malloc((strlen(now) + 1) * sizeof(char));
 	strcpy(cnt->ri, ri);
 	strcpy(cnt->pi, pi);
 	strcpy(cnt->et, now);
@@ -548,15 +588,15 @@ void Set_CIN(CIN* cin, char *pi) {
 	strcat(ri, now);
 	
 	strcpy(tmp,cin->con);
-	cin->con = (char*)malloc(sizeof(cin->con));
+	cin->con = (char*)malloc((strlen(cin->con) + 1) * sizeof(char));
 	strcpy(cin->con,tmp);
 	
-	cin->rn = (char*)malloc(sizeof(ri));
-	cin->ri = (char*)malloc(sizeof(ri));
-	cin->pi = (char*)malloc(sizeof(pi));
-	cin->et = (char*)malloc(sizeof(now));
-	cin->ct = (char*)malloc(sizeof(now));
-	cin->lt = (char*)malloc(sizeof(now));
+	cin->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	cin->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	cin->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	cin->et = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	cin->ct = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	cin->lt = (char*)malloc((strlen(now) + 1) * sizeof(char));
 	strcpy(cin->rn, ri);
 	strcpy(cin->ri, ri);
 	strcpy(cin->pi, pi);
@@ -567,6 +607,41 @@ void Set_CIN(CIN* cin, char *pi) {
 	cin->ty = t_CIN;
 	cin->st = 0;
 	
+	free(now);
+}
+
+void Set_Sub(Sub* sub, char *pi) {
+	char *now = Get_LocalTime(0);
+	char ri[19] = "23-";
+	char tmp[100];
+	strcat(ri, now);
+
+	strcpy(tmp,sub->rn);
+	sub->rn = (char*)malloc((strlen(sub->rn) + 1) * sizeof(char));
+	strcpy(sub->rn,tmp);
+
+	sub->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	sub->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	sub->et = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	sub->ct = (char*)malloc((strlen(now) + 1) * sizeof(char));
+	sub->lt = (char*)malloc((strlen(now) + 1) * sizeof(char));
+
+	strcpy(sub->ri, ri);
+	strcpy(sub->pi, pi);
+	strcpy(sub->et, now);
+	strcpy(sub->ct, now);
+	strcpy(sub->lt, now);
+	sub->ty = t_SUB;
+	sub->nct = 0;
+	sub->sub_bit = 0;
+
+	int netLen = strlen(sub->net);
+
+	for(int i=0; i<netLen; i++) {
+		int exp = atoi(sub->net+i);
+		if(exp > 0) sub->sub_bit += pow(2, exp - 1);
+	}
+
 	free(now);
 }
 
@@ -611,6 +686,18 @@ void Free_CIN(CIN* cin) {
 	free(cin->pi);
 	free(cin->con);
 	free(cin);
+}
+
+void Free_Sub(Sub* sub) {
+	free(sub->et);
+	free(sub->ct);
+	free(sub->lt);
+	free(sub->rn);
+	free(sub->ri);
+	free(sub->pi);
+	free(sub->nu);
+	free(sub->net);
+	free(sub);
 }
 
 void Send_HTTP_Packet(char *target, char *post_data) {

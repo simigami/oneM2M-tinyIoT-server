@@ -733,6 +733,162 @@ int Store_CIN(CIN *cin_object)
     return 1;
 }
 
+int Store_Sub(Sub *sub_object) {
+    char* DATABASE = "SUB.db";
+
+    DB* dbp;    // db handle
+    DBC* dbcp;
+    FILE* error_file_pointer;
+    DBT key, data;  // storving key and real data
+    int ret;        // template value
+
+    DBT key_rn, key_ri, key_pi, key_nu, key_net, key_ct, key_et, key_lt, key_ty;
+    DBT data_rn, data_ri, data_pi, data_nu, data_net, data_ct, data_et, data_lt, data_ty;  // storving key and real data
+
+    char* program_name = "my_prog";
+
+    // if input == NULL
+    if (sub_object->rn == NULL) sub_object->rn = "";
+    if (sub_object->ri == NULL) sub_object->ri = "";
+    if (sub_object->pi == NULL) sub_object->pi = "";
+    if (sub_object->nu == NULL) sub_object->nu = "";
+    if (sub_object->net == NULL) sub_object->net = "";
+    if (sub_object->ct == NULL) sub_object->ct = "";
+    if (sub_object->et == NULL) sub_object->et = "";
+    if (sub_object->lt == NULL) sub_object->lt = "";
+    if (sub_object->ty == '\0') sub_object->ty = 23;
+
+
+    ret = db_create(&dbp, NULL, 0);
+    if (ret) {
+        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+        printf("File ERROR\n");
+        exit(1);
+    }
+
+    dbp->set_errfile(dbp, error_file_pointer);
+    dbp->set_errpfx(dbp, program_name);
+
+    /*Set duplicate*/
+    ret = dbp->set_flags(dbp, DB_DUP);
+    if (ret != 0) {
+        dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
+        printf("Flag Set ERROR\n");
+        dbp->close(dbp, 0);
+        return(ret);
+    }
+
+    /*DB Open*/
+    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", DATABASE);
+        printf("DB Open ERROR\n");
+        exit(1);
+    }
+
+    /*
+  * The DB handle for a Btree database supporting duplicate data
+  * items is the argument; acquire a cursor for the database.
+  */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        printf("Cursor ERROR");
+        exit(1);
+    }
+
+    /* keyand data must initialize */
+    memset(&key_rn, 0, sizeof(DBT));
+    memset(&key_ri, 0, sizeof(DBT));
+    memset(&key_pi, 0, sizeof(DBT));
+    memset(&key_nu, 0, sizeof(DBT));
+    memset(&key_net, 0, sizeof(DBT));
+    memset(&key_ct, 0, sizeof(DBT));
+    memset(&key_et, 0, sizeof(DBT));
+    memset(&key_lt, 0, sizeof(DBT));
+    memset(&key_ty, 0, sizeof(DBT));
+
+    memset(&data_rn, 0, sizeof(DBT));
+    memset(&data_ri, 0, sizeof(DBT));
+    memset(&data_pi, 0, sizeof(DBT));
+    memset(&data_nu, 0, sizeof(DBT));
+    memset(&data_net, 0, sizeof(DBT));
+    memset(&data_ct, 0, sizeof(DBT));
+    memset(&data_et, 0, sizeof(DBT));
+    memset(&data_lt, 0, sizeof(DBT));
+    memset(&data_ty, 0, sizeof(DBT));
+
+    /* initialize the data to be the first of two duplicate records. */
+    data_rn.data = sub_object->rn;
+    data_rn.size = strlen(sub_object->rn) + 1;
+    key_rn.data = "rn";
+    key_rn.size = strlen("rn") + 1;
+
+    data_ri.data = sub_object->ri;
+    data_ri.size = strlen(sub_object->ri) + 1;
+    key_ri.data = "ri";
+    key_ri.size = strlen("ri") + 1;
+
+    data_pi.data = sub_object->pi;
+    data_pi.size = strlen(sub_object->pi) + 1;
+    key_pi.data = "pi";
+    key_pi.size = strlen("pi") + 1;
+
+    data_nu.data = sub_object->nu;
+    data_nu.size = strlen(sub_object->nu) + 1;
+    key_nu.data = "nu";
+    key_nu.size = strlen("nu") + 1;
+
+    data_net.data = sub_object->net;
+    data_net.size = strlen(sub_object->net) + 1;
+    key_net.data = "net";
+    key_net.size = strlen("net") + 1;
+
+    data_ct.data = sub_object->ct;
+    data_ct.size = strlen(sub_object->ct) + 1;
+    key_ct.data = "ct";
+    key_ct.size = strlen("ct") + 1;
+
+    data_et.data = sub_object->et;
+    data_et.size = strlen(sub_object->et) + 1;
+    key_et.data = "et";
+    key_et.size = strlen("et") + 1;
+
+    data_lt.data = sub_object->lt;
+    data_lt.size = strlen(sub_object->lt) + 1;
+    key_lt.data = "lt";
+    key_lt.size = strlen("lt") + 1;
+
+    data_ty.data = &sub_object->ty;
+    data_ty.size = sizeof(sub_object->ty) + 1;
+    key_ty.data = "ty";
+    key_ty.size = strlen("ty") + 1;
+
+    /* input DB */
+    if ((ret = dbcp->put(dbcp, &key_rn, &data_rn, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_ri, &data_ri, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_pi, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_nu, &data_nu, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_net, &data_net, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_ct, &data_ct, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_et, &data_et, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_lt, &data_lt, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_ty, &data_ty, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+
+    dbcp->close(dbcp);
+    dbp->close(dbp, 0); //DB close
+
+    return 1;
+}
+
 CSE* Get_CSE() {
     fprintf(stderr, "[Get CSE]...");
 

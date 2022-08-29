@@ -35,11 +35,9 @@ int payload_size;
 
 void *respondThread(void *s) {
 	int *slot = (int *)s;
-  fprintf(stderr,"respond()...\n");
 	respond(*slot);
 	close(clients[*slot]);
 	clients[*slot] = -1;
-	
 	return NULL;
 }
 
@@ -79,7 +77,6 @@ void serve_forever(const char *PORT) {
       pthread_create(&threadID, NULL, respondThread, (void*)&slot);
       pthread_join(threadID, NULL);
     
-    
       /*
     	if (fork() == 0) {
     		close(listenfd);
@@ -92,7 +89,6 @@ void serve_forever(const char *PORT) {
 	    }
 	    */
     }
-	
     while (clients[slot] != -1)
       slot = (slot + 1) % MAX_CONNECTIONS;
   }
@@ -185,7 +181,7 @@ void respond(int slot) {
   buf = malloc(BUF_SIZE);
   rcvd = recv(clients[slot], buf, BUF_SIZE, 0);
 
-  if(buf) {
+  if(!buf) {
     fprintf(stderr,"buf read NULL\n");
     free(buf);
     return;
@@ -251,10 +247,8 @@ void respond(int slot) {
     // call router
     route();
     
-    fprintf(stderr,"route() ends successfully.\nmutex unlock\n");
     pthread_mutex_unlock(&mutex_lock);
 
-    fprintf(stderr,"fflush and shutdown stdout\n");
     // tidy up
     fflush(stdout);
     shutdown(STDOUT_FILENO, SHUT_WR);
