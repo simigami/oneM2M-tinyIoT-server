@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
+#include <curl/curl.h>
 #define TREE_VIEWER_DATASIZE 50000
 #define URI_MAX_SIZE 256
 
@@ -610,4 +611,19 @@ void Free_CIN(CIN* cin) {
 	free(cin->pi);
 	free(cin->con);
 	free(cin);
+}
+
+void Send_HTTP_Packet(char *target, char *post_data) {
+	CURL *curl;
+	CURLcode res;
+
+	curl = curl_easy_init();
+	if(curl) {
+		curl_easy_setopt(curl, CURLOPT_URL, target);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+		res = curl_easy_perform(curl);
+	} else {
+		fprintf(stderr,"curl_easy_init() error!\n");
+	}
+	return;
 }

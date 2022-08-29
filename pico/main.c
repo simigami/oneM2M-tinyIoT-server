@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <curl/curl.h>
 #include "onem2m.h"
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
@@ -15,6 +16,17 @@
 RT *rt;
 
 int main(int c, char **v) {
+	CURL *curl;
+	CURLcode res;
+	char ur[] = "http://127.0.0.1:7000";
+	char postData[] = "hello world!";
+
+	curl = curl_easy_init();
+	if(curl) {
+		curl_easy_setopt(curl, CURLOPT_URL, ur);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
+		res = curl_easy_perform(curl);
+	}
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 

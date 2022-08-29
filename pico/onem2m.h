@@ -15,7 +15,8 @@ typedef enum {
 	t_AE = 2,
 	t_CNT,
 	t_CIN,
-	t_CSE
+	t_CSE,
+	t_SUB = 23
 }ObjectType;
 
 // OneM2M Resource struct
@@ -187,3 +188,4 @@ void CIN_in_period(Node *pnode);
 Node *LatestCINs(Node *cinList, int num);
 void ObjectTestAPI(Node *node);
 char* JSON_label_value(char *json_payload);
+void Send_HTTP_Packet(char *target, char *post_data);

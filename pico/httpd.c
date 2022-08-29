@@ -67,18 +67,16 @@ void serve_forever(const char *PORT) {
 
   // ACCEPT connections
   while (1) {
-    fprintf(stderr,"\naccept()...\n");
+
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
-    fprintf(stderr,"accept() success\n");
+
     if (clients[slot] < 0) {
       perror("accept() error");
       exit(1);
     } else {
       
       pthread_t threadID;
-      fprintf(stderr,"thread create\n");
       pthread_create(&threadID, NULL, respondThread, (void*)&slot);
-      fprintf(stderr,"thread join\n");
       pthread_join(threadID, NULL);
     
     
@@ -157,12 +155,10 @@ static void uri_unescape(char *uri) {
   char *src = uri;
   char *dst = uri;
 
-  fprintf(stderr, "skip inital\n");
   // Skip initial non encoded character
   while (*src && !isspace((int)(*src)) && (*src != '%'))
     src++;
 
-  fprintf(stderr, "replace encoded characters\n");
   // Replace encoded characters with corresponding code.
   dst = src;
   while (*src && !isspace((int)(*src))) {
@@ -178,7 +174,7 @@ static void uri_unescape(char *uri) {
     *dst++ = chr;
     src++;
   }
-  fprintf(stderr,"add NULL\n");
+
   *dst = '\0';
 }
 
@@ -188,7 +184,12 @@ void respond(int slot) {
   
   buf = malloc(BUF_SIZE);
   rcvd = recv(clients[slot], buf, BUF_SIZE, 0);
-  fprintf(stderr,"rcvd : %d\n", rcvd);
+
+  if(buf) {
+    fprintf(stderr,"buf read NULL\n");
+    free(buf);
+    return;
+  }
 
   if (rcvd < 0) // receive error
     fprintf(stderr, ("recv() error\n"));
@@ -199,11 +200,8 @@ void respond(int slot) {
     buf[rcvd] = '\0';
 
     method = strtok(buf, " \t\r\n");
-    fprintf(stderr,"strtok method\n");
     uri = strtok(NULL, " \t");
-    fprintf(stderr,"strtok uri\n");
     prot = strtok(NULL, " \t\r\n");
-    fprintf(stderr,"strtok prot\n");
 
     uri_unescape(uri);
     
@@ -242,14 +240,12 @@ void respond(int slot) {
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
-    fprintf(stderr,"flag - 1\n");
     if(payload) payload = Remove_Specific_Asterisk();
-    fprintf(stderr,"flag - 2\n");
     // bind clientfd to stdout, making it easier to write
     int clientfd = clients[slot];
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
-    fprintf(stderr,"flag - 3\n");
+
     pthread_mutex_lock(&mutex_lock);
 
     // call router
@@ -264,7 +260,5 @@ void respond(int slot) {
     shutdown(STDOUT_FILENO, SHUT_WR);
     //close(STDOUT_FILENO);
   }
-
-  fprintf(stderr,"free(buf)\n");
   free(buf);
 }
