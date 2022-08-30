@@ -7,7 +7,9 @@
 #include <time.h>
 #include <curl/curl.h>
 #include <math.h>
-#define TREE_VIEWER_DATASIZE 50000
+#include <ctype.h>
+#include <malloc.h>
+#define TREE_VIEWER_DATASIZE 65536
 #define URI_MAX_SIZE 256
 
 int Validate_OneM2M_Standard() {
@@ -278,18 +280,16 @@ void ObjectTestAPI(Node *node) {
 	return;
 }
 
-char *Remove_Specific_Asterisk() {
-	char *ret = malloc((payload_size+1) * sizeof(char));
+void Remove_Specific_Asterisk_Payload() {
 	int index = 0;
-	
+
 	for(int i=0; i<payload_size; i++) {
-		if(payload[i] != 0 && payload[i] != 32 && payload[i] != 10) {
-			ret[index++] =  payload[i];
+		if(isJSONValidChar(payload[i])) {
+			payload[index++] =  payload[i];
 		}
 	}
-	ret[index] = '\0';
-	
-	return ret;
+
+	payload[index] = '\0';
 }
 
 ObjectType Parse_ObjectType() {
@@ -297,6 +297,7 @@ ObjectType Parse_ObjectType() {
 	char *ct = request_header("Content-Type");
 	if(!ct) return 0;
 	ct = strstr(ct, "ty=");
+	if(!ct) return 0;
 	int objType = atoi(ct+3);
 	
 	switch(objType) {
@@ -354,12 +355,14 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	return node;
 }
 
-SubNode *Create_Sub_Node(char *nu, int sub_bit) {
+SubNode *Create_Sub_Node(char *pi, char *nu, int sub_bit) {
 	SubNode* snode = (SubNode*)malloc(sizeof(SubNode));
 
 	snode->nu = (char*)malloc((strlen(nu) + 1) * sizeof(char));
+	snode->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
 
 	strcpy(snode->nu, nu);
+	strcpy(snode->pi, pi);
 
 	snode->parent = NULL;
 	snode->siblingLeft = NULL;
@@ -487,7 +490,7 @@ char *Get_LocalTime(int diff) {
 	return now;
 }
 
-void Set_CSE(CSE* cse) {
+void Init_CSE(CSE* cse) {
 	char *now = Get_LocalTime(0);
 	char ri[18] = "5-";
 	char rn[8] = "TinyIoT";
@@ -512,7 +515,7 @@ void Set_CSE(CSE* cse) {
 	free(now);
 }
 
-void Set_AE(AE* ae, char *pi) {
+void Init_AE(AE* ae, char *pi) {
 	char *now = Get_LocalTime(0);
 	char ri[18] = "2-";
 	char tmp[100];
@@ -552,7 +555,14 @@ void Set_AE_Update(AE* before, AE* after) {
 	strcpy(after->pi, before->pi);
 }
 
-void Set_CNT(CNT* cnt, char *pi) {
+
+void Set_CNT_Update(CNT* before, CNT* after) {
+	strcpy(after->ct, before->ct);
+	strcpy(after->ri, before->ri);
+	strcpy(after->pi, before->pi);
+}
+
+void Init_CNT(CNT* cnt, char *pi) {
 	char *now = Get_LocalTime(0);
 	char ri[18] = "3-";
 	char tmp[100];
@@ -581,7 +591,7 @@ void Set_CNT(CNT* cnt, char *pi) {
 	free(now);
 }
 
-void Set_CIN(CIN* cin, char *pi) {
+void Init_CIN(CIN* cin, char *pi) {
 	char *now = Get_LocalTime(0);
 	char ri[18] = "4-";
 	char tmp[100];
@@ -610,7 +620,7 @@ void Set_CIN(CIN* cin, char *pi) {
 	free(now);
 }
 
-void Set_Sub(Sub* sub, char *pi) {
+void Init_Sub(Sub* sub, char *pi) {
 	char *now = Get_LocalTime(0);
 	char ri[19] = "23-";
 	char tmp[100];
@@ -639,7 +649,7 @@ void Set_Sub(Sub* sub, char *pi) {
 
 	for(int i=0; i<netLen; i++) {
 		int exp = atoi(sub->net+i);
-		if(exp > 0) sub->sub_bit += pow(2, exp - 1);
+		if(exp > 0) sub->sub_bit = (sub->sub_bit | (int)pow(2, exp - 1));
 	}
 
 	free(now);
@@ -704,6 +714,17 @@ void Send_HTTP_Packet(char *target, char *post_data) {
 	CURL *curl;
 	CURLcode res;
 
+	int size = (int)malloc_usable_size(post_data);
+	int index = 0;
+
+	for(int i=0; i<size; i++) {
+		if(isJSONValidChar(post_data[i])) {
+			post_data[index++] = post_data[i];
+		}
+	}
+
+	post_data[index] = '\0';
+
 	curl = curl_easy_init();
 	if(curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, target);
@@ -713,4 +734,17 @@ void Send_HTTP_Packet(char *target, char *post_data) {
 		fprintf(stderr,"curl_easy_init() error!\n");
 	}
 	return;
+}
+
+void Notice(SubNode *node, char *resjson, Net net) {
+	while(node) {
+		if((net & node->sub_bit) == net) {
+			Send_HTTP_Packet(node->nu, resjson);
+		}
+		node = node->siblingRight;
+	}
+}
+
+int isJSONValidChar(char c) {
+	return ('!' <= c && c <= '~');
 }

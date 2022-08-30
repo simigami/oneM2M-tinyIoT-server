@@ -1587,6 +1587,160 @@ AE* Update_AE_DB(AE* ae) {
     return ae;
 }
 
+CNT* Update_CNT_DB(CNT* cnt_object) {
+
+    char* database = "CNT.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        exit(1);
+    }
+
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int cnt = 0;
+    int idx = 0;
+
+    // ������ ������Ʈ�� ���°���� ã�� ���� Ŀ��
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        exit(1);
+    }
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            idx++;
+            if (strncmp(data.data, cnt_object->ri, data.size) == 0) {
+                cnt++; // update�� CNT�� ri�� �����ϸ� cnt > 0
+                break;
+            }
+        }
+    }
+
+    // ���ڷ� ���� ri�� �������� ������ NULL ��ȯ
+    if (cnt == 0) {
+        fprintf(stderr, "Data not exist\n");
+        return NULL;
+        exit(1);
+    }
+
+    int cnt_rn = 0;
+    int cnt_pi = 0;
+    int cnt_ty = 0;
+    int cnt_et = 0;
+    int cnt_lt = 0;
+    int cnt_ct = 0;
+    int cnt_cni = 0;
+    int cnt_cbs = 0;
+    int cnt_st = 0;
+
+    
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "rn", key.size) == 0) {
+            cnt_rn++;
+            if (cnt_rn == idx) {
+                data.size = strlen(cnt_object->rn) + 1;
+                strcpy(data.data, cnt_object->rn);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+
+        if (strncmp(key.data, "pi", key.size) == 0) {
+            cnt_pi++;
+            if (cnt_pi == idx) {
+                data.size = strlen(cnt_object->pi) + 1;
+                strcpy(data.data, cnt_object->pi);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+        if (strncmp(key.data, "et", key.size) == 0) {
+            cnt_et++;
+            if (cnt_et == idx) {
+                data.size = strlen(cnt_object->et) + 1;
+                strcpy(data.data, cnt_object->et);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+        if (strncmp(key.data, "lt", key.size) == 0) {
+            cnt_lt++;
+            if (cnt_lt == idx) {
+                data.size = strlen(cnt_object->lt) + 1;
+                strcpy(data.data, cnt_object->lt);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+        if (strncmp(key.data, "ct", key.size) == 0) {
+            cnt_ct++;
+            if (cnt_ct == idx) {
+                data.size = strlen(cnt_object->ct) + 1;
+                strcpy(data.data, cnt_object->ct);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+        if (strncmp(key.data, "ty", key.size) == 0) {
+            cnt_ty++;
+            if (cnt_ty == idx) {
+                *(int*)data.data = cnt_object->ty;
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+        if (strncmp(key.data, "cni", key.size) == 0) {
+            cnt_cni++;
+            if (cnt_cni == idx) {
+                *(int*)data.data = cnt_object->cni;
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+        if (strncmp(key.data, "cbs", key.size) == 0) {
+            cnt_cbs++;
+            if (cnt_cbs == idx) {
+                *(int*)data.data = cnt_object->cbs;
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+        if (strncmp(key.data, "st", key.size) == 0) {
+            cnt_st++;
+            if (cnt_st == idx) {
+                *(int*)data.data = cnt_object->st;
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+        }
+    }
+
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        printf("Cursor ERROR\n");
+        exit(0);
+    }
+
+    dbcp->close(dbcp);
+    dbcp->close(dbcp0);
+    dbp->close(dbp, 0); //DB close
+
+    return cnt_object;
+}
+
 AE* Delete_AE(char* ri) {
     fprintf(stderr,"[Delete AE] %s...", ri);
 
@@ -1957,7 +2111,7 @@ Node* Get_All_AE() {
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    Node* head = Create_Node("","","",0);
+    Node* head = (Node *)calloc(1,sizeof(Node));
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -1969,7 +2123,7 @@ Node* Get_All_AE() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = Create_Node("","","",0);
+            node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
             node_pi->siblingRight->siblingLeft = node_pi;
             node_pi = node_pi->siblingRight;
         }
@@ -2060,7 +2214,7 @@ Node* Get_All_CNT() {
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    Node* head = Create_Node("","","",0);
+    Node* head = (Node *)calloc(1,sizeof(Node));
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -2072,7 +2226,7 @@ Node* Get_All_CNT() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = Create_Node("","","",0);
+            node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
             node_pi->siblingRight->siblingLeft = node_pi;
             node_pi = node_pi->siblingRight;
         }
@@ -2163,7 +2317,7 @@ Node* Get_All_CIN() {
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
-    Node* head = Create_Node("","","",0);
+    Node* head = (Node *)calloc(1,sizeof(Node));
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -2175,7 +2329,7 @@ Node* Get_All_CIN() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = Create_Node("","","",0);
+            node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
             node_pi->siblingRight->siblingLeft = node_pi;
             node_pi = node_pi->siblingRight;
         }
@@ -2309,7 +2463,7 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
     //for (int i = 0; i < cnt; i++) printf("%d ", arr[i]);
 
 
-    Node* head = Create_Node("","","",0);
+    Node* head = (Node *)calloc(1,sizeof(Node));
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -2324,7 +2478,7 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
                 //printf("[%d]", idx % cnt);
                 node_pi->pi = malloc(data.size);
                 strcpy(node_pi->pi, data.data);
-                node_pi->siblingRight = Create_Node("","","",0);
+                node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
                 node_pi->siblingRight->siblingLeft = node_pi;
                 node_pi = node_pi->siblingRight;
             }
@@ -2455,7 +2609,7 @@ Node* Get_CIN_Pi(char* pi) {
         exit(1);
     }
 
-    Node* head = Create_Node("","","",0);
+    Node* head = (Node *)calloc(1,sizeof(Node));
     Node* node_ri;
     Node* node_pi;
     Node* node_rn;
@@ -2469,7 +2623,7 @@ Node* Get_CIN_Pi(char* pi) {
                 //printf("[%d]", idx % cnt);
                 node_pi->pi = malloc(data.size);
                 strcpy(node_pi->pi, data.data);
-                node_pi->siblingRight = Create_Node("","","",0);
+                node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
                 node_pi->siblingRight->siblingLeft = node_pi;
                 node_pi = node_pi->siblingRight;
             }

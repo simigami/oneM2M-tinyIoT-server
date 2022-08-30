@@ -59,7 +59,7 @@ void init() {
 	
 	if(access("./CSE.db", 0) == -1) {
 		cse = (CSE*)malloc(sizeof(CSE));
-		Set_CSE(cse);
+		Init_CSE(cse);
 		Store_CSE(cse);
 	} else {
 		cse = Get_CSE();
@@ -161,14 +161,14 @@ void Update_Object( Node *pnode, char *payload) {
 		break;
 	case t_CNT :
 		fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
-		//Update_CNT(pnode, payload);
+		Update_CNT(pnode, payload);
 		break;
 	}
 }
 
 void Create_AE(Node *pnode, char *payload) {
 	AE* ae = JSON_to_AE(payload);
-	Set_AE(ae,pnode->ri);
+	Init_AE(ae,pnode->ri);
 	
 	int result = Store_AE(ae);
 	if(result != 1) { 
@@ -193,7 +193,7 @@ void Create_AE(Node *pnode, char *payload) {
 
 void Create_CNT(Node *pnode, char *payload) {
 	CNT* cnt = JSON_to_CNT(payload);
-	Set_CNT(cnt,pnode->ri);
+	Init_CNT(cnt,pnode->ri);
 
 	int result = Store_CNT(cnt);
 	if(result != 1) { 
@@ -218,7 +218,7 @@ void Create_CNT(Node *pnode, char *payload) {
 
 void Create_CIN(Node *pnode, char *payload) {
 	CIN* cin = JSON_to_CIN(payload);
-	Set_CIN(cin,pnode->ri);
+	Init_CIN(cin,pnode->ri);
 	
 	int result = Store_CIN(cin);
 	if(result != 1) { 
@@ -235,6 +235,7 @@ void Create_CIN(Node *pnode, char *payload) {
 	char *resjson = CIN_to_json(cin);
 	HTTP_201_CORS;
 	printf("%s", resjson);
+	Notice(pnode->subChild, resjson, sub_3);
 	free(resjson);
 	Free_CIN(cin);
 	resjson = NULL;
@@ -243,7 +244,7 @@ void Create_CIN(Node *pnode, char *payload) {
 
 void Create_Sub(Node *pnode, char *payload) {
 	Sub* sub = JSON_to_Sub(payload);
-	Set_Sub(sub, pnode->ri);
+	Init_Sub(sub, pnode->ri);
 	
 	int result = Store_Sub(sub);
 	if(result != 1) { 
@@ -254,12 +255,13 @@ void Create_Sub(Node *pnode, char *payload) {
 		return;
 	}
 	
-	SubNode* snode = Create_Sub_Node(sub->nu, sub->sub_bit);
+	SubNode* snode = Create_Sub_Node(sub->pi, sub->nu, sub->sub_bit);
 	Add_Sub_Child(pnode,snode);
 	
 	char *resjson = Sub_to_json(sub);
 	HTTP_201_CORS;
-	printf("%s", resjson);
+	printf("%s", resjson); 
+	Send_HTTP_Packet(sub->nu, resjson);
 	free(resjson);
 	Free_Sub(sub);
 	resjson = NULL;
@@ -317,7 +319,7 @@ void Update_AE(Node *pnode, char *payload) {
 	AE* before = Get_AE(pnode->ri);
 	AE* after = JSON_to_AE(payload);
 	
-	Set_AE(after, "0-YYYYMMDDTHHMMSS");
+	Init_AE(after, "0-YYYYMMDDTHHMMSS");
 	Set_AE_Update(before, after);
 	Update_AE_DB(after);
 	
@@ -340,9 +342,9 @@ void Update_CNT(Node *pnode, char *payload) {
 	CNT* before = Get_CNT(pnode->ri);
 	CNT* after = JSON_to_CNT(payload);
 	
-	Set_CNT(after, "0-YYYYMMDDTHHMMSS");
-	//Set_CNT_Update(before, after);
-	//Update_CNT_DB(after);
+	Init_CNT(after, "0-YYYYMMDDTHHMMSS");
+	Set_CNT_Update(before, after);
+	Update_CNT_DB(after);
 	
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
@@ -351,6 +353,7 @@ void Update_CNT(Node *pnode, char *payload) {
 	char *resjson = CNT_to_json(after);
 	HTTP_200_CORS;
 	printf("%s", resjson);
+	Notice(pnode->subChild, resjson, sub_1);
 	free(resjson);
 	Free_CNT(before);
 	Free_CNT(after);

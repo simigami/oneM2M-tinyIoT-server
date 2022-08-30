@@ -85,12 +85,20 @@ typedef struct {
 	char *rn;
 	char *ri;
 	char *pi;
-	int ty;
 	char *nu;
 	char *net;
+	int ty;
 	int nct;
 	int sub_bit;
 } Sub;
+
+typedef struct {
+	int a;
+	int b;
+	int c;
+	int d;
+	char *e;
+} Test;
 
 typedef struct Node {
 	struct Node *parent;
@@ -112,8 +120,11 @@ typedef struct SubNode {
 	struct SubNode *siblingLeft;
 	struct SubNode *siblingRight;
 
-	int sub_bit;
 	char *nu;
+	char *pi;
+	char *rn;
+	char *ri;
+	int sub_bit;
 }SubNode;
 
 typedef struct {  
@@ -126,7 +137,7 @@ Node* Parse_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_Body();
-char *Remove_Specific_Asterisk();
+void Remove_Specific_Asterisk_Payload();
 
 //OneM2M CRUD function
 void Create_Object(Node* pnode, char *json_payload);
@@ -149,12 +160,13 @@ void Update_CSE(Node *pnode, char *json_payload);
 void Update_AE(Node *pnode, char *json_payload);
 void Update_CNT(Node *pnode, char *json_payload);
 
-void Set_CSE(CSE* cse);
-void Set_AE(AE* ae, char *pi);
+void Init_CSE(CSE* cse);
+void Init_AE(AE* ae, char *pi);
+void Init_CNT(CNT* cnt, char *pi);
+void Init_CIN(CIN* cin, char *pi);
+void Init_Sub(Sub* sub, char *pi);
 void Set_AE_Update(AE* before, AE* after);
-void Set_CNT(CNT* cnt, char *pi);
-void Set_CIN(CIN* cin, char *pi);
-void Set_Sub(Sub* sub, char *pi);
+void Set_CNT_Update(CNT* before, CNT* after);
 
 CSE* JSON_to_CSE(char *json_payload);
 AE* JSON_to_AE(char *json_payload);
@@ -183,6 +195,7 @@ CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);
 
 AE* Update_AE_DB(AE* ae);
+CNT* Update_CNT_DB(CNT* cnt);
 
 CSE* Delete_CSE(char *ri);
 AE* Delete_AE(char *ri);
@@ -208,7 +221,7 @@ int Store_Label(char* label, char* uri);
 
 //Resource Tree function
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
-SubNode* Create_Sub_Node(char *nu, int sub_bit);
+SubNode* Create_Sub_Node(char *pi, char *nu, int sub_bit);
 int Add_child(Node *parent, Node *child);
 int Add_Sub_Child(Node *parent, SubNode *child);
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
@@ -229,3 +242,5 @@ Node *LatestCINs(Node *cinList, int num);
 void ObjectTestAPI(Node *node);
 char* JSON_label_value(char *json_payload);
 void Send_HTTP_Packet(char *target, char *post_data);
+void Notice(SubNode *node, char *resjson, Net net);
+int isJSONValidChar(char c);

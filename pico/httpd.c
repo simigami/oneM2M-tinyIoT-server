@@ -150,9 +150,9 @@ static void uri_unescape(char *uri) {
   char chr = 0;
   char *src = uri;
   char *dst = uri;
-
+  
   // Skip initial non encoded character
-  while (*src && !isspace((int)(*src)) && (*src != '%'))
+  while (*src && !isspace((int)(*src)) && (*src != '%')) 
     src++;
 
   // Replace encoded characters with corresponding code.
@@ -181,12 +181,6 @@ void respond(int slot) {
   buf = malloc(BUF_SIZE);
   rcvd = recv(clients[slot], buf, BUF_SIZE, 0);
 
-  if(!buf) {
-    fprintf(stderr,"buf read NULL\n");
-    free(buf);
-    return;
-  }
-
   if (rcvd < 0) // receive error
     fprintf(stderr, ("recv() error\n"));
   else if (rcvd == 0) // receive socket closed
@@ -198,6 +192,11 @@ void respond(int slot) {
     method = strtok(buf, " \t\r\n");
     uri = strtok(NULL, " \t");
     prot = strtok(NULL, " \t\r\n");
+
+    if(!uri) {
+      fprintf(stderr,"URI NULL Error!\n");
+      return;
+    }
 
     uri_unescape(uri);
     
@@ -236,7 +235,7 @@ void respond(int slot) {
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
-    if(payload) payload = Remove_Specific_Asterisk();
+    if(payload) Remove_Specific_Asterisk_Payload();
     // bind clientfd to stdout, making it easier to write
     int clientfd = clients[slot];
     dup2(clientfd, STDOUT_FILENO);

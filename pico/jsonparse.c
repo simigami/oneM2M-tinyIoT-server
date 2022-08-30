@@ -164,12 +164,12 @@ Sub* JSON_to_Sub(char *json_payload) {
 
 	// enc
 	enc = cJSON_GetObjectItem(root, "enc");
-	
+
 	// net
 	net = cJSON_GetObjectItem(enc, "net");
 	int net_size = cJSON_GetArraySize(net);
-	char net_str[4] = { '\0' };
-	char tmp[4] = { '\0' };
+	char net_str[10] = { '\0' };
+	char tmp[10] = { '\0' };
 	for (int i = 0; i < net_size; i++) {
 		sprintf(tmp, "%d", cJSON_GetArrayItem(net, i)->valueint);
 		strcat(net_str, tmp);
@@ -177,7 +177,6 @@ Sub* JSON_to_Sub(char *json_payload) {
 			strcat(net_str, ",");
 		}
 	}
-
 	sub->net = (char *)malloc(sizeof(char) * strlen(net_str) + 1);
 	strcpy(sub->net, net_str);
 
@@ -191,9 +190,9 @@ Sub* JSON_to_Sub(char *json_payload) {
 			strcat(nu_str, ",");
 		}
 	}
-	
 	sub->nu = (char *)malloc(sizeof(char) * strlen(nu_str) + 1);
 	strcpy(sub->nu, nu_str);
+
 
 end:
 	cJSON_Delete(json);
