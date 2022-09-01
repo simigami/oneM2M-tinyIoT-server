@@ -231,7 +231,6 @@ void Create_CIN(Node *pnode, char *payload) {
 	
 	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, cin->ty);
 	Add_child(pnode,node);
-	
 	char *resjson = CIN_to_json(cin);
 	HTTP_201_CORS;
 	printf("%s", resjson);
@@ -255,7 +254,7 @@ void Create_Sub(Node *pnode, char *payload) {
 		return;
 	}
 	
-	SubNode* snode = Create_Sub_Node(sub->pi, sub->nu, sub->sub_bit);
+	SubNode* snode = Create_Sub_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sub_bit);
 	Add_Sub_Child(pnode,snode);
 	
 	char *resjson = Sub_to_json(sub);

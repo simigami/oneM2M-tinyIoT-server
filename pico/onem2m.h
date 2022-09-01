@@ -179,6 +179,7 @@ char* AE_to_json(AE* ae_object);
 char* CNT_to_json(CNT* cnt_object);
 char* CIN_to_json(CIN* cin_object);
 char* Sub_to_json(Sub *sub_object);
+char* Noti_to_json(char *sur, int net, char *rep);
 
 //DB function
 int display(char* database);
@@ -221,7 +222,7 @@ int Store_Label(char* label, char* uri);
 
 //Resource Tree function
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
-SubNode* Create_Sub_Node(char *pi, char *nu, int sub_bit);
+SubNode* Create_Sub_Node(char *ri, char *rn, char *pi, char *nu, int sub_bit);
 int Add_child(Node *parent, Node *child);
 int Add_Sub_Child(Node *parent, SubNode *child);
 Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
@@ -243,4 +244,5 @@ void ObjectTestAPI(Node *node);
 char* JSON_label_value(char *json_payload);
 void Send_HTTP_Packet(char *target, char *post_data);
 void Notice(SubNode *node, char *resjson, Net net);
+void RemoveInvalidCharJSON(char* json);
 int isJSONValidChar(char c);

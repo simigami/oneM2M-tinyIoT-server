@@ -355,12 +355,16 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	return node;
 }
 
-SubNode *Create_Sub_Node(char *pi, char *nu, int sub_bit) {
+SubNode *Create_Sub_Node(char *ri, char *rn, char *pi, char *nu, int sub_bit) {
 	SubNode* snode = (SubNode*)malloc(sizeof(SubNode));
 
+	snode->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	snode->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 	snode->nu = (char*)malloc((strlen(nu) + 1) * sizeof(char));
 	snode->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
 
+	strcpy(snode->ri, ri);
+	strcpy(snode->rn, rn);
 	strcpy(snode->nu, nu);
 	strcpy(snode->pi, pi);
 
@@ -714,16 +718,7 @@ void Send_HTTP_Packet(char *target, char *post_data) {
 	CURL *curl;
 	CURLcode res;
 
-	int size = (int)malloc_usable_size(post_data);
-	int index = 0;
-
-	for(int i=0; i<size; i++) {
-		if(isJSONValidChar(post_data[i])) {
-			post_data[index++] = post_data[i];
-		}
-	}
-
-	post_data[index] = '\0';
+	RemoveInvalidCharJSON(post_data);
 
 	curl = curl_easy_init();
 	if(curl) {
@@ -737,14 +732,35 @@ void Send_HTTP_Packet(char *target, char *post_data) {
 }
 
 void Notice(SubNode *node, char *resjson, Net net) {
+	RemoveInvalidCharJSON(resjson);
 	while(node) {
 		if((net & node->sub_bit) == net) {
-			Send_HTTP_Packet(node->nu, resjson);
+			char *sur = (char *)malloc((strlen(uri) + strlen(node->rn) + 2) * sizeof(char));
+			strcpy(sur, uri);
+			strcat(sur, "/");
+			strcat(sur, node->rn);
+			char *noticejson = Noti_to_json(sur, (int)log2((double)net ) + 1, resjson);
+			Send_HTTP_Packet(node->nu, noticejson);
+			free(noticejson);
+			free(sur);
 		}
 		node = node->siblingRight;
 	}
 }
 
-int isJSONValidChar(char c) {
+void RemoveInvalidCharJSON(char* json) {
+	int size = (int)malloc_usable_size(json);
+	int index = 0;
+
+	for(int i=0; i<size; i++) {
+		if(isJSONValidChar(json[i]) && json[i] != '\\') {
+			json[index++] = json[i];
+		}
+	}
+
+	json[index] = '\0';
+}
+
+int isJSONValidChar(char c){
 	return ('!' <= c && c <= '~');
 }
