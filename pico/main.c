@@ -29,7 +29,9 @@ void route() {
 	}
 
 	Node* pnode = Parse_URI(rt);
-	if(!pnode) return;
+	if(!pnode) {
+		return;
+	}
 
 	Operation op = Parse_Operation();
 	
@@ -57,7 +59,7 @@ void init() {
 	
 	if(access("./CSE.db", 0) == -1) {
 		cse = (CSE*)malloc(sizeof(CSE));
-		Set_CSE(cse);
+		Init_CSE(cse);
 		Store_CSE(cse);
 	} else {
 		cse = Get_CSE();
@@ -93,6 +95,10 @@ void Create_Object(Node *pnode, char *payload) {
 	case t_CIN :
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
 		Create_CIN(pnode, payload);
+		break;
+	case t_SUB :
+		fprintf(stderr,"\x1b[42mCreate Sub\x1b[0m\n");
+		Create_Sub(pnode, payload);
 		break;
 	case t_CSE :
 		/*No Definition such request*/
@@ -154,13 +160,15 @@ void Update_Object( Node *pnode, char *payload) {
 		Update_AE(pnode, payload);
 		break;
 	case t_CNT :
+		fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
+		Update_CNT(pnode, payload);
 		break;
 	}
 }
 
 void Create_AE(Node *pnode, char *payload) {
 	AE* ae = JSON_to_AE(payload);
-	Set_AE(ae,pnode->ri);
+	Init_AE(ae,pnode->ri);
 	
 	int result = Store_AE(ae);
 	if(result != 1) { 
@@ -185,7 +193,7 @@ void Create_AE(Node *pnode, char *payload) {
 
 void Create_CNT(Node *pnode, char *payload) {
 	CNT* cnt = JSON_to_CNT(payload);
-	Set_CNT(cnt,pnode->ri);
+	Init_CNT(cnt,pnode->ri);
 
 	int result = Store_CNT(cnt);
 	if(result != 1) { 
@@ -210,7 +218,7 @@ void Create_CNT(Node *pnode, char *payload) {
 
 void Create_CIN(Node *pnode, char *payload) {
 	CIN* cin = JSON_to_CIN(payload);
-	Set_CIN(cin,pnode->ri);
+	Init_CIN(cin,pnode->ri);
 	
 	int result = Store_CIN(cin);
 	if(result != 1) { 
@@ -223,14 +231,40 @@ void Create_CIN(Node *pnode, char *payload) {
 	
 	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, cin->ty);
 	Add_child(pnode,node);
-	
 	char *resjson = CIN_to_json(cin);
 	HTTP_201_CORS;
 	printf("%s", resjson);
+	Notice(pnode->subChild, resjson, sub_3);
 	free(resjson);
 	Free_CIN(cin);
 	resjson = NULL;
 	cin = NULL;
+}
+
+void Create_Sub(Node *pnode, char *payload) {
+	Sub* sub = JSON_to_Sub(payload);
+	Init_Sub(sub, pnode->ri);
+	
+	int result = Store_Sub(sub);
+	if(result != 1) { 
+		HTTP_500;
+		printf("DB Store Fail\n");
+		Free_Sub(sub);
+		sub = NULL;
+		return;
+	}
+	
+	SubNode* snode = Create_Sub_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sub_bit);
+	Add_Sub_Child(pnode,snode);
+	
+	char *resjson = Sub_to_json(sub);
+	HTTP_201_CORS;
+	printf("%s", resjson); 
+	Send_HTTP_Packet(sub->nu, resjson);
+	free(resjson);
+	Free_Sub(sub);
+	resjson = NULL;
+	sub = NULL;
 }
 
 void Retrieve_CSE(Node *pnode){
@@ -284,12 +318,12 @@ void Update_AE(Node *pnode, char *payload) {
 	AE* before = Get_AE(pnode->ri);
 	AE* after = JSON_to_AE(payload);
 	
-	Set_AE(after, "5-YYYYMMDDTHHMMSS");
+	Init_AE(after, "0-YYYYMMDDTHHMMSS");
 	Set_AE_Update(before, after);
 	Update_AE_DB(after);
 	
 	free(pnode->rn);
-	pnode->rn = (char *)malloc(sizeof(after->rn));
+	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
 	strcpy(pnode->rn, after->rn);
 	
 	char *resjson = AE_to_json(after);
@@ -303,13 +337,36 @@ void Update_AE(Node *pnode, char *payload) {
 	after = NULL;
 }
 
+void Update_CNT(Node *pnode, char *payload) {
+	CNT* before = Get_CNT(pnode->ri);
+	CNT* after = JSON_to_CNT(payload);
+	
+	Init_CNT(after, "0-YYYYMMDDTHHMMSS");
+	Set_CNT_Update(before, after);
+	Update_CNT_DB(after);
+	
+	free(pnode->rn);
+	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
+	strcpy(pnode->rn, after->rn);
+	
+	char *resjson = CNT_to_json(after);
+	HTTP_200_CORS;
+	printf("%s", resjson);
+	Notice(pnode->subChild, resjson, sub_1);
+	free(resjson);
+	Free_CNT(before);
+	Free_CNT(after);
+	resjson = NULL;
+	before = NULL;
+	after = NULL;
+}
+
 void Delete_Object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
 	Delete_Node_Object(pnode,1);
 	pnode = NULL;
 	HTTP_200_CORS;
 	printf("Deleted");
-	fprintf(stderr,"Good\n");
 }
 
 void Restruct_ResourceTree(){

@@ -5,7 +5,7 @@ clean:
 	@rm -rf server
 
 server: main.o httpd.o onem2m.o cJSON.o berkeleyDB.o jsonparse.o
-	gcc -o server $^ -ldb -lpthread
+	gcc -o server $^ -ldb -lpthread -lcurl -lm
 
 main.o: main.c onem2m.h
 	gcc -c -o main.o main.c 

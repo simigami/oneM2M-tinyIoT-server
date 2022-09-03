@@ -34,16 +34,10 @@ char *method, // "GET" or "POST"
 int payload_size;
 
 void *respondThread(void *s) {
-  pthread_mutex_lock(&mutex_lock);
-  
 	int *slot = (int *)s;
-
 	respond(*slot);
 	close(clients[*slot]);
 	clients[*slot] = -1;
-
-  pthread_mutex_unlock(&mutex_lock);
-	
 	return NULL;
 }
 
@@ -52,7 +46,7 @@ void serve_forever(const char *PORT) {
   struct sockaddr_in clientaddr;
   socklen_t addrlen;
   
-  int slot = 0;
+  int slot = 0; 
 
   fprintf(stderr,"Server started %shttp://192.168.200.141:%s%s\n", "\033[92m", PORT, "\033[0m");
 
@@ -71,21 +65,19 @@ void serve_forever(const char *PORT) {
 
   // ACCEPT connections
   while (1) {
-    addrlen = sizeof(clientaddr);
+
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
 
     if (clients[slot] < 0) {
       perror("accept() error");
       exit(1);
     } else {
+      
+      pthread_t threadID;
+      pthread_create(&threadID, NULL, respondThread, (void*)&slot);
+      pthread_join(threadID, NULL);
     
-    pthread_t threadID;
-    
-    pthread_create(&threadID, NULL, respondThread, (void*)&slot);
-    pthread_join(threadID, NULL);
-    
-    
-    /*
+      /*
     	if (fork() == 0) {
     		close(listenfd);
 	    	respond(slot);
@@ -97,7 +89,6 @@ void serve_forever(const char *PORT) {
 	    }
 	    */
     }
-	
     while (clients[slot] != -1)
       slot = (slot + 1) % MAX_CONNECTIONS;
   }
@@ -159,9 +150,9 @@ static void uri_unescape(char *uri) {
   char chr = 0;
   char *src = uri;
   char *dst = uri;
-
-  // Skip inital non encoded character
-  while (*src && !isspace((int)(*src)) && (*src != '%'))
+  
+  // Skip initial non encoded character
+  while (*src && !isspace((int)(*src)) && (*src != '%')) 
     src++;
 
   // Replace encoded characters with corresponding code.
@@ -179,13 +170,14 @@ static void uri_unescape(char *uri) {
     *dst++ = chr;
     src++;
   }
+
   *dst = '\0';
 }
 
 // client connection
 void respond(int slot) {
   int rcvd;
-
+  
   buf = malloc(BUF_SIZE);
   rcvd = recv(clients[slot], buf, BUF_SIZE, 0);
 
@@ -200,6 +192,11 @@ void respond(int slot) {
     method = strtok(buf, " \t\r\n");
     uri = strtok(NULL, " \t");
     prot = strtok(NULL, " \t\r\n");
+
+    if(!uri) {
+      fprintf(stderr,"URI NULL Error!\n");
+      return;
+    }
 
     uri_unescape(uri);
     
@@ -238,22 +235,23 @@ void respond(int slot) {
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
-
-    if(payload) payload = Remove_Specific_Asterisk();
-
+    if(payload) Remove_Specific_Asterisk_Payload();
     // bind clientfd to stdout, making it easier to write
     int clientfd = clients[slot];
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
-    
+
+    pthread_mutex_lock(&mutex_lock);
+
     // call router
     route();
+    
+    pthread_mutex_unlock(&mutex_lock);
 
     // tidy up
     fflush(stdout);
     shutdown(STDOUT_FILENO, SHUT_WR);
     //close(STDOUT_FILENO);
   }
-
   free(buf);
 }
