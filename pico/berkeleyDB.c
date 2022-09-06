@@ -752,7 +752,7 @@ int Store_Sub(Sub *sub_object) {
     if (sub_object->ri == NULL) sub_object->ri = "";
     if (sub_object->pi == NULL) sub_object->pi = "";
     if (sub_object->nu == NULL) sub_object->nu = "";
-    if (sub_object->net == NULL) sub_object->net = "";
+    if (sub_object->net == NULL) sub_object->net = "0";
     if (sub_object->ct == NULL) sub_object->ct = "";
     if (sub_object->et == NULL) sub_object->et = "";
     if (sub_object->lt == NULL) sub_object->lt = "";

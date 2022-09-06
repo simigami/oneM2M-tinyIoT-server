@@ -17,7 +17,7 @@ old_library='libavahi-libevent.a'
 inherited_linker_flags=''
 
 # Libraries that this one depends upon.
-dependency_libs=' /home/eom/Downloads/avahi-0.8/avahi-common/libavahi-common.la -levent'
+dependency_libs=' /home/eom/Desktop/Sejong-IoT-Project/pico/avahi-0.8/avahi-common/libavahi-common.la -levent'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''
@@ -39,4 +39,4 @@ dlpreopen=''
 
 # Directory that this library needs to be installed in:
 libdir='/usr/local/lib'
-relink_command="(cd /home/eom/Downloads/avahi-0.8/avahi-libevent; /bin/bash \"/home/eom/Downloads/avahi-0.8/libtool\"  --silent --tag CC --mode=relink gcc -I.. \"-DDEBUG_TRAP=__asm__(\\\"int \\\$3\\\")\" -g -O2 -fstack-protector -std=c99 -Wall -W -Wextra -pedantic -pipe -Wformat -Wold-style-definition -Wdeclaration-after-statement -Wfloat-equal -Wmissing-declarations -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wmissing-noreturn -Wshadow -Wendif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -fdiagnostics-show-option -Wno-cast-qual -fno-strict-aliasing -version-info 1:0:0 -o libavahi-libevent.la -rpath /usr/local/lib libavahi_libevent_la-libevent-watch.lo ../avahi-common/libavahi-common.la -levent @inst_prefix_dir@)"
+relink_command="(cd /home/eom/Desktop/Sejong-IoT-Project/pico/avahi-0.8/avahi-libevent; /bin/bash \"/home/eom/Desktop/Sejong-IoT-Project/pico/avahi-0.8/libtool\"  --silent --tag CC --mode=relink gcc -I.. \"-DDEBUG_TRAP=__asm__(\\\"int \\\$3\\\")\" -g -O2 -fstack-protector -std=c99 -Wall -W -Wextra -pedantic -pipe -Wformat -Wold-style-definition -Wdeclaration-after-statement -Wfloat-equal -Wmissing-declarations -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wmissing-noreturn -Wshadow -Wendif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -fdiagnostics-show-option -Wno-cast-qual -fno-strict-aliasing -version-info 1:0:0 -o libavahi-libevent.la -rpath /usr/local/lib libavahi_libevent_la-libevent-watch.lo ../avahi-common/libavahi-common.la -levent @inst_prefix_dir@)"

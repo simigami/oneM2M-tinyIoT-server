@@ -87,10 +87,6 @@ struct ServiceInfo {
     AVAHI_LLIST_FIELDS(ServiceInfo, info);
 };
 
-//Avahi value
-FILE * SaveURlfile;
-char URl[1000]="http://";
-
 static AvahiSimplePoll *simple_poll = NULL;
 static AvahiClient *client = NULL;
 static int n_all_for_now = 0, n_cache_exhausted = 0, n_resolving = 0;
@@ -174,37 +170,14 @@ static void print_service_line(Config *config, char c, AvahiIfIndex interface, A
                avahi_escape_label(name, strlen(name), &e, &l), type, domain, nl ? "\n" : "");
 
     } else {
-	//make DeviceList
-	FILE* fd;
         char label[AVAHI_LABEL_MAX];
         make_printable(name, label);
-	
-	if(c=='+'){
-		fd=fopen("DeviceList","at");
-		
-		strcat(type,"\n");
-		strcat(label,"\n");
-		strcat(domain,"\n");
-		
-		fputs("Type:        ",fd);
-		fputs(type,fd);
-		fputs("Device Name: ",fd);
-		fputs(label,fd);
-		fputs("Network:     ",fd);
-		fputs(domain,fd);
-		fputs("\n\n",fd);
-		
-		fclose(fd);
-		
-	}
-	
-	/*origin code
+
         printf("%c %6s %4s %-*s %-20s %s\n",
                c,
                interface != AVAHI_IF_UNSPEC ? if_indextoname(interface, ifname) : _("n/a"),
                protocol != AVAHI_PROTO_UNSPEC ? avahi_proto_to_string(protocol) : _("n/a"),
                n_columns-35, label, type, domain);
-        */
     }
 
     fflush(stdout);
@@ -246,21 +219,7 @@ static void service_resolver_callback(
                        address,
                        port,
                        t);
-            else{
-            	SaveURLfile = fopen("../SaveURL", "wt");
-            	sprintf(subport,"%u",port);
-            	strcat(URL,address);
-            	strcat(URL,":");
-            	strcat(URL,subport);
-            	if(SaveURLfile == NULL){
-            		printf("Failed File Open");
-            	}
-            	else{
-            		fputs(URL,SaveURlfile);
-            	}
-            	fclose(SaveURLfile);
-            	
-                /* origin code
+            else
                 printf("   hostname = [%s]\n"
                        "   address = [%s]\n"
                        "   port = [%u]\n"
@@ -269,8 +228,7 @@ static void service_resolver_callback(
                        address,
                        port,
                        t);
-                */
-	    }
+
             avahi_free(t);
 
             break;

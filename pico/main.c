@@ -113,13 +113,26 @@ void Retrieve_Object(Node *pnode) {
 	switch(pnode->ty) {
 		
 	case t_CSE :
-		fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
-		Retrieve_CSE(pnode);
+		if(!strcmp(request_header("X-fc"), "Zeroconf")) {
+			fprintf(stderr,"\x1b[43mCSE Zero-conf\x1b[0m\n");
+			/*
+			FILE *fd;
+			fd=fopen("DeviceList","wt");
+    		fputs("Select Device (Please input type)\n\n\n\n",fd);
+    		fclose(fd);
+    		system("avahi-browse -all");
+			*/
+			HTTP_200_CORS;
+			printf("X-fc : Zeroconf\n");
+		} else {
+			fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
+			Retrieve_CSE(pnode);
+		}
 		break;
 	
 	case t_AE : 
 		fprintf(stderr,"\x1b[43mRetrieve AE\x1b[0m\n");
-		Retrieve_AE(pnode);			
+		Retrieve_AE(pnode);	
 		break;	
 			
 	case t_CNT :
@@ -182,12 +195,12 @@ void Create_AE(Node *pnode, char *payload) {
 	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
 	Add_child(pnode,node);
 	
-	char *resjson = AE_to_json(ae);
+	char *res_json = AE_to_json(ae);
 	HTTP_201_CORS;
-	printf("%s", resjson);
-	free(resjson);
+	printf("%s", res_json);
+	free(res_json);
 	Free_AE(ae);
-	resjson = NULL;
+	res_json = NULL;
 	ae = NULL;
 }
 
@@ -207,12 +220,12 @@ void Create_CNT(Node *pnode, char *payload) {
 	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, cnt->ty);
 	Add_child(pnode,node);
 	
-	char *resjson = CNT_to_json(cnt);
+	char *res_json = CNT_to_json(cnt);
 	HTTP_201_CORS;
-	printf("%s", resjson);
-	free(resjson);
+	printf("%s", res_json);
+	free(res_json);
 	Free_CNT(cnt);
-	resjson = NULL;
+	res_json = NULL;
 	cnt = NULL;
 }
 
@@ -231,13 +244,13 @@ void Create_CIN(Node *pnode, char *payload) {
 	
 	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, cin->ty);
 	Add_child(pnode,node);
-	char *resjson = CIN_to_json(cin);
+	char *res_json = CIN_to_json(cin);
 	HTTP_201_CORS;
-	printf("%s", resjson);
-	Notice(pnode->subChild, resjson, sub_3);
-	free(resjson);
+	printf("%s", res_json);
+	Notify_Sub(pnode->subChild, res_json, sub_3);
+	free(res_json);
 	Free_CIN(cin);
-	resjson = NULL;
+	res_json = NULL;
 	cin = NULL;
 }
 
@@ -254,63 +267,63 @@ void Create_Sub(Node *pnode, char *payload) {
 		return;
 	}
 	
-	SubNode* snode = Create_Sub_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sub_bit);
+	SubNode* snode = Create_Sub_Node(sub->ri, sub->rn, sub->pi, sub->nu, NetToBit(sub->net));
 	Add_Sub_Child(pnode,snode);
 	
-	char *resjson = Sub_to_json(sub);
+	char *res_json = Sub_to_json(sub);
 	HTTP_201_CORS;
-	printf("%s", resjson); 
-	Send_HTTP_Packet(sub->nu, resjson);
-	free(resjson);
+	printf("%s", res_json);
+	Send_HTTP_Packet(sub->nu, res_json);
+	free(res_json);
 	Free_Sub(sub);
-	resjson = NULL;
+	res_json = NULL;
 	sub = NULL;
 }
 
 void Retrieve_CSE(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CSE* gcse = Get_CSE(pnode->ri);
-	char *resjson = CSE_to_json(gcse);
+	char *res_json = CSE_to_json(gcse);
 	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
+	printf("%s", res_json);
+	free(res_json);
 	Free_CSE(gcse);
-	resjson = NULL;
+	res_json = NULL;
 	gcse = NULL;
 }
 
 void Retrieve_AE(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	AE* gae = Get_AE(pnode->ri);
-	char *resjson = AE_to_json(gae);
+	char *res_json = AE_to_json(gae);
 	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
+	printf("%s", res_json);
+	free(res_json);
 	Free_AE(gae);
-	resjson = NULL;
+	res_json = NULL;
 	gae = NULL;
 }
 
 void Retrieve_CNT(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CNT* gcnt = Get_CNT(pnode->ri);
-	char *resjson = CNT_to_json(gcnt);
+	char *res_json = CNT_to_json(gcnt);
 	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
+	printf("%s", res_json);
+	free(res_json);
 	Free_CNT(gcnt);
-	resjson = NULL;
+	res_json = NULL;
 	gcnt = NULL;
 }
 
 void Retrieve_CIN(Node *pnode){
 	CIN* gcin = Get_CIN(pnode->ri);
-	char *resjson = CIN_to_json(gcin);
+	char *res_json = CIN_to_json(gcin);
 	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
+	printf("%s", res_json);
+	free(res_json);
 	Free_CIN(gcin);
-	resjson = NULL;
+	res_json = NULL;
 	gcin = NULL;
 }
 
@@ -326,13 +339,13 @@ void Update_AE(Node *pnode, char *payload) {
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
 	strcpy(pnode->rn, after->rn);
 	
-	char *resjson = AE_to_json(after);
+	char *res_json = AE_to_json(after);
 	HTTP_200_CORS;
-	printf("%s", resjson);
-	free(resjson);
+	printf("%s", res_json);
+	free(res_json);
 	Free_AE(before);
 	Free_AE(after);
-	resjson = NULL;
+	res_json = NULL;
 	before = NULL;
 	after = NULL;
 }
@@ -349,14 +362,14 @@ void Update_CNT(Node *pnode, char *payload) {
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
 	strcpy(pnode->rn, after->rn);
 	
-	char *resjson = CNT_to_json(after);
+	char *res_json = CNT_to_json(after);
 	HTTP_200_CORS;
-	printf("%s", resjson);
-	Notice(pnode->subChild, resjson, sub_1);
-	free(resjson);
+	printf("%s", res_json);
+	Notify_Sub(pnode->subChild, res_json, sub_1);
+	free(res_json);
 	Free_CNT(before);
 	Free_CNT(after);
-	resjson = NULL;
+	res_json = NULL;
 	before = NULL;
 	after = NULL;
 }
