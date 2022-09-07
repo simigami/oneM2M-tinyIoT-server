@@ -87,18 +87,10 @@ typedef struct {
 	char *pi;
 	char *nu;
 	char *net;
+	char *sur;
 	int ty;
 	int nct;
-	int sub_bit;
 } Sub;
-
-typedef struct {
-	int a;
-	int b;
-	int c;
-	int d;
-	char *e;
-} Test;
 
 typedef struct Node {
 	struct Node *parent;
@@ -124,7 +116,8 @@ typedef struct SubNode {
 	char *pi;
 	char *rn;
 	char *ri;
-	int sub_bit;
+	char *sur;
+	int net;
 }SubNode;
 
 typedef struct {  
@@ -139,11 +132,12 @@ ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_Body();
 void Remove_Specific_Asterisk_Payload();
 
-//OneM2M CRUD function
+//oneM2M CRUD(N) function
 void Create_Object(Node* pnode, char *json_payload);
 void Retrieve_Object(Node *pnode);
 void Update_Object(Node *pnode, char *json_payload);
 void Delete_Object();
+void Notify_Sub(SubNode *node, char *resjson, Net net);
 
 void Create_AE(Node *pnode, char *json_payload);
 void Create_CNT(Node *pnode, char *json_payload);
@@ -243,6 +237,6 @@ Node *LatestCINs(Node *cinList, int num);
 void ObjectTestAPI(Node *node);
 char* JSON_label_value(char *json_payload);
 void Send_HTTP_Packet(char *target, char *post_data);
-void Notice(SubNode *node, char *resjson, Net net);
 void RemoveInvalidCharJSON(char* json);
 int isJSONValidChar(char c);
+int NetToBit(char *net);

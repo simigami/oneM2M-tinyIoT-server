@@ -122,12 +122,12 @@ void Retrieve_CIN_Ri(char *ri) {
 	CIN* gcin = Get_CIN(ri);
 	
 	if(gcin) {
-		char *resjson = CIN_to_json(gcin);
+		char *res_json = CIN_to_json(gcin);
 		HTTP_200_CORS;
-		printf("%s",resjson);
-		free(resjson);
+		printf("%s",res_json);
+		free(res_json);
 		Free_CIN(gcin);
-		resjson = NULL;
+		res_json = NULL;
 		gcin = NULL;
 	} else {
 		fprintf(stderr,"There is no such CIN ri = %s\n",ri);
@@ -168,11 +168,11 @@ void CIN_in_period(Node *pnode) {
 	while(cin) {
 		if(!strcmp(cin->pi, pnode->ri)) {
 			CIN* gcin = Get_CIN(cin->ri);
-			char *resjson = CIN_to_json(gcin);
-			printf("%s\n",resjson);
-			free(resjson);
+			char *res_json = CIN_to_json(gcin);
+			printf("%s\n",res_json);
+			free(res_json);
 			Free_CIN(gcin);
-			resjson = NULL;
+			res_json = NULL;
 			gcin = NULL;
 		}
 		cin = cin->siblingRight;
@@ -355,7 +355,7 @@ Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty){
 	return node;
 }
 
-SubNode *Create_Sub_Node(char *ri, char *rn, char *pi, char *nu, int sub_bit) {
+SubNode *Create_Sub_Node(char *ri, char *rn, char *pi, char *nu, int net) {
 	SubNode* snode = (SubNode*)malloc(sizeof(SubNode));
 
 	snode->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -371,7 +371,7 @@ SubNode *Create_Sub_Node(char *ri, char *rn, char *pi, char *nu, int sub_bit) {
 	snode->parent = NULL;
 	snode->siblingLeft = NULL;
 	snode->siblingRight = NULL;
-	snode->sub_bit = sub_bit;
+	snode->net = net;
 
 	return snode;
 }
@@ -439,19 +439,26 @@ void Delete_Node_Object(Node *node, int flag) {
 	Node *left = node->siblingLeft;
 	Node *right = node->siblingRight;
 	
-	if(!left) node->parent->child = right;
-	
 	if(flag == 1) {
-		if(left) left->siblingRight = node->siblingRight;
+		if(left) left->siblingRight = right;
+		else node->parent->child = right;
+		if(right) right->siblingLeft = left;
 	} else {
-		if(node->siblingRight) Delete_Node_Object(node->siblingRight, 0);
+		if(right) Delete_Node_Object(right, 0);
 	}
 	
 	if(node->child) Delete_Node_Object(node->child, 0);
 	
 	switch(node->ty) {
-	case t_AE : Delete_AE(node->ri); break;
-	case t_CNT : Delete_CNT(node->ri); break;
+	case t_AE : 
+		Delete_AE(node->ri); 
+		break;
+	case t_CNT : 
+		Delete_CNT(node->ri); 
+		char *res_json = (char*)malloc(sizeof("Deleted") + 1);
+		strcpy(res_json, "Deleted");
+		Notify_Sub(node->subChild,res_json,sub_2); 
+		break;
 	}
 	
 	fprintf(stderr,"Free_Node : %s...",node->rn);
@@ -647,14 +654,6 @@ void Init_Sub(Sub* sub, char *pi) {
 	strcpy(sub->lt, now);
 	sub->ty = t_SUB;
 	sub->nct = 0;
-	sub->sub_bit = 0;
-
-	int netLen = strlen(sub->net);
-
-	for(int i=0; i<netLen; i++) {
-		int exp = atoi(sub->net+i);
-		if(exp > 0) sub->sub_bit = (sub->sub_bit | (int)pow(2, exp - 1));
-	}
 
 	free(now);
 }
@@ -731,17 +730,17 @@ void Send_HTTP_Packet(char *target, char *post_data) {
 	return;
 }
 
-void Notice(SubNode *node, char *resjson, Net net) {
-	RemoveInvalidCharJSON(resjson);
+void Notify_Sub(SubNode *node, char *res_json, Net net) {
+	RemoveInvalidCharJSON(res_json);
 	while(node) {
-		if((net & node->sub_bit) == net) {
+		if((net & node->net) == net) {
 			char *sur = (char *)malloc((strlen(uri) + strlen(node->rn) + 2) * sizeof(char));
 			strcpy(sur, uri);
 			strcat(sur, "/");
 			strcat(sur, node->rn);
-			char *noticejson = Noti_to_json(sur, (int)log2((double)net ) + 1, resjson);
-			Send_HTTP_Packet(node->nu, noticejson);
-			free(noticejson);
+			char *noti_json = Noti_to_json(sur, (int)log2((double)net ) + 1, res_json);
+			Send_HTTP_Packet(node->nu, noti_json);
+			free(noti_json);
 			free(sur);
 		}
 		node = node->siblingRight;
@@ -763,4 +762,16 @@ void RemoveInvalidCharJSON(char* json) {
 
 int isJSONValidChar(char c){
 	return ('!' <= c && c <= '~');
+}
+
+int NetToBit(char *net) {
+	int netLen = strlen(net);
+	int ret = 0;
+
+	for(int i=0; i<netLen; i++) {
+		int exp = atoi(net+i);
+		if(exp > 0) ret = (ret | (int)pow(2, exp - 1));
+	}
+
+	return ret;
 }
