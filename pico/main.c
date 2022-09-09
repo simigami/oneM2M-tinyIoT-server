@@ -65,7 +65,7 @@ void init() {
 		cse = Get_CSE();
 	}
 	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, t_CSE);
+ 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, "\0", "\0", 0, t_CSE);
  	Free_CSE(cse);
  	cse = NULL;
  	Restruct_ResourceTree();
@@ -96,16 +96,19 @@ void Create_Object(Node *pnode, char *payload) {
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
 		Create_CIN(pnode, payload);
 		break;
+
 	case t_SUB :
 		fprintf(stderr,"\x1b[42mCreate Sub\x1b[0m\n");
 		Create_Sub(pnode, payload);
 		break;
+
 	case t_CSE :
 		/*No Definition such request*/
+
 	default :
-		fprintf(stderr,"Object Type Error (No Content-Type Header)\n");
+		fprintf(stderr,"Object Type Error (Content-Type Header Invalid)\n");
 		HTTP_400;
-		printf("Object Type Error (No Content-Type Header)\n");
+		printf("Object Type Error\n");
 	}	
 }
 
@@ -113,15 +116,7 @@ void Retrieve_Object(Node *pnode) {
 	switch(pnode->ty) {
 		
 	case t_CSE :
-		if(!strcmp(request_header("X-fc"), "Zeroconf")) {
-			fprintf(stderr,"\x1b[43mCSE Zero-conf\x1b[0m\n");
-			/*
-			FILE *fd;
-			fd=fopen("DeviceList","wt");
-    		fputs("Select Device (Please input type)\n\n\n\n",fd);
-    		fclose(fd);
-    		system("avahi-browse -all");
-			*/
+		if(request_header("X-fc") && !strcmp(request_header("X-fc"), "Zeroconf")) {
 			HTTP_200_CORS;
 			printf("X-fc : Zeroconf\n");
 		} else {
@@ -142,7 +137,9 @@ void Retrieve_Object(Node *pnode) {
 			
 	case t_CIN :
 		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
-		Retrieve_CIN(pnode);			
+		Retrieve_CIN(pnode);
+	case t_SUB :
+		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");			
 		break;
 	}	
 }
@@ -192,7 +189,7 @@ void Create_AE(Node *pnode, char *payload) {
 		return;
 	}
 	
-	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, ae->ty);
+	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, "\0", "\0", 0, t_AE);
 	Add_child(pnode,node);
 	
 	char *res_json = AE_to_json(ae);
@@ -217,7 +214,7 @@ void Create_CNT(Node *pnode, char *payload) {
 		return;
 	}
 	
-	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, cnt->ty);
+	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, "\0", "\0", 0, t_CNT);
 	Add_child(pnode,node);
 	
 	char *res_json = CNT_to_json(cnt);
@@ -242,12 +239,12 @@ void Create_CIN(Node *pnode, char *payload) {
 		return;
 	}
 	
-	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, cin->ty);
+	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, "\0", "\0", 0, t_CIN);
 	Add_child(pnode,node);
 	char *res_json = CIN_to_json(cin);
 	HTTP_201_CORS;
 	printf("%s", res_json);
-	Notify_Sub(pnode->subChild, res_json, sub_3);
+	Notify_Object(pnode->child, res_json, sub_3);
 	free(res_json);
 	Free_CIN(cin);
 	res_json = NULL;
@@ -267,8 +264,8 @@ void Create_Sub(Node *pnode, char *payload) {
 		return;
 	}
 	
-	SubNode* snode = Create_Sub_Node(sub->ri, sub->rn, sub->pi, sub->nu, NetToBit(sub->net));
-	Add_Sub_Child(pnode,snode);
+	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, NetToBit(sub->net), t_SUB);
+	Add_child(pnode,node);
 	
 	char *res_json = Sub_to_json(sub);
 	HTTP_201_CORS;
@@ -365,7 +362,7 @@ void Update_CNT(Node *pnode, char *payload) {
 	char *res_json = CNT_to_json(after);
 	HTTP_200_CORS;
 	printf("%s", res_json);
-	Notify_Sub(pnode->subChild, res_json, sub_1);
+	Notify_Object(pnode->child, res_json, sub_1);
 	free(res_json);
 	Free_CNT(before);
 	Free_CNT(after);
@@ -383,7 +380,7 @@ void Delete_Object(Node* pnode) {
 }
 
 void Restruct_ResourceTree(){
-	Node *node_list = Create_Node("","","",0);
+	Node *node_list = (Node *)calloc(1,sizeof(Node));
 	Node *tail = node_list;
 	
 	if(access("./AE.db", 0) != -1) {

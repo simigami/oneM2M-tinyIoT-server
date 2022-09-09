@@ -97,35 +97,24 @@ typedef struct Node {
 	struct Node *child;
 	struct Node *siblingLeft;
 	struct Node *siblingRight;
-	struct SubNode *subChild;
 	
 	char *rn;
 	char *ri;
 	char *pi;
+	char *nu;
+	char *sur;
 	ObjectType ty;
 	
 	int cinSize;
-}Node;
-
-typedef struct SubNode {
-	struct Node *parent;
-	struct SubNode *siblingLeft;
-	struct SubNode *siblingRight;
-
-	char *nu;
-	char *pi;
-	char *rn;
-	char *ri;
-	char *sur;
 	int net;
-}SubNode;
+}Node;
 
 typedef struct {  
 	Node *root;
 }RT;
 
 //Request parse function
-int Validate_OneM2M_Standard();
+int Validate_oneM2M_Standard();
 Node* Parse_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
@@ -137,7 +126,7 @@ void Create_Object(Node* pnode, char *json_payload);
 void Retrieve_Object(Node *pnode);
 void Update_Object(Node *pnode, char *json_payload);
 void Delete_Object();
-void Notify_Sub(SubNode *node, char *resjson, Net net);
+void Notify_Object(Node *node, char *resjson, Net net);
 
 void Create_AE(Node *pnode, char *json_payload);
 void Create_CNT(Node *pnode, char *json_payload);
@@ -215,11 +204,8 @@ char* URI_To_Label(char* uri);
 int Store_Label(char* label, char* uri);
 
 //Resource Tree function
-Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
-SubNode* Create_Sub_Node(char *ri, char *rn, char *pi, char *nu, int sub_bit);
+Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, int net, ObjectType ty);
 int Add_child(Node *parent, Node *child);
-int Add_Sub_Child(Node *parent, SubNode *child);
-Node* Create_Node(char *ri, char *rn, char *pi, ObjectType ty);
 char* Node_to_json(Node *node);
 void Delete_Node_Object(Node *node, int flag);
 void Free_Node(Node *node);
@@ -240,3 +226,4 @@ void Send_HTTP_Packet(char *target, char *post_data);
 void RemoveInvalidCharJSON(char* json);
 int isJSONValidChar(char c);
 int NetToBit(char *net);
+char *resource_identifier(ObjectType ty, char *ct);
