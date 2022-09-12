@@ -31,9 +31,10 @@ void bindfd(int slot);
 
 // Response
 #define RESPONSE_PROTOCOL "HTTP/1.1"
+#define RESPONSE_CORS_HEADERS "Access-Control-Allow-Origin: *\nAccess-Control-Allow-Headers: Accept, Accept-Language, Content-Language, Content-Type"
 
-#define HTTP_200_CORS printf("%s 200 OK\nAccess-Control-Allow-Origin: *\nAccess-Control-Allow-Headers: Accept, Accept-Language, Content-Language, Content-Type\n\n", RESPONSE_PROTOCOL);
-#define HTTP_201_CORS printf("%s 201 Created\nAccess-Control-Allow-Origin: *\nAccess-Control-Allow-Headers: Accept, Accept-Language, Content-Language, Content-Type\n\n", RESPONSE_PROTOCOL);
+#define HTTP_200_CORS printf("%s 200 OK\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_HEADERS)
+#define HTTP_201_CORS printf("%s 201 Created\n%s\n\n",RESPONSE_PROTOCOL, RESPONSE_HEADERS)
 #define HTTP_200 printf("%s 200 OK\n\n", RESPONSE_PROTOCOL)
 #define HTTP_201 printf("%s 201 Created\n\n", RESPONSE_PROTOCOL)
 #define HTTP_400 printf("%s 400 Bad Request\n\n", RESPONSE_PROTOCOL)
