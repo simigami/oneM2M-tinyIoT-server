@@ -222,17 +222,10 @@ void CIN_in_period(Node *pnode);
 Node* LatestCINs(Node *cinList, int num);
 void ObjectTestAPI(Node *node);
 char* JSON_label_value(char *json_payload);
-char* Send_HTTP_Packet(char *target, char *post_data);
 void RemoveInvalidCharJSON(char* json);
 int isJSONValidChar(char c);
 int NetToBit(char *net);
 char* resource_identifier(ObjectType ty, char *ct);
-struct url_data {
-
-    size_t size;
-
-    char* data;
-
-};
-char *handle_url(char* url);
+struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
+char* Send_HTTP_Packet(char *target, char *post_data);

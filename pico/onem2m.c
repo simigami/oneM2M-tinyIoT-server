@@ -698,28 +698,6 @@ void Free_Sub(Sub* sub) {
 	free(sub);
 }
 
-char *Send_HTTP_Packet(char *target, char *post_data) {
-	CURL *curl;
-	CURLcode res;
-	char *res_data = (char *)malloc(sizeof(char) * 4096);
-
-	RemoveInvalidCharJSON(post_data);
-
-	curl = curl_easy_init();
-	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, target);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &res_data);
-		if(post_data) curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
-
-		res = curl_easy_perform(curl);
-	} else {
-		fprintf(stderr,"curl_easy_init() error!\n");
-	}
-
-	return res_data;
-}
-
 void Notify_Object(Node *node, char *res_json, Net net) {
 	RemoveInvalidCharJSON(res_json);
 	while(node) {
@@ -792,68 +770,39 @@ char *resource_identifier(ObjectType ty, char *ct) {
 
 
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data) {
-
     size_t index = data->size;
-
     size_t n = (size * nmemb);
-
     char* tmp;
-
-
 
     data->size += (size * nmemb);
 
-
-
 #ifdef DEBUG
-
     fprintf(stderr, "data at %p size=%ld nmemb=%ld\n", ptr, size, nmemb);
-
 #endif
-
     tmp = realloc(data->data, data->size + 1); /* +1 for '\0' */
 
-
-
     if(tmp) {
-
         data->data = tmp;
-
     } else {
-
         if(data->data) {
-
             free(data->data);
-
         }
-
         fprintf(stderr, "Failed to allocate memory.\n");
-
         return 0;
-
     }
 
-
-
     memcpy((data->data + index), ptr, n);
-
     data->data[data->size] = '\0';
 
-
-
     return size * nmemb;
-
 }
 
-
-
-char *handle_url(char* url) {
-
+char *Send_HTTP_Packet(char* target, char *post_data) {
     CURL *curl;
     struct url_data data;
 
     data.size = 0;
-    data.data = malloc(4096); /* reasonable size initial buffer */
+    data.data = malloc(4096 * sizeof(char)); /* reasonable size initial buffer */
 
     if(NULL == data.data) {
         fprintf(stderr, "Failed to allocate memory.\n");
@@ -868,7 +817,8 @@ char *handle_url(char* url) {
 
     if (curl) {
 
-        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_URL, target);
+		if(post_data) curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
 
@@ -879,7 +829,7 @@ char *handle_url(char* url) {
                         curl_easy_strerror(res));
         }
         curl_easy_cleanup(curl);
-
     }
+
     return data.data;
 }

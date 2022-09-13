@@ -118,7 +118,7 @@ void Retrieve_Object(Node *pnode) {
 	case t_CSE :
 		if(request_header("X-fc") && !strcmp(request_header("X-fc"), "Zeroconf")) {
 			fprintf(stderr,"\x1b[43mRetrieve CSE Zero-conf\x1b[0m\n");
-			char *res = handle_url("http://1.239.141.151:8500/?fc=Zeroconf");
+			char *res = Send_HTTP_Packet("http://1.239.141.151:8500/?fc=Zeroconf", NULL);
 			HTTP_200_CORS;
 			printf("%s", res);
 		} else {
