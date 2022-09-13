@@ -123,7 +123,7 @@ void Retrieve_CIN_Ri(char *ri) {
 	
 	if(gcin) {
 		char *res_json = CIN_to_json(gcin);
-		HTTP_200_CORS;
+		HTTP_200_JSON;
 		printf("%s",res_json);
 		free(res_json);
 		Free_CIN(gcin);
@@ -698,30 +698,14 @@ void Free_Sub(Sub* sub) {
 	free(sub);
 }
 
-void Send_HTTP_Packet(char *target, char *post_data) {
-	CURL *curl;
-	CURLcode res;
-
-	RemoveInvalidCharJSON(post_data);
-
-	curl = curl_easy_init();
-	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, target);
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
-		res = curl_easy_perform(curl);
-	} else {
-		fprintf(stderr,"curl_easy_init() error!\n");
-	}
-	return;
-}
-
 void Notify_Object(Node *node, char *res_json, Net net) {
 	RemoveInvalidCharJSON(res_json);
 	while(node) {
 		if(node->ty == t_SUB && (net & node->net) == net) {
 			char *noti_json = Noti_to_json(node->sur, (int)log2((double)net ) + 1, res_json);
-			Send_HTTP_Packet(node->nu, noti_json);
+			char *res = Send_HTTP_Packet(node->nu, noti_json);
 			free(noti_json);
+			free(res);
 		}
 		node = node->siblingRight;
 	}
@@ -782,4 +766,70 @@ char *resource_identifier(ObjectType ty, char *ct) {
 	strcat(ri, ran);
 
 	return ri;
+}
+
+
+size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data) {
+    size_t index = data->size;
+    size_t n = (size * nmemb);
+    char* tmp;
+
+    data->size += (size * nmemb);
+
+#ifdef DEBUG
+    fprintf(stderr, "data at %p size=%ld nmemb=%ld\n", ptr, size, nmemb);
+#endif
+    tmp = realloc(data->data, data->size + 1); /* +1 for '\0' */
+
+    if(tmp) {
+        data->data = tmp;
+    } else {
+        if(data->data) {
+            free(data->data);
+        }
+        fprintf(stderr, "Failed to allocate memory.\n");
+        return 0;
+    }
+
+    memcpy((data->data + index), ptr, n);
+    data->data[data->size] = '\0';
+
+    return size * nmemb;
+}
+
+char *Send_HTTP_Packet(char* target, char *post_data) {
+    CURL *curl;
+    struct url_data data;
+
+    data.size = 0;
+    data.data = malloc(4096 * sizeof(char)); /* reasonable size initial buffer */
+
+    if(NULL == data.data) {
+        fprintf(stderr, "Failed to allocate memory.\n");
+        return NULL;
+    }
+
+    data.data[0] = '\0';
+
+    CURLcode res;
+
+    curl = curl_easy_init();
+
+    if (curl) {
+
+        curl_easy_setopt(curl, CURLOPT_URL, target);
+		if(post_data) curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
+
+        res = curl_easy_perform(curl);
+
+        if(res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                        curl_easy_strerror(res));
+        }
+        curl_easy_cleanup(curl);
+    }
+
+    return data.data;
 }

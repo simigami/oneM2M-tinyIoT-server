@@ -74,8 +74,8 @@ void init() {
 void Create_Object(Node *pnode, char *payload) {
 	if(!payload) {
 		HTTP_500;
-		fprintf(stderr,"Request Body Parse Error!\n");
-		printf("Request Body Parse Error!\n");
+		fprintf(stderr,"Request Body Parse Error\n");
+		printf("{\"dbg\": \"request body parse error\"}");
 		return;
 	}
 
@@ -108,7 +108,7 @@ void Create_Object(Node *pnode, char *payload) {
 	default :
 		fprintf(stderr,"Object Type Error (Content-Type Header Invalid)\n");
 		HTTP_400;
-		printf("Object Type Error\n");
+		printf("{\"dbg\": \"object type error (Content-Type header invalid)\"}");
 	}	
 }
 
@@ -117,8 +117,10 @@ void Retrieve_Object(Node *pnode) {
 		
 	case t_CSE :
 		if(request_header("X-fc") && !strcmp(request_header("X-fc"), "Zeroconf")) {
+			fprintf(stderr,"\x1b[43mRetrieve CSE Zero-conf\x1b[0m\n");
+			char *res = Send_HTTP_Packet("http://1.239.141.151:8500/?fc=Zeroconf", NULL);
 			HTTP_200_CORS;
-			printf("X-fc : Zeroconf\n");
+			printf("%s", res);
 		} else {
 			fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
 			Retrieve_CSE(pnode);
@@ -147,8 +149,8 @@ void Retrieve_Object(Node *pnode) {
 void Update_Object( Node *pnode, char *payload) {
 	if(!payload) {
 		HTTP_500;
-		fprintf(stderr,"Request Body Parse Error!\n");
-		printf("Request Body Parse Error!\n");
+		fprintf(stderr,"Request Body Parse Error\n");
+		printf("{\"dbg\": \"request body parse error\"\n}");
 		return;
 	}
 
@@ -157,7 +159,7 @@ void Update_Object( Node *pnode, char *payload) {
 	if(ty != pnode->ty) {
 		fprintf(stderr,"Update Object Type Error\n");
 		HTTP_400;
-		printf("Object Type Error");
+		printf("{\"dbg\": \"object type error\"}");
 		return;
 	}
 	
@@ -183,7 +185,7 @@ void Create_AE(Node *pnode, char *payload) {
 	int result = Store_AE(ae);
 	if(result != 1) { 
 		HTTP_500;
-		printf("DB Store Fail\n");
+		printf("{\"dbg\": \"DB store fail\"}");
 		Free_AE(ae);
 		ae = NULL;
 		return;
@@ -193,7 +195,7 @@ void Create_AE(Node *pnode, char *payload) {
 	Add_child(pnode,node);
 	
 	char *res_json = AE_to_json(ae);
-	HTTP_201_CORS;
+	HTTP_201_JSON;
 	printf("%s", res_json);
 	free(res_json);
 	Free_AE(ae);
@@ -208,7 +210,7 @@ void Create_CNT(Node *pnode, char *payload) {
 	int result = Store_CNT(cnt);
 	if(result != 1) { 
 		HTTP_500;
-		printf("DB Store Fail\n");
+		printf("{\"dbg\": \"DB store fail\"}");
 		Free_CNT(cnt);
 		cnt = NULL;
 		return;
@@ -218,7 +220,7 @@ void Create_CNT(Node *pnode, char *payload) {
 	Add_child(pnode,node);
 	
 	char *res_json = CNT_to_json(cnt);
-	HTTP_201_CORS;
+	HTTP_201_JSON;
 	printf("%s", res_json);
 	free(res_json);
 	Free_CNT(cnt);
@@ -233,7 +235,7 @@ void Create_CIN(Node *pnode, char *payload) {
 	int result = Store_CIN(cin);
 	if(result != 1) { 
 		HTTP_500;
-		printf("DB Store Fail\n");
+		printf("{\"dbg\": \"DB store fail\"}");
 		Free_CIN(cin);
 		cin = NULL;
 		return;
@@ -242,7 +244,7 @@ void Create_CIN(Node *pnode, char *payload) {
 	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, "\0", "\0", 0, t_CIN);
 	Add_child(pnode,node);
 	char *res_json = CIN_to_json(cin);
-	HTTP_201_CORS;
+	HTTP_201_JSON;
 	printf("%s", res_json);
 	Notify_Object(pnode->child, res_json, sub_3);
 	free(res_json);
@@ -258,7 +260,7 @@ void Create_Sub(Node *pnode, char *payload) {
 	int result = Store_Sub(sub);
 	if(result != 1) { 
 		HTTP_500;
-		printf("DB Store Fail\n");
+		printf("{\"dbg\": \"DB store fail\"}");
 		Free_Sub(sub);
 		sub = NULL;
 		return;
@@ -268,9 +270,10 @@ void Create_Sub(Node *pnode, char *payload) {
 	Add_child(pnode,node);
 	
 	char *res_json = Sub_to_json(sub);
-	HTTP_201_CORS;
+	HTTP_201_JSON;
 	printf("%s", res_json);
-	Send_HTTP_Packet(sub->nu, res_json);
+	char *res = Send_HTTP_Packet(sub->nu, res_json);
+	free(res);
 	free(res_json);
 	Free_Sub(sub);
 	res_json = NULL;
@@ -281,7 +284,7 @@ void Retrieve_CSE(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CSE* gcse = Get_CSE(pnode->ri);
 	char *res_json = CSE_to_json(gcse);
-	HTTP_200_CORS;
+	HTTP_200_JSON;
 	printf("%s", res_json);
 	free(res_json);
 	Free_CSE(gcse);
@@ -293,7 +296,7 @@ void Retrieve_AE(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	AE* gae = Get_AE(pnode->ri);
 	char *res_json = AE_to_json(gae);
-	HTTP_200_CORS;
+	HTTP_200_JSON;
 	printf("%s", res_json);
 	free(res_json);
 	Free_AE(gae);
@@ -305,7 +308,7 @@ void Retrieve_CNT(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CNT* gcnt = Get_CNT(pnode->ri);
 	char *res_json = CNT_to_json(gcnt);
-	HTTP_200_CORS;
+	HTTP_200_JSON;
 	printf("%s", res_json);
 	free(res_json);
 	Free_CNT(gcnt);
@@ -316,7 +319,7 @@ void Retrieve_CNT(Node *pnode){
 void Retrieve_CIN(Node *pnode){
 	CIN* gcin = Get_CIN(pnode->ri);
 	char *res_json = CIN_to_json(gcin);
-	HTTP_200_CORS;
+	HTTP_200_JSON;
 	printf("%s", res_json);
 	free(res_json);
 	Free_CIN(gcin);
@@ -337,7 +340,7 @@ void Update_AE(Node *pnode, char *payload) {
 	strcpy(pnode->rn, after->rn);
 	
 	char *res_json = AE_to_json(after);
-	HTTP_200_CORS;
+	HTTP_200_JSON;
 	printf("%s", res_json);
 	free(res_json);
 	Free_AE(before);
@@ -360,7 +363,7 @@ void Update_CNT(Node *pnode, char *payload) {
 	strcpy(pnode->rn, after->rn);
 	
 	char *res_json = CNT_to_json(after);
-	HTTP_200_CORS;
+	HTTP_200_JSON;
 	printf("%s", res_json);
 	Notify_Object(pnode->child, res_json, sub_1);
 	free(res_json);
@@ -375,8 +378,8 @@ void Delete_Object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
 	Delete_Node_Object(pnode,1);
 	pnode = NULL;
-	HTTP_200_CORS;
-	printf("Deleted");
+	HTTP_200_JSON;
+	printf("{\"m2m:dbg\": \"object deleted succesessfully\"}");
 }
 
 void Restruct_ResourceTree(){
