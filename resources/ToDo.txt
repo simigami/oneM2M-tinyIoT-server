@@ -11,3 +11,7 @@ m2m:cnt 이런 필수 키 값 없으면 segment fault
 json parse 함수에 payload 넣으면 payload 값 변조되고 segment fault
 
 free 할 것들 점검 (Segment fault 조심)
+
+already existed 구현
+
+validate oneM2M 구현
