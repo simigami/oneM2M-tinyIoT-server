@@ -19,7 +19,7 @@ int main(int c, char **v) {
  	char *port = c == 1 ? "3000" : v[1];
 
 	serve_forever(port);
-  
+    
 	return 0;
 }
 
@@ -75,7 +75,14 @@ void Create_Object(Node *pnode, char *payload) {
 	if(!payload) {
 		HTTP_500;
 		fprintf(stderr,"Request Body Parse Error\n");
-		printf("{\"dbg\": \"request body parse error\"}");
+		printf("{\"m2m:dbg\": \"request body parse error\"}");
+		return;
+	}
+
+	if(duplicate_resource_check(pnode, payload)) {
+		HTTP_209_JSON;
+		fprintf(stderr,"Resource is Duplicated\n");
+		printf("{\"m2m:dbg\": \"resource is already exist\"}");
 		return;
 	}
 
@@ -106,9 +113,9 @@ void Create_Object(Node *pnode, char *payload) {
 		/*No Definition such request*/
 
 	default :
-		fprintf(stderr,"Object Type Error (Content-Type Header Invalid)\n");
+		fprintf(stderr,"Resource Type Error (Content-Type Header Invalid)\n");
 		HTTP_400;
-		printf("{\"dbg\": \"object type error (Content-Type header invalid)\"}");
+		printf("{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}");
 	}	
 }
 
@@ -118,9 +125,6 @@ void Retrieve_Object(Node *pnode) {
 	case t_CSE :
 		if(request_header("X-fc") && !strcmp(request_header("X-fc"), "Zeroconf")) {
 			fprintf(stderr,"\x1b[43mRetrieve CSE Zero-conf\x1b[0m\n");
-			char *res = Send_HTTP_Packet("http://1.239.141.151:8500/?fc=Zeroconf", NULL);
-			HTTP_200_CORS;
-			printf("%s", res);
 		} else {
 			fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
 			Retrieve_CSE(pnode);
@@ -140,6 +144,7 @@ void Retrieve_Object(Node *pnode) {
 	case t_CIN :
 		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
 		Retrieve_CIN(pnode);
+		break;
 	case t_SUB :
 		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");			
 		break;
@@ -150,16 +155,16 @@ void Update_Object( Node *pnode, char *payload) {
 	if(!payload) {
 		HTTP_500;
 		fprintf(stderr,"Request Body Parse Error\n");
-		printf("{\"dbg\": \"request body parse error\"\n}");
+		printf("{\"m2m:dbg\": \"request body parse error\"\n}");
 		return;
 	}
 
 	ObjectType ty = Parse_ObjectType_Body(payload);
 	
 	if(ty != pnode->ty) {
-		fprintf(stderr,"Update Object Type Error\n");
+		fprintf(stderr,"Update Resource Type Error\n");
 		HTTP_400;
-		printf("{\"dbg\": \"object type error\"}");
+		printf("{\"m2m:dbg\": \"resource type error\"}");
 		return;
 	}
 	
@@ -185,7 +190,7 @@ void Create_AE(Node *pnode, char *payload) {
 	int result = Store_AE(ae);
 	if(result != 1) { 
 		HTTP_500;
-		printf("{\"dbg\": \"DB store fail\"}");
+		printf("{\"m2m:dbg\": \"DB store fail\"}");
 		Free_AE(ae);
 		ae = NULL;
 		return;
@@ -210,7 +215,7 @@ void Create_CNT(Node *pnode, char *payload) {
 	int result = Store_CNT(cnt);
 	if(result != 1) { 
 		HTTP_500;
-		printf("{\"dbg\": \"DB store fail\"}");
+		printf("{\"m2m:dbg\": \"DB store fail\"}");
 		Free_CNT(cnt);
 		cnt = NULL;
 		return;
@@ -235,7 +240,7 @@ void Create_CIN(Node *pnode, char *payload) {
 	int result = Store_CIN(cin);
 	if(result != 1) { 
 		HTTP_500;
-		printf("{\"dbg\": \"DB store fail\"}");
+		printf("{\"m2m:dbg\": \"DB store fail\"}");
 		Free_CIN(cin);
 		cin = NULL;
 		return;
@@ -260,7 +265,7 @@ void Create_Sub(Node *pnode, char *payload) {
 	int result = Store_Sub(sub);
 	if(result != 1) { 
 		HTTP_500;
-		printf("{\"dbg\": \"DB store fail\"}");
+		printf("{\"m2m:dbg\": \"DB store fail\"}");
 		Free_Sub(sub);
 		sub = NULL;
 		return;
@@ -379,7 +384,7 @@ void Delete_Object(Node* pnode) {
 	Delete_Node_Object(pnode,1);
 	pnode = NULL;
 	HTTP_200_JSON;
-	printf("{\"m2m:dbg\": \"object deleted succesessfully\"}");
+	printf("{\"m2m:dbg\": \"resource deleted succesessfully\"}");
 }
 
 void Restruct_ResourceTree(){

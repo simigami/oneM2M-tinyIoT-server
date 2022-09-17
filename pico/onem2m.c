@@ -57,17 +57,17 @@ Node* Parse_URI(RT *rt) {
 		}
 	
 		if(!strcmp("la", uri_parse) || !strcmp("latest", uri_parse)) {
-			while(node->siblingRight) node = node->siblingRight;
-			if(node->ty != t_CIN) node = NULL;
-			break;
+			while(node->siblingRight) {
+				if(node->ty == t_CIN && node->siblingRight->ty != t_CIN) break;
+				node = node->siblingRight;
+			}
 		} else if(!strcmp("ol", uri_parse) || !strcmp("oldest", uri_parse)) {
 			while(node) {
 				if(node->ty == t_CIN) break;
 				node = node->siblingRight;
 			}
-			break;
 		}
-		while(node) {
+		while(node && node->ty != t_CIN) {
 			if(!strcmp(node->rn,uri_parse)) break;
 			node = node->siblingRight;
 		}
@@ -98,7 +98,7 @@ Node* Parse_URI(RT *rt) {
 	} else if(!node) {
 		fprintf(stderr,"Invalid\n");
 		HTTP_400;
-		printf("Invalid URI\n");
+		printf("{\"m2m:dbg\": \"invalid object\"}");
 		return NULL;
 	}
 	
@@ -118,6 +118,19 @@ Operation Parse_Operation(){
 	return op;	
 }
 
+int duplicate_resource_check(Node *pnode, char *payload) {
+	Node* node = pnode->child;
+	char* rn = Get_JSON_Value("rn",payload);
+	if(!rn) return 0;
+
+	while(node) {
+		if(!strcmp(node->rn, rn)) return 1;
+		node = node->siblingRight;
+	}
+
+	return 0;
+}
+
 void Retrieve_CIN_Ri(char *ri) {
 	CIN* gcin = Get_CIN(ri);
 	
@@ -132,7 +145,7 @@ void Retrieve_CIN_Ri(char *ri) {
 	} else {
 		fprintf(stderr,"There is no such CIN ri = %s\n",ri);
 		HTTP_400;
-		printf("Invalid URI\n");
+		printf("{\"m2m:dbg\": \"invalid object\"}");
 	}
 }
 
@@ -279,8 +292,8 @@ Node *LatestCINs(Node* cinList, int num) {
 }
 
 void ObjectTestAPI(Node *node) {
-	HTTP_200_CORS;
-	printf("%d",node->cinSize);
+	HTTP_200_JSON;
+	printf("{\"cin-size\": %d}",node->cinSize);
 	return;
 }
 
@@ -818,16 +831,20 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
     if (curl) {
 
         curl_easy_setopt(curl, CURLOPT_URL, target);
-		if(post_data) curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+		if(post_data){
+			RemoveInvalidCharJSON(post_data);
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+		}
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
 
         res = curl_easy_perform(curl);
-
+		/*
         if(res != CURLE_OK) {
                 fprintf(stderr, "curl_easy_perform() failed: %s\n",
                         curl_easy_strerror(res));
         }
+		*/
         curl_easy_cleanup(curl);
     }
 

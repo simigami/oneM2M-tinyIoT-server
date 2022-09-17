@@ -115,6 +115,7 @@ typedef struct {
 
 //Request parse function
 int Validate_oneM2M_Standard();
+int duplicate_resource_check(Node *pnode, char *payload);
 Node* Parse_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
@@ -163,6 +164,8 @@ char* CNT_to_json(CNT* cnt_object);
 char* CIN_to_json(CIN* cin_object);
 char* Sub_to_json(Sub *sub_object);
 char* Noti_to_json(char *sur, int net, char *rep);
+
+char* Get_JSON_Value(char *key, char *json);
 
 //DB function
 int display(char* database);
