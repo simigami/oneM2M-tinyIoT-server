@@ -1,0 +1,15 @@
+https://onem2m.org/technical/published-specifications/release-3
+
+TS-0013-Interoperability_Testing-V3_3_1.DOC
+
+8.1.6 Discovery
+
+8.1.6.4 Discovery with multiple filter criteria
+
+TS-0009-HTTP_Protocol_Binding-V3_8_0.ZIP
+
+6.2.2.2    Query component
+
+Table 6.2.2.2-1: oneM2M request parameters mapped as query-string field
+
+https://youtu.be/sMfQl9dyd3U?list=PLDd4EJmw5gUlIXL0oek7RicHC5iFGfh1Z&t=328

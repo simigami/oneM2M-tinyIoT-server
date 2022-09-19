@@ -1,0 +1,17 @@
+코드 주석 달기
+
+요청 헤더 유무 테스트 -> content-type 없으면 segment fault
+
+오브젝트 변수 파악
+
+m2m:cnt 이런 필수 키 값 없으면 segment fault
+
+빠르게 요청하면 payload 비어있는 경우 종종 발생
+
+json parse 함수에 payload 넣으면 payload 값 변조되고 segment fault
+
+free 할 것들 점검 (Segment fault 조심)
+
+already existed 구현
+
+validate oneM2M 구현
