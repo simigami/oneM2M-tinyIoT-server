@@ -514,7 +514,14 @@ void Init_AE(AE* ae, char *pi) {
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *aei = request_header("X-M2M-Origin"); 
 	char *ri = resource_identifier(t_AE, ct);
-	char tmp[100];
+	char tmp[1024];
+	int m_aei = 0;
+
+	if(!aei) {
+		m_aei = 1;
+		aei = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(aei, ri);
+	}
 	
 	strcpy(tmp,ae->api);
 	ae->api = (char*)malloc((strlen(ae->api) + 1) * sizeof(char));
@@ -540,6 +547,7 @@ void Init_AE(AE* ae, char *pi) {
 	
 	ae->ty = t_AE;
 	
+	if(m_aei) free(aei);
 	free(ct);
 	free(et);
 	free(ri);
@@ -640,20 +648,32 @@ void Init_Sub(Sub* sub, char *pi) {
 	free(ri);
 }
 
-void Set_AE_Update(AE* before, AE* after) {
-	strcpy(after->ct, before->ct);
-	strcpy(after->et, before->et);
-	strcpy(after->ri, before->ri);
-	strcpy(after->aei, before->aei);
-	strcpy(after->pi, before->pi);
+void Set_AE_Update(AE* after, char *payload) {
+	char *rn = Get_JSON_Value("rn", payload);
+	char *api = Get_JSON_Value("api", payload);
+	//int rr = Get_Json_Value("rr", payload);
+	if(rn) {
+		free(after->rn);
+		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
+		strcpy(after->rn, rn);
+	}
+
+	if(api) {
+		free(after->api);
+		after->api = (char*)malloc((strlen(api) + 1) * sizeof(char));
+		strcpy(after->api, api);
+	}
 }
 
 
-void Set_CNT_Update(CNT* before, CNT* after) {
-	strcpy(after->ct, before->ct);
-	strcpy(after->et, before->et);
-	strcpy(after->ri, before->ri);
-	strcpy(after->pi, before->pi);
+void Set_CNT_Update(CNT* after, char *payload) {
+	char *rn = Get_JSON_Value("rn", payload);
+
+	if(rn) {
+		free(after->rn);
+		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
+		strcpy(after->rn, rn);
+	}
 }
 
 void Free_CSE(CSE *cse) {
