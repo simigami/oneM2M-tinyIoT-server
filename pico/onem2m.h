@@ -149,8 +149,8 @@ void Init_AE(AE* ae, char *pi);
 void Init_CNT(CNT* cnt, char *pi);
 void Init_CIN(CIN* cin, char *pi);
 void Init_Sub(Sub* sub, char *pi);
-void Set_AE_Update(AE* before, AE* after);
-void Set_CNT_Update(CNT* before, CNT* after);
+void Set_AE_Update(AE* after, char *payload);
+void Set_CNT_Update(CNT* after, char *payload);
 
 CSE* JSON_to_CSE(char *json_payload);
 AE* JSON_to_AE(char *json_payload);

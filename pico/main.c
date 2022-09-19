@@ -75,13 +75,13 @@ void Create_Object(Node *pnode, char *payload) {
 	if(!payload) {
 		HTTP_500;
 		fprintf(stderr,"Request Body Parse Error\n");
-		printf("{\"m2m:dbg\": \"request body parse error\"}");
+		printf("{\"m2m:dbg\": \"request body parse error\"}"); // Need oneM2M2 WireShark packet Check
 		return;
 	}
 
 	if(duplicate_resource_check(pnode, payload)) {
 		HTTP_209_JSON;
-		fprintf(stderr,"Resource is Duplicated\n");
+		fprintf(stderr,"Resource Duplicate Error\n");
 		printf("{\"m2m:dbg\": \"resource is already exist\"}");
 		return;
 	}
@@ -333,11 +333,9 @@ void Retrieve_CIN(Node *pnode){
 }
 
 void Update_AE(Node *pnode, char *payload) {
-	AE* before = Get_AE(pnode->ri);
-	AE* after = JSON_to_AE(payload);
+	AE* after = Get_AE(pnode->ri);
 	
-	Init_AE(after, "0-YYYYMMDDTHHMMSS");
-	Set_AE_Update(before, after);
+	Set_AE_Update(after, payload);
 	Update_AE_DB(after);
 	
 	free(pnode->rn);
@@ -348,19 +346,15 @@ void Update_AE(Node *pnode, char *payload) {
 	HTTP_200_JSON;
 	printf("%s", res_json);
 	free(res_json);
-	Free_AE(before);
 	Free_AE(after);
 	res_json = NULL;
-	before = NULL;
 	after = NULL;
 }
 
 void Update_CNT(Node *pnode, char *payload) {
-	CNT* before = Get_CNT(pnode->ri);
-	CNT* after = JSON_to_CNT(payload);
-	
-	Init_CNT(after, "0-YYYYMMDDTHHMMSS");
-	Set_CNT_Update(before, after);
+	CNT* after = Get_CNT(pnode->ri);
+
+	Set_CNT_Update(after, payload);
 	Update_CNT_DB(after);
 	
 	free(pnode->rn);
@@ -372,10 +366,8 @@ void Update_CNT(Node *pnode, char *payload) {
 	printf("%s", res_json);
 	Notify_Object(pnode->child, res_json, sub_1);
 	free(res_json);
-	Free_CNT(before);
 	Free_CNT(after);
 	res_json = NULL;
-	before = NULL;
 	after = NULL;
 }
 

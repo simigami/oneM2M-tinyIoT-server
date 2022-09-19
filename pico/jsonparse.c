@@ -442,10 +442,10 @@ end:
 char* Get_JSON_Value(char *key, char *json) {
 	char tmp[16] = "\"";
 	strcat(tmp,key);
-	strcat(tmp,"\"");
+	strcat(tmp,"\":");
 	if(!strstr(json,tmp)) return NULL;
 
-	char json_copy[100];
+	char json_copy[1024];
 	char *resource = NULL;
 	char *value = NULL;
 
