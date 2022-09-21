@@ -8,7 +8,8 @@ typedef enum {
 	o_CREATE = 1,
 	o_RETRIEVE,
 	o_UPDATE,
-	o_DELETE
+	o_DELETE,
+	o_OPTIONS
 }Operation;
 
 typedef enum {

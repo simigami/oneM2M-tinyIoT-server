@@ -49,6 +49,11 @@ void route() {
 	case o_DELETE:
 		Delete_Object(pnode); break;
 	
+	case o_OPTIONS:
+		HTTP_200_JSON;
+		printf("{\"m2m:dbg\": \"respond options method request\"}");
+		break;
+	
 	default:
 		HTTP_500;
 	}

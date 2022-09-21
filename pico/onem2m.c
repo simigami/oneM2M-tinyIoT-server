@@ -114,8 +114,9 @@ Operation Parse_Operation(){
 	else if(strcmp(method, "GET") == 0) op = o_RETRIEVE;
 	else if (strcmp(method, "PUT") == 0) op = o_UPDATE;
 	else if (strcmp(method, "DELETE") == 0) op = o_DELETE;
+	else if (strcmp(method, "OPTIONS") == 0) op = o_OPTIONS;
 
-	return op;	
+	return op;
 }
 
 int duplicate_resource_check(Node *pnode, char *payload) {
