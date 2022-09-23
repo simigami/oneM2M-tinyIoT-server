@@ -109,7 +109,7 @@ void Create_Object(Node *pnode, char *payload) {
 		Create_CIN(pnode, payload);
 		break;
 
-	case t_SUB :
+	case t_Sub :
 		fprintf(stderr,"\x1b[42mCreate Sub\x1b[0m\n");
 		Create_Sub(pnode, payload);
 		break;
@@ -150,8 +150,9 @@ void Retrieve_Object(Node *pnode) {
 		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
 		Retrieve_CIN(pnode);
 		break;
-	case t_SUB :
-		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");			
+	case t_Sub :
+		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");
+		Retrieve_Sub(pnode);			
 		break;
 	}	
 }
@@ -276,7 +277,7 @@ void Create_Sub(Node *pnode, char *payload) {
 		return;
 	}
 	
-	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, NetToBit(sub->net), t_SUB);
+	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, NetToBit(sub->net), t_Sub);
 	Add_child(pnode,node);
 	
 	char *res_json = Sub_to_json(sub);
@@ -337,6 +338,18 @@ void Retrieve_CIN(Node *pnode){
 	gcin = NULL;
 }
 
+void Retrieve_Sub(Node *pnode){
+	Sub* gsub = Get_Sub(pnode->ri);
+	fprintf(stderr,"good\n");
+	char *res_json = Sub_to_json(gsub);
+	HTTP_200_JSON;
+	printf("%s", res_json);
+	free(res_json);
+	Free_Sub(gsub);
+	res_json = NULL;
+	gsub = NULL;
+}
+
 void Update_AE(Node *pnode, char *payload) {
 	AE* after = Get_AE(pnode->ri);
 	
@@ -374,6 +387,27 @@ void Update_CNT(Node *pnode, char *payload) {
 	Free_CNT(after);
 	res_json = NULL;
 	after = NULL;
+}
+
+void Update_Sub(Node *pnode, char *payload) {
+	/*
+	Sub* after = Get_Sub(pnode->ri);
+	
+	Set_Sub_Update(after, payload);
+	Update_Sub_DB(after);
+	
+	free(pnode->rn);
+	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
+	strcpy(pnode->rn, after->rn);
+	
+	char *res_json = Sub_to_json(after);
+	HTTP_200_JSON;
+	printf("%s", res_json);
+	free(res_json);
+	Free_AE(after);
+	res_json = NULL;
+	after = NULL;
+	*/
 }
 
 void Delete_Object(Node* pnode) {
@@ -454,6 +488,8 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 	return list;
 }
 
+
+// httpd open source default functions
 int file_exists(const char *file_name) {
 	struct stat buffer;
 	int exists;

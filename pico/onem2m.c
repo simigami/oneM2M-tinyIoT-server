@@ -265,7 +265,7 @@ void Tree_data(Node *node, char **viewer_data, int cin_num) {
 	while(node) {
 		Tree_data(node, viewer_data, cin_num);
 		if(node->ty == t_CIN) {
-			while(node->siblingRight && node->siblingRight->ty != t_SUB) {
+			while(node->siblingRight && node->siblingRight->ty != t_Sub) {
 				node = node->siblingRight;
 			}
 		}
@@ -323,7 +323,7 @@ ObjectType Parse_ObjectType() {
 	case 3 : ty = t_CNT; break;
 	case 4 : ty = t_CIN; break;
 	case 5 : ty = t_CSE; break;
-	case 23 : ty = t_SUB; break;
+	case 23 : ty = t_Sub; break;
 	}
 	
 	return ty;
@@ -439,10 +439,13 @@ void Delete_Node_Object(Node *node, int flag) {
 		break;
 	case t_CNT : 
 		Delete_CNT(node->ri); 
-		char *res_json = (char*)malloc(sizeof("Deleted") + 1);
-		strcpy(res_json, "Deleted");
-		Notify_Object(node->child,res_json,sub_2); 
-		free(res_json);
+		char *noti_json = (char*)malloc(sizeof("Deleted") + 1);
+		strcpy(noti_json, "Deleted");
+		Notify_Object(node->child,noti_json,sub_2); 
+		free(noti_json);
+		break;
+	case t_Sub :
+		//Delete_Sub(node->ri);
 		break;
 	}
 	
@@ -619,7 +622,7 @@ void Init_CIN(CIN* cin, char *pi) {
 void Init_Sub(Sub* sub, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
-	char *ri = resource_identifier(t_SUB, ct);
+	char *ri = resource_identifier(t_Sub, ct);
 	char tmp[100];
 
 	strcpy(tmp,sub->rn);
@@ -641,7 +644,7 @@ void Init_Sub(Sub* sub, char *pi) {
 	strcpy(sub->et, et);
 	strcpy(sub->ct, ct);
 	strcpy(sub->lt, ct);
-	sub->ty = t_SUB;
+	sub->ty = t_Sub;
 	sub->nct = 0;
 
 	free(ct);
@@ -668,6 +671,16 @@ void Set_AE_Update(AE* after, char *payload) {
 
 
 void Set_CNT_Update(CNT* after, char *payload) {
+	char *rn = Get_JSON_Value("rn", payload);
+
+	if(rn) {
+		free(after->rn);
+		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
+		strcpy(after->rn, rn);
+	}
+}
+
+void Set_Sub_Update(Sub* after, char *payload) {
 	char *rn = Get_JSON_Value("rn", payload);
 
 	if(rn) {
@@ -735,7 +748,7 @@ void Free_Sub(Sub* sub) {
 void Notify_Object(Node *node, char *res_json, Net net) {
 	RemoveInvalidCharJSON(res_json);
 	while(node) {
-		if(node->ty == t_SUB && (net & node->net) == net) {
+		if(node->ty == t_Sub && (net & node->net) == net) {
 			char *noti_json = Noti_to_json(node->sur, (int)log2((double)net ) + 1, res_json);
 			char *res = Send_HTTP_Packet(node->nu, noti_json);
 			free(noti_json);
@@ -782,7 +795,7 @@ char *resource_identifier(ObjectType ty, char *ct) {
 		case t_AE : strcpy(ri, "2-"); break;
 		case t_CNT : strcpy(ri, "3-"); break;
 		case t_CIN : strcpy(ri, "4-"); break;
-		case t_SUB : strcpy(ri, "23-"); break;
+		case t_Sub : strcpy(ri, "23-"); break;
 	}
 
 	strcat(ri, ct);

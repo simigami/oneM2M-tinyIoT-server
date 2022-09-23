@@ -17,7 +17,7 @@ typedef enum {
 	t_CNT,
 	t_CIN,
 	t_CSE,
-	t_SUB = 23
+	t_Sub = 23
 }ObjectType;
 
 typedef enum {
@@ -135,11 +135,12 @@ void Create_CNT(Node *pnode, char *json_payload);
 void Create_CIN(Node *pnode, char *json_payload);
 void Create_Sub(Node *pnode, char *json_payload);
 
-void Retrieve_CSE();
-void Retrieve_AE();
-void Retrieve_CNT();
-void Retrieve_CIN();
+void Retrieve_CSE(Node *pnode);
+void Retrieve_AE(Node *pnode);
+void Retrieve_CNT(Node *pnode);
+void Retrieve_CIN(Node *pnode);
 void Retrieve_CIN_Ri(char *ri);
+void Retrieve_Sub(Node *pnode);
 
 void Update_CSE(Node *pnode, char *json_payload);
 void Update_AE(Node *pnode, char *json_payload);
@@ -152,6 +153,7 @@ void Init_CIN(CIN* cin, char *pi);
 void Init_Sub(Sub* sub, char *pi);
 void Set_AE_Update(AE* after, char *payload);
 void Set_CNT_Update(CNT* after, char *payload);
+void Set_Sub_Update(Sub* after, char *payload);
 
 CSE* JSON_to_CSE(char *json_payload);
 AE* JSON_to_AE(char *json_payload);
@@ -181,6 +183,7 @@ CSE* Get_CSE();
 AE* Get_AE(char *ri);
 CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);
+Sub* Get_Sub(char* ri);
 
 AE* Update_AE_DB(AE* ae);
 CNT* Update_CNT_DB(CNT* cnt);
