@@ -492,7 +492,7 @@ char *Get_LocalTime(int diff) {
 void Init_CSE(CSE* cse) {
 	char *ct = Get_LocalTime(0);
 	char *ri = resource_identifier(t_CSE, ct);
-	char rn[8] = "TinyIoT";
+	char rn[1024] = "TinyIoT";
 	
 	cse->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cse->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
@@ -518,7 +518,7 @@ void Init_AE(AE* ae, char *pi) {
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *aei = request_header("X-M2M-Origin"); 
 	char *ri = resource_identifier(t_AE, ct);
-	char tmp[1024];
+	char tmp[65536];
 	int m_aei = 0;
 
 	if(!aei) {
@@ -561,7 +561,7 @@ void Init_CNT(CNT* cnt, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *ri = resource_identifier(t_CNT, ct);
-	char tmp[100];
+	char tmp[65536];
 	
 	strcpy(tmp,cnt->rn);
 	cnt->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
@@ -592,7 +592,7 @@ void Init_CIN(CIN* cin, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *ri = resource_identifier(t_CIN, ct);
-	char tmp[100];
+	char tmp[65536];
 	
 	strcpy(tmp,cin->con);
 	cin->con = (char*)malloc((strlen(cin->con) + 1) * sizeof(char));
@@ -613,6 +613,7 @@ void Init_CIN(CIN* cin, char *pi) {
 	
 	cin->ty = t_CIN;
 	cin->st = 0;
+	cin->cs = strlen(cin->con);
 	
 	free(ct);
 	free(et);
@@ -623,7 +624,7 @@ void Init_Sub(Sub* sub, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *ri = resource_identifier(t_Sub, ct);
-	char tmp[100];
+	char tmp[65536];
 
 	strcpy(tmp,sub->rn);
 	sub->rn = (char*)malloc((strlen(sub->rn) + 1) * sizeof(char));

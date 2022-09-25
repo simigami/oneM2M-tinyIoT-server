@@ -242,7 +242,6 @@ void Create_CNT(Node *pnode, char *payload) {
 void Create_CIN(Node *pnode, char *payload) {
 	CIN* cin = JSON_to_CIN(payload);
 	Init_CIN(cin,pnode->ri);
-	
 	int result = Store_CIN(cin);
 	if(result != 1) { 
 		HTTP_500;
