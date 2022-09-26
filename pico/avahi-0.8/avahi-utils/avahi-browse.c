@@ -47,9 +47,6 @@
 #include "stdb.h"
 #endif
 
-FILE * SaveURLfile;
-char URL[1000]="http://";
-
 typedef enum {
     COMMAND_HELP,
     COMMAND_VERSION,
@@ -90,9 +87,8 @@ struct ServiceInfo {
     AVAHI_LLIST_FIELDS(ServiceInfo, info);
 };
 
-//Avahi value
-FILE * SaveURlfile;
-char URl[1000]="http://";
+FILE * SaveURLfile;
+char URL[1000]="http://";
 
 static AvahiSimplePoll *simple_poll = NULL;
 static AvahiClient *client = NULL;
@@ -169,7 +165,6 @@ static void print_service_line(Config *config, char c, AvahiIfIndex interface, A
     if (config->parsable) {
         char sn[AVAHI_DOMAIN_NAME_MAX], *e = sn;
         size_t l = sizeof(sn);
-
         printf("%c;%s;%s;%s;%s;%s%s",
                c,
                interface != AVAHI_IF_UNSPEC ? if_indextoname(interface, ifname) : _("n/a"),
@@ -177,18 +172,16 @@ static void print_service_line(Config *config, char c, AvahiIfIndex interface, A
                avahi_escape_label(name, strlen(name), &e, &l), type, domain, nl ? "\n" : "");
 
     } else {
-	//make DeviceList
-	FILE* fd;
+    	FILE* fd;
         char label[AVAHI_LABEL_MAX];
         make_printable(name, label);
-	
-	if(c=='+'){
+        
+        //make DeviceList
+        if(c=='+'){
 		fd=fopen("DeviceList","at");
-		
 		strcat(type,"\n");
 		strcat(label,"\n");
 		strcat(domain,"\n");
-		
 		fputs("Type:        ",fd);
 		fputs(type,fd);
 		fputs("Device Name: ",fd);
@@ -198,16 +191,32 @@ static void print_service_line(Config *config, char c, AvahiIfIndex interface, A
 		fputs("\n\n",fd);
 		
 		fclose(fd);
-		
 	}
+        
+	//here! -> fix print
 	
-	/*origin code
+	/*
+	if(c=='+'){
+		printf("\n Select Device (Please input Service Type)\n\n Device Name: %s\n Device Service Type: %s\n Device Network: %s\n\n", label, type, domain);
+	}
+	else if(c=='-'){
+		printf("Connect Quit Device\n\n Device Name: %s\n Device Service Type: %s\n Device Network: %s\n\n", label, type, domain);
+	}
+	else{
+		printf("Error");
+	}
+	*/
+	
+	//origin code
+	
+	/*
         printf("%c %6s %4s %-*s %-20s %s\n",
                c,
                interface != AVAHI_IF_UNSPEC ? if_indextoname(interface, ifname) : _("n/a"),
                protocol != AVAHI_PROTO_UNSPEC ? avahi_proto_to_string(protocol) : _("n/a"),
                n_columns-35, label, type, domain);
         */
+        
     }
 
     fflush(stdout);
@@ -236,12 +245,12 @@ static void service_resolver_callback(
     switch (event) {
         case AVAHI_RESOLVER_FOUND: {
             char address[AVAHI_ADDRESS_STR_MAX], *t;
+            char subport[10];
 
             avahi_address_snprint(address, sizeof(address), a);
 
             t = avahi_string_list_to_string(txt);
 
-            print_service_line(i->config, '=', interface, protocol, name, type, domain, 0);
 
             if (i->config->parsable)
                 printf(";%s;%s;%u;%s\n",
@@ -249,23 +258,9 @@ static void service_resolver_callback(
                        address,
                        port,
                        t);
-            else{
-	        char subport[10];
-            	SaveURLfile = fopen("../SaveURL", "wt");
-            	sprintf(subport,"%u",port);
-            	strcat(URL,address);
-            	strcat(URL,":");
-            	strcat(URL,subport);
-            	if(SaveURLfile == NULL){
-            		printf("Failed File Open");
-            	}
-            	else{
-            		fputs(URL,SaveURlfile);
-            	}
-            	fclose(SaveURLfile);
-            	
-                /* origin code
-                printf("   hostname = [%s]\n"
+            else
+            	/*
+             	printf("   hostname = [%s]\n"
                        "   address = [%s]\n"
                        "   port = [%u]\n"
                        "   txt = [%s]\n",
@@ -274,7 +269,22 @@ static void service_resolver_callback(
                        port,
                        t);
                 */
-	    }
+                //save
+               
+                SaveURLfile = fopen("SaveURL", "wt");        
+                sprintf(subport,"%u",port);
+		strcat(URL,address);
+		strcat(URL,":");
+		strcat(URL,subport);
+                if(SaveURLfile == NULL){
+                	printf("Failed File Open");
+                }
+                else{
+		        fputs(URL,SaveURLfile);
+		}
+                fclose(SaveURLfile);
+                
+                //save
             avahi_free(t);
 
             break;
@@ -364,7 +374,6 @@ static void service_browser_callback(
                 return;
 
             add_service(c, interface, protocol, name, type, domain);
-
             print_service_line(c, '+', interface, protocol, name, type, domain, 1);
             break;
 
@@ -377,7 +386,6 @@ static void service_browser_callback(
                 return;
 
             remove_service(c, info);
-
             print_service_line(c, '-', interface, protocol, name, type, domain, 1);
             break;
         }
@@ -521,12 +529,14 @@ static void domain_browser_callback(
                        interface != AVAHI_IF_UNSPEC ? if_indextoname(interface, ifname) : "",
                        protocol != AVAHI_PROTO_UNSPEC ? avahi_proto_to_string(protocol) : "",
                        domain);
+            
             else
                 printf("%c %4s %4s %s\n",
                        event == AVAHI_BROWSER_NEW ? '+' : '-',
                        interface != AVAHI_IF_UNSPEC ? if_indextoname(interface, ifname) : "n/a",
                        protocol != AVAHI_PROTO_UNSPEC ? avahi_proto_to_string(protocol) : "n/a",
                        domain);
+            
             break;
         }
 
@@ -923,3 +933,4 @@ fail:
 
     return ret;
 }
+

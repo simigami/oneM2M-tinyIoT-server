@@ -18,9 +18,9 @@ AE* JSON_to_AE(char *json_payload) {
 		const char *error_ptr = cJSON_GetErrorPtr();
 		if (error_ptr != NULL)
 		{
-			fprintf(stderr, "Error before: %s\n", error_ptr);
+			//fprintf(stderr, "Error before: %s\n", error_ptr);
 		}
-		goto end;
+		return NULL;
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:ae");
@@ -75,9 +75,9 @@ CNT* JSON_to_CNT(char *json_payload) {
 		const char *error_ptr = cJSON_GetErrorPtr();
 		if (error_ptr != NULL)
 		{
-			fprintf(stderr, "Error before: %s\n", error_ptr);
+			//fprintf(stderr, "Error before: %s\n", error_ptr);
 		}
-		goto end;
+		return NULL;
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:cnt");
@@ -107,9 +107,9 @@ CIN* JSON_to_CIN(char *json_payload) {
 		const char *error_ptr = cJSON_GetErrorPtr();
 		if (error_ptr != NULL)
 		{
-			fprintf(stderr, "Error before: %s\n", error_ptr);
+			//fprintf(stderr, "Error before: %s\n", error_ptr);
 		}
-		goto end;
+		return NULL;
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:cin");
@@ -146,9 +146,9 @@ Sub* JSON_to_Sub(char *json_payload) {
 		const char *error_ptr = cJSON_GetErrorPtr();
 		if (error_ptr != NULL)
 		{
-			fprintf(stderr, "Error before: %s\n", error_ptr);
+			//fprintf(stderr, "Error before: %s\n", error_ptr);
 		}
-		goto end;
+		return NULL;
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:sub");
@@ -412,9 +412,9 @@ char* JSON_label_value(char *json_payload) {
 		const char *error_ptr = cJSON_GetErrorPtr();
 		if (error_ptr != NULL)
 		{
-			fprintf(stderr, "Error before: %s\n", error_ptr);
+			//fprintf(stderr, "Error before: %s\n", error_ptr);
 		}
-		goto end;
+		return NULL;
 	}
 
 	//Extracting resources from json_payload
@@ -457,9 +457,9 @@ char* Get_JSON_Value(char *key, char *json) {
 		const char *error_ptr = cJSON_GetErrorPtr();
 		if (error_ptr != NULL)
 		{
-			fprintf(stderr, "Error before: %s\n", error_ptr);
+			//fprintf(stderr, "Error before: %s\n", error_ptr);
 		}
-		goto end;
+		return NULL;
 	}
 
 	//Extracting resources from json

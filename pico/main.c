@@ -3,7 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include "onem2m.h"
+#include "zeroconf.h"
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
 
@@ -11,6 +11,7 @@
 #define PUBLIC_DIR "./public"
 #define INDEX_HTML "/index.html"
 #define NOT_FOUND_HTML "/404.html"
+#define MAX_PAYLOAD_SIZE 16384
 
 RT *rt;
 
@@ -33,18 +34,25 @@ void route() {
 		return;
 	}
 
+	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
+		HTTP_406;
+		fprintf(stderr,"Request Payload Too Large\n");
+		printf("{\"m2m:dbg\": \"request data is too large\"}");
+		return;
+	}
+
 	Operation op = Parse_Operation();
 	
 	switch(op) {
 	
 	case o_CREATE:	
-		Create_Object(pnode, payload); break;
+		Create_Object(pnode); break;
 	
 	case o_RETRIEVE:
 		Retrieve_Object(pnode);	break;
 		
 	case o_UPDATE: 
-		Update_Object(pnode, payload); break;
+		Update_Object(pnode); break;
 		
 	case o_DELETE:
 		Delete_Object(pnode); break;
@@ -76,15 +84,15 @@ void init() {
  	Restruct_ResourceTree();
 }
 
-void Create_Object(Node *pnode, char *payload) {
+void Create_Object(Node *pnode) {
 	if(!payload) {
 		HTTP_500;
-		fprintf(stderr,"Request Body Parse Error\n");
-		printf("{\"m2m:dbg\": \"request body parse error\"}"); // Need oneM2M2 WireShark packet Check
+		fprintf(stderr,"Request Empty\n");
+		printf("{\"m2m:dbg\": \"request body empty\"}"); // Need oneM2M WireShark packet Check
 		return;
 	}
 
-	if(duplicate_resource_check(pnode, payload)) {
+	if(duplicate_resource_check(pnode)) {
 		HTTP_209_JSON;
 		fprintf(stderr,"Resource Duplicate Error\n");
 		printf("{\"m2m:dbg\": \"resource is already exist\"}");
@@ -96,22 +104,22 @@ void Create_Object(Node *pnode, char *payload) {
 		
 	case t_AE :
 		fprintf(stderr,"\x1b[42mCreate AE\x1b[0m\n");
-		Create_AE(pnode, payload);
+		Create_AE(pnode);
 		break;	
 					
 	case t_CNT :
 		fprintf(stderr,"\x1b[42mCreate CNT\x1b[0m\n");
-		Create_CNT(pnode, payload);
+		Create_CNT(pnode);
 		break;
 			
 	case t_CIN :
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
-		Create_CIN(pnode, payload);
+		Create_CIN(pnode);
 		break;
 
 	case t_Sub :
 		fprintf(stderr,"\x1b[42mCreate Sub\x1b[0m\n");
-		Create_Sub(pnode, payload);
+		Create_Sub(pnode);
 		break;
 
 	case t_CSE :
@@ -157,15 +165,15 @@ void Retrieve_Object(Node *pnode) {
 	}	
 }
 
-void Update_Object( Node *pnode, char *payload) {
+void Update_Object(Node *pnode) {
 	if(!payload) {
 		HTTP_500;
-		fprintf(stderr,"Request Body Parse Error\n");
-		printf("{\"m2m:dbg\": \"request body parse error\"\n}");
+		fprintf(stderr,"Request Empty Error\n");
+		printf("{\"m2m:dbg\": \"request body empty\"\n}");
 		return;
 	}
 
-	ObjectType ty = Parse_ObjectType_Body(payload);
+	ObjectType ty = Parse_ObjectType_Body();
 	
 	if(ty != pnode->ty) {
 		fprintf(stderr,"Update Resource Type Error\n");
@@ -180,17 +188,24 @@ void Update_Object( Node *pnode, char *payload) {
 		break;
 	case t_AE :
 		fprintf(stderr,"\x1b[45mUpdate AE\x1b[0m\n");
-		Update_AE(pnode, payload);
+		Update_AE(pnode);
 		break;
 	case t_CNT :
 		fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
-		Update_CNT(pnode, payload);
+		Update_CNT(pnode);
+	case t_Sub :
+		fprintf(stderr,"\x1b[45mUpdate Sub\x1b[0m\n");
+		Update_Sub(pnode);
 		break;
 	}
 }
 
-void Create_AE(Node *pnode, char *payload) {
+void Create_AE(Node *pnode) {
 	AE* ae = JSON_to_AE(payload);
+	if(!ae) {
+		Response_JSON_Parse_Error();
+		return;
+	}
 	Init_AE(ae,pnode->ri);
 	
 	int result = Store_AE(ae);
@@ -214,8 +229,12 @@ void Create_AE(Node *pnode, char *payload) {
 	ae = NULL;
 }
 
-void Create_CNT(Node *pnode, char *payload) {
+void Create_CNT(Node *pnode) {
 	CNT* cnt = JSON_to_CNT(payload);
+	if(!cnt) {
+		Response_JSON_Parse_Error();
+		return;
+	}
 	Init_CNT(cnt,pnode->ri);
 
 	int result = Store_CNT(cnt);
@@ -239,8 +258,12 @@ void Create_CNT(Node *pnode, char *payload) {
 	cnt = NULL;
 }
 
-void Create_CIN(Node *pnode, char *payload) {
+void Create_CIN(Node *pnode) {
 	CIN* cin = JSON_to_CIN(payload);
+	if(!cin) {
+		Response_JSON_Parse_Error();
+		return;
+	}
 	Init_CIN(cin,pnode->ri);
 	int result = Store_CIN(cin);
 	if(result != 1) { 
@@ -263,8 +286,12 @@ void Create_CIN(Node *pnode, char *payload) {
 	cin = NULL;
 }
 
-void Create_Sub(Node *pnode, char *payload) {
+void Create_Sub(Node *pnode) {
 	Sub* sub = JSON_to_Sub(payload);
+	if(!sub) {
+		Response_JSON_Parse_Error();
+		return;
+	}
 	Init_Sub(sub, pnode->ri);
 	
 	int result = Store_Sub(sub);
@@ -339,7 +366,6 @@ void Retrieve_CIN(Node *pnode){
 
 void Retrieve_Sub(Node *pnode){
 	Sub* gsub = Get_Sub(pnode->ri);
-	fprintf(stderr,"good\n");
 	char *res_json = Sub_to_json(gsub);
 	HTTP_200_JSON;
 	printf("%s", res_json);
@@ -349,11 +375,18 @@ void Retrieve_Sub(Node *pnode){
 	gsub = NULL;
 }
 
-void Update_AE(Node *pnode, char *payload) {
+void Update_AE(Node *pnode) {
 	AE* after = Get_AE(pnode->ri);
 	
-	Set_AE_Update(after, payload);
-	Update_AE_DB(after);
+	Set_AE_Update(after);
+	int result = Update_AE_DB(after);
+	if(result != 1) { 
+		HTTP_500;
+		printf("{\"m2m:dbg\": \"DB update fail\"}");
+		Free_AE(after);
+		after = NULL;
+		return;
+	}
 	
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
@@ -368,11 +401,18 @@ void Update_AE(Node *pnode, char *payload) {
 	after = NULL;
 }
 
-void Update_CNT(Node *pnode, char *payload) {
+void Update_CNT(Node *pnode) {
 	CNT* after = Get_CNT(pnode->ri);
 
-	Set_CNT_Update(after, payload);
-	Update_CNT_DB(after);
+	Set_CNT_Update(after);
+	int result = Update_CNT_DB(after);
+	if(result != 1) { 
+		HTTP_500;
+		printf("{\"m2m:dbg\": \"DB update fail\"}");
+		Free_CNT(after);
+		after = NULL;
+		return;
+	}
 	
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
@@ -388,12 +428,18 @@ void Update_CNT(Node *pnode, char *payload) {
 	after = NULL;
 }
 
-void Update_Sub(Node *pnode, char *payload) {
-	/*
+void Update_Sub(Node *pnode) {
 	Sub* after = Get_Sub(pnode->ri);
 	
-	Set_Sub_Update(after, payload);
-	Update_Sub_DB(after);
+	Set_Sub_Update(after);
+	int result = Update_Sub_DB(after);
+	if(result != 1) { 
+		HTTP_500;
+		printf("{\"m2m:dbg\": \"DB update fail\"}");
+		Free_Sub(after);
+		after = NULL;
+		return;
+	}
 	
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
@@ -403,10 +449,9 @@ void Update_Sub(Node *pnode, char *payload) {
 	HTTP_200_JSON;
 	printf("%s", res_json);
 	free(res_json);
-	Free_AE(after);
+	Free_Sub(after);
 	res_json = NULL;
 	after = NULL;
-	*/
 }
 
 void Delete_Object(Node* pnode) {
@@ -485,6 +530,11 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 	}
 	
 	return list;
+}
+
+void Response_JSON_Parse_Error(){
+	fprintf(stderr,"Request JSON Invalid\n");
+	printf("{\"m2m:dbg\": \"request JSON invalid\"}");
 }
 
 

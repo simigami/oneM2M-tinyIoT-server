@@ -116,7 +116,7 @@ typedef struct {
 
 //Request parse function
 int Validate_oneM2M_Standard();
-int duplicate_resource_check(Node *pnode, char *payload);
+int duplicate_resource_check(Node *pnode);
 Node* Parse_URI(RT *rt);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
@@ -124,16 +124,16 @@ ObjectType Parse_ObjectType_Body();
 void Remove_Specific_Asterisk_Payload();
 
 //oneM2M CRUD(N) function
-void Create_Object(Node* pnode, char *json_payload);
+void Create_Object(Node* pnode);
 void Retrieve_Object(Node *pnode);
-void Update_Object(Node *pnode, char *json_payload);
+void Update_Object(Node *pnode);
 void Delete_Object();
 void Notify_Object(Node *node, char *resjson, Net net);
 
-void Create_AE(Node *pnode, char *json_payload);
-void Create_CNT(Node *pnode, char *json_payload);
-void Create_CIN(Node *pnode, char *json_payload);
-void Create_Sub(Node *pnode, char *json_payload);
+void Create_AE(Node *pnode);
+void Create_CNT(Node *pnode);
+void Create_CIN(Node *pnode);
+void Create_Sub(Node *pnode);
 
 void Retrieve_CSE(Node *pnode);
 void Retrieve_AE(Node *pnode);
@@ -142,18 +142,19 @@ void Retrieve_CIN(Node *pnode);
 void Retrieve_CIN_Ri(char *ri);
 void Retrieve_Sub(Node *pnode);
 
-void Update_CSE(Node *pnode, char *json_payload);
-void Update_AE(Node *pnode, char *json_payload);
-void Update_CNT(Node *pnode, char *json_payload);
+void Update_CSE(Node *pnode);
+void Update_AE(Node *pnode);
+void Update_CNT(Node *pnode);
+void Update_Sub(Node *pnode);
 
 void Init_CSE(CSE* cse);
 void Init_AE(AE* ae, char *pi);
 void Init_CNT(CNT* cnt, char *pi);
 void Init_CIN(CIN* cin, char *pi);
 void Init_Sub(Sub* sub, char *pi);
-void Set_AE_Update(AE* after, char *payload);
-void Set_CNT_Update(CNT* after, char *payload);
-void Set_Sub_Update(Sub* after, char *payload);
+void Set_AE_Update(AE* after);
+void Set_CNT_Update(CNT* after);
+void Set_Sub_Update(Sub* after);
 
 CSE* JSON_to_CSE(char *json_payload);
 AE* JSON_to_AE(char *json_payload);
@@ -185,13 +186,15 @@ CNT* Get_CNT(char *ri);
 CIN* Get_CIN(char *ri);
 Sub* Get_Sub(char* ri);
 
-AE* Update_AE_DB(AE* ae);
-CNT* Update_CNT_DB(CNT* cnt);
+int Update_AE_DB(AE* ae_object);
+int Update_CNT_DB(CNT* cnt_object);
+int Update_Sub_DB(Sub *sub_object);
 
-CSE* Delete_CSE(char *ri);
-AE* Delete_AE(char *ri);
-CNT* Delete_CNT(char *ri);
-CIN* Delete_CIN(char *ri);
+int Delete_CSE(char *ri);
+int Delete_AE(char *ri);
+int Delete_CNT(char *ri);
+int Delete_CIN(char *ri);
+int Delete_Sub(char* ri);
 
 Node* Get_All_AE();
 Node* Get_All_CNT();
@@ -236,3 +239,4 @@ char* resource_identifier(ObjectType ty, char *ct);
 struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 char* Send_HTTP_Packet(char *target, char *post_data);
+void Response_JSON_Parse_Error();

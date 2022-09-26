@@ -10,7 +10,8 @@
 #include <ctype.h>
 #include <malloc.h>
 #define TREE_VIEWER_DATASIZE 65536
-#define URI_MAX_SIZE 256
+#define MAX_PROPERTY_SIZE 32768
+#define MAX_URI_SIZE 256
 
 int Validate_oneM2M_Standard() {
 	int ret = 1;
@@ -29,7 +30,7 @@ int Validate_oneM2M_Standard() {
 
 Node* Parse_URI(RT *rt) {
 	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri);
-	char uri_array[URI_MAX_SIZE];
+	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
 	Node *node = NULL;
 
@@ -119,7 +120,7 @@ Operation Parse_Operation(){
 	return op;
 }
 
-int duplicate_resource_check(Node *pnode, char *payload) {
+int duplicate_resource_check(Node *pnode) {
 	Node* node = pnode->child;
 	char* rn = Get_JSON_Value("rn",payload);
 	if(!rn) return 0;
@@ -329,18 +330,20 @@ ObjectType Parse_ObjectType() {
 	return ty;
 }
 
-ObjectType Parse_ObjectType_Body(char *json_payload) {
+ObjectType Parse_ObjectType_Body() {
 	ObjectType ty;
 	
-	char *cse, *ae, *cnt;
+	char *cse, *ae, *cnt, *sub;
 	
-	cse = strstr(json_payload, "m2m:cse");
-	ae = strstr(json_payload, "m2m:ae");
-	cnt = strstr(json_payload, "m2m:cnt");
+	cse = strstr(payload, "m2m:cse");
+	ae = strstr(payload, "m2m:ae");
+	cnt = strstr(payload, "m2m:cnt");
+	sub = strstr(payload, "m2m:sub");
 	
 	if(cse) ty = t_CSE;
 	else if(ae) ty = t_AE;
 	else if(cnt) ty = t_CNT;
+	else if(sub) ty = t_Sub;
 	
 	return ty;
 }
@@ -445,7 +448,7 @@ void Delete_Node_Object(Node *node, int flag) {
 		free(noti_json);
 		break;
 	case t_Sub :
-		//Delete_Sub(node->ri);
+		Delete_Sub(node->ri);
 		break;
 	}
 	
@@ -518,7 +521,7 @@ void Init_AE(AE* ae, char *pi) {
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *aei = request_header("X-M2M-Origin"); 
 	char *ri = resource_identifier(t_AE, ct);
-	char tmp[65536];
+	char tmp[MAX_PROPERTY_SIZE];
 	int m_aei = 0;
 
 	if(!aei) {
@@ -561,7 +564,7 @@ void Init_CNT(CNT* cnt, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *ri = resource_identifier(t_CNT, ct);
-	char tmp[65536];
+	char tmp[MAX_PROPERTY_SIZE];
 	
 	strcpy(tmp,cnt->rn);
 	cnt->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
@@ -592,7 +595,7 @@ void Init_CIN(CIN* cin, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *ri = resource_identifier(t_CIN, ct);
-	char tmp[65536];
+	char tmp[MAX_PROPERTY_SIZE];
 	
 	strcpy(tmp,cin->con);
 	cin->con = (char*)malloc((strlen(cin->con) + 1) * sizeof(char));
@@ -624,7 +627,7 @@ void Init_Sub(Sub* sub, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(-(3600 * 24 * 365 * 2));
 	char *ri = resource_identifier(t_Sub, ct);
-	char tmp[65536];
+	char tmp[MAX_PROPERTY_SIZE];
 
 	strcpy(tmp,sub->rn);
 	sub->rn = (char*)malloc((strlen(sub->rn) + 1) * sizeof(char));
@@ -653,7 +656,7 @@ void Init_Sub(Sub* sub, char *pi) {
 	free(ri);
 }
 
-void Set_AE_Update(AE* after, char *payload) {
+void Set_AE_Update(AE* after) {
 	char *rn = Get_JSON_Value("rn", payload);
 	char *api = Get_JSON_Value("api", payload);
 	//int rr = Get_Json_Value("rr", payload);
@@ -671,7 +674,7 @@ void Set_AE_Update(AE* after, char *payload) {
 }
 
 
-void Set_CNT_Update(CNT* after, char *payload) {
+void Set_CNT_Update(CNT* after) {
 	char *rn = Get_JSON_Value("rn", payload);
 
 	if(rn) {
@@ -681,7 +684,7 @@ void Set_CNT_Update(CNT* after, char *payload) {
 	}
 }
 
-void Set_Sub_Update(Sub* after, char *payload) {
+void Set_Sub_Update(Sub* after) {
 	char *rn = Get_JSON_Value("rn", payload);
 
 	if(rn) {
