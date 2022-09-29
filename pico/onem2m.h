@@ -169,7 +169,9 @@ char* CIN_to_json(CIN* cin_object);
 char* Sub_to_json(Sub *sub_object);
 char* Noti_to_json(char *sur, int net, char *rep);
 
-char* Get_JSON_Value(char *key, char *json);
+char* Get_JSON_Value_char(char *key, char *json);
+int Get_JSON_Value_int(char *key, char *json);
+bool Get_JSON_Value_bool(char *key, char *json);
 
 //DB function
 int display(char* database);

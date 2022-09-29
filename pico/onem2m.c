@@ -122,7 +122,7 @@ Operation Parse_Operation(){
 
 int duplicate_resource_check(Node *pnode) {
 	Node* node = pnode->child;
-	char* rn = Get_JSON_Value("rn",payload);
+	char* rn = Get_JSON_Value_char("rn",payload);
 	if(!rn) return 0;
 
 	while(node) {
@@ -657,9 +657,10 @@ void Init_Sub(Sub* sub, char *pi) {
 }
 
 void Set_AE_Update(AE* after) {
-	char *rn = Get_JSON_Value("rn", payload);
-	char *api = Get_JSON_Value("api", payload);
-	//int rr = Get_Json_Value("rr", payload);
+	char *rn = Get_JSON_Value_char("rn", payload);
+	char *api = Get_JSON_Value_char("api", payload);
+	bool rr = Get_JSON_Value_bool("rr", payload);
+
 	if(rn) {
 		free(after->rn);
 		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
@@ -671,11 +672,15 @@ void Set_AE_Update(AE* after) {
 		after->api = (char*)malloc((strlen(api) + 1) * sizeof(char));
 		strcpy(after->api, api);
 	}
+
+	if(rr) {
+		after->rr = rr;
+	}
 }
 
 
 void Set_CNT_Update(CNT* after) {
-	char *rn = Get_JSON_Value("rn", payload);
+	char *rn = Get_JSON_Value_char("rn", payload);
 
 	if(rn) {
 		free(after->rn);
@@ -685,7 +690,7 @@ void Set_CNT_Update(CNT* after) {
 }
 
 void Set_Sub_Update(Sub* after) {
-	char *rn = Get_JSON_Value("rn", payload);
+	char *rn = Get_JSON_Value_char("rn", payload);
 
 	if(rn) {
 		free(after->rn);
