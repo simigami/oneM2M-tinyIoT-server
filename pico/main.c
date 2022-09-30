@@ -303,7 +303,7 @@ void Create_Sub(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, NetToBit(sub->net), t_Sub);
+	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, Net_To_Bit(sub->net), t_Sub);
 	Add_child(pnode,node);
 	
 	char *res_json = Sub_to_json(sub);

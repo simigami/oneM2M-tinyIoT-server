@@ -89,11 +89,11 @@ Node* Parse_URI(RT *rt) {
 	if(node) {
 		if(viewer) {
 			fprintf(stderr,"OK\n\x1b[43mTree Viewer API\x1b[0m\n");
-			TreeViewerAPI(node);
+			Tree_Viewer_API(node);
 			return NULL;
 		} else if(test) {
 			fprintf(stderr,"OK\n\x1b[43mObject Test API\x1b[0m\n");
-			ObjectTestAPI(node);
+			Object_Test_API(node);
 			return NULL;
 		}
 	} else if(!node) {
@@ -200,7 +200,7 @@ void CIN_in_period(Node *pnode) {
 	}
 }
 
-void TreeViewerAPI(Node *node) {
+void Tree_Viewer_API(Node *node) {
 	char *viewer_data = (char *)calloc(TREE_VIEWER_DATASIZE, sizeof(char));
 	strcpy(viewer_data,"[");
 	
@@ -225,7 +225,7 @@ void TreeViewerAPI(Node *node) {
 	
 	for(int i=0; i<TREE_VIEWER_DATASIZE; i++) {
 		if(i == 1) continue;
-		if(isJSONValidChar(viewer_data[i])) {
+		if(is_JSON_Valid_Char(viewer_data[i])) {
 			res[index++] = viewer_data[i];
 		}
 	}
@@ -244,7 +244,7 @@ void Tree_data(Node *node, char **viewer_data, int cin_num) {
 		
 		Node *p = cinLatest;
 		
-		cinLatest = LatestCINs(cinLatest, cin_num);
+		cinLatest = Latest_CINs(cinLatest, cin_num);
 		
 		while(cinLatest) {
 			char *json = Node_to_json(cinLatest);
@@ -274,7 +274,7 @@ void Tree_data(Node *node, char **viewer_data, int cin_num) {
 	}
 }
 
-Node *LatestCINs(Node* cinList, int num) {
+Node *Latest_CINs(Node* cinList, int num) {
 	Node *head, *tail;
 	head = tail = cinList;
 	int cnt = 1;
@@ -293,7 +293,7 @@ Node *LatestCINs(Node* cinList, int num) {
 	return head;
 }
 
-void ObjectTestAPI(Node *node) {
+void Object_Test_API(Node *node) {
 	HTTP_200_JSON;
 	printf("{\"cin-size\": %d}",node->cinSize);
 	return;
@@ -303,7 +303,7 @@ void Remove_Specific_Asterisk_Payload() {
 	int index = 0;
 
 	for(int i=0; i<payload_size; i++) {
-		if(isJSONValidChar(payload[i])) {
+		if(is_JSON_Valid_Char(payload[i])) {
 			payload[index++] =  payload[i];
 		}
 	}
@@ -755,7 +755,7 @@ void Free_Sub(Sub* sub) {
 }
 
 void Notify_Object(Node *node, char *res_json, Net net) {
-	RemoveInvalidCharJSON(res_json);
+	Remove_Invalid_Char_JSON(res_json);
 	while(node) {
 		if(node->ty == t_Sub && (net & node->net) == net) {
 			char *noti_json = Noti_to_json(node->sur, (int)log2((double)net ) + 1, res_json);
@@ -767,12 +767,12 @@ void Notify_Object(Node *node, char *res_json, Net net) {
 	}
 }
 
-void RemoveInvalidCharJSON(char* json) {
+void Remove_Invalid_Char_JSON(char* json) {
 	int size = (int)malloc_usable_size(json);
 	int index = 0;
 
 	for(int i=0; i<size; i++) {
-		if(isJSONValidChar(json[i]) && json[i] != '\\') {
+		if(is_JSON_Valid_Char(json[i]) && json[i] != '\\') {
 			json[index++] = json[i];
 		}
 	}
@@ -780,11 +780,11 @@ void RemoveInvalidCharJSON(char* json) {
 	json[index] = '\0';
 }
 
-int isJSONValidChar(char c){
+int is_JSON_Valid_Char(char c){
 	return ('!' <= c && c <= '~');
 }
 
-int NetToBit(char *net) {
+int Net_To_Bit(char *net) {
 	int netLen = strlen(net);
 	int ret = 0;
 
@@ -875,7 +875,7 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
 
         curl_easy_setopt(curl, CURLOPT_URL, target);
 		if(post_data){
-			RemoveInvalidCharJSON(post_data);
+			Remove_Invalid_Char_JSON(post_data);
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
 		}
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
