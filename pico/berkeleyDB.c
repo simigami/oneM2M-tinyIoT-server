@@ -734,6 +734,7 @@ int Store_CIN(CIN *cin_object)
 }
 
 int Store_Sub(Sub *sub_object) {
+    fprintf(stderr,"[Store Sub] %s...",sub_object->ri);
     char* DATABASE = "SUB.db";
 
     DB* dbp;    // db handle
@@ -742,28 +743,34 @@ int Store_Sub(Sub *sub_object) {
     DBT key, data;  // storving key and real data
     int ret;        // template value
 
-    DBT key_rn, key_ri, key_pi, key_nu, key_net, key_ct, key_et, key_lt, key_ty;
-    DBT data_rn, data_ri, data_pi, data_nu, data_net, data_ct, data_et, data_lt, data_ty;  // storving key and real data
+    DBT key_pi;
+    DBT data_rn, data_net, data_nu, data_ri, data_ct,
+     data_et, data_lt, data_ty, data_nct, data_sur;  // storving key and real data
 
     char* program_name = "my_prog";
 
     // if input == NULL
+    if (sub_object->pi == NULL) {
+        fprintf(stderr, "The key is NULL\n");
+        return 0;
+    }
     if (sub_object->rn == NULL) sub_object->rn = "";
     if (sub_object->ri == NULL) sub_object->ri = "";
-    if (sub_object->pi == NULL) sub_object->pi = "";
     if (sub_object->nu == NULL) sub_object->nu = "";
-    if (sub_object->net == NULL) sub_object->net = "0";
+    if (sub_object->net == NULL) sub_object->net = "1";
     if (sub_object->ct == NULL) sub_object->ct = "";
     if (sub_object->et == NULL) sub_object->et = "";
     if (sub_object->lt == NULL) sub_object->lt = "";
     if (sub_object->ty == '\0') sub_object->ty = 23;
+    if (sub_object->nct == '\0') sub_object->nct = 1;
+    if (sub_object->sur == NULL) sub_object->sur = "";    
 
 
     ret = db_create(&dbp, NULL, 0);
     if (ret) {
         fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        printf("File ERROR\n");
-        exit(1);
+        fprintf(stderr, "File ERROR\n");
+        return 0;
     }
 
     dbp->set_errfile(dbp, error_file_pointer);
@@ -773,7 +780,7 @@ int Store_Sub(Sub *sub_object) {
     ret = dbp->set_flags(dbp, DB_DUP);
     if (ret != 0) {
         dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        printf("Flag Set ERROR\n");
+        fprintf(stderr, "Flag Set ERROR\n");
         dbp->close(dbp, 0);
         return(ret);
     }
@@ -782,8 +789,8 @@ int Store_Sub(Sub *sub_object) {
     ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
-        printf("DB Open ERROR\n");
-        exit(1);
+        fprintf(stderr, "DB Open ERROR\n");
+        return 0;
     }
 
     /*
@@ -792,100 +799,89 @@ int Store_Sub(Sub *sub_object) {
   */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        printf("Cursor ERROR");
-        exit(1);
+        fprintf(stderr, "Cursor ERROR");
+        return 0;
     }
 
     /* keyand data must initialize */
-    memset(&key_rn, 0, sizeof(DBT));
-    memset(&key_ri, 0, sizeof(DBT));
     memset(&key_pi, 0, sizeof(DBT));
-    memset(&key_nu, 0, sizeof(DBT));
-    memset(&key_net, 0, sizeof(DBT));
-    memset(&key_ct, 0, sizeof(DBT));
-    memset(&key_et, 0, sizeof(DBT));
-    memset(&key_lt, 0, sizeof(DBT));
-    memset(&key_ty, 0, sizeof(DBT));
 
     memset(&data_rn, 0, sizeof(DBT));
     memset(&data_ri, 0, sizeof(DBT));
-    memset(&data_pi, 0, sizeof(DBT));
     memset(&data_nu, 0, sizeof(DBT));
     memset(&data_net, 0, sizeof(DBT));
     memset(&data_ct, 0, sizeof(DBT));
     memset(&data_et, 0, sizeof(DBT));
     memset(&data_lt, 0, sizeof(DBT));
     memset(&data_ty, 0, sizeof(DBT));
+    memset(&data_nct, 0, sizeof(DBT));
+    memset(&data_sur, 0, sizeof(DBT));
 
     /* initialize the data to be the first of two duplicate records. */
+    key_pi.data = sub_object->pi;
+    key_pi.size = strlen(sub_object->pi) + 1;
+
     data_rn.data = sub_object->rn;
     data_rn.size = strlen(sub_object->rn) + 1;
-    key_rn.data = "rn";
-    key_rn.size = strlen("rn") + 1;
 
     data_ri.data = sub_object->ri;
     data_ri.size = strlen(sub_object->ri) + 1;
-    key_ri.data = "ri";
-    key_ri.size = strlen("ri") + 1;
-
-    data_pi.data = sub_object->pi;
-    data_pi.size = strlen(sub_object->pi) + 1;
-    key_pi.data = "pi";
-    key_pi.size = strlen("pi") + 1;
 
     data_nu.data = sub_object->nu;
     data_nu.size = strlen(sub_object->nu) + 1;
-    key_nu.data = "nu";
-    key_nu.size = strlen("nu") + 1;
 
     data_net.data = sub_object->net;
     data_net.size = strlen(sub_object->net) + 1;
-    key_net.data = "net";
-    key_net.size = strlen("net") + 1;
 
     data_ct.data = sub_object->ct;
     data_ct.size = strlen(sub_object->ct) + 1;
-    key_ct.data = "ct";
-    key_ct.size = strlen("ct") + 1;
 
     data_et.data = sub_object->et;
     data_et.size = strlen(sub_object->et) + 1;
-    key_et.data = "et";
-    key_et.size = strlen("et") + 1;
 
     data_lt.data = sub_object->lt;
     data_lt.size = strlen(sub_object->lt) + 1;
-    key_lt.data = "lt";
-    key_lt.size = strlen("lt") + 1;
 
     data_ty.data = &sub_object->ty;
     data_ty.size = sizeof(sub_object->ty) + 1;
-    key_ty.data = "ty";
-    key_ty.size = strlen("ty") + 1;
+
+    data_nct.data = &sub_object->nct;
+    data_nct.size = sizeof(sub_object->nct) + 1;
+
+    data_sur.data = sub_object->sur;
+    data_sur.size = strlen(sub_object->sur) + 1;
+
 
     /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_rn, &data_rn, DB_KEYLAST)) != 0)
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_ri, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_ri, &data_ri, DB_KEYLAST)) != 0)
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_rn, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_pi, &data_pi, DB_KEYLAST)) != 0)
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_nu, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_nu, &data_nu, DB_KEYLAST)) != 0)
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_net, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_net, &data_net, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_ct, &data_ct, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_et, &data_et, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_lt, &data_lt, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-    if ((ret = dbcp->put(dbcp, &key_ty, &data_ty, DB_KEYLAST)) != 0)
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_sur, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
 
+
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_ct, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_et, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_lt, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_ty, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+    if ((ret = dbcp->put(dbcp, &key_pi, &data_nct, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+
+
+
+    /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); //DB close
-
+    dbp->close(dbp, 0); 
+    fprintf(stderr,"OK\n");
     return 1;
 }
 
@@ -1434,6 +1430,7 @@ return new_cin;
 }
 
 Sub* Get_Sub(char* ri) {
+    fprintf(stderr,"[Get Sub] %s...", ri);
     char* database = "SUB.db";
 
     //store AE
@@ -1575,11 +1572,30 @@ Sub* Get_Sub(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-
+    fprintf(stderr,"OK\n");
     return new_sub;
 }
 
-AE* Update_AE_DB(AE* ae) {
+int Update_AE_DB(AE* ae_object) {
+    fprintf(stderr,"[Update AE] %s...", ae_object->ri);
+    /* ri NULL ERROR*/
+    if(ae_object->ri==NULL){
+        fprintf(stderr,"ri NULL ERROR\n");
+        return 0;
+    }
+
+    /* Not NULL:0, NULL:1 */
+    int rn_f=0, pi_f=0, ct_f=0, lt_f=0, et_f=0, api_f=0, aei_f=0, ty_f=0, rr_f=0;
+
+    if(ae_object->rn==NULL) rn_f=1;
+    if(ae_object->pi==NULL) pi_f=1;    
+    if(ae_object->ct==NULL) ct_f=1;
+    if(ae_object->lt==NULL) lt_f=1;
+    if(ae_object->et==NULL) et_f=1;
+    if(ae_object->api==NULL) api_f=1;
+    if(ae_object->aei==NULL) aei_f=1;
+    if(ae_object->ty==0) ty_f=1;  
+    if(ae_object->rr==false) rr_f=1;      
 
     char* database = "AE.db";
 
@@ -1598,12 +1614,14 @@ AE* Update_AE_DB(AE* ae) {
     ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", database);
+        return 0;
         exit(1);
     }
 
     /* Acquire a cursor for the database. */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
+        return 0;
         exit(1);
     }
 
@@ -1614,107 +1632,99 @@ AE* Update_AE_DB(AE* ae) {
     int cnt = 0;
     int idx = 0;
 
-    // ŒöÁ€ÇÒ ¿ÀºêÁ§Æ®°¡ žî¹øÂ°ÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
     DBC* dbcp0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
+        return 0;
         exit(1);
     }
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "ri", key.size) == 0) {
             idx++;
-            if (strncmp(data.data, ae->ri, data.size) == 0) {
-                cnt++;
+            if (strncmp(data.data, ae_object->ri, data.size) == 0) {
+                cnt++; 
                 break;
             }
         }
     }
 
-    // ÀÎÀÚ·Î µéŸî¿Â ¿ÀºêÁ§Æ®°¡ ÁžÀçÇÏÁö ŸÊÀžžé NULL ¹ÝÈ¯
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
-        return NULL;
+        return 0;
         exit(1);
     }
 
-    int cnt_rn = 0;
-    int cnt_pi = 0;
-    int cnt_ty = 0;
-    int cnt_et = 0;
-    int cnt_lt = 0;
-    int cnt_ct = 0;
-    int cnt_api = 0;
-    int cnt_aei = 0;
-    int cnt_rr = 0;
+    int cnt_rn = 0,cnt_pi = 0,cnt_et = 0,cnt_lt = 0,cnt_ct = 0,cnt_api = 0,cnt_aei = 0;
+    int cnt_rr = 0,cnt_ty = 0;
     
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, "rn", key.size) == 0) {
+        if (strncmp(key.data, "rn", key.size) == 0 && rn_f==0) {
             cnt_rn++;
             if (cnt_rn == idx) {
-                data.size = strlen(ae->rn) + 1;
-                strcpy(data.data, ae->rn);
+                data.size = strlen(ae_object->rn) + 1;
+                strcpy(data.data, ae_object->rn);
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "pi", key.size) == 0) {
+        if (strncmp(key.data, "pi", key.size) == 0 && pi_f==0) {
             cnt_pi++;
             if (cnt_pi == idx) {
-                data.size = strlen(ae->pi) + 1;
-                strcpy(data.data, ae->pi);
+                data.size = strlen(ae_object->pi) + 1;
+                strcpy(data.data, ae_object->pi);
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "api", key.size) == 0) {
+        if (strncmp(key.data, "api", key.size) == 0 && api_f==0) {
             cnt_api++;
             if (cnt_api == idx) {
-                data.size = strlen(ae->api) + 1;
-                strcpy(data.data, ae->api);
+                data.size = strlen(ae_object->api) + 1;
+                strcpy(data.data, ae_object->api);
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "aei", key.size) == 0) {
+        if (strncmp(key.data, "aei", key.size) == 0 && aei_f==0) {
             cnt_aei++;
             if (cnt_aei == idx) {
-                data.size = strlen(ae->aei) + 1;
-                strcpy(data.data, ae->aei);
+                data.size = strlen(ae_object->aei) + 1;
+                strcpy(data.data, ae_object->aei);
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "et", key.size) == 0) {
+        if (strncmp(key.data, "et", key.size) == 0 && et_f==0) {
             cnt_et++;
             if (cnt_et == idx) {
-                data.size = strlen(ae->et) + 1;
-                strcpy(data.data, ae->et);
+                data.size = strlen(ae_object->et) + 1;
+                strcpy(data.data, ae_object->et);
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "lt", key.size) == 0) {
+        if (strncmp(key.data, "lt", key.size) == 0 && lt_f==0) {
             cnt_lt++;
             if (cnt_lt == idx) {
-                data.size = strlen(ae->lt) + 1;
-                strcpy(data.data, ae->lt);
+                data.size = strlen(ae_object->lt) + 1;
+                strcpy(data.data, ae_object->lt);
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "ct", key.size) == 0) {
+        if (strncmp(key.data, "ct", key.size) == 0 && ct_f==0) {
             cnt_ct++;
             if (cnt_ct == idx) {
-                data.size = strlen(ae->ct) + 1;
-                strcpy(data.data, ae->ct);
+                data.size = strlen(ae_object->ct) + 1;
+                strcpy(data.data, ae_object->ct);
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "ty", key.size) == 0) {
+        if (strncmp(key.data, "ty", key.size) == 0 && ty_f==0) {
             cnt_ty++;
             if (cnt_ty == idx) {
-                *(int*)data.data = ae->ty;
+                *(int*)data.data = ae_object->ty;
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "rr", key.size) == 0) {
+        if (strncmp(key.data, "rr", key.size) == 0 && rr_f==0) {
             cnt_rr++;
             if (cnt_rr == idx) {
-                *(bool*)data.data = ae->rr;
+                *(bool*)data.data = ae_object->rr;
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
@@ -1723,17 +1733,37 @@ AE* Update_AE_DB(AE* ae) {
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
         printf("Cursor ERROR\n");
-        exit(0);
+        return 0;
     }
 
+    /* DB close */
     dbcp->close(dbcp);
     dbcp->close(dbcp0);
-    dbp->close(dbp, 0); //DB close
-
-    return ae;
+    dbp->close(dbp, 0); 
+    fprintf(stderr,"OK\n");
+    return 1;
 }
 
-CNT* Update_CNT_DB(CNT* cnt_object) {
+int Update_CNT_DB(CNT* cnt_object) {
+    fprintf(stderr,"[Update CNT] %s...", cnt_object->ri);
+    /* ri NULL ERROR*/
+    if(cnt_object->ri==NULL){
+        fprintf(stderr,"ri NULL ERROR\n");
+        return 0;
+    }
+
+    /* Not NULL:0, NULL:1 */
+    int rn_f=0, pi_f=0, ct_f=0, lt_f=0, et_f=0, st_f=0, cni_f=0, ty_f=0, cbs_f=0;
+
+    if(cnt_object->rn==NULL) rn_f=1;
+    if(cnt_object->pi==NULL) pi_f=1;    
+    if(cnt_object->ct==NULL) ct_f=1;
+    if(cnt_object->lt==NULL) lt_f=1;
+    if(cnt_object->et==NULL) et_f=1;
+    if(cnt_object->st==0) st_f=1;
+    if(cnt_object->ty==0) ty_f=1; 
+    if(cnt_object->cni==0) cni_f=1;
+    if(cnt_object->cbs==0) cbs_f=1;   
 
     char* database = "CNT.db";
 
@@ -1758,6 +1788,7 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
     /* Acquire a cursor for the database. */
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
+        return 0;
         exit(1);
     }
 
@@ -1768,26 +1799,25 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
     int cnt = 0;
     int idx = 0;
 
-    // ������ ������Ʈ�� ���°���� ã�� ���� Ŀ��
     DBC* dbcp0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
+        return 0;
         exit(1);
     }
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "ri", key.size) == 0) {
             idx++;
             if (strncmp(data.data, cnt_object->ri, data.size) == 0) {
-                cnt++; // update�� CNT�� ri�� �����ϸ� cnt > 0
+                cnt++; 
                 break;
             }
         }
     }
 
-    // ���ڷ� ���� ri�� �������� ������ NULL ��ȯ
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
-        return NULL;
+        return 0;
         exit(1);
     }
 
@@ -1802,7 +1832,7 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
     int cnt_st = 0;
 
     
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0 && rn_f==0) {
         if (strncmp(key.data, "rn", key.size) == 0) {
             cnt_rn++;
             if (cnt_rn == idx) {
@@ -1812,7 +1842,7 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
             }
         }
 
-        if (strncmp(key.data, "pi", key.size) == 0) {
+        if (strncmp(key.data, "pi", key.size) == 0 && pi_f==0) {
             cnt_pi++;
             if (cnt_pi == idx) {
                 data.size = strlen(cnt_object->pi) + 1;
@@ -1820,7 +1850,7 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "et", key.size) == 0) {
+        if (strncmp(key.data, "et", key.size) == 0 && et_f==0) {
             cnt_et++;
             if (cnt_et == idx) {
                 data.size = strlen(cnt_object->et) + 1;
@@ -1828,7 +1858,7 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "lt", key.size) == 0) {
+        if (strncmp(key.data, "lt", key.size) == 0 && lt_f==0) {
             cnt_lt++;
             if (cnt_lt == idx) {
                 data.size = strlen(cnt_object->lt) + 1;
@@ -1836,7 +1866,7 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "ct", key.size) == 0) {
+        if (strncmp(key.data, "ct", key.size) == 0 && ct_f==0) {
             cnt_ct++;
             if (cnt_ct == idx) {
                 data.size = strlen(cnt_object->ct) + 1;
@@ -1844,28 +1874,28 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "ty", key.size) == 0) {
+        if (strncmp(key.data, "ty", key.size) == 0 && ty_f==0) {
             cnt_ty++;
             if (cnt_ty == idx) {
                 *(int*)data.data = cnt_object->ty;
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "cni", key.size) == 0) {
+        if (strncmp(key.data, "cni", key.size) == 0 && cni_f==0) {
             cnt_cni++;
             if (cnt_cni == idx) {
                 *(int*)data.data = cnt_object->cni;
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "cbs", key.size) == 0) {
+        if (strncmp(key.data, "cbs", key.size) == 0 && cbs_f==0) {
             cnt_cbs++;
             if (cnt_cbs == idx) {
                 *(int*)data.data = cnt_object->cbs;
                 dbcp->put(dbcp, &key, &data, DB_CURRENT);
             }
         }
-        if (strncmp(key.data, "st", key.size) == 0) {
+        if (strncmp(key.data, "st", key.size) == 0 && st_f==0) {
             cnt_st++;
             if (cnt_st == idx) {
                 *(int*)data.data = cnt_object->st;
@@ -1877,22 +1907,166 @@ CNT* Update_CNT_DB(CNT* cnt_object) {
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
         printf("Cursor ERROR\n");
+        return 0;
         exit(0);
     }
 
+    /* DB close */
     dbcp->close(dbcp);
     dbcp->close(dbcp0);
-    dbp->close(dbp, 0); //DB close
-
-    return cnt_object;
+    dbp->close(dbp, 0); 
+    fprintf(stderr,"OK\n");
+    return 1;
 }
 
-AE* Delete_AE(char* ri) {
+int Update_Sub_DB(Sub *sub_object) {
+
+    /* ri NULL ERROR*/
+    if(sub_object->ri==NULL){
+        fprintf(stderr,"ri NULL ERROR\n");
+        return 0;
+    }
+
+    /* Not NULL:0, NULL:1 */
+    int rn_f=0, pi_f=0, ct_f=0, lt_f=0, et_f=0, net_f=0,sur_f=0,nct_f=0,nu_f=0, ty_f=0;
+
+    if(sub_object->rn==NULL) rn_f=1;
+    if(sub_object->pi==NULL) pi_f=1;    
+    if(sub_object->ct==NULL) ct_f=1;
+    if(sub_object->lt==NULL) lt_f=1;
+    if(sub_object->et==NULL) et_f=1;
+    if(sub_object->nu==NULL) nu_f=1;
+    if(sub_object->net==NULL) net_f=1;
+    if(sub_object->sur==NULL) sur_f=1;
+    if(sub_object->ty==0) ty_f=1; 
+    if(sub_object->nct==0) nct_f=1;
+
+
+    char* database = "SUB.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        return 0;
+    }
+
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        return 0;
+    }
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int cnt = 0;
+    int flag = 0;
+    int struct_size = 10;
+
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        return 0;
+        exit(1);
+    }
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        cnt++;
+        if (strncmp(data.data, sub_object->ri, data.size) == 0) {
+            flag=1;
+            break;
+        }
+    }
+    if (cnt == 0 || flag==0) {
+        fprintf(stderr, "Data not exist\n");
+        return 0;
+    }
+
+    int idx = -1;
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(data.data, sub_object->ri, data.size) == 0) {
+            idx=0;
+        }
+        if(idx!=-1 && idx < struct_size){
+            // idx==0 -> ri
+            if(idx==1 && rn_f==0) {
+                data.size = strlen(sub_object->rn) + 1;
+                strcpy(data.data, sub_object->rn);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            if(idx==2 && nu_f==0) {
+                data.size = strlen(sub_object->nu) + 1;
+                strcpy(data.data, sub_object->nu);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            if(idx==3 && net_f==0) {
+                data.size = strlen(sub_object->net) + 1;
+                strcpy(data.data, sub_object->net);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }            
+            if(idx==4 && sur_f==0) {
+                data.size = strlen(sub_object->sur) + 1;
+                strcpy(data.data, sub_object->sur);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            if(idx==5 && ct_f==0) {
+                data.size = strlen(sub_object->ct) + 1;
+                strcpy(data.data, sub_object->ct);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            if(idx==6 && lt_f==0) {
+                data.size = strlen(sub_object->lt) + 1;
+                strcpy(data.data, sub_object->lt);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            if(idx==7 && et_f==0) {
+                data.size = strlen(sub_object->et) + 1;
+                strcpy(data.data, sub_object->et);
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            if(idx==8 && ty_f==0) {
+                *(int*)data.data=sub_object->ty;
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            if(idx==9 && nct_f==0) {
+                *(int*)data.data=sub_object->nct;
+                dbcp->put(dbcp, &key, &data, DB_CURRENT);
+            }
+            idx++;
+        }
+    }
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        fprintf(stderr, "Cursor ERROR\n");
+        return 0;
+    }
+
+    /* Cursors must be closed */
+    if (dbcp0 != NULL)
+        dbcp0->close(dbcp0);
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+        
+    /* Delete Success */
+    return 1;
+}
+
+int Delete_AE(char* ri) {
     fprintf(stderr,"[Delete AE] %s...", ri);
-
-    //store AE
-    AE* new_ae = (AE*)malloc(sizeof(AE));
-
     char* database = "AE.db";
 
     DB* dbp;
@@ -1911,7 +2085,7 @@ AE* Delete_AE(char* ri) {
     ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", database);
-        exit(1);
+        return 0;
     }
 
 
@@ -1921,11 +2095,11 @@ AE* Delete_AE(char* ri) {
 
     int idx = 0;
     int flag = 0;
-    // žî¹øÂ° AEÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
+    // ���° AE���� ã�� ���� Ŀ��
     DBC* dbcp0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
+        return 0;
     }
 
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
@@ -1933,18 +2107,17 @@ AE* Delete_AE(char* ri) {
             idx++;
             if (strncmp(data.data, ri, data.size) == 0) {
                 flag = 1;
-                new_ae->ri = malloc(data.size);
-                strcpy(new_ae->ri, data.data);
                 dbcp0->del(dbcp0, 0);
                 break;
             }
         }
     }
     if (flag == 0) {
-        fprintf(stderr,"Not Found\n");
-        exit(1);
+        printf("Not Found\n");
+        return 0;
     }
 
+    // �ش� index�� ������ �� ã�� ����
     int cnt_rn = 0;
     int cnt_pi = 0;
     int cnt_ty = 0;
@@ -1956,78 +2129,53 @@ AE* Delete_AE(char* ri) {
     int cnt_rr = 0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
+        return 0;
     }
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "rn", key.size) == 0) {
             cnt_rn++;
-            if (cnt_rn == idx) {
-                new_ae->rn = malloc(data.size);
-                strcpy(new_ae->rn, data.data);
+            if (cnt_rn == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "pi", key.size) == 0) {
             cnt_pi++;
-            if (cnt_pi == idx) {
-                new_ae->pi = malloc(data.size);
-                strcpy(new_ae->pi, data.data);
+            if (cnt_pi == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "api", key.size) == 0) {
             cnt_api++;
-            if (cnt_api == idx) {
-                new_ae->api = malloc(data.size);
-                strcpy(new_ae->api, data.data);
+            if (cnt_api == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "aei", key.size) == 0) {
             cnt_aei++;
-            if (cnt_aei == idx) {
-                new_ae->aei = malloc(data.size);
-                strcpy(new_ae->aei, data.data);
+            if (cnt_aei == idx)
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "et", key.size) == 0) {
             cnt_et++;
-            if (cnt_et == idx) {
-                new_ae->et = malloc(data.size);
-                strcpy(new_ae->et, data.data);
+            if (cnt_et == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "lt", key.size) == 0) {
             cnt_lt++;
-            if (cnt_lt == idx) {
-                new_ae->lt = malloc(data.size);
-                strcpy(new_ae->lt, data.data);
+            if (cnt_lt == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "ct", key.size) == 0) {
             cnt_ct++;
-            if (cnt_ct == idx) {
-                new_ae->ct = malloc(data.size);
-                strcpy(new_ae->ct, data.data);
+            if (cnt_ct == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
             cnt_ty++;
-            if (cnt_ty == idx) {
-                new_ae->ty = *(int*)data.data;
+            if (cnt_ty == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
         if (strncmp(key.data, "rr", key.size) == 0) {
             cnt_rr++;
-            if (cnt_rr == idx) {
-                new_ae->rr = *(bool*)data.data;
+            if (cnt_rr == idx) 
                 dbcp->del(dbcp, 0);
-            }
         }
     }
 
@@ -2039,17 +2187,13 @@ AE* Delete_AE(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-    
-	fprintf(stderr,"OK\n");
-    return new_ae;
+    fprintf(stderr,"OK\n");
+    /* Delete Success */
+    return 1;
 }
 
-CNT* Delete_CNT(char* ri) {
+int Delete_CNT(char* ri) {
     fprintf(stderr,"[Delete CNT] %s...", ri);
-
-    //store CNT
-    CNT* new_cnt = (CNT*)malloc(sizeof(CNT));
-
     char* database = "CNT.db";
 
     DB* dbp;
@@ -2068,7 +2212,7 @@ CNT* Delete_CNT(char* ri) {
     ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", database);
-        exit(1);
+        return 0;
     }
 
 
@@ -2078,11 +2222,10 @@ CNT* Delete_CNT(char* ri) {
 
     int idx = 0;
     int flag = 0;
-    // žî¹øÂ° CNTÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
     DBC* dbcp0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
+        return 0;
     }
 
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
@@ -2090,20 +2233,17 @@ CNT* Delete_CNT(char* ri) {
             idx++;
             if (strncmp(data.data, ri, data.size) == 0) {
                 flag = 1;
-                new_cnt->ri = malloc(data.size);
-                strcpy(new_cnt->ri, data.data);
                 dbcp0->del(dbcp0, 0);
                 break;
             }
         }
     }
     if (flag == 0) {
-        printf("Not Found\n");
-        return NULL;
-        exit(1);
+        fprintf(stderr,("Not Found\n"));
+        return 0;
     }
 
-    // ÇØŽç index¿¡ ŒøŒ­ÀÇ °ª Ã£ŸÆ Áö¿ò
+    // �ش� index�� ������ �� ã�� ����
     int cnt_rn = 0;
     int cnt_pi = 0;
     int cnt_ty = 0;
@@ -2116,80 +2256,208 @@ CNT* Delete_CNT(char* ri) {
 
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
+        return 0;
         exit(1);
     }
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "rn", key.size) == 0) {
             cnt_rn++;
             if (cnt_rn == idx) {
-                new_cnt->rn = malloc(data.size);
-                strcpy(new_cnt->rn, data.data);
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "pi", key.size) == 0) {
             cnt_pi++;
             if (cnt_pi == idx) {
-                new_cnt->pi = malloc(data.size);
-                strcpy(new_cnt->pi, data.data);
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "et", key.size) == 0) {
             cnt_et++;
             if (cnt_et == idx) {
-                new_cnt->et = malloc(data.size);
-                strcpy(new_cnt->et, data.data);
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "lt", key.size) == 0) {
             cnt_lt++;
             if (cnt_lt == idx) {
-                new_cnt->lt = malloc(data.size);
-                strcpy(new_cnt->lt, data.data);
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "ct", key.size) == 0) {
             cnt_ct++;
             if (cnt_ct == idx) {
-                new_cnt->ct = malloc(data.size);
-                strcpy(new_cnt->ct, data.data);
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
             cnt_ty++;
             if (cnt_ty == idx) {
-                new_cnt->ty = *(int*)data.data;
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "st", key.size) == 0) {
             cnt_st++;
             if (cnt_st == idx) {
-                new_cnt->st = *(int*)data.data;
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "cbs", key.size) == 0) {
             cnt_cbs++;
             if (cnt_cbs == idx) {
-                new_cnt->cbs = *(int*)data.data;
                 dbcp->del(dbcp, 0);
             }
         }
         if (strncmp(key.data, "cni", key.size) == 0) {
             cnt_cni++;
             if (cnt_cni == idx) {
-                new_cnt->cni = *(int*)data.data;
                 dbcp->del(dbcp, 0);
             }
         }
 
     }
 
+    /* Cursors must be closed */
+    if (dbcp0 != NULL)
+        dbcp0->close(dbcp0);
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+    fprintf(stderr,"OK\n");
+    /* Delete Success */
+    return 1;
+}
+
+int Delete_CIN(char* ri) {
+    char* database = "CIN.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    /* Open the database. */
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        return 0;
+    }
+
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int idx = 0;
+    int flag = 0;
+
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        return 0;
+    }
+
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "ri", key.size) == 0) {
+            idx++;
+            if (strncmp(data.data, ri, data.size) == 0) {
+                flag = 1;
+                dbcp0->del(dbcp0, 0);
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        printf("Not Found\n");
+        return 0;
+    }
+
+    int cin_rn = 0;
+    int cin_pi = 0;
+    int cin_ty = 0;
+    int cin_et = 0;
+    int cin_lt = 0;
+    int cin_ct = 0;
+    int cin_st = 0;
+    int cin_cs = 0;
+    int cin_con = 0;
+    int cin_csi = 0;
+
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        return 0;
+        exit(1);
+    }
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, "rn", key.size) == 0) {
+            cin_rn++;
+            if (cin_rn == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "pi", key.size) == 0) {
+            cin_pi++;
+            if (cin_pi == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "et", key.size) == 0) {
+            cin_et++;
+            if (cin_et == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "lt", key.size) == 0) {
+            cin_lt++;
+            if (cin_lt == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "ct", key.size) == 0) {
+            cin_ct++;
+            if (cin_ct == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "con", key.size) == 0) {
+            cin_con++;
+            if (cin_con == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "csi", key.size) == 0) {
+            cin_csi++;
+            if (cin_csi == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "ty", key.size) == 0) {
+            cin_ty++;
+            if (cin_ty == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "st", key.size) == 0) {
+            cin_st++;
+            if (cin_st == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+        if (strncmp(key.data, "cs", key.size) == 0) {
+            cin_cs++;
+            if (cin_cs == idx) {
+                dbcp->del(dbcp, 0);
+            }
+        }
+    }
 
     /* Cursors must be closed */
     if (dbcp0 != NULL)
@@ -2199,8 +2467,91 @@ CNT* Delete_CNT(char* ri) {
     if (dbp != NULL)
         dbp->close(dbp, 0);
     
-	fprintf(stderr,"OK\n");
-    return new_cnt;
+    return 1;
+}
+
+int Delete_Sub(char* ri) {
+    fprintf(stderr,"[Delete Sub] %s...", ri);
+    char* database = "SUB.db";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    /* Open the database. */
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", database, db_strerror(ret));
+        return 0;
+    }
+
+    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", database);
+        return 0;
+        exit(1);
+    }
+
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        return 0;
+        exit(1);
+    }
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int cnt = 0;
+    int flag = 0;
+    int struct_size = 10;
+
+    DBC* dbcp0;
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        return 0;
+    }
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        cnt++;
+        if (strncmp(data.data, ri, data.size) == 0) {
+            flag=1;
+            break;
+        }
+    }
+    if (cnt == 0 || flag==0) {
+        fprintf(stderr, "Data not exist\n");
+        return 0;
+    }
+
+    int idx = -1;
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(data.data, ri, data.size) == 0) {
+            idx=0;
+        }
+        if(idx!=-1 && idx < struct_size){
+            dbcp->del(dbcp, 0);
+            idx++;
+        }
+    }
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        fprintf(stderr, "Cursor ERROR\n");
+        return 0;
+    }
+
+    /* Cursors must be closed */
+    if (dbcp0 != NULL)
+        dbcp0->close(dbcp0);
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+    
+    fprintf(stderr,"OK\n");
+    /* Delete Success */
+    return 1;
 }
 
 Node* Get_All_AE() {
@@ -2673,7 +3024,6 @@ fprintf(stderr,"OK\n");
 }
 
 Node* Get_CIN_Pi(char* pi) {
-
     char* database = "CIN.db";
 
     DB* dbp;

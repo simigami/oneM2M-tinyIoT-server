@@ -40,6 +40,7 @@ void bindfd(int slot);
 #define HTTP_209_JSON printf("%s 209 Conflict\n%s\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_CORS_HEADERS, RESPONSE_JSON_HEADERS)
 #define HTTP_400 printf("%s 400 Bad Request\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_JSON_HEADERS)
 #define HTTP_404 printf("%s 404 Not found\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_JSON_HEADERS)
+#define HTTP_406 printf("%s 406 Not Acceptable\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_JSON_HEADERS)
 #define HTTP_500 printf("%s 500 Internal Server Error\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_JSON_HEADERS)
 
 // some interesting macro for `route()`
