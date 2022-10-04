@@ -17,14 +17,14 @@ class TestObject:
 
     def createCIN(self, n):
         print('Trying', n, 'CINs Create....')
-        before = requests.get(self.host + '/test' + self.uri) 
+        before = json.loads(requests.get(self.host + '/test' + self.uri).content)
         
         for _ in range(n) :
             self.requestCIN()
 
-        after = requests.get(self.host + '/test' + self.uri)
+        after = json.loads(requests.get(self.host + '/test' + self.uri).content)
 
-        print('Result :', int(after.content) - int(before.content), ' CINs Created')
+        print('Result :', int(after['cin-size']) - int(before['cin-size']), ' CINs Created')
 
     def createCNT(self):
         res = requests.post(self.host + self.uri, headers=cnt_headers, data=json.dumps(cnt_data))
@@ -34,6 +34,7 @@ class TestObject:
         print(res.content)
     
 
-testCNT = TestObject('/TinyIoT/test_AE1/test_CNT1')
-testCNT.retrieveObject()
+testCNT = TestObject('/TinyIoT/test_AE1/test_CNT2')
+testCNT.createCIN(1000)
+
 
