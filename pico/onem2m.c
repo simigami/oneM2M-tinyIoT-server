@@ -12,7 +12,7 @@
 #define TREE_VIEWER_DATASIZE 65536
 #define MAX_PROPERTY_SIZE 32768
 #define MAX_URI_SIZE 256
-#define EXPIRE_TIME 3600*24*365*2
+#define EXPIRE_TIME -3600*24*365*2
 
 int Validate_oneM2M_Standard() {
 	int ret = 1;
@@ -519,7 +519,7 @@ void Init_CSE(CSE* cse) {
 
 void Init_AE(AE* ae, char *pi) {
 	char *ct = Get_LocalTime(0);
-	char *et = Get_LocalTime(-EXPIRE_TIME);
+	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *aei = request_header("X-M2M-Origin"); 
 	char *ri = resource_identifier(t_AE, ct);
 	char tmp[MAX_PROPERTY_SIZE];
@@ -563,7 +563,7 @@ void Init_AE(AE* ae, char *pi) {
 
 void Init_CNT(CNT* cnt, char *pi) {
 	char *ct = Get_LocalTime(0);
-	char *et = Get_LocalTime(-EXPIRE_TIME);
+	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *ri = resource_identifier(t_CNT, ct);
 	char tmp[MAX_PROPERTY_SIZE];
 	
@@ -594,7 +594,7 @@ void Init_CNT(CNT* cnt, char *pi) {
 
 void Init_CIN(CIN* cin, char *pi) {
 	char *ct = Get_LocalTime(0);
-	char *et = Get_LocalTime(-EXPIRE_TIME);
+	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *ri = resource_identifier(t_CIN, ct);
 	char tmp[MAX_PROPERTY_SIZE];
 	
@@ -626,7 +626,7 @@ void Init_CIN(CIN* cin, char *pi) {
 
 void Init_Sub(Sub* sub, char *pi) {
 	char *ct = Get_LocalTime(0);
-	char *et = Get_LocalTime(-EXPIRE_TIME);
+	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *ri = resource_identifier(t_Sub, ct);
 	char tmp[MAX_PROPERTY_SIZE];
 
