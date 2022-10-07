@@ -3,6 +3,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "zeroconf.h"
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
@@ -16,6 +18,7 @@
 RT *rt;
 
 int main(int c, char **v) {
+	fprintf(stderr,"PID : %d\n",getpid());
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 
@@ -33,6 +36,8 @@ void route() {
 	if(!pnode) {
 		return;
 	}
+
+	fprintf(stderr,"rn : %s\n",pnode->rn);
 
 	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
 		HTTP_406;
