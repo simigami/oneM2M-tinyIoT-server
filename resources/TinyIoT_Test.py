@@ -4,6 +4,8 @@ cin_data = {'m2m:cin' : {'con':'test'}}
 cin_headers = {'Content-Type' : 'application/json; ty=4'}
 cnt_data = {'m2m:cnt' : {'rn':'test'}}
 cnt_headers = {'Content-Type' : 'application/json; ty=3'}
+sub_data = {'m2m:sub' : {'rn' : 'test_sub', 'enc': { 'net' : [1,2,3] },'nu' : ['http://127.0.0.1:5000?ct=json']}}
+sub_headers = {'Content-Type' : 'application/json; ty=23'}
 
 class TestObject:
     def __init__(self, _uri):
@@ -31,7 +33,7 @@ class TestObject:
 
     def retrieveObject(self):
         res = requests.get(self.host + self.uri)
-        print(res.content)
+        print(res.content) 
     
 
 testCNT = TestObject('/TinyIoT/test_AE1/test_CNT2')
