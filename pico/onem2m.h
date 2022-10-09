@@ -21,11 +21,20 @@ typedef enum {
 }ObjectType;
 
 typedef enum {
-	sub_1 = 1,
-	sub_2 = 2,
-	sub_3 = 4,
-	sub_4 = 8
+	noti_event_1 = 1,
+	noti_event_2 = 2,
+	noti_event_3 = 4,
+	noti_event_4 = 8
 }Net;
+
+typedef enum {
+	acop_Create = 1,
+	acop_Retrieve = 2,
+	acop_Update = 4,
+	acop_Delete = 8,
+	acop_Notify = 16,
+	acop_Discovery = 32
+}ACOP;
 
 // OneM2M Resource struct
 typedef struct {

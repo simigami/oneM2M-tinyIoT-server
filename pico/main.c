@@ -426,7 +426,7 @@ void Update_CNT(Node *pnode) {
 	char *res_json = CNT_to_json(after);
 	HTTP_200_JSON;
 	printf("%s", res_json);
-	Notify_Object(pnode->child, res_json, sub_1);
+	Notify_Object(pnode->child, res_json, noti_event_1);
 	free(res_json);
 	Free_CNT(after);
 	res_json = NULL;
