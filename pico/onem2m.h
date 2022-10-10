@@ -13,7 +13,8 @@ typedef enum {
 }Operation;
 
 typedef enum {
-	t_AE = 2,
+	t_ACP = 1,
+	t_AE,
 	t_CNT,
 	t_CIN,
 	t_CSE,
@@ -101,6 +102,20 @@ typedef struct {
 	int ty;
 	int nct;
 } Sub;
+
+typedef struct {
+	char *rn;
+	char *pi;
+	char *ri;
+	char *ct;
+	char *lt;
+	char *et;
+	char **pv_acor;
+	char **pv_acop;
+	char **pvs_acor;
+	char **pvs_acop;
+	int ty;
+} ACP;
 
 typedef struct Node {
 	struct Node *parent;
