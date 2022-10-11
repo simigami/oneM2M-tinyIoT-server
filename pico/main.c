@@ -126,6 +126,11 @@ void Create_Object(Node *pnode) {
 		fprintf(stderr,"\x1b[42mCreate Sub\x1b[0m\n");
 		Create_Sub(pnode);
 		break;
+	
+	case t_ACP :
+		fprintf(stderr,"\x1b[42mCreate ACP\x1b[0m\n");
+		Create_ACP(pnode);
+		break;
 
 	case t_CSE :
 		/*No Definition such request*/
@@ -163,9 +168,15 @@ void Retrieve_Object(Node *pnode) {
 		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
 		Retrieve_CIN(pnode);
 		break;
+
 	case t_Sub :
 		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");
 		Retrieve_Sub(pnode);			
+		break;
+
+	case t_ACP :
+		fprintf(stderr,"\x1b[43mRetrieve ACP\x1b[0m\n");
+		//Retrieve_ACP(pnode);			
 		break;
 	}	
 }
@@ -191,16 +202,25 @@ void Update_Object(Node *pnode) {
 	
 	case t_CSE :
 		break;
+
 	case t_AE :
 		fprintf(stderr,"\x1b[45mUpdate AE\x1b[0m\n");
 		Update_AE(pnode);
 		break;
+
 	case t_CNT :
 		fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
 		Update_CNT(pnode);
+		break;
+
 	case t_Sub :
 		fprintf(stderr,"\x1b[45mUpdate Sub\x1b[0m\n");
 		Update_Sub(pnode);
+		break;
+	
+	case t_ACP :
+		fprintf(stderr,"\x1b[45mUpdate ACP\x1b[0m\n");
+		//Update_ACP(pnode);
 		break;
 	}
 }
@@ -284,7 +304,7 @@ void Create_CIN(Node *pnode) {
 	char *res_json = CIN_to_json(cin);
 	HTTP_201_JSON;
 	printf("%s", res_json);
-	Notify_Object(pnode->child, res_json, sub_3);
+	Notify_Object(pnode->child, res_json, noti_event_3);
 	free(res_json);
 	Free_CIN(cin);
 	res_json = NULL;
@@ -320,6 +340,37 @@ void Create_Sub(Node *pnode) {
 	Free_Sub(sub);
 	res_json = NULL;
 	sub = NULL;
+}
+
+void Create_ACP(Node *pnode) {
+	ACP* acp = JSON_to_ACP(payload);
+	if(!acp) {
+		Response_JSON_Parse_Error();
+		return;
+	}
+	Init_Sub(acp, pnode->ri);
+	
+	/*
+	int result = Store_ACP(acp);
+	if(result != 1) { 
+		HTTP_500;
+		printf("{\"m2m:dbg\": \"DB store fail\"}");
+		Free_ACP(acp);
+		acp = NULL;
+		return;
+	}
+	*/
+	
+	Node* node = Create_Node(acp->ri, acp->rn, acp->pi, "\0", "\0", 0, t_ACP);
+	Add_child(pnode,node);
+	
+	char *res_json = ACP_to_json(acp);
+	HTTP_201_JSON;
+	printf("%s", res_json);
+	free(res_json);
+	Free_ACP(acp);
+	res_json = NULL;
+	acp = NULL;
 }
 
 void Retrieve_CSE(Node *pnode){

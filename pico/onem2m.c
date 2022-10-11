@@ -329,6 +329,7 @@ ObjectType Parse_ObjectType() {
 	int objType = atoi(ct+3);
 	
 	switch(objType) {
+	case 1 : ty = t_ACP; break;
 	case 2 : ty = t_AE; break;
 	case 3 : ty = t_CNT; break;
 	case 4 : ty = t_CIN; break;
@@ -342,17 +343,19 @@ ObjectType Parse_ObjectType() {
 ObjectType Parse_ObjectType_Body() {
 	ObjectType ty;
 	
-	char *cse, *ae, *cnt, *sub;
+	char *cse, *ae, *cnt, *sub, *acp;
 	
 	cse = strstr(payload, "m2m:cse");
 	ae = strstr(payload, "m2m:ae");
 	cnt = strstr(payload, "m2m:cnt");
 	sub = strstr(payload, "m2m:sub");
+	acp = strstr(payload, "m2m:acp");
 	
 	if(cse) ty = t_CSE;
 	else if(ae) ty = t_AE;
 	else if(cnt) ty = t_CNT;
 	else if(sub) ty = t_Sub;
+	else if(acp) ty = t_ACP;
 	
 	return ty;
 }
@@ -453,7 +456,7 @@ void Delete_Node_Object(Node *node, int flag) {
 		Delete_CNT(node->ri); 
 		char *noti_json = (char*)malloc(sizeof("Deleted") + 1);
 		strcpy(noti_json, "Deleted");
-		Notify_Object(node->child,noti_json,sub_2); 
+		Notify_Object(node->child,noti_json,noti_event_2); 
 		free(noti_json);
 		break;
 	case t_Sub :
@@ -660,6 +663,37 @@ void Init_Sub(Sub* sub, char *pi) {
 	sub->ty = t_Sub;
 	sub->nct = 0;
 
+	free(ct);
+	free(et);
+	free(ri);
+}
+
+void Init_ACP(ACP* acp, char *pi) {
+	char *ct = Get_LocalTime(0);
+	char *et = Get_LocalTime(EXPIRE_TIME);
+	char *ri = resource_identifier(t_ACP, ct);
+	char tmp[MAX_PROPERTY_SIZE];
+	
+	strcpy(tmp,acp->rn);
+	acp->rn = (char*)malloc((strlen(acp->rn) + 1) * sizeof(char));
+	strcpy(acp->rn,tmp);
+	
+	acp->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	acp->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	cnt->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
+	cnt->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	cnt->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	strcpy(cnt->ri, ri);
+	strcpy(cnt->pi, pi);
+	strcpy(cnt->et, et);
+	strcpy(cnt->ct, ct);
+	strcpy(cnt->lt, ct);
+	
+	cnt->ty = t_CNT;
+	cnt->st = 0;
+	cnt->cni = 0;
+	cnt->cbs = 0;
+	
 	free(ct);
 	free(et);
 	free(ri);

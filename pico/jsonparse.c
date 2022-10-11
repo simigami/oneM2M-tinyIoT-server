@@ -200,6 +200,122 @@ end:
 	return sub;
 }
 
+ACP* JSON_to_ACP(char *json_payload) {
+	ACP *acp = (ACP *)malloc(sizeof(ACP));
+
+	cJSON *root = NULL;
+	cJSON *rn = NULL;
+	cJSON *pv = NULL;
+	cJSON *pvs = NULL;
+	cJSON *acrs = NULL;
+	cJSON *acr = NULL;
+	cJSON *acor = NULL;
+	cJSON *acop = NULL;
+
+	cJSON* json = cJSON_Parse(json_payload);
+	if (json == NULL) {
+		const char *error_ptr = cJSON_GetErrorPtr();
+		if (error_ptr != NULL)
+		{
+			fprintf(stderr, "Error before: %s\n", error_ptr);
+		}
+		goto end;
+	}
+
+	root = cJSON_GetObjectItem(json, "m2m:acp");
+
+	// rn
+	rn = cJSON_GetObjectItem(root, "rn");
+	if (!cJSON_IsString(rn) && rn->valuestring == NULL)
+	{
+		goto end;
+	}
+	acp->rn = cJSON_Print(rn);
+	acp->rn = strtok(acp->rn, "\"");
+
+	// pv
+	pv = cJSON_GetObjectItem(root, "pv");
+
+	// acr
+	acrs = cJSON_GetObjectItem(pv, "acr");
+	int acr_size = cJSON_GetArraySize(acrs);
+	char acor_str[1024] = { '\0' };
+	char acop_str[1024] = { '\0' };
+	int i = 0;
+	cJSON_ArrayForEach(acr, acrs) {
+		acor = cJSON_GetObjectItem(acr, "acor");
+		int acor_size = cJSON_GetArraySize(acor);
+		for (int j = 0; j < acor_size; j++) {
+			strcat(acor_str, cJSON_GetArrayItem(acor, j)->valuestring);
+			if (j < acor_size - 1) {
+				strcat(acor_str, ",");
+			}
+		}
+		if (i < acr_size - 1)
+			strcat(acor_str, ",");
+
+		acop = cJSON_GetObjectItem(acr, "acop");
+		for (int j = 0; j < acor_size; j++) {
+			strcat(acop_str, strtok(cJSON_Print(acop), "\""));
+			if (j < acor_size - 1) {
+				strcat(acop_str, ",");
+			}
+		}
+		if (i < acr_size - 1)
+			strcat(acop_str, ",");
+		i++;
+	}
+	acp->pv_acor = (char *)malloc(sizeof(char) * strlen(acor_str) + 1);
+	strcpy(acp->pv_acor, acor_str);
+
+	acp->pv_acop = (char *)malloc(sizeof(char) * strlen(acop_str) + 1);
+	strcpy(acp->pv_acop, acop_str);
+
+
+	// pvs
+	pvs = cJSON_GetObjectItem(root, "pvs");
+
+	// acr
+	acrs = cJSON_GetObjectItem(pvs, "acr");
+	acr_size = cJSON_GetArraySize(acrs);
+	memset(acor_str, 0, 1024);	// �迭 �� �ʱ�ȭ
+	memset(acop_str, 0, 1024);
+	i = 0;
+	cJSON_ArrayForEach(acr, acrs) {
+		acor = cJSON_GetObjectItem(acr, "acor");
+		int acor_size = cJSON_GetArraySize(acor);
+		for (int j = 0; j < acor_size; j++) {
+			strcat(acor_str, cJSON_GetArrayItem(acor, j)->valuestring);
+			if (j < acor_size - 1) {
+				strcat(acor_str, ",");
+			}
+		}
+		if (i < acr_size - 1)
+			strcat(acor_str, ",");
+
+		acop = cJSON_GetObjectItem(acr, "acop");
+		for (int j = 0; j < acor_size; j++) {
+			strcat(acop_str, strtok(cJSON_Print(acop), "\""));
+			if (j < acor_size - 1) {
+				strcat(acop_str, ",");
+			}
+		}
+		if (i < acr_size - 1)
+			strcat(acop_str, ",");
+		i++;
+	}
+	acp->pvs_acor = (char *)malloc(sizeof(char) * strlen(acor_str) + 1);
+	strcpy(acp->pvs_acor, acor_str);
+
+	acp->pvs_acop = (char *)malloc(sizeof(char) * strlen(acop_str) + 1);
+	strcpy(acp->pvs_acop, acop_str);
+
+end:
+	cJSON_Delete(json);
+
+	return acp;
+}
+
 char* Node_to_json(Node *node) {
 	char *json = NULL;
 
@@ -393,6 +509,123 @@ char* Noti_to_json(char *sur, int net, char *rep) {
 	cJSON_AddNumberToObject(nev, "net", net);
 	cJSON_AddStringToObject(nev, "rep", rep);
 
+	json = cJSON_Print(root);
+
+	cJSON_Delete(root);
+
+	return json;
+}
+
+char* ACP_to_json(ACP *acp_object) {
+	char *json = NULL;
+
+	cJSON *root = NULL;
+	cJSON *acp = NULL;
+	cJSON *pv = NULL;
+	cJSON *pvs = NULL;
+	cJSON *acrs = NULL;
+	cJSON *acr = NULL;
+	cJSON *acor = NULL;
+
+	char *acor_copy = NULL;
+	char *acor_remainder = NULL;
+	char *acor_str = NULL;
+
+	char *acop_copy = NULL;
+	char *acop_remainder = NULL;
+	char *acop_str = NULL;
+	
+	/* Our "acp" item: */
+	root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "m2m:acp", acp = cJSON_CreateObject());
+	cJSON_AddStringToObject(acp, "rn", acp_object->rn);
+	cJSON_AddNumberToObject(acp, "ty", acp_object->ty);
+	cJSON_AddStringToObject(acp, "pi", acp_object->pi);
+	cJSON_AddStringToObject(acp, "ri", acp_object->ri);
+	cJSON_AddStringToObject(acp, "ct", acp_object->ct);
+	cJSON_AddStringToObject(acp, "lt", acp_object->lt);
+	cJSON_AddStringToObject(acp, "et", acp_object->et);
+
+	// pv
+	cJSON_AddItemToObject(acp, "pv", pv = cJSON_CreateObject());
+
+	// acr
+	acrs = cJSON_CreateArray();
+	cJSON_AddItemToObject(pv, "acr", acrs);
+
+	// acor
+	acor_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acor) + 1);
+	acor_copy = strcpy(acor_copy, acp_object->pv_acor);
+	acor_str = strtok_s(acor_copy, ",", &acor_remainder);
+
+	// acop
+	acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acop) + 1);
+	acop_copy = strcpy(acop_copy, acp_object->pv_acop);
+	acop_str = strtok_s(acop_copy, ",", &acop_remainder);
+
+	while (1) {
+		if (acop_str == NULL) {
+			break;
+		}
+
+		char *acop = acop_str;
+
+		cJSON_AddItemToArray(acrs, acr = cJSON_CreateObject());
+
+		acor = cJSON_CreateArray();
+
+		do {
+			cJSON_AddItemToArray(acor, cJSON_CreateString(acor_str));
+			acor_str = strtok_s(NULL, ",", &acor_remainder);
+
+			acop_str = strtok_s(NULL, ",", &acop_remainder);
+		} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
+		cJSON_AddItemToObject(acr, "acor", acor);
+		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
+	}
+
+
+	// pvs
+	cJSON_AddItemToObject(acp, "pvs", pvs = cJSON_CreateObject());
+
+	// acr
+	acrs = cJSON_CreateArray();
+	cJSON_AddItemToObject(pvs, "acr", acrs);
+
+	// acor
+	acor_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pvs_acor) + 1);
+	acor_copy = strcpy(acor_copy, acp_object->pvs_acor);
+	acor_remainder = NULL;
+	acor_str = strtok_s(acor_copy, ",", &acor_remainder);
+
+	// acop
+	acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pvs_acop) + 1);
+	acop_copy = strcpy(acop_copy, acp_object->pvs_acop);
+	acop_remainder = NULL;
+	acop_str = strtok_s(acop_copy, ",", &acop_remainder);
+
+	while (1) {
+		if (acop_str == NULL) {
+			break;
+		}
+
+		char *acop = acop_str;
+
+		cJSON_AddItemToArray(acrs, acr = cJSON_CreateObject());
+
+		acor = cJSON_CreateArray();
+
+		do {
+			cJSON_AddItemToArray(acor, cJSON_CreateString(acor_str));
+			acor_str = strtok_s(NULL, ",", &acor_remainder);
+
+			acop_str = strtok_s(NULL, ",", &acop_remainder);
+		} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
+		cJSON_AddItemToObject(acr, "acor", acor);
+		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
+	}
+
+	
 	json = cJSON_Print(root);
 
 	cJSON_Delete(root);

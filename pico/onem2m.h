@@ -110,10 +110,10 @@ typedef struct {
 	char *ct;
 	char *lt;
 	char *et;
-	char **pv_acor;
-	char **pv_acop;
-	char **pvs_acor;
-	char **pvs_acop;
+	char *pv_acor;
+	char *pv_acop;
+	char *pvs_acor;
+	char *pvs_acop;
 	int ty;
 } ACP;
 
