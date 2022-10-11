@@ -29,13 +29,13 @@ int Validate_oneM2M_Standard() {
 	return ret;
 }
 
-Node* Parse_URI(RT *rt) {
-	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri);
-	char uri_array[MAX_URI_SIZE];
+Node* Parse_URI(RT *rt, char *uri_array) {
+	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri_array);
+	//char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
 	Node *node = NULL;
 
-	strcpy(uri_array, uri);
+	//strcpy(uri_array, uri);
 	
 	uri_parse = strtok(uri_parse, "/");
 	
@@ -360,7 +360,7 @@ ObjectType Parse_ObjectType_Body() {
 	return ty;
 }
 
-Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, int net, ObjectType ty){
+Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, int net, ObjectType ty){
 	Node* node = (Node*)malloc(sizeof(Node));
 	
 	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) {
@@ -371,14 +371,17 @@ Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, int net, Ob
 	node->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	node->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
 	node->nu = (char*)malloc((strlen(nu) + 1) * sizeof(char));
-	node->sur = (char*)calloc((strlen(sur) + 1), sizeof(char));
+	node->sur = (char*)malloc((strlen(sur) + 1) * sizeof(char));
+	if(node->acpi)  {
+		node->acpi = (char*)malloc((strlen(acpi) +1) * sizeof(char));
+		strcpy(node->acpi, acpi);
+	}
 	
-
-	strcpy(node->sur, sur);
 	strcpy(node->rn, rn);
 	strcpy(node->ri, ri);
 	strcpy(node->pi, pi);
 	strcpy(node->nu, nu);
+	strcpy(node->sur, sur);
 	
 	node->net = net;
 	node->ty = ty;
@@ -578,9 +581,19 @@ void Init_CNT(CNT* cnt, char *pi) {
 	char *ri = resource_identifier(t_CNT, ct);
 	char tmp[MAX_PROPERTY_SIZE];
 	
-	strcpy(tmp,cnt->rn);
-	cnt->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
-	strcpy(cnt->rn,tmp);
+	if(cnt->rn) {
+		strcpy(tmp,cnt->rn);
+		cnt->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
+		strcpy(cnt->rn,tmp);
+	}
+
+	if(cnt->acpi) {
+		strcpy(tmp,cnt->acpi);
+		cnt->acpi = (char*)malloc((strlen(cnt->acpi) + 1) * sizeof(char));
+		strcpy(cnt->acpi,tmp);
+	} else {
+		cnt->acpi = "\0";
+	}
 	
 	cnt->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cnt->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
@@ -680,19 +693,16 @@ void Init_ACP(ACP* acp, char *pi) {
 	
 	acp->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	acp->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	cnt->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	cnt->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	cnt->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	strcpy(cnt->ri, ri);
-	strcpy(cnt->pi, pi);
-	strcpy(cnt->et, et);
-	strcpy(cnt->ct, ct);
-	strcpy(cnt->lt, ct);
+	acp->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
+	acp->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	acp->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	strcpy(acp->ri, ri);
+	strcpy(acp->pi, pi);
+	strcpy(acp->et, et);
+	strcpy(acp->ct, ct);
+	strcpy(acp->lt, ct);
 	
-	cnt->ty = t_CNT;
-	cnt->st = 0;
-	cnt->cni = 0;
-	cnt->cbs = 0;
+	acp->ty = t_ACP;
 	
 	free(ct);
 	free(et);
@@ -797,6 +807,20 @@ void Free_Sub(Sub* sub) {
 	free(sub);
 }
 
+void Free_ACP(ACP* acp) {
+	free(acp->et);
+	free(acp->ct);
+	free(acp->lt);
+	free(acp->rn);
+	free(acp->ri);
+	free(acp->pi);
+	free(acp->pv_acor);
+	free(acp->pv_acop);
+	free(acp->pvs_acor);
+	free(acp->pvs_acop);
+	free(acp);
+}
+
 void Notify_Object(Node *node, char *res_json, Net net) {
 	Remove_Invalid_Char_JSON(res_json);
 	while(node) {
@@ -848,6 +872,7 @@ char *resource_identifier(ObjectType ty, char *ct) {
 		case t_CNT : strcpy(ri, "3-"); break;
 		case t_CIN : strcpy(ri, "4-"); break;
 		case t_Sub : strcpy(ri, "23-"); break;
+		case t_ACP : strcpy(ri, "1-"); break;
 	}
 
 	strcat(ri, ct);

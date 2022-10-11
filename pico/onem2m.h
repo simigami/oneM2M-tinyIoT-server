@@ -70,6 +70,7 @@ typedef struct {
 	char *ri;
 	char *pi;
 	char *lbl;
+	char *acpi;
 	int ty;
 	int st;
 	int cni;
@@ -128,6 +129,7 @@ typedef struct Node {
 	char *pi;
 	char *nu;
 	char *sur;
+	char *acpi;
 	ObjectType ty;
 	
 	int cinSize;
@@ -141,7 +143,7 @@ typedef struct {
 //Request parse function
 int Validate_oneM2M_Standard();
 int duplicate_resource_check(Node *pnode);
-Node* Parse_URI(RT *rt);
+Node* Parse_URI(RT *rt, char *uri_array);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_Body();
@@ -158,6 +160,7 @@ void Create_AE(Node *pnode);
 void Create_CNT(Node *pnode);
 void Create_CIN(Node *pnode);
 void Create_Sub(Node *pnode);
+void Create_ACP(Node *pnode);
 
 void Retrieve_CSE(Node *pnode);
 void Retrieve_AE(Node *pnode);
@@ -176,6 +179,7 @@ void Init_AE(AE* ae, char *pi);
 void Init_CNT(CNT* cnt, char *pi);
 void Init_CIN(CIN* cin, char *pi);
 void Init_Sub(Sub* sub, char *pi);
+void Init_ACP(ACP* acp, char *pi);
 void Set_AE_Update(AE* after);
 void Set_CNT_Update(CNT* after);
 void Set_Sub_Update(Sub* after);
@@ -185,6 +189,7 @@ AE* JSON_to_AE(char *json_payload);
 CNT* JSON_to_CNT(char *json_payload);
 CIN* JSON_to_CIN(char *json_payload);
 Sub* JSON_to_Sub(char *json_payload);
+ACP* JSON_to_ACP(char *json_payload);
 
 char* CSE_to_json(CSE* cse_object);
 char* AE_to_json(AE* ae_object);
@@ -192,6 +197,7 @@ char* CNT_to_json(CNT* cnt_object);
 char* CIN_to_json(CIN* cin_object);
 char* Sub_to_json(Sub *sub_object);
 char* Noti_to_json(char *sur, int net, char *rep);
+char* ACP_to_json(ACP *acp_object);
 
 char* Get_JSON_Value_char(char *key, char *json);
 int Get_JSON_Value_int(char *key, char *json);
@@ -226,12 +232,6 @@ Node* Get_All_AE();
 Node* Get_All_CNT();
 Node* Get_All_CIN();
 
-void Free_CSE(CSE* cse);
-void Free_AE(AE* ae);
-void Free_CNT(CNT* cnt);
-void Free_CIN(CIN* cin);
-void Free_Sub(Sub* sub);
-
 Node* Get_CIN_Period(char *start_time, char *end_time);
 Node* Get_CIN_Pi(char* pi);
 
@@ -240,7 +240,7 @@ char* URI_To_Label(char* uri);
 int Store_Label(char* label, char* uri);
 
 //Resource Tree function
-Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, int net, ObjectType ty);
+Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, int net, ObjectType ty);
 int Add_child(Node *parent, Node *child);
 char* Node_to_json(Node *node);
 void Delete_Node_Object(Node *node, int flag);
@@ -266,3 +266,9 @@ struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 char* Send_HTTP_Packet(char *target, char *post_data);
 void Response_JSON_Parse_Error();
+void Free_CSE(CSE* cse);
+void Free_AE(AE* ae);
+void Free_CNT(CNT* cnt);
+void Free_CIN(CIN* cin);
+void Free_Sub(Sub* sub);
+void Free_ACP(ACP *acp);

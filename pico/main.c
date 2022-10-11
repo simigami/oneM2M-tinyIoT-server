@@ -18,7 +18,6 @@
 RT *rt;
 
 int main(int c, char **v) {
-	fprintf(stderr,"PID : %d\n",getpid());
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 
@@ -32,12 +31,10 @@ void route() {
 		uri = Label_To_URI(uri);
 	}
 
-	Node* pnode = Parse_URI(rt);
+	Node* pnode = Parse_URI(rt, uri);
 	if(!pnode) {
 		return;
 	}
-
-	fprintf(stderr,"rn : %s\n",pnode->rn);
 
 	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
 		HTTP_406;
@@ -83,7 +80,7 @@ void init() {
 		cse = Get_CSE();
 	}
 	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, "\0", "\0", 0, t_CSE);
+ 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, "\0", "\0", "\0", 0, t_CSE);
  	Free_CSE(cse);
  	cse = NULL;
  	Restruct_ResourceTree();
@@ -143,6 +140,13 @@ void Create_Object(Node *pnode) {
 }
 
 void Retrieve_Object(Node *pnode) {
+	if(pnode->acpi) {
+		Node *acp_Node = Parse_URI(rt, pnode->acpi);
+		if(acp_Node) {
+			fprintf(stderr,"acp_rn : %s\n",acp_Node->rn);
+		}
+	}
+
 	switch(pnode->ty) {
 		
 	case t_CSE :
@@ -242,7 +246,7 @@ void Create_AE(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, "\0", "\0", 0, t_AE);
+	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, "\0", "\0", "\0", 0, t_AE);
 	Add_child(pnode,node);
 	
 	char *res_json = AE_to_json(ae);
@@ -271,7 +275,7 @@ void Create_CNT(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, "\0", "\0", 0, t_CNT);
+	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, "\0", "\0", cnt->acpi, 0, t_CNT);
 	Add_child(pnode,node);
 	
 	char *res_json = CNT_to_json(cnt);
@@ -299,7 +303,7 @@ void Create_CIN(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, "\0", "\0", 0, t_CIN);
+	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, "\0", "\0", "\0", 0, t_CIN);
 	Add_child(pnode,node);
 	char *res_json = CIN_to_json(cin);
 	HTTP_201_JSON;
@@ -328,7 +332,7 @@ void Create_Sub(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, net_to_bit(sub->net), t_Sub);
+	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, "\0", net_to_bit(sub->net), t_Sub);
 	Add_child(pnode,node);
 	
 	char *res_json = Sub_to_json(sub);
@@ -348,7 +352,7 @@ void Create_ACP(Node *pnode) {
 		Response_JSON_Parse_Error();
 		return;
 	}
-	Init_Sub(acp, pnode->ri);
+	Init_ACP(acp, pnode->ri);
 	
 	/*
 	int result = Store_ACP(acp);
@@ -361,7 +365,7 @@ void Create_ACP(Node *pnode) {
 	}
 	*/
 	
-	Node* node = Create_Node(acp->ri, acp->rn, acp->pi, "\0", "\0", 0, t_ACP);
+	Node* node = Create_Node(acp->ri, acp->rn, acp->pi, "\0", "\0", "\0", 0, t_ACP);
 	Add_child(pnode,node);
 	
 	char *res_json = ACP_to_json(acp);

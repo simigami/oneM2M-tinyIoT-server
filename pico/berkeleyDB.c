@@ -2716,8 +2716,9 @@ Node* Get_All_CNT() {
     Node* node_pi;
     Node* node_rn;
     Node* node_ty;
+    Node* node_acpi;
 
-    node_ri = node_pi = node_rn = node_ty = head;
+    node_acpi = node_ri = node_pi = node_rn = node_ty = head;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "pi", key.size) == 0) {
@@ -2741,6 +2742,10 @@ Node* Get_All_CNT() {
         if (strncmp(key.data, "ty", key.size) == 0) {
             node_ty->ty = *(int*)data.data;
             node_ty = node_ty->siblingRight;
+        }
+        if (strncmp(key.data, "acpi", key.size) == 0) {
+            node_acpi->acpi = data.data;
+            node_acpi = node_acpi->siblingRight;
         }
     }
 
