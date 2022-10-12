@@ -1128,6 +1128,8 @@ CNT* Get_CNT(char* ri) {
 
     //store CNT
     CNT* new_cnt = (CNT*)malloc(sizeof(CNT));
+    //delete_this
+    new_cnt->acpi = NULL;
 
     char* database = "CNT.db";
 
@@ -1483,10 +1485,9 @@ Sub* Get_Sub(char* ri) {
     if (cnt == 0 || flag==0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
-
-
+    
     new_sub->pi = malloc(data.size);
     strcpy(new_sub->pi, data.data);
 
@@ -1651,7 +1652,7 @@ int Update_AE_DB(AE* ae_object) {
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
         return 0;
-        exit(1);
+        //exit(1);
     }
 
     int cnt_rn = 0,cnt_pi = 0,cnt_et = 0,cnt_lt = 0,cnt_ct = 0,cnt_api = 0,cnt_aei = 0;
@@ -1818,7 +1819,7 @@ int Update_CNT_DB(CNT* cnt_object) {
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
         return 0;
-        exit(1);
+        //exit(1);
     }
 
     int cnt_rn = 0;
@@ -2604,7 +2605,7 @@ Node* Get_All_AE() {
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
@@ -2707,7 +2708,7 @@ Node* Get_All_CNT() {
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
@@ -2723,6 +2724,8 @@ Node* Get_All_CNT() {
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
+            //delete this
+            node_pi->acpi = NULL;
             strcpy(node_pi->pi, data.data);
             node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
             node_pi->siblingRight->siblingLeft = node_pi;
@@ -2743,10 +2746,11 @@ Node* Get_All_CNT() {
             node_ty->ty = *(int*)data.data;
             node_ty = node_ty->siblingRight;
         }
+        /*
         if (strncmp(key.data, "acpi", key.size) == 0) {
             node_acpi->acpi = data.data;
             node_acpi = node_acpi->siblingRight;
-        }
+        }*/
     }
 
     if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
@@ -2815,7 +2819,7 @@ Node* Get_All_CIN() {
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
 
     // cnt °³ŒöžžÅ­ µ¿ÀûÇÒŽç
@@ -2933,7 +2937,7 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
     //fprintf(stderr, "<%d>\n", cnt);
 
@@ -2960,7 +2964,7 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
     if (idx == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
     //for (int i = 0; i < cnt; i++) printf("%d ", arr[i]);
 
@@ -3077,7 +3081,7 @@ Node* Get_CIN_Pi(char* pi) {
     if (cnt == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
 
     //¿ÀºêÁ§Æ® °³ŒöžžÅ­ µ¿ÀûÇÒŽç
@@ -3107,7 +3111,7 @@ Node* Get_CIN_Pi(char* pi) {
     if (sum == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
-        exit(1);
+        //exit(1);
     }
 
     Node* head = (Node *)calloc(1,sizeof(Node));

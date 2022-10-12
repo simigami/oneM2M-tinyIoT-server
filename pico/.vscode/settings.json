@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "random": "c",
-        "zeroconf.h": "c"
+        "zeroconf.h": "c",
+        "ctype.h": "c"
     }
 }

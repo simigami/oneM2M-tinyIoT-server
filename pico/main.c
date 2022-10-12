@@ -37,9 +37,9 @@ void route() {
 	}
 
 	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
-		HTTP_406;
-		fprintf(stderr,"Request Payload Too Large\n");
-		printf("{\"m2m:dbg\": \"request data is too large\"}");
+		HTTP_413;
+		fprintf(stderr,"Request payload too large\n");
+		printf("{\"m2m:dbg\": \"payload is too large\"}");
 		return;
 	}
 
@@ -80,23 +80,29 @@ void init() {
 		cse = Get_CSE();
 	}
 	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, "\0", "\0", "\0", 0, t_CSE);
+ 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, "\0", "\0", "\0", "\0", "\0", "\0", "\0", 0, t_CSE);
  	Free_CSE(cse);
  	cse = NULL;
  	Restruct_ResourceTree();
 }
 
 void Create_Object(Node *pnode) {
+	if((get_acop(pnode) & acop_Create) != acop_Create) {
+		fprintf(stderr,"Originator has no privilege\n");
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
+		return;
+	}
 	if(!payload) {
 		HTTP_500;
-		fprintf(stderr,"Request Empty\n");
+		fprintf(stderr,"Request body empty\n");
 		printf("{\"m2m:dbg\": \"request body empty\"}"); // Need oneM2M WireShark packet Check
 		return;
 	}
 
 	if(duplicate_resource_check(pnode)) {
 		HTTP_209_JSON;
-		fprintf(stderr,"Resource Duplicate Error\n");
+		fprintf(stderr,"Resource duplicate error\n");
 		printf("{\"m2m:dbg\": \"resource is already exist\"}");
 		return;
 	}
@@ -133,18 +139,18 @@ void Create_Object(Node *pnode) {
 		/*No Definition such request*/
 
 	default :
-		fprintf(stderr,"Resource Type Error (Content-Type Header Invalid)\n");
+		fprintf(stderr,"Resource type error (Content-Type Header Invalid)\n");
 		HTTP_400;
 		printf("{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}");
 	}	
 }
 
 void Retrieve_Object(Node *pnode) {
-	if(pnode->acpi) {
-		Node *acp_Node = Parse_URI(rt, pnode->acpi);
-		if(acp_Node) {
-			fprintf(stderr,"acp_rn : %s\n",acp_Node->rn);
-		}
+	if((get_acop(pnode) & acop_Retrieve) != acop_Retrieve) {
+		fprintf(stderr,"Originator has no privilege\n");
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
+		return;
 	}
 
 	switch(pnode->ty) {
@@ -186,9 +192,15 @@ void Retrieve_Object(Node *pnode) {
 }
 
 void Update_Object(Node *pnode) {
+	if((get_acop(pnode) & acop_Update) != acop_Update) {
+		fprintf(stderr,"Originator has no privilege\n");
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
+		return;
+	}
 	if(!payload) {
 		HTTP_500;
-		fprintf(stderr,"Request Empty Error\n");
+		fprintf(stderr,"Request body empty error\n");
 		printf("{\"m2m:dbg\": \"request body empty\"\n}");
 		return;
 	}
@@ -196,7 +208,7 @@ void Update_Object(Node *pnode) {
 	ObjectType ty = Parse_ObjectType_Body();
 	
 	if(ty != pnode->ty) {
-		fprintf(stderr,"Update Resource Type Error\n");
+		fprintf(stderr,"Update resource type error\n");
 		HTTP_400;
 		printf("{\"m2m:dbg\": \"resource type error\"}");
 		return;
@@ -246,7 +258,7 @@ void Create_AE(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, "\0", "\0", "\0", 0, t_AE);
+	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, "\0", "\0", "\0", "\0", "\0", "\0", "\0", 0, t_AE);
 	Add_child(pnode,node);
 	
 	char *res_json = AE_to_json(ae);
@@ -275,7 +287,7 @@ void Create_CNT(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, "\0", "\0", cnt->acpi, 0, t_CNT);
+	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, "\0", "\0", cnt->acpi, "\0", "\0", "\0", "\0", 0, t_CNT);
 	Add_child(pnode,node);
 	
 	char *res_json = CNT_to_json(cnt);
@@ -303,7 +315,7 @@ void Create_CIN(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, "\0", "\0", "\0", 0, t_CIN);
+	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, "\0", "\0", "\0", "\0", "\0", "\0", "\0", 0, t_CIN);
 	Add_child(pnode,node);
 	char *res_json = CIN_to_json(cin);
 	HTTP_201_JSON;
@@ -332,7 +344,7 @@ void Create_Sub(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, "\0", net_to_bit(sub->net), t_Sub);
+	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, "\0", "\0", "\0", "\0", "\0", net_to_bit(sub->net), t_Sub);
 	Add_child(pnode,node);
 	
 	char *res_json = Sub_to_json(sub);
@@ -365,7 +377,7 @@ void Create_ACP(Node *pnode) {
 	}
 	*/
 	
-	Node* node = Create_Node(acp->ri, acp->rn, acp->pi, "\0", "\0", "\0", 0, t_ACP);
+	Node* node = Create_Node(acp->ri, acp->rn, acp->pi, "\0", "\0", "\0", acp->pv_acor, acp->pv_acop, acp->pvs_acor, acp->pvs_acop, 0, t_ACP);
 	Add_child(pnode,node);
 	
 	char *res_json = ACP_to_json(acp);
@@ -529,7 +541,7 @@ void Restruct_ResourceTree(){
 	if(access("./AE.db", 0) != -1) {
 		Node* ae_list = Get_All_AE();
 		tail->siblingRight = ae_list;
-		ae_list->siblingLeft = tail;
+		if(ae_list) ae_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
 	} else {
 		fprintf(stderr,"AE.db is not exist\n");
@@ -538,7 +550,7 @@ void Restruct_ResourceTree(){
 	if(access("./CNT.db", 0) != -1) {
 		Node* cnt_list = Get_All_CNT();
 		tail->siblingRight = cnt_list;
-		cnt_list->siblingLeft = tail;
+		if(cnt_list) cnt_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
 	} else {
 		fprintf(stderr,"CNT.db is not exist\n");
@@ -547,7 +559,7 @@ void Restruct_ResourceTree(){
 	if(access("./CIN.db", 0) != -1) {
 		Node* cin_list = Get_All_CIN();
 		tail->siblingRight = cin_list;
-		cin_list->siblingLeft = tail;
+		if(cin_list) cin_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
 	} else {
 		fprintf(stderr,"CIN.db is not exist\n");

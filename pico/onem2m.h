@@ -130,6 +130,10 @@ typedef struct Node {
 	char *nu;
 	char *sur;
 	char *acpi;
+	char *pv_acor;
+	char *pv_acop;
+	char *pvs_acor;
+	char *pvs_acop;
 	ObjectType ty;
 	
 	int cinSize;
@@ -201,7 +205,7 @@ char* ACP_to_json(ACP *acp_object);
 
 char* Get_JSON_Value_char(char *key, char *json);
 int Get_JSON_Value_int(char *key, char *json);
-bool Get_JSON_Value_bool(char *key, char *json);
+int Get_JSON_Value_bool(char *key, char *json);
 
 //DB function
 int display(char* database);
@@ -240,7 +244,7 @@ char* URI_To_Label(char* uri);
 int Store_Label(char* label, char* uri);
 
 //Resource Tree function
-Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, int net, ObjectType ty);
+Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop, int net, ObjectType ty);
 int Add_child(Node *parent, Node *child);
 char* Node_to_json(Node *node);
 void Delete_Node_Object(Node *node, int flag);
@@ -272,3 +276,10 @@ void Free_CNT(CNT* cnt);
 void Free_CIN(CIN* cin);
 void Free_Sub(Sub* sub);
 void Free_ACP(ACP *acp);
+int get_acop(Node *node);
+
+#define TREE_VIEWER_DATASIZE 65536
+#define MAX_PROPERTY_SIZE 32768
+#define MAX_URI_SIZE 256
+#define EXPIRE_TIME -3600*24*365*2
+#define ALL_ACOP acop_Create + acop_Retrieve + acop_Update + acop_Delete + acop_Notify + acop_Discovery

@@ -441,7 +441,8 @@ char* CNT_to_json(CNT* cnt_object) {
 	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
 	//cJSON_AddStringToObject(cnt, "lbl", cnt_object->lbl);
-	cJSON_AddStringToObject(cnt, "acpi", cnt_object->acpi);
+	if(cnt_object->acpi) cJSON_AddStringToObject(cnt, "acpi", cnt_object->acpi);
+	else cJSON_AddStringToObject(cnt, "acpi", "");
 
 	json = cJSON_Print(root);
 
@@ -790,11 +791,11 @@ end:
 	return value;
 }
 
-bool Get_JSON_Value_bool(char *key, char *json) {
+int Get_JSON_Value_bool(char *key, char *json) {
 	char tmp[16] = "\"";
 	strcat(tmp,key);
 	strcat(tmp,"\"");
-	if(!strstr(json,tmp)) return false;
+	if(!strstr(json,tmp)) return -1;
 
 	char json_copy[1024];
 	char *resource = NULL;

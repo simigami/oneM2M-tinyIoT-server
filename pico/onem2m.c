@@ -9,10 +9,6 @@
 #include <math.h>
 #include <ctype.h>
 #include <malloc.h>
-#define TREE_VIEWER_DATASIZE 65536
-#define MAX_PROPERTY_SIZE 32768
-#define MAX_URI_SIZE 256
-#define EXPIRE_TIME -3600*24*365*2
 
 int Validate_oneM2M_Standard() {
 	int ret = 1;
@@ -360,7 +356,7 @@ ObjectType Parse_ObjectType_Body() {
 	return ty;
 }
 
-Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, int net, ObjectType ty){
+Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop, int net, ObjectType ty){
 	Node* node = (Node*)malloc(sizeof(Node));
 	
 	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) {
@@ -372,9 +368,25 @@ Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi,
 	node->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
 	node->nu = (char*)malloc((strlen(nu) + 1) * sizeof(char));
 	node->sur = (char*)malloc((strlen(sur) + 1) * sizeof(char));
-	if(node->acpi)  {
+	if(acpi)  {
 		node->acpi = (char*)malloc((strlen(acpi) +1) * sizeof(char));
 		strcpy(node->acpi, acpi);
+	}
+	if(pv_acor) {
+		node->pv_acor = (char*)malloc((strlen(pv_acor) +1) * sizeof(char));
+		strcpy(node->pv_acor, pv_acor);
+	}
+	if(pv_acop) {
+		node->pv_acop = (char*)malloc((strlen(pv_acop) +1) * sizeof(char));
+		strcpy(node->pv_acop, pv_acop);
+	}
+	if(pvs_acor) {
+		node->pvs_acor = (char*)malloc((strlen(pvs_acor) +1) * sizeof(char));
+		strcpy(node->pvs_acor, pvs_acor);
+	}
+	if(pvs_acop) {
+		node->pvs_acop = (char*)malloc((strlen(pvs_acop) +1) * sizeof(char));
+		strcpy(node->pvs_acop, pvs_acop);
 	}
 	
 	strcpy(node->rn, rn);
@@ -477,6 +489,13 @@ void Free_Node(Node *node) {
 	free(node->ri);
 	free(node->rn);
 	free(node->pi);
+	free(node->nu);
+	free(node->sur);
+	free(node->acpi);
+	free(node->pv_acop);
+	free(node->pv_acor);
+	free(node->pvs_acor);
+	free(node->pvs_acop);
 	free(node);
 }
 
@@ -712,7 +731,7 @@ void Init_ACP(ACP* acp, char *pi) {
 void Set_AE_Update(AE* after) {
 	char *rn = Get_JSON_Value_char("rn", payload);
 	char *api = Get_JSON_Value_char("api", payload);
-	bool rr = Get_JSON_Value_bool("rr", payload);
+	int rr = Get_JSON_Value_bool("rr", payload);
 
 	if(rn) {
 		free(after->rn);
@@ -726,7 +745,7 @@ void Set_AE_Update(AE* after) {
 		strcpy(after->api, api);
 	}
 
-	if(rr) {
+	if(rr != -1) {
 		after->rr = rr;
 	}
 }
@@ -960,4 +979,51 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
     }
 
     return data.data;
+}
+
+int get_acop(Node *node) {
+	if(!node->acpi || (node->acpi && !strcmp(node->acpi,""))) {
+		return ALL_ACOP;
+	}
+
+	Node *acp = node;
+	while(acp->parent) acp = acp->parent;
+	acp = acp->child;
+
+	char *acpi, arr_acpi[1024];
+
+	strcpy(arr_acpi, node->acpi);
+
+	acpi = strtok(arr_acpi, "/");
+	if(acpi) acpi = strtok(NULL, "/");
+
+	while(acp && acpi) {
+		if(!strcmp(acp->rn, acpi)) break;
+		acp = acp->siblingRight;
+	}
+
+	if(!acp) return ALL_ACOP;
+
+	char *origin = request_header("X-M2M-Origin");
+	if(!origin) return 0;
+
+	char *pv_acor, *pv_acop, arr_pv_acor[1024], arr_pv_acop[1024];
+	int ret = 0, cnt = 0;
+
+	strcpy(arr_pv_acor, acp->pv_acor);
+	strcpy(arr_pv_acop, acp->pv_acop);
+
+	pv_acor = strtok(arr_pv_acor, ",");
+	while(pv_acor) {
+		if(!strcmp(pv_acor, origin)) break;
+		pv_acor = strtok(NULL, ",");
+		cnt++;
+	}
+
+	pv_acop = strtok(arr_pv_acop, ",");
+	for(int i=0; i<cnt; i++) pv_acop = strtok(NULL,",");
+
+	if(pv_acop) ret = atoi(pv_acop);
+
+	return ret;
 }
