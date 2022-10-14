@@ -25,7 +25,7 @@ int Validate_oneM2M_Standard() {
 	return ret;
 }
 
-Node* Parse_URI(RT *rt, char *uri_array) {
+Node* Parse_URI(ResourceTree *rt, char *uri_array) {
 	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri_array);
 	//char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
@@ -356,56 +356,154 @@ ObjectType Parse_ObjectType_Body() {
 	return ty;
 }
 
-Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop, int net, ObjectType ty){
-	Node* node = (Node*)malloc(sizeof(Node));
-	
-	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) {
-		fprintf(stderr,"\nCreate Tree Node\n[rn] %s\n[ri] %s...", rn, ri);
+Node* Create_Node(void *obj, ObjectType ty){
+	Node* node = NULL;
+
+	switch(ty) {
+	case t_CSE: node = Create_CSE_Node((CSE*)obj); break;
+	case t_AE: node = Create_AE_Node((AE*)obj); break;
+	case t_CNT: node = Create_CNT_Node((CNT*)obj); break;
+	case t_CIN: node = Create_CIN_Node((CIN*)obj); break;
+	case t_Sub: node = Create_Sub_Node((Sub*)obj); break;
+	case t_ACP: node = Create_ACP_Node((ACP*)obj); break;
 	}
-	
-	node->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
-	node->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	node->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	node->nu = (char*)malloc((strlen(nu) + 1) * sizeof(char));
-	node->sur = (char*)malloc((strlen(sur) + 1) * sizeof(char));
-	if(acpi)  {
-		node->acpi = (char*)malloc((strlen(acpi) +1) * sizeof(char));
-		strcpy(node->acpi, acpi);
-	}
-	if(pv_acor) {
-		node->pv_acor = (char*)malloc((strlen(pv_acor) +1) * sizeof(char));
-		strcpy(node->pv_acor, pv_acor);
-	}
-	if(pv_acop) {
-		node->pv_acop = (char*)malloc((strlen(pv_acop) +1) * sizeof(char));
-		strcpy(node->pv_acop, pv_acop);
-	}
-	if(pvs_acor) {
-		node->pvs_acor = (char*)malloc((strlen(pvs_acor) +1) * sizeof(char));
-		strcpy(node->pvs_acor, pvs_acor);
-	}
-	if(pvs_acop) {
-		node->pvs_acop = (char*)malloc((strlen(pvs_acop) +1) * sizeof(char));
-		strcpy(node->pvs_acop, pvs_acop);
-	}
-	
-	strcpy(node->rn, rn);
-	strcpy(node->ri, ri);
-	strcpy(node->pi, pi);
-	strcpy(node->nu, nu);
-	strcpy(node->sur, sur);
-	
-	node->net = net;
-	node->ty = ty;
-	node->cinSize = 0;
 
 	node->parent = NULL;
 	node->child = NULL;
 	node->siblingLeft = NULL;
 	node->siblingRight = NULL;
 	
-	if(strcmp(rn,"") && strcmp(rn,"TinyIoT")) fprintf(stderr,"OK\n");
+	fprintf(stderr,"OK\n");
 	
+	return node;
+}
+
+Node* Create_CSE_Node(CSE *cse) {
+	fprintf(stderr,"Create Tree Node\n[rn] %s\n[ri] %s...",cse->rn, cse->ri);
+
+	Node* node = calloc(1, sizeof(Node));
+
+	node->rn = (char*)malloc((strlen(cse->rn) + 1) * sizeof(char));
+	node->ri = (char*)malloc((strlen(cse->ri) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(cse->pi) + 1) * sizeof(char));
+	
+	strcpy(node->rn, cse->rn);
+	strcpy(node->ri, cse->ri);
+	strcpy(node->pi, cse->pi);
+
+	node->ty = t_CSE;
+	node->cinSize = 0;
+
+	return node;
+}
+
+Node* Create_AE_Node(AE *ae) {
+	fprintf(stderr,"Create Tree Node\n[rn] %s\n[ri] %s...",ae->rn, ae->ri);
+
+	Node* node = calloc(1, sizeof(Node));
+
+	node->rn = (char*)malloc((strlen(ae->rn) + 1) * sizeof(char));
+	node->ri = (char*)malloc((strlen(ae->ri) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(ae->pi) + 1) * sizeof(char));
+	
+	strcpy(node->rn, ae->rn);
+	strcpy(node->ri, ae->ri);
+	strcpy(node->pi, ae->pi);
+
+	node->ty = t_AE;
+	node->cinSize = 0;
+
+	return node;
+}
+
+Node* Create_CNT_Node(CNT *cnt) {
+	fprintf(stderr,"Create Tree Node\n[rn] %s\n[ri] %s...",cnt->rn, cnt->ri);
+
+	Node* node = calloc(1, sizeof(Node));
+
+	node->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
+	node->ri = (char*)malloc((strlen(cnt->ri) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(cnt->pi) + 1) * sizeof(char));
+	node->acpi = (char*)malloc((strlen(cnt->acpi) + 1) * sizeof(char));
+	
+	strcpy(node->rn, cnt->rn);
+	strcpy(node->ri, cnt->ri);
+	strcpy(node->pi, cnt->pi);
+	strcpy(node->pi, cnt->acpi);
+
+	node->ty = t_CNT;
+	node->cinSize = 0;
+
+	return node;
+}
+
+Node* Create_CIN_Node(CIN *cin) {
+	fprintf(stderr,"Create Tree Node\n[rn] %s\n[ri] %s...",cin->rn, cin->ri);
+
+	Node* node = calloc(1, sizeof(Node));
+
+	node->rn = (char*)malloc((strlen(cin->rn) + 1) * sizeof(char));
+	node->ri = (char*)malloc((strlen(cin->ri) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(cin->pi) + 1) * sizeof(char));
+	
+	strcpy(node->rn, cin->rn);
+	strcpy(node->ri, cin->ri);
+	strcpy(node->pi, cin->pi);
+
+	node->ty = t_CIN;
+	node->cinSize = 0;
+
+	return node;
+}
+
+Node* Create_Sub_Node(Sub *sub) {
+	fprintf(stderr,"Create Tree Node\n[rn] %s\n[ri] %s...",sub->rn, sub->ri);
+
+	Node* node = calloc(1, sizeof(Node));
+
+	node->rn = (char*)malloc((strlen(sub->rn) + 1) * sizeof(char));
+	node->ri = (char*)malloc((strlen(sub->ri) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(sub->pi) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(sub->nu) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(sub->sur) + 1) * sizeof(char));
+	
+	strcpy(node->rn, sub->rn);
+	strcpy(node->ri, sub->ri);
+	strcpy(node->pi, sub->pi);
+	strcpy(node->pi, sub->nu);
+	strcpy(node->pi, sub->sur);
+
+	node->ty = t_Sub;
+	node->cinSize = 0;
+	node->net = net_to_bit(sub->net);
+
+	return node;
+}
+
+Node* Create_ACP_Node(ACP *acp) {
+	fprintf(stderr,"Create Tree Node\n[rn] %s\n[ri] %s...",acp->rn, acp->ri);
+
+	Node* node = calloc(1, sizeof(Node));
+
+	node->rn = (char*)malloc((strlen(acp->rn) + 1) * sizeof(char));
+	node->ri = (char*)malloc((strlen(acp->ri) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(acp->pi) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(acp->pv_acor) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(acp->pv_acop) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(acp->pvs_acor) + 1) * sizeof(char));
+	node->pi = (char*)malloc((strlen(acp->pvs_acop) + 1) * sizeof(char));
+
+	strcpy(node->rn, acp->rn);
+	strcpy(node->ri, acp->ri);
+	strcpy(node->pi, acp->pi);
+	strcpy(node->pi, acp->pv_acor);
+	strcpy(node->pi, acp->pv_acop);
+	strcpy(node->pi, acp->pvs_acor);
+	strcpy(node->pi, acp->pvs_acop);
+
+	node->ty = t_ACP;
+	node->cinSize = 0;
+
 	return node;
 }
 
@@ -986,23 +1084,16 @@ int get_acop(Node *node) {
 		return ALL_ACOP;
 	}
 
-	Node *acp = node;
-	while(acp->parent) acp = acp->parent;
-	acp = acp->child;
+	Node *cb = node;
+	while(cb->parent) cb = cb->parent;
 
 	char *acpi, arr_acpi[1024];
 
 	strcpy(arr_acpi, node->acpi);
 
-	acpi = strtok(arr_acpi, "/");
-	if(acpi) acpi = strtok(NULL, "/");
+	Node *acp = Find_Node_by_URI(cb, arr_acpi);
 
-	while(acp && acpi) {
-		if(!strcmp(acp->rn, acpi)) break;
-		acp = acp->siblingRight;
-	}
-
-	if(!acp) return ALL_ACOP;
+	if(!acp) return 0;
 
 	char *origin = request_header("X-M2M-Origin");
 	if(!origin) return 0;
@@ -1026,4 +1117,26 @@ int get_acop(Node *node) {
 	if(pv_acop) ret = atoi(pv_acop);
 
 	return ret;
+}
+
+Node *Find_Node_by_URI(Node *cse, char *node_uri) {
+	Node *node = cse;
+
+	node_uri = strtok(node_uri, "/");
+
+	if(!node_uri) return NULL;
+
+	while(node && node_uri) {
+		while(node) {
+			if(!strcmp(node->rn, node_uri)) break;
+			node = node->siblingRight;
+		}
+		
+		node_uri = strtok(NULL, "/");
+		if(!node_uri) break;
+
+		node = node->child;
+	}
+
+	return node;
 }

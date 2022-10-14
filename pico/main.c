@@ -5,7 +5,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "zeroconf.h"
+#include "onem2m.h"
 
 #define CHUNK_SIZE 1024 // read 1024 bytes at a time
 
@@ -15,7 +15,7 @@
 #define NOT_FOUND_HTML "/404.html"
 #define MAX_PAYLOAD_SIZE 16384
 
-RT *rt;
+ResourceTree *rt;
 
 int main(int c, char **v) {
 	init();
@@ -27,9 +27,15 @@ int main(int c, char **v) {
 }
 
 void route() {
+    double start, end;
+
+    start = (double)clock() / CLOCKS_PER_SEC;    
+
+	/*
 	if(Label_To_URI(uri)) {
 		uri = Label_To_URI(uri);
 	}
+	*/
 
 	Node* pnode = Parse_URI(rt, uri);
 	if(!pnode) {
@@ -67,6 +73,9 @@ void route() {
 	default:
 		HTTP_500;
 	}
+
+	end = (((double)clock()) / CLOCKS_PER_SEC);
+    fprintf(stderr,"run time :%lf\n", (end-start));
 }
 
 void init() {
@@ -80,7 +89,7 @@ void init() {
 		cse = Get_CSE();
 	}
 	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node(cse->ri, cse->rn, cse->pi, "\0", "\0", "\0", "\0", "\0", "\0", "\0", 0, t_CSE);
+ 	rt->root = Create_Node(cse, t_CSE);
  	Free_CSE(cse);
  	cse = NULL;
  	Restruct_ResourceTree();
@@ -258,7 +267,7 @@ void Create_AE(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(ae->ri, ae->rn, ae->pi, "\0", "\0", "\0", "\0", "\0", "\0", "\0", 0, t_AE);
+	Node* node = Create_Node(ae, t_AE);
 	Add_child(pnode,node);
 	
 	char *res_json = AE_to_json(ae);
@@ -287,7 +296,7 @@ void Create_CNT(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(cnt->ri, cnt->rn, cnt->pi, "\0", "\0", cnt->acpi, "\0", "\0", "\0", "\0", 0, t_CNT);
+	Node* node = Create_Node(cnt, t_CNT);
 	Add_child(pnode,node);
 	
 	char *res_json = CNT_to_json(cnt);
@@ -315,7 +324,7 @@ void Create_CIN(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(cin->ri, cin->rn, cin->pi, "\0", "\0", "\0", "\0", "\0", "\0", "\0", 0, t_CIN);
+	Node* node = Create_Node(cin, t_CIN);
 	Add_child(pnode,node);
 	char *res_json = CIN_to_json(cin);
 	HTTP_201_JSON;
@@ -344,7 +353,7 @@ void Create_Sub(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(sub->ri, sub->rn, sub->pi, sub->nu, sub->sur, "\0", "\0", "\0", "\0", "\0", net_to_bit(sub->net), t_Sub);
+	Node* node = Create_Node(sub, t_Sub);
 	Add_child(pnode,node);
 	
 	char *res_json = Sub_to_json(sub);
@@ -366,7 +375,6 @@ void Create_ACP(Node *pnode) {
 	}
 	Init_ACP(acp, pnode->ri);
 	
-	/*
 	int result = Store_ACP(acp);
 	if(result != 1) { 
 		HTTP_500;
@@ -375,9 +383,8 @@ void Create_ACP(Node *pnode) {
 		acp = NULL;
 		return;
 	}
-	*/
 	
-	Node* node = Create_Node(acp->ri, acp->rn, acp->pi, "\0", "\0", "\0", acp->pv_acor, acp->pv_acop, acp->pvs_acor, acp->pvs_acop, 0, t_ACP);
+	Node* node = Create_Node(acp, t_ACP);
 	Add_child(pnode,node);
 	
 	char *res_json = ACP_to_json(acp);
@@ -610,7 +617,7 @@ void Response_JSON_Parse_Error(){
 }
 
 
-// httpd open source default functions
+// httpd open source basic functions
 int file_exists(const char *file_name) {
 	struct stat buffer;
 	int exists;

@@ -885,6 +885,100 @@ int Store_Sub(Sub *sub_object) {
     return 1;
 }
 
+int Store_ACP(ACP *acp_object) {
+    char* DATABASE = "ACP_type3.db";
+
+    DB* dbp;    // db handle
+    DBC* dbcp;
+    int ret;        // template value
+
+    DBT key_ri;
+    DBT data;  // storving key and real data
+
+
+    // if input == NULL
+    if (acp_object->ri == NULL) {
+        fprintf(stderr, "ri is NULL\n");
+        return 0;
+    }
+    if (acp_object->rn == NULL) acp_object->rn = "";
+    if (acp_object->pi == NULL) acp_object->pi = "NULL";
+    if (acp_object->ty == '\0') acp_object->ty = -1;
+    if (acp_object->ct == NULL) acp_object->ct = "";
+    if (acp_object->lt == NULL) acp_object->lt = "";
+    if (acp_object->et == NULL) acp_object->et = "";
+
+   if (acp_object->pv_acor == NULL) acp_object->pv_acor = "";       
+   if (acp_object->pv_acop == NULL) acp_object->pv_acop = ""; 
+   if (acp_object->pvs_acop == NULL) acp_object->pvs_acor = ""; 
+   if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = ""; 
+  
+    ret = db_create(&dbp, NULL, 0);
+    if (ret) {
+        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+        fprintf(stderr, "File ERROR\n");
+        return 0;
+    }
+
+    /*Set duplicate*/
+    ret = dbp->set_flags(dbp, DB_DUP);
+    if (ret != 0) {
+        dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
+        fprintf(stderr, "Flag Set ERROR\n");
+        dbp->close(dbp, 0);
+        return(ret);
+    }
+
+    /*DB Open*/
+    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", DATABASE);
+        fprintf(stderr, "DB Open ERROR\n");
+        return 0;
+    }
+
+    /*
+  * The DB handle for a Btree database supporting duplicate data
+  * items is the argument; acquire a cursor for the database.
+  */
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        fprintf(stderr, "Cursor ERROR");
+        return 0;
+    }
+
+    /* keyand data must initialize */
+    memset(&key_ri, 0, sizeof(DBT));
+    memset(&data, 0, sizeof(DBT));
+
+    /* initialize the data to be the first of two duplicate records. */
+    key_ri.data = acp_object->ri;
+    key_ri.size = strlen(acp_object->ri) + 1;
+
+    /* List data excluding 'ri' as strings using delimiters. */
+    char str[200]= "\0";
+    //strcat(str,acp_object->rn);
+    sprintf(str, "%s,%s,%s,%s,%s,%d,%s,%s,%s,%s",
+            acp_object->rn,acp_object->pi,acp_object->ct,acp_object->lt,acp_object->et,
+            acp_object->ty,acp_object->pv_acor,acp_object->pv_acop,acp_object->pvs_acor,acp_object->pvs_acop);
+
+    //char* attribute_list[11] = {"ri","rn","pi","ct","lt","et","ty","pv_acor","pv_acop","pvs_acor","pvs_acop"};
+
+
+    data.data = str;
+    data.size = strlen(str) + 1;
+
+    /* input DB */
+    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+
+    /* DB close */
+    dbcp->close(dbcp);
+    dbp->close(dbp, 0); 
+
+    return 1;
+}
+
 CSE* Get_CSE() {
     fprintf(stderr, "[Get CSE]...");
 

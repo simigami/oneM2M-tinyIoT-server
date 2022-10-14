@@ -142,7 +142,7 @@ typedef struct Node {
 
 typedef struct {  
 	Node *root;
-}RT;
+}ResourceTree;
 
 //Request parse function
 int Validate_oneM2M_Standard();
@@ -215,6 +215,7 @@ int Store_AE(AE* ae_object);
 int Store_CNT(CNT* cnt_object);
 int Store_CIN(CIN* cin_object);
 int Store_Sub(Sub *sub_object);
+int Store_ACP(ACP *acp_object);
 
 CSE* Get_CSE();
 AE* Get_AE(char *ri);
@@ -244,9 +245,17 @@ char* URI_To_Label(char* uri);
 int Store_Label(char* label, char* uri);
 
 //Resource Tree function
-Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop, int net, ObjectType ty);
+//Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop, int net, ObjectType ty);
+Node* Create_Node(void *obj, ObjectType ty);
+Node* Create_CSE_Node(CSE *cse);
+Node* Create_AE_Node(AE *ae);
+Node* Create_CNT_Node(CNT *cnt);
+Node* Create_CIN_Node(CIN *cin);
+Node* Create_Sub_Node(Sub *sub);
+Node* Create_ACP_Node(ACP *acp);
 int Add_child(Node *parent, Node *child);
 char* Node_to_json(Node *node);
+Node *Find_Node_by_URI(Node *cse, char *node_uri);
 void Delete_Node_Object(Node *node, int flag);
 void Free_Node(Node *node);
 
