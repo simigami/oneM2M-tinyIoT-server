@@ -45,15 +45,4 @@ void bindfd(int slot);
 #define HTTP_413 printf("%s 413 Payload Too Large\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_JSON_HEADERS)
 #define HTTP_500 printf("%s 500 Internal Server Error\n%s\n\n", RESPONSE_PROTOCOL, RESPONSE_JSON_HEADERS)
 
-// some interesting macro for `route()`
-#define ROUTE_START() if (0) {
-#define ROUTE(METHOD, URI)                                                     \
-  }                                                                            \
-  else if (strcmp(URI, uri) == 0 && strcmp(METHOD, method) == 0) {
-#define GET(URI) ROUTE("GET", URI)
-#define POST(URI) ROUTE("POST", URI)
-#define ROUTE_END()                                                            \
-  }                                                                            \
-  else HTTP_500
-
 #endif

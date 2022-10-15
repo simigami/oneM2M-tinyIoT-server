@@ -37,10 +37,15 @@ void route() {
 	}
 	*/
 
-	Node* pnode = Parse_URI(rt, uri);
+	Operation op = o_NONE;
+
+	Node* pnode = Parse_URI(rt->cb, uri, &op);
 	if(!pnode) {
+		if(op != o_CIN_RI) fprintf(stderr,"Invalid");
 		return;
-	}
+	} else {
+		fprintf(stderr,"OK\n");
+	} 
 
 	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
 		HTTP_413;
@@ -49,7 +54,7 @@ void route() {
 		return;
 	}
 
-	Operation op = Parse_Operation();
+	if(op == o_NONE) op = Parse_Operation();
 	
 	switch(op) {
 	
@@ -64,6 +69,9 @@ void route() {
 		
 	case o_DELETE:
 		Delete_Object(pnode); break;
+
+	case o_VIEWER:
+		Tree_Viewer_API(pnode); break;
 	
 	case o_OPTIONS:
 		HTTP_200_JSON;
@@ -75,7 +83,7 @@ void route() {
 	}
 
 	end = (((double)clock()) / CLOCKS_PER_SEC);
-    fprintf(stderr,"run time :%lf\n", (end-start));
+    fprintf(stderr,"Run time :%lf\n", (end-start));
 }
 
 void init() {
@@ -88,20 +96,21 @@ void init() {
 	} else {
 		cse = Get_CSE();
 	}
-	rt = (RT *)malloc(sizeof(rt));
- 	rt->root = Create_Node(cse, t_CSE);
+	rt = (ResourceTree *)malloc(sizeof(rt));
+ 	rt->cb = Create_Node(cse, t_CSE);
  	Free_CSE(cse);
  	cse = NULL;
  	Restruct_ResourceTree();
 }
 
 void Create_Object(Node *pnode) {
-	if((get_acop(pnode) & acop_Create) != acop_Create) {
+	if((Get_acop(pnode) & acop_Create) != acop_Create) {
 		fprintf(stderr,"Originator has no privilege\n");
 		HTTP_403;
 		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
 		return;
 	}
+
 	if(!payload) {
 		HTTP_500;
 		fprintf(stderr,"Request body empty\n");
@@ -118,6 +127,10 @@ void Create_Object(Node *pnode) {
 
 	ObjectType ty = Parse_ObjectType();
 	switch(ty) {
+
+	case t_CSE :
+		/*No Definition such request*/
+		break;
 		
 	case t_AE :
 		fprintf(stderr,"\x1b[42mCreate AE\x1b[0m\n");
@@ -144,9 +157,6 @@ void Create_Object(Node *pnode) {
 		Create_ACP(pnode);
 		break;
 
-	case t_CSE :
-		/*No Definition such request*/
-
 	default :
 		fprintf(stderr,"Resource type error (Content-Type Header Invalid)\n");
 		HTTP_400;
@@ -155,7 +165,7 @@ void Create_Object(Node *pnode) {
 }
 
 void Retrieve_Object(Node *pnode) {
-	if((get_acop(pnode) & acop_Retrieve) != acop_Retrieve) {
+	if((Get_acop(pnode) & acop_Retrieve) != acop_Retrieve) {
 		fprintf(stderr,"Originator has no privilege\n");
 		HTTP_403;
 		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
@@ -201,16 +211,24 @@ void Retrieve_Object(Node *pnode) {
 }
 
 void Update_Object(Node *pnode) {
-	if((get_acop(pnode) & acop_Update) != acop_Update) {
+	if((Get_acop(pnode) & acop_Update) != acop_Update) {
 		fprintf(stderr,"Originator has no privilege\n");
 		HTTP_403;
 		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
 		return;
 	}
+
 	if(!payload) {
 		HTTP_500;
 		fprintf(stderr,"Request body empty error\n");
 		printf("{\"m2m:dbg\": \"request body empty\"\n}");
+		return;
+	}
+
+	if(duplicate_resource_check(pnode->parent)) {
+		HTTP_209_JSON;
+		fprintf(stderr,"Resource duplicate error\n");
+		printf("{\"m2m:dbg\": \"resource \"rn\" is duplicated\"}");
 		return;
 	}
 
@@ -224,8 +242,9 @@ void Update_Object(Node *pnode) {
 	}
 	
 	switch(ty) {
-	
+
 	case t_CSE :
+		/*No Definition such request*/
 		break;
 
 	case t_AE :
@@ -315,6 +334,7 @@ void Create_CIN(Node *pnode) {
 		return;
 	}
 	Init_CIN(cin,pnode->ri);
+
 	int result = Store_CIN(cin);
 	if(result != 1) { 
 		HTTP_500;
@@ -324,8 +344,6 @@ void Create_CIN(Node *pnode) {
 		return;
 	}
 	
-	Node* node = Create_Node(cin, t_CIN);
-	Add_child(pnode,node);
 	char *res_json = CIN_to_json(cin);
 	HTTP_201_JSON;
 	printf("%s", res_json);
@@ -334,6 +352,7 @@ void Create_CIN(Node *pnode) {
 	Free_CIN(cin);
 	res_json = NULL;
 	cin = NULL;
+	pnode->cinSize++;
 }
 
 void Create_Sub(Node *pnode) {
@@ -577,7 +596,7 @@ void Restruct_ResourceTree(){
 	if(node_list) node_list->siblingLeft = NULL;
 	Free_Node(temp);
 	
-	if(node_list) Restruct_childs(rt->root, node_list);
+	if(node_list) Restruct_childs(rt->cb, node_list);
 }
 
 Node* Restruct_childs(Node *pnode, Node *list) {

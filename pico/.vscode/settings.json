@@ -7,6 +7,8 @@
         "*.moc5": "c",
         "array": "c",
         "string": "c",
-        "string_view": "c"
-    }
+        "string_view": "c",
+        "onem2m.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

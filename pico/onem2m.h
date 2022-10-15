@@ -5,11 +5,17 @@
 #include "httpd.h"
 
 typedef enum {
-	o_CREATE = 1,
+	o_NONE = 0,
+	o_CREATE,
 	o_RETRIEVE,
 	o_UPDATE,
 	o_DELETE,
-	o_OPTIONS
+	o_OPTIONS,
+	o_VIEWER,
+	o_TEST,
+	o_LA,
+	o_OL,
+	o_CIN_RI
 }Operation;
 
 typedef enum {
@@ -141,13 +147,13 @@ typedef struct Node {
 }Node;
 
 typedef struct {  
-	Node *root;
+	Node *cb;
 }ResourceTree;
 
 //Request parse function
 int Validate_oneM2M_Standard();
 int duplicate_resource_check(Node *pnode);
-Node* Parse_URI(RT *rt, char *uri_array);
+Node* Parse_URI(Node *cb, char *uri_array, Operation *op);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_Body();
@@ -285,10 +291,10 @@ void Free_CNT(CNT* cnt);
 void Free_CIN(CIN* cin);
 void Free_Sub(Sub* sub);
 void Free_ACP(ACP *acp);
-int get_acop(Node *node);
+int Get_acop(Node *node);
 
 #define TREE_VIEWER_DATASIZE 65536
 #define MAX_PROPERTY_SIZE 32768
-#define MAX_URI_SIZE 256
+#define MAX_URI_SIZE 1024
 #define EXPIRE_TIME -3600*24*365*2
 #define ALL_ACOP acop_Create + acop_Retrieve + acop_Update + acop_Delete + acop_Notify + acop_Discovery

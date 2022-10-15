@@ -25,92 +25,51 @@ int Validate_oneM2M_Standard() {
 	return ret;
 }
 
-Node* Parse_URI(ResourceTree *rt, char *uri_array) {
-	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri_array);
-	//char uri_array[MAX_URI_SIZE];
+Node* Parse_URI(Node *cb, char *uri, Operation *op) {
+	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri);
+	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
-	Node *node = NULL;
+	strcpy(uri_array, uri);
 
-	//strcpy(uri_array, uri);
-	
-	uri_parse = strtok(uri_parse, "/");
-	
-	int viewer = 0, test = 0, la_ol = 0;
-	
-	if(uri_parse != NULL) {
-		if(!strcmp("test", uri_parse)) test = 1;
-		else if(!strcmp("viewer", uri_parse)) viewer = 1;
-		
-		if(test || viewer) uri_parse = strtok(NULL, "/");
-	}
-	
-	if(uri_parse != NULL && !strcmp("TinyIoT", uri_parse)) node = rt->root;
-	
-	while(uri_parse != NULL && node) {
-		char *cin_ri;
-		if((cin_ri = strstr(uri_parse, "4-20")) != NULL) {
-			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN By Ri\x1b[0m\n");
-			Retrieve_CIN_Ri(cin_ri);
-			return NULL;
-		}
-	
-		if(!strcmp("la", uri_parse) || !strcmp("latest", uri_parse)) {
-			while(node->siblingRight) {
-				if(node->ty == t_CIN && node->siblingRight->ty != t_CIN) break;
-				node = node->siblingRight;
-			}
-			la_ol = 1;
-		} else if(!strcmp("ol", uri_parse) || !strcmp("oldest", uri_parse)) {
-			while(node) {
-				if(node->ty == t_CIN) break;
-				node = node->siblingRight;
-			}
-			la_ol = 1;
-		}
-		
-		if(!la_ol)
-		{
-			while(node) {
-				if(!strcmp(node->rn,uri_parse)) break;
-				node = node->siblingRight;
-			}
-		}
+	char uri_strtok[64][MAX_URI_SIZE];
+	int index_s = 0, index_e = 0;
 
-		la_ol = 0;
-		
-		uri_parse = strtok(NULL, "/");
-		
-		if(uri_parse == NULL) break;
-		
-		if(!strcmp(uri_parse, "cinperiod")) {
-			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN in Period\x1b[0m\n");
-			CIN_in_period(node);
-			return NULL;
-		}
-		
-		if(node) node = node->child;
-	}
-	
-	if(node) {
-		if(viewer) {
-			fprintf(stderr,"OK\n\x1b[43mTree Viewer API\x1b[0m\n");
-			Tree_Viewer_API(node);
-			return NULL;
-		} else if(test) {
-			fprintf(stderr,"OK\n\x1b[43mObject Test API\x1b[0m\n");
-			Object_Test_API(node);
-			return NULL;
-		}
-	} else if(!node) {
-		fprintf(stderr,"Invalid\n");
-		HTTP_400;
-		printf("{\"m2m:dbg\": \"invalid object\"}");
+	memset(uri_strtok, 0, sizeof(uri_strtok));
+
+	uri_parse = strtok(uri_array, "/");
+	if(uri_parse) {
+		strcpy(uri_strtok[index_e++], uri_parse);
+	} else {
 		return NULL;
 	}
-	
-	fprintf(stderr,"OK\n");
 
-	return node;
+	while(uri_parse) {
+		uri_parse = strtok(NULL, "/");
+		if(uri_parse) {
+			strcpy(uri_strtok[index_e++], uri_parse);
+		}
+	}
+
+	index_e--;
+
+	if(!strcmp(uri_strtok[0], "viewer")) {
+		*op = o_VIEWER; index_s++;
+	} else if(!strcmp(uri_strtok[index_e], "la") || !strcmp(uri_strtok[index_e], "latest")) {
+		*op = o_LA; index_e--;
+	} else if(!strcmp(uri_strtok[index_e], "ol") || !strcmp(uri_strtok[index_e], "oldest")) {
+		*op = o_OL; index_e--;
+	} else if(strstr(uri_strtok[index_e], "4-20")) {
+		*op = o_CIN_RI; Retrieve_CIN_Ri(uri_strtok[index_e]); return NULL;
+	}
+
+	strcpy(uri_array,"/\0");
+
+	for(int i=index_s; i<=index_e; i++) {
+		strcat(uri_array,uri_strtok[i]);
+		strcat(uri_array,"/");
+	}
+
+	return Find_Node_by_URI(cb, uri_array);
 }
 
 Operation Parse_Operation(){
@@ -139,6 +98,7 @@ int duplicate_resource_check(Node *pnode) {
 }
 
 void Retrieve_CIN_Ri(char *ri) {
+	fprintf(stderr,"OK\n\x1b[43mRetrieve CIN By Ri\x1b[0m\n");
 	CIN* gcin = Get_CIN(ri);
 	
 	if(gcin) {
@@ -206,6 +166,7 @@ void CIN_in_period(Node *pnode) {
 }
 
 void Tree_Viewer_API(Node *node) {
+	fprintf(stderr,"\x1b[43mTree Viewer API\x1b[0m\n");
 	char *viewer_data = (char *)calloc(TREE_VIEWER_DATASIZE, sizeof(char));
 	strcpy(viewer_data,"[");
 	
@@ -424,12 +385,16 @@ Node* Create_CNT_Node(CNT *cnt) {
 	node->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
 	node->ri = (char*)malloc((strlen(cnt->ri) + 1) * sizeof(char));
 	node->pi = (char*)malloc((strlen(cnt->pi) + 1) * sizeof(char));
-	node->acpi = (char*)malloc((strlen(cnt->acpi) + 1) * sizeof(char));
 	
 	strcpy(node->rn, cnt->rn);
 	strcpy(node->ri, cnt->ri);
 	strcpy(node->pi, cnt->pi);
-	strcpy(node->pi, cnt->acpi);
+
+	if(cnt->acpi) {
+		node->acpi = (char*)malloc((strlen(cnt->acpi) + 1) * sizeof(char));
+		strcpy(node->acpi, cnt->acpi);
+	}
+	
 
 	node->ty = t_CNT;
 	node->cinSize = 0;
@@ -464,14 +429,14 @@ Node* Create_Sub_Node(Sub *sub) {
 	node->rn = (char*)malloc((strlen(sub->rn) + 1) * sizeof(char));
 	node->ri = (char*)malloc((strlen(sub->ri) + 1) * sizeof(char));
 	node->pi = (char*)malloc((strlen(sub->pi) + 1) * sizeof(char));
-	node->pi = (char*)malloc((strlen(sub->nu) + 1) * sizeof(char));
-	node->pi = (char*)malloc((strlen(sub->sur) + 1) * sizeof(char));
+	node->nu = (char*)malloc((strlen(sub->nu) + 1) * sizeof(char));
+	node->sur = (char*)malloc((strlen(sub->sur) + 1) * sizeof(char));
 	
 	strcpy(node->rn, sub->rn);
 	strcpy(node->ri, sub->ri);
 	strcpy(node->pi, sub->pi);
-	strcpy(node->pi, sub->nu);
-	strcpy(node->pi, sub->sur);
+	strcpy(node->nu, sub->nu);
+	strcpy(node->sur, sub->sur);
 
 	node->ty = t_Sub;
 	node->cinSize = 0;
@@ -488,18 +453,18 @@ Node* Create_ACP_Node(ACP *acp) {
 	node->rn = (char*)malloc((strlen(acp->rn) + 1) * sizeof(char));
 	node->ri = (char*)malloc((strlen(acp->ri) + 1) * sizeof(char));
 	node->pi = (char*)malloc((strlen(acp->pi) + 1) * sizeof(char));
-	node->pi = (char*)malloc((strlen(acp->pv_acor) + 1) * sizeof(char));
-	node->pi = (char*)malloc((strlen(acp->pv_acop) + 1) * sizeof(char));
-	node->pi = (char*)malloc((strlen(acp->pvs_acor) + 1) * sizeof(char));
-	node->pi = (char*)malloc((strlen(acp->pvs_acop) + 1) * sizeof(char));
+	node->pv_acor = (char*)malloc((strlen(acp->pv_acor) + 1) * sizeof(char));
+	node->pv_acop = (char*)malloc((strlen(acp->pv_acop) + 1) * sizeof(char));
+	node->pvs_acor = (char*)malloc((strlen(acp->pvs_acor) + 1) * sizeof(char));
+	node->pvs_acop = (char*)malloc((strlen(acp->pvs_acop) + 1) * sizeof(char));
 
 	strcpy(node->rn, acp->rn);
 	strcpy(node->ri, acp->ri);
 	strcpy(node->pi, acp->pi);
-	strcpy(node->pi, acp->pv_acor);
-	strcpy(node->pi, acp->pv_acop);
-	strcpy(node->pi, acp->pvs_acor);
-	strcpy(node->pi, acp->pvs_acop);
+	strcpy(node->pv_acor, acp->pv_acor);
+	strcpy(node->pv_acop, acp->pv_acop);
+	strcpy(node->pvs_acor, acp->pvs_acor);
+	strcpy(node->pvs_acop, acp->pvs_acop);
 
 	node->ty = t_ACP;
 	node->cinSize = 0;
@@ -510,9 +475,7 @@ Node* Create_ACP_Node(ACP *acp) {
 int Add_child(Node *parent, Node *child) {
 	Node *node = parent->child;
 	child->parent = parent;
-	
-	if(child->ty == t_CIN) parent->cinSize++;
-	
+
 	if(child->ty != t_CIN) fprintf(stderr,"\nAdd Child\n[P] %s\n[C] %s...",parent->rn, child->rn);
 	
 	if(!node) {
@@ -587,13 +550,13 @@ void Free_Node(Node *node) {
 	free(node->ri);
 	free(node->rn);
 	free(node->pi);
-	free(node->nu);
-	free(node->sur);
-	free(node->acpi);
-	free(node->pv_acop);
-	free(node->pv_acor);
-	free(node->pvs_acor);
-	free(node->pvs_acop);
+	if(node->nu) free(node->nu);
+	if(node->sur) free(node->sur);
+	if(node->acpi) free(node->acpi);
+	if(node->pv_acop) free(node->pv_acop);
+	if(node->pv_acor) free(node->pv_acor);
+	if(node->pvs_acor) free(node->pvs_acor);
+	if(node->pvs_acop) free(node->pvs_acop);
 	free(node);
 }
 
@@ -708,8 +671,6 @@ void Init_CNT(CNT* cnt, char *pi) {
 		strcpy(tmp,cnt->acpi);
 		cnt->acpi = (char*)malloc((strlen(cnt->acpi) + 1) * sizeof(char));
 		strcpy(cnt->acpi,tmp);
-	} else {
-		cnt->acpi = "\0";
 	}
 	
 	cnt->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -851,11 +812,18 @@ void Set_AE_Update(AE* after) {
 
 void Set_CNT_Update(CNT* after) {
 	char *rn = Get_JSON_Value_char("rn", payload);
+	char *acpi = Get_JSON_Value_char("acpi", payload);
 
 	if(rn) {
 		free(after->rn);
 		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 		strcpy(after->rn, rn);
+	}
+
+	if(acpi) {
+		if(after->acpi) free(after->acpi);
+		after->acpi = (char*)malloc((strlen(acpi) + 1) * sizeof(char)); 
+		strcpy(after->acpi, acpi);
 	}
 }
 
@@ -870,71 +838,71 @@ void Set_Sub_Update(Sub* after) {
 }
 
 void Free_CSE(CSE *cse) {
-	free(cse->ct);
-	free(cse->lt);
-	free(cse->rn);
-	free(cse->ri);
-	free(cse->csi);
-	free(cse->pi);
+	if(cse->ct) free(cse->ct);
+	if(cse->lt) free(cse->lt);
+	if(cse->rn) free(cse->rn);
+	if(cse->ri) free(cse->ri);
+	if(cse->csi) free(cse->csi);
+	if(cse->pi) free(cse->pi);
 	free(cse);
 }
 
 void Free_AE(AE *ae) {
-	free(ae->et);
-	free(ae->ct);
-	free(ae->lt);
-	free(ae->rn);
-	free(ae->ri);
-	free(ae->pi);
-	free(ae->api);
-	free(ae->aei);
+	if(ae->et) free(ae->et);
+	if(ae->ct) free(ae->ct);
+	if(ae->lt) free(ae->lt);
+	if(ae->rn) free(ae->rn);
+	if(ae->ri) free(ae->ri);
+	if(ae->pi) free(ae->pi);
+	if(ae->api) free(ae->api);
+	if(ae->aei) free(ae->aei);
 	free(ae);
 }
 
 void Free_CNT(CNT *cnt) {
-	free(cnt->et);
-	free(cnt->ct);
-	free(cnt->lt);
-	free(cnt->rn);
-	free(cnt->ri);
-	free(cnt->pi);
+	if(cnt->et) free(cnt->et);
+	if(cnt->ct) free(cnt->ct);
+	if(cnt->lt) free(cnt->lt);
+	if(cnt->rn) free(cnt->rn);
+	if(cnt->ri) free(cnt->ri);
+	if(cnt->pi) free(cnt->pi);
 	free(cnt);
 }
 
 void Free_CIN(CIN* cin) {
-	free(cin->et);
-	free(cin->ct);
-	free(cin->lt);
-	free(cin->rn);
-	free(cin->ri);
-	free(cin->pi);
-	free(cin->con);
+	if(cin->et) free(cin->et);
+	if(cin->ct) free(cin->ct);
+	if(cin->lt) free(cin->lt);
+	if(cin->rn) free(cin->rn);
+	if(cin->ri) free(cin->ri);
+	if(cin->pi) free(cin->pi);
+	if(cin->con) free(cin->con);
 	free(cin);
 }
 
 void Free_Sub(Sub* sub) {
-	free(sub->et);
-	free(sub->ct);
-	free(sub->lt);
-	free(sub->rn);
-	free(sub->ri);
-	free(sub->pi);
-	free(sub->nu);
-	free(sub->net);
+	if(sub->et) free(sub->et);
+	if(sub->ct) free(sub->ct);
+	if(sub->lt) free(sub->lt);
+	if(sub->rn) free(sub->rn);
+	if(sub->ri) free(sub->ri);
+	if(sub->pi) free(sub->pi);
+	if(sub->nu) free(sub->nu);
+	if(sub->net) free(sub->net);
 	free(sub);
 }
 
 void Free_ACP(ACP* acp) {
-	free(acp->et);
-	free(acp->ct);
-	free(acp->lt);
-	free(acp->rn);
-	free(acp->ri);
-	free(acp->pi);
-	free(acp->pv_acor);
-	free(acp->pv_acop);
-	free(acp->pvs_acor);
-	free(acp->pvs_acop);
+	if(acp->et) free(acp->et);
+	if(acp->ct) free(acp->ct);
+	if(acp->lt) free(acp->lt);
+	if(acp->rn) free(acp->rn);
+	if(acp->ri) free(acp->ri);
+	if(acp->pi) free(acp->pi);
+	if(acp->pv_acor) free(acp->pv_acor);
+	if(acp->pv_acop) free(acp->pv_acop);
+	if(acp->pvs_acor) free(acp->pvs_acor);
+	if(acp->pvs_acop) free(acp->pvs_acop);
 	free(acp);
 }
 
@@ -1079,8 +1047,8 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
     return data.data;
 }
 
-int get_acop(Node *node) {
-	if(!node->acpi || (node->acpi && !strcmp(node->acpi,""))) {
+int Get_acop(Node *node) {
+	if(!node->acpi) {
 		return ALL_ACOP;
 	}
 
@@ -1126,7 +1094,7 @@ Node *Find_Node_by_URI(Node *cse, char *node_uri) {
 
 	if(!node_uri) return NULL;
 
-	while(node && node_uri) {
+	while(node) {
 		while(node) {
 			if(!strcmp(node->rn, node_uri)) break;
 			node = node->siblingRight;
@@ -1134,7 +1102,6 @@ Node *Find_Node_by_URI(Node *cse, char *node_uri) {
 		
 		node_uri = strtok(NULL, "/");
 		if(!node_uri) break;
-
 		node = node->child;
 	}
 

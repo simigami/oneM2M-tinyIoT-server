@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 AE* JSON_to_AE(char *json_payload) {
-	AE *ae = (AE *)malloc(sizeof(AE));
+	AE *ae = (AE *)calloc(1, sizeof(AE));
 
 	cJSON *root = NULL;
 	cJSON *api = NULL;
@@ -71,7 +71,7 @@ end:
 }
 
 CNT* JSON_to_CNT(char *json_payload) {
-	CNT *cnt = (CNT *)malloc(sizeof(CNT));
+	CNT *cnt = (CNT *)calloc(1, sizeof(CNT));
 
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
@@ -118,7 +118,7 @@ end:
 }
 
 CIN* JSON_to_CIN(char *json_payload) {
-	CIN *cin = (CIN *)malloc(sizeof(CIN));
+	CIN *cin = (CIN *)calloc(1, sizeof(CIN));
 
 	cJSON *root = NULL;
 	cJSON *con = NULL;
@@ -156,7 +156,7 @@ end:
 }
 
 Sub* JSON_to_Sub(char *json_payload) {
-	Sub *sub = (Sub *)malloc(sizeof(Sub));
+	Sub *sub = (Sub *)calloc(1, sizeof(Sub));
 
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
@@ -232,7 +232,7 @@ end:
 }
 
 ACP* JSON_to_ACP(char *json_payload) {
-	ACP *acp = (ACP *)malloc(sizeof(ACP));
+	ACP *acp = (ACP *)calloc(1, sizeof(ACP));
 
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
@@ -442,7 +442,6 @@ char* CNT_to_json(CNT* cnt_object) {
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
 	//cJSON_AddStringToObject(cnt, "lbl", cnt_object->lbl);
 	if(cnt_object->acpi) cJSON_AddStringToObject(cnt, "acpi", cnt_object->acpi);
-	else cJSON_AddStringToObject(cnt, "acpi", "");
 
 	json = cJSON_Print(root);
 
@@ -499,27 +498,31 @@ char* Sub_to_json(Sub *sub_object) {
 	cJSON_AddStringToObject(sub, "et", sub_object->et);
 
 	// nu
-	nu = cJSON_CreateArray();
-	char *nu_str = strtok(sub_object->nu, ",");
-	do {
-		cJSON_AddItemToArray(nu, cJSON_CreateString(nu_str));
-		nu_str = strtok(NULL, ",");
-	} while (nu_str != NULL);
-	cJSON_AddItemToObject(sub, "nu", nu);
+	if(sub_object->nu) {
+		nu = cJSON_CreateArray();
+		char *nu_str = strtok(sub_object->nu, ",");
+		do {
+			cJSON_AddItemToArray(nu, cJSON_CreateString(nu_str));
+			nu_str = strtok(NULL, ",");
+		} while (nu_str != NULL);
+		cJSON_AddItemToObject(sub, "nu", nu);
+	}
 
 	// net
-	cJSON_AddItemToObject(sub, "enc", enc = cJSON_CreateObject());
+	if(sub_object->net) {
+		cJSON_AddItemToObject(sub, "enc", enc = cJSON_CreateObject());
 
-	net = cJSON_CreateArray();
-	char *net_str = strtok(sub_object->net, ",");
-	do {
-		cJSON_AddItemToArray(net, cJSON_CreateNumber(atof(net_str)));
-		net_str = strtok(NULL, ",");
-	} while (net_str != NULL);
-	cJSON_AddItemToObject(enc, "net", net);
+		net = cJSON_CreateArray();
+		char *net_str = strtok(sub_object->net, ",");
+		do {
+			cJSON_AddItemToArray(net, cJSON_CreateNumber(atof(net_str)));
+			net_str = strtok(NULL, ",");
+		} while (net_str != NULL);
+		cJSON_AddItemToObject(enc, "net", net);
+	}
 
 	// nct
-	cJSON_AddNumberToObject(sub, "nct", sub_object->nct);
+	if(sub_object->nct) cJSON_AddNumberToObject(sub, "nct", sub_object->nct);
 
 	json = cJSON_Print(root);
 

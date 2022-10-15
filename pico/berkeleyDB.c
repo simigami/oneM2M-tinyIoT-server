@@ -1372,7 +1372,7 @@ return new_cnt;
 }
 
 CIN* Get_CIN(char* ri) {
-    fprintf(stderr,"[Get CIN] %s...", ri);
+    fprintf(stderr,"[Get CIN] ri = %s...", ri);
 
     //store CIN
     CIN* new_cin = (CIN*)malloc(sizeof(CIN));
@@ -1417,6 +1417,7 @@ CIN* Get_CIN(char* ri) {
     memset(&data, 0, sizeof(data));
 
     int idx = 0;
+    int cnt = 0;
     // žî¹øÂ° CINÀÎÁö Ã£±â À§ÇÑ Ä¿Œ­
     DBC* dbcp0;
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
@@ -1428,11 +1429,17 @@ CIN* Get_CIN(char* ri) {
         if (strncmp(key.data, "ri", key.size) == 0) {
             idx++;
             if (strncmp(data.data, ri, data.size) == 0) {
+                cnt++;
                 new_cin->ri = malloc(data.size);
                 strcpy(new_cin->ri, data.data);
                 break;
             }
         }
+    }
+    if (cnt == 0) {
+        fprintf(stderr, "Data not exist\n");
+        free(new_cin);
+        return NULL;
     }
 
     int cin_rn = 0;
@@ -1508,11 +1515,11 @@ CIN* Get_CIN(char* ri) {
             }
         }
     }
-    //fprintf(stderr,"[%d]\n",idx);
+    //printf("[%d]\n",idx);
 
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
-        fprintf(stderr,"Cursor ERROR\n");
+        printf("Cursor ERROR\n");
         exit(0);
     }
 
@@ -1521,7 +1528,6 @@ dbp->err(dbp, ret, "DBcursor->close");
 if (close_db && (ret = dbp->close(dbp, 0)) != 0)
 fprintf(stderr,
     "%s: DB->close: %s\n", database, db_strerror(ret));
-fprintf(stderr,"OK\n");
 return new_cin;
 }
 
@@ -1731,7 +1737,7 @@ int Update_AE_DB(AE* ae_object) {
     if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
         return 0;
-        exit(1);
+        //exit(1);
     }
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, "ri", key.size) == 0) {
@@ -2484,7 +2490,6 @@ int Delete_CIN(char* ri) {
     int cin_st = 0;
     int cin_cs = 0;
     int cin_con = 0;
-    int cin_csi = 0;
 
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
         dbp->err(dbp, ret, "DB->cursor");
@@ -2525,12 +2530,6 @@ int Delete_CIN(char* ri) {
         if (strncmp(key.data, "con", key.size) == 0) {
             cin_con++;
             if (cin_con == idx) {
-                dbcp->del(dbcp, 0);
-            }
-        }
-        if (strncmp(key.data, "csi", key.size) == 0) {
-            cin_csi++;
-            if (cin_csi == idx) {
                 dbcp->del(dbcp, 0);
             }
         }
