@@ -476,36 +476,31 @@ int Add_child(Node *parent, Node *child) {
 	Node *node = parent->child;
 	child->parent = parent;
 
-	if(child->ty != t_CIN) fprintf(stderr,"\nAdd Child\n[P] %s\n[C] %s...",parent->rn, child->rn);
+	fprintf(stderr,"\nAdd Child\n[P] %s\n[C] %s...",parent->rn, child->rn);
 	
 	if(!node) {
 		parent->child = child;
 	} else if(node) {
-		if(child->ty < node->ty) {
+		while(node->siblingRight && node->siblingRight->ty <= child->ty) { 	
+				node = node->siblingRight;
+		}
+
+		if(parent->child == node && child->ty < node->ty) {
 			parent->child = child;
 			child->siblingRight = node;
 			node->siblingLeft = child;
 		} else {
-			while(node->siblingRight && node->siblingRight->ty <= child->ty) { 
-				if(node->ty == t_CIN && node->siblingRight->ty == t_CIN && child->ty == t_CIN) {
-					Node *right = node->siblingRight->siblingRight;
-					Free_Node(node->siblingRight);
-					node->siblingRight = right;
-					break;
-				}
-				node = node->siblingRight;
-			}
-			
 			if(node->siblingRight) {
 				node->siblingRight->siblingLeft = child;
 				child->siblingRight = node->siblingRight;
 			}
+
 			node->siblingRight = child;
 			child->siblingLeft = node;
 		}
 	}
 	
-	if(child->ty != t_CIN) fprintf(stderr,"OK\n");
+	fprintf(stderr,"OK\n");
 	
 	return 1;
 }

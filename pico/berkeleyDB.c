@@ -1523,6 +1523,8 @@ CIN* Get_CIN(char* ri) {
         exit(0);
     }
 
+    fprintf(stderr,"OK\n");
+
 err:    if (close_dbc && (ret = dbcp->close(dbcp)) != 0)
 dbp->err(dbp, ret, "DBcursor->close");
 if (close_db && (ret = dbp->close(dbp, 0)) != 0)

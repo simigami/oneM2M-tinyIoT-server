@@ -21,7 +21,7 @@ int main(int c, char **v) {
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 
-	serve_forever(port);
+	serve_forever(port); // main oneM2M operation logic in void route()
     
 	return 0;
 }
@@ -29,19 +29,15 @@ int main(int c, char **v) {
 void route() {
     double start, end;
 
-    start = (double)clock() / CLOCKS_PER_SEC;    
+    start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
-	/*
-	if(Label_To_URI(uri)) {
-		uri = Label_To_URI(uri);
-	}
-	*/
+	//if(Label_To_URI(uri)) { uri = Label_To_URI(uri);}
 
 	Operation op = o_NONE;
 
-	Node* pnode = Parse_URI(rt->cb, uri, &op);
+	Node* pnode = Parse_URI(rt->cb, uri, &op); // return tree node by URI
 	if(!pnode) {
-		if(op != o_CIN_RI) fprintf(stderr,"Invalid");
+		if(op != o_CIN_RI) fprintf(stderr,"Invalid\n");
 		return;
 	} else {
 		fprintf(stderr,"OK\n");
@@ -54,7 +50,7 @@ void route() {
 		return;
 	}
 
-	if(op == o_NONE) op = Parse_Operation();
+	if(op == o_NONE) op = Parse_Operation(); // parse operation by HTTP method
 	
 	switch(op) {
 	
@@ -82,8 +78,8 @@ void route() {
 		HTTP_500;
 	}
 
-	end = (((double)clock()) / CLOCKS_PER_SEC);
-    fprintf(stderr,"Run time :%lf\n", (end-start));
+	end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
+    fprintf(stderr,"Run time :%lf\n", (end-start)); 
 }
 
 void init() {
@@ -114,7 +110,7 @@ void Create_Object(Node *pnode) {
 	if(!payload) {
 		HTTP_500;
 		fprintf(stderr,"Request body empty\n");
-		printf("{\"m2m:dbg\": \"request body empty\"}"); // Need oneM2M WireShark packet Check
+		printf("{\"m2m:dbg\": \"request body empty\"}"); 
 		return;
 	}
 
@@ -125,7 +121,7 @@ void Create_Object(Node *pnode) {
 		return;
 	}
 
-	ObjectType ty = Parse_ObjectType();
+	ObjectType ty = Parse_ObjectType(); // parse object type by payload json key -> "m2m:??"
 	switch(ty) {
 
 	case t_CSE :

@@ -4,6 +4,7 @@
 #include "cJSON.h"
 #include "httpd.h"
 
+//enum
 typedef enum {
 	o_NONE = 0,
 	o_CREATE,
@@ -43,7 +44,7 @@ typedef enum {
 	acop_Discovery = 32
 }ACOP;
 
-// OneM2M Resource struct
+//oneM2M Resource
 typedef struct {
 	char *ct;
 	char *lt;
@@ -124,6 +125,7 @@ typedef struct {
 	int ty;
 } ACP;
 
+//Resource Tree
 typedef struct Node {
 	struct Node *parent;
 	struct Node *child;
@@ -150,7 +152,7 @@ typedef struct {
 	Node *cb;
 }ResourceTree;
 
-//Request parse function
+//HTTP Request
 int Validate_oneM2M_Standard();
 int duplicate_resource_check(Node *pnode);
 Node* Parse_URI(Node *cb, char *uri_array, Operation *op);
@@ -159,7 +161,7 @@ ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_Body();
 void Remove_Specific_Asterisk_Payload();
 
-//oneM2M CRUD(N) function
+//oneM2M Resource
 void Create_Object(Node* pnode);
 void Retrieve_Object(Node *pnode);
 void Update_Object(Node *pnode);
@@ -209,11 +211,14 @@ char* Sub_to_json(Sub *sub_object);
 char* Noti_to_json(char *sur, int net, char *rep);
 char* ACP_to_json(ACP *acp_object);
 
-char* Get_JSON_Value_char(char *key, char *json);
-int Get_JSON_Value_int(char *key, char *json);
-int Get_JSON_Value_bool(char *key, char *json);
+void Free_CSE(CSE* cse);
+void Free_AE(AE* ae);
+void Free_CNT(CNT* cnt);
+void Free_CIN(CIN* cin);
+void Free_Sub(Sub* sub);
+void Free_ACP(ACP *acp);
 
-//DB function
+//DB
 int display(char* database);
 
 int Store_CSE(CSE* cse_object);
@@ -250,8 +255,7 @@ char* Label_To_URI(char* label);
 char* URI_To_Label(char* uri);
 int Store_Label(char* label, char* uri);
 
-//Resource Tree function
-//Node* Create_Node(char *ri, char *rn, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop, int net, ObjectType ty);
+//Resource Tree
 Node* Create_Node(void *obj, ObjectType ty);
 Node* Create_CSE_Node(CSE *cse);
 Node* Create_AE_Node(AE *ae);
@@ -269,28 +273,29 @@ void Tree_Viewer_API(Node *node);
 void Tree_data(Node *node, char **viewer_data, int cin_num);
 void Restruct_ResourceTree();
 Node* Restruct_childs(Node *node, Node *list);
+Node* Latest_CINs(Node *cinList, int num); // use in viewer API
 
-//etc
-void init();
-char* Get_LocalTime(int diff);
-void CIN_in_period(Node *pnode);
-Node* Latest_CINs(Node *cinList, int num);
-void Object_Test_API(Node *node);
-char* JSON_label_value(char *json_payload);
+//JSON
+char* Get_JSON_Value_char(char *key, char *json);
+int Get_JSON_Value_int(char *key, char *json);
+int Get_JSON_Value_bool(char *key, char *json);
 void Remove_Invalid_Char_JSON(char* json);
 int is_JSON_Valid_Char(char c);
-int net_to_bit(char *net);
-char* resource_identifier(ObjectType ty, char *ct);
+
+//HTTP etc
 struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 char* Send_HTTP_Packet(char *target, char *post_data);
 void Response_JSON_Parse_Error();
-void Free_CSE(CSE* cse);
-void Free_AE(AE* ae);
-void Free_CNT(CNT* cnt);
-void Free_CIN(CIN* cin);
-void Free_Sub(Sub* sub);
-void Free_ACP(ACP *acp);
+
+//etc
+void init();
+char* Get_LocalTime(int diff);
+char* resource_identifier(ObjectType ty, char *ct);
+void CIN_in_period(Node *pnode);
+void Object_Test_API(Node *node);
+char* JSON_label_value(char *json_payload);
+int net_to_bit(char *net);
 int Get_acop(Node *node);
 
 #define TREE_VIEWER_DATASIZE 65536
