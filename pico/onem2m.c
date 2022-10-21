@@ -1053,37 +1053,40 @@ int Get_acop(Node *node) {
 	Node *cb = node;
 	while(cb->parent) cb = cb->parent;
 
-	char *acpi, arr_acpi[1024];
+	char *acpi, arr_acpi[MAX_PROPERTY_SIZE];
 
 	strcpy(arr_acpi, node->acpi);
 
-	char *pv_acor, *pv_acop, arr_pv_acor[1024][256], arr_pv_acop[1024][256];
-	int ret = 0, cnt = 0;
+	char *pv_acor, *pv_acop, arr_pv_acor[1024], arr_pv_acop[1024], arr_acp_uri[512][1024] = {"\0", };
+	int ret = 0, cnt = 0, uri_cnt = 0;
 	char *acp_uri = strtok(arr_acpi, ",");
 
 	while(acp_uri) {
-		Node *acp = Find_Node_by_URI(cb, arr_acpi);
-		cnt = 0;
-
-		if(acp) {
-			strcpy(arr_pv_acor, acp->pv_acor);
-			strcpy(arr_pv_acop, acp->pv_acop);
-		}
-
+		strcpy(arr_acp_uri[uri_cnt++],acp_uri);
 		acp_uri = strtok(NULL, ",");
 	}
 
-	pv_acor = strtok(arr_pv_acor, ",");
-	while(pv_acor) {
-		if(!strcmp(pv_acor, origin)) break;
-		pv_acor = strtok(NULL, ",");
-		cnt++;
+	for(int i=0; i<uri_cnt; i++) {
+		Node *acp = Find_Node_by_URI(cb, arr_acp_uri[i]);
+
+		if(acp) {
+			cnt = 0;
+			strcpy(arr_pv_acor, acp->pv_acor);
+			strcpy(arr_pv_acop, acp->pv_acop);
+			pv_acor = strtok(arr_pv_acor, ",");
+
+			while(pv_acor) {
+				if(!strcmp(pv_acor, origin)) break;
+				pv_acor = strtok(NULL, ",");
+				cnt++;
+			}
+
+			pv_acop = strtok(arr_pv_acop, ",");
+			for(int j=0; j<cnt; j++) pv_acop = strtok(NULL,",");
+
+			if(pv_acop) ret = (ret | atoi(pv_acop));
+		}
 	}
-
-	pv_acop = strtok(arr_pv_acop, ",");
-	for(int i=0; i<cnt; i++) pv_acop = strtok(NULL,",");
-
-	if(pv_acop) ret = atoi(pv_acop);
 
 	return ret;
 }
