@@ -1047,6 +1047,9 @@ int Get_acop(Node *node) {
 		return ALL_ACOP;
 	}
 
+	char *origin = request_header("X-M2M-Origin");
+	if(!origin) return 0;
+
 	Node *cb = node;
 	while(cb->parent) cb = cb->parent;
 
@@ -1054,18 +1057,21 @@ int Get_acop(Node *node) {
 
 	strcpy(arr_acpi, node->acpi);
 
-	Node *acp = Find_Node_by_URI(cb, arr_acpi);
-
-	if(!acp) return 0;
-
-	char *origin = request_header("X-M2M-Origin");
-	if(!origin) return 0;
-
-	char *pv_acor, *pv_acop, arr_pv_acor[1024], arr_pv_acop[1024];
+	char *pv_acor, *pv_acop, arr_pv_acor[1024][256], arr_pv_acop[1024][256];
 	int ret = 0, cnt = 0;
+	char *acp_uri = strtok(arr_acpi, ",");
 
-	strcpy(arr_pv_acor, acp->pv_acor);
-	strcpy(arr_pv_acop, acp->pv_acop);
+	while(acp_uri) {
+		Node *acp = Find_Node_by_URI(cb, arr_acpi);
+		cnt = 0;
+
+		if(acp) {
+			strcpy(arr_pv_acor, acp->pv_acor);
+			strcpy(arr_pv_acop, acp->pv_acop);
+		}
+
+		acp_uri = strtok(NULL, ",");
+	}
 
 	pv_acor = strtok(arr_pv_acor, ",");
 	while(pv_acor) {
