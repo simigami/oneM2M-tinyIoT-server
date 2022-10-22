@@ -31,10 +31,8 @@ Node* Parse_URI(Node *cb, char *uri, Operation *op) {
 	char *uri_parse = uri_array;
 	strcpy(uri_array, uri);
 
-	char uri_strtok[64][MAX_URI_SIZE];
+	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
 	int index_s = 0, index_e = 0;
-
-	memset(uri_strtok, 0, sizeof(uri_strtok));
 
 	uri_parse = strtok(uri_array, "/");
 	if(uri_parse) {
@@ -105,10 +103,8 @@ void Retrieve_CIN_Ri(char *ri) {
 		char *res_json = CIN_to_json(gcin);
 		HTTP_200_JSON;
 		printf("%s",res_json);
-		free(res_json);
-		Free_CIN(gcin);
-		res_json = NULL;
-		gcin = NULL;
+		free(res_json); res_json = NULL;
+		Free_CIN(gcin); gcin = NULL;
 	} else {
 		fprintf(stderr,"There is no such CIN ri = %s\n",ri);
 		HTTP_400;
@@ -150,10 +146,8 @@ void CIN_in_period(Node *pnode) {
 			CIN* gcin = Get_CIN(cin->ri);
 			char *res_json = CIN_to_json(gcin);
 			printf("%s\n",res_json);
-			free(res_json);
-			Free_CIN(gcin);
-			res_json = NULL;
-			gcin = NULL;
+			free(res_json); res_json = NULL;
+			Free_CIN(gcin); gcin = NULL;
 		}
 		cin = cin->siblingRight;
 	}
@@ -167,14 +161,15 @@ void CIN_in_period(Node *pnode) {
 
 void Tree_Viewer_API(Node *node) {
 	fprintf(stderr,"\x1b[43mTree Viewer API\x1b[0m\n");
-	char *viewer_data = (char *)calloc(TREE_VIEWER_DATASIZE, sizeof(char));
-	strcpy(viewer_data,"[");
+	char arr_viewer_data[MAX_TREE_VIEWER_SIZE] = "[";
+	char *viewer_data = arr_viewer_data;
 	
 	Node *p = node;
 	while(p = p->parent) {
 		char *json = Node_to_json(p);
 		strcat(viewer_data,",");
 		strcat(viewer_data,json);
+		free(json); json = NULL;
 	}
 	
 	int cinSize = 1;
@@ -186,57 +181,51 @@ void Tree_Viewer_API(Node *node) {
 	
 	Tree_data(node, &viewer_data, cinSize);
 	strcat(viewer_data,"]\0");
-	char res[TREE_VIEWER_DATASIZE] = "";
+	char res[MAX_TREE_VIEWER_SIZE] = "";
 	int index = 0;
 	
-	for(int i=0; i<TREE_VIEWER_DATASIZE; i++) {
+	for(int i=0; i<MAX_TREE_VIEWER_SIZE; i++) {
 		if(i == 1) continue;
 		if(is_JSON_Valid_Char(viewer_data[i])) {
 			res[index++] = viewer_data[i];
 		}
 	}
 	
-	fprintf(stderr,"TreeViewerAPI Content-Size : %ld\n",strlen(res));
+	fprintf(stderr,"Tree_Viewer_API Content-Size : %ld\n",strlen(res));
 
 	HTTP_200_CORS;
 	printf("%s",res);
-	free(viewer_data);
-	viewer_data = NULL;
 }
 
-void Tree_data(Node *node, char **viewer_data, int cin_num) {
-	if(node->ty == t_CIN) {
-		Node *cinLatest = Get_CIN_Pi(node->pi);
-		
-		Node *p = cinLatest;
-		
-		cinLatest = Latest_CINs(cinLatest, cin_num);
-		
-		while(cinLatest) {
-			char *json = Node_to_json(cinLatest);
-			strcat(*viewer_data, ",");
-			strcat(*viewer_data, json);
-			Node *right = cinLatest->siblingRight;
-			Free_Node(cinLatest);
-			cinLatest = right;
-		}
-		return;
-	}
-	
+void Tree_data(Node *node, char **viewer_data, int cin_size) {
 	char *json = Node_to_json(node);
+
 	strcat(*viewer_data, ",");
 	strcat(*viewer_data, json);
-	
-	node = node->child;
-	
-	while(node) {
-		Tree_data(node, viewer_data, cin_num);
-		if(node->ty == t_CIN) {
-			while(node->siblingRight && node->siblingRight->ty != t_Sub) {
-				node = node->siblingRight;
-			}
+	free(json); json = NULL;
+
+	Node *child = node->child;
+	while(child) {
+		Tree_data(child, viewer_data, cin_size);
+		child = child->siblingRight;
+	}
+
+	if(node->ty != t_Sub && node->ty != t_ACP) {
+		Node *cin_list = Get_CIN_Pi(node->ri);
+
+		if(cin_list) cin_list = Latest_CINs(cin_list, cin_size);
+
+		Node *p = cin_list;
+
+		while(p) {
+			json = Node_to_json(p);
+			strcat(*viewer_data, ",");
+			strcat(*viewer_data, json);
+			free(json); json = NULL;
+			p = p->siblingRight;
+			Free_Node(cin_list);
+			cin_list = p;			
 		}
-		node = node->siblingRight;
 	}
 }
 
@@ -252,8 +241,7 @@ Node *Latest_CINs(Node* cinList, int num) {
 	
 	for(int i=0; i < cnt-num; i++) {
 		head = head->siblingRight;
-		Free_Node(head->siblingLeft);
-		head->siblingLeft = NULL;
+		Free_Node(head->siblingLeft); head->siblingLeft = NULL;
 	}
 	
 	return head;
@@ -525,10 +513,10 @@ void Delete_Node_Object(Node *node, int flag) {
 		break;
 	case t_CNT : 
 		Delete_CNT(node->ri); 
-		char *noti_json = (char*)malloc(sizeof("Deleted") + 1);
-		strcpy(noti_json, "Deleted");
+		char *noti_json = (char*)malloc(sizeof("resource is deleted successfully") + 1);
+		strcpy(noti_json, "resource is deleted successfully");
 		Notify_Object(node->child,noti_json,noti_event_2); 
-		free(noti_json);
+		free(noti_json); noti_json = NULL;
 		break;
 	case t_Sub :
 		Delete_Sub(node->ri);
@@ -536,9 +524,8 @@ void Delete_Node_Object(Node *node, int flag) {
 	}
 	
 	fprintf(stderr,"Free_Node : %s...",node->rn);
-	Free_Node(node);
+	Free_Node(node); node = NULL;
 	fprintf(stderr,"OK\n");
-	node = NULL;
 }
 
 void Free_Node(Node *node) {
@@ -552,7 +539,7 @@ void Free_Node(Node *node) {
 	if(node->pv_acor) free(node->pv_acor);
 	if(node->pvs_acor) free(node->pvs_acor);
 	if(node->pvs_acop) free(node->pvs_acop);
-	free(node);
+	free(node); node = NULL;
 }
 
 char *Get_LocalTime(int diff) {
@@ -603,7 +590,8 @@ void Init_CSE(CSE* cse) {
 	
 	cse->ty = t_CSE;
 	
-	free(ct);
+	free(ct); ct = NULL;
+	free(ri); ri = NULL;
 }
 
 void Init_AE(AE* ae, char *pi) {
@@ -644,10 +632,10 @@ void Init_AE(AE* ae, char *pi) {
 	
 	ae->ty = t_AE;
 	
-	if(m_aei) free(aei);
-	free(ct);
-	free(et);
-	free(ri);
+	if(m_aei) {free(aei); aei = NULL;}
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
 }
 
 void Init_CNT(CNT* cnt, char *pi) {
@@ -684,9 +672,9 @@ void Init_CNT(CNT* cnt, char *pi) {
 	cnt->cni = 0;
 	cnt->cbs = 0;
 	
-	free(ct);
-	free(et);
-	free(ri);
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
 }
 
 void Init_CIN(CIN* cin, char *pi) {
@@ -716,9 +704,9 @@ void Init_CIN(CIN* cin, char *pi) {
 	cin->st = 0;
 	cin->cs = strlen(cin->con);
 	
-	free(ct);
-	free(et);
-	free(ri);
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
 }
 
 void Init_Sub(Sub* sub, char *pi) {
@@ -749,9 +737,9 @@ void Init_Sub(Sub* sub, char *pi) {
 	sub->ty = t_Sub;
 	sub->nct = 0;
 
-	free(ct);
-	free(et);
-	free(ri);
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
 }
 
 void Init_ACP(ACP* acp, char *pi) {
@@ -777,9 +765,9 @@ void Init_ACP(ACP* acp, char *pi) {
 	
 	acp->ty = t_ACP;
 	
-	free(ct);
-	free(et);
-	free(ri);
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
 }
 
 void Set_AE_Update(AE* after) {
@@ -839,7 +827,7 @@ void Free_CSE(CSE *cse) {
 	if(cse->ri) free(cse->ri);
 	if(cse->csi) free(cse->csi);
 	if(cse->pi) free(cse->pi);
-	free(cse);
+	free(cse); cse = NULL;
 }
 
 void Free_AE(AE *ae) {
@@ -851,7 +839,7 @@ void Free_AE(AE *ae) {
 	if(ae->pi) free(ae->pi);
 	if(ae->api) free(ae->api);
 	if(ae->aei) free(ae->aei);
-	free(ae);
+	free(ae); ae = NULL;
 }
 
 void Free_CNT(CNT *cnt) {
@@ -861,7 +849,7 @@ void Free_CNT(CNT *cnt) {
 	if(cnt->rn) free(cnt->rn);
 	if(cnt->ri) free(cnt->ri);
 	if(cnt->pi) free(cnt->pi);
-	free(cnt);
+	free(cnt); cnt = NULL;
 }
 
 void Free_CIN(CIN* cin) {
@@ -872,7 +860,7 @@ void Free_CIN(CIN* cin) {
 	if(cin->ri) free(cin->ri);
 	if(cin->pi) free(cin->pi);
 	if(cin->con) free(cin->con);
-	free(cin);
+	free(cin); cin = NULL;
 }
 
 void Free_Sub(Sub* sub) {
@@ -884,7 +872,7 @@ void Free_Sub(Sub* sub) {
 	if(sub->pi) free(sub->pi);
 	if(sub->nu) free(sub->nu);
 	if(sub->net) free(sub->net);
-	free(sub);
+	free(sub); sub = NULL;
 }
 
 void Free_ACP(ACP* acp) {
@@ -898,7 +886,7 @@ void Free_ACP(ACP* acp) {
 	if(acp->pv_acop) free(acp->pv_acop);
 	if(acp->pvs_acor) free(acp->pvs_acor);
 	if(acp->pvs_acop) free(acp->pvs_acop);
-	free(acp);
+	free(acp); acp = NULL;
 }
 
 void Notify_Object(Node *node, char *res_json, Net net) {
@@ -907,15 +895,15 @@ void Notify_Object(Node *node, char *res_json, Net net) {
 		if(node->ty == t_Sub && (net & node->net) == net) {
 			char *noti_json = Noti_to_json(node->sur, (int)log2((double)net ) + 1, res_json);
 			char *res = Send_HTTP_Packet(node->nu, noti_json);
-			free(noti_json);
-			free(res);
+			free(noti_json); noti_json = NULL;
+			free(res); res = NULL;
 		}
 		node = node->siblingRight;
 	}
 }
 
-void Remove_Invalid_Char_JSON(char* json) {
-	int size = (int)malloc_usable_size(json);
+void Remove_Invalid_Char_JSON(char* json) { 
+	int size = (int)malloc_usable_size(json); // segmentation fault if json memory not in heap (malloc)
 	int index = 0;
 
 	for(int i=0; i<size; i++) {

@@ -247,6 +247,7 @@ int Delete_Sub(char* ri);
 Node* Get_All_AE();
 Node* Get_All_CNT();
 Node* Get_All_CIN();
+Node* Get_All_Sub();
 
 Node* Get_CIN_Period(char *start_time, char *end_time);
 Node* Get_CIN_Pi(char* pi);
@@ -270,7 +271,7 @@ void Delete_Node_Object(Node *node, int flag);
 void Free_Node(Node *node);
 
 void Tree_Viewer_API(Node *node);
-void Tree_data(Node *node, char **viewer_data, int cin_num);
+void Tree_data(Node *node, char **viewer_data, int cin_size);
 void Restruct_ResourceTree();
 Node* Restruct_childs(Node *node, Node *list);
 Node* Latest_CINs(Node *cinList, int num); // use in viewer API
@@ -298,7 +299,7 @@ char* JSON_label_value(char *json_payload);
 int net_to_bit(char *net);
 int Get_acop(Node *node);
 
-#define TREE_VIEWER_DATASIZE 65536
+#define MAX_TREE_VIEWER_SIZE 65536
 #define MAX_PROPERTY_SIZE 32768
 #define MAX_URI_SIZE 1024
 #define EXPIRE_TIME -3600*24*365*2

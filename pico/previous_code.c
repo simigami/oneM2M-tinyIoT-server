@@ -1,4 +1,4 @@
-/*
+// Parse_URI
 Node* Parse_URI(Node *cb, char *uri_array) {
 	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri_array);
 	//char uri_array[MAX_URI_SIZE];
@@ -86,4 +86,40 @@ Node* Parse_URI(Node *cb, char *uri_array) {
 
 	return node;
 }
-*/
+
+//Tree_data
+void Tree_data(Node *node, char **viewer_data, int cin_num) {
+	if(node->ty == t_CIN) {
+		Node *cinLatest = Get_CIN_Pi(node->pi);
+		
+		Node *p = cinLatest;
+		
+		cinLatest = Latest_CINs(cinLatest, cin_num);
+		
+		while(cinLatest) {
+			char *json = Node_to_json(cinLatest);
+			strcat(*viewer_data, ",");
+			strcat(*viewer_data, json);
+			Node *right = cinLatest->siblingRight;
+			Free_Node(cinLatest);
+			cinLatest = right;
+		}
+		return;
+	}
+	
+	char *json = Node_to_json(node);
+	strcat(*viewer_data, ",");
+	strcat(*viewer_data, json);
+	
+	node = node->child;
+	
+	while(node) {
+		Tree_data(node, viewer_data, cin_num);
+		if(node->ty == t_CIN) {
+			while(node->siblingRight && node->siblingRight->ty != t_Sub) {
+				node = node->siblingRight;
+			}
+		}
+		node = node->siblingRight;
+	}
+}
