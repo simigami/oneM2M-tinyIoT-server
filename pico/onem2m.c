@@ -1040,43 +1040,60 @@ int Get_acop(Node *node) {
 
 	Node *cb = node;
 	while(cb->parent) cb = cb->parent;
+	
+	int acop = 0, uri_cnt = 0;
+	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERTY_SIZE] = {"\0", };
+	char *acp_uri = NULL;
 
-	char *acpi, arr_acpi[MAX_PROPERTY_SIZE];
+	if(node->acpi)  {
+		strcpy(arr_acpi, node->acpi);
 
-	strcpy(arr_acpi, node->acpi);
+		acp_uri = strtok(arr_acpi, ",");
 
-	char *pv_acor, *pv_acop, arr_pv_acor[1024], arr_pv_acop[1024], arr_acp_uri[512][1024] = {"\0", };
-	int ret = 0, cnt = 0, uri_cnt = 0;
-	char *acp_uri = strtok(arr_acpi, ",");
-
-	while(acp_uri) {
-		strcpy(arr_acp_uri[uri_cnt++],acp_uri);
-		acp_uri = strtok(NULL, ",");
+		while(acp_uri) { 
+			strcpy(arr_acp_uri[uri_cnt++],acp_uri);
+			acp_uri = strtok(NULL, ",");
+		}
 	}
 
 	for(int i=0; i<uri_cnt; i++) {
 		Node *acp = Find_Node_by_URI(cb, arr_acp_uri[i]);
 
-		if(acp) {
-			cnt = 0;
-			strcpy(arr_pv_acor, acp->pv_acor);
-			strcpy(arr_pv_acop, acp->pv_acop);
-			pv_acor = strtok(arr_pv_acor, ",");
-
-			while(pv_acor) {
-				if(!strcmp(pv_acor, origin)) break;
-				pv_acor = strtok(NULL, ",");
-				cnt++;
-			}
-
-			pv_acop = strtok(arr_pv_acop, ",");
-			for(int j=0; j<cnt; j++) pv_acop = strtok(NULL,",");
-
-			if(pv_acop) ret = (ret | atoi(pv_acop));
-		}
+		if(acp) acop = (acop | get_acop_origin(origin, acp));
 	}
 
-	return ret;
+	if(node->ty == t_ACP) acop = (acop | get_acop_origin(origin, node));
+
+	return acop;
+}
+
+int get_acop_origin(char *origin, Node *acp) {
+	int ret_acop = 0, cnt = 0;
+	char *acor, *acop, arr_acor[1024], arr_acop[1024];
+
+	if(acp->ty == t_ACP) {
+		strcpy(arr_acor, acp->pvs_acor);
+		strcpy(arr_acop, acp->pvs_acop);
+	} else {
+		strcpy(arr_acor, acp->pv_acor);
+		strcpy(arr_acop, acp->pv_acop);
+	}
+
+	acor = strtok(arr_acor, ",");
+
+	while(acor) {
+		if(!strcmp(acor, origin)) break;
+		acor = strtok(NULL, ",");
+		cnt++;
+	}
+
+	acop = strtok(arr_acop, ",");
+
+	for(int i=0; i<cnt; i++) acop = strtok(NULL,",");
+
+	if(acop) ret_acop = (ret_acop | atoi(acop));
+
+	return ret_acop;
 }
 
 Node *Find_Node_by_URI(Node *cse, char *node_uri) {
