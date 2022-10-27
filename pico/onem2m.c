@@ -494,19 +494,6 @@ int Add_child(Node *parent, Node *child) {
 }
 
 void Delete_Node_Object(Node *node, int flag) {
-	Node *left = node->siblingLeft;
-	Node *right = node->siblingRight;
-	
-	if(flag == 1) {
-		if(left) left->siblingRight = right;
-		else node->parent->child = right;
-		if(right) right->siblingLeft = left;
-	} else {
-		if(right) Delete_Node_Object(right, 0);
-	}
-	
-	if(node->child) Delete_Node_Object(node->child, 0);
-	
 	switch(node->ty) {
 	case t_AE : 
 		Delete_AE(node->ri); 
@@ -522,6 +509,19 @@ void Delete_Node_Object(Node *node, int flag) {
 		Delete_Sub(node->ri);
 		break;
 	}
+
+	Node *left = node->siblingLeft;
+	Node *right = node->siblingRight;
+	
+	if(flag == 1) {
+		if(left) left->siblingRight = right;
+		else node->parent->child = right;
+		if(right) right->siblingLeft = left;
+	} else {
+		if(right) Delete_Node_Object(right, 0);
+	}
+	
+	if(node->child) Delete_Node_Object(node->child, 0);
 	
 	fprintf(stderr,"Free_Node : %s...",node->rn);
 	Free_Node(node); node = NULL;
@@ -1030,19 +1030,20 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
     return data.data;
 }
 
-int Get_acop(Node *node) {
-	if(!node->acpi) {
-		return ALL_ACOP;
-	}
-
+int get_acop(Node *node) {
 	char *origin = request_header("X-M2M-Origin");
+
+	if(node->ty == t_ACP) return get_acop_origin(origin, node, 1);
+
+	if(!node->acpi || !strcmp(node->acpi, "")) return ALL_ACOP;
+
 	if(!origin) return 0;
 
 	Node *cb = node;
 	while(cb->parent) cb = cb->parent;
 	
 	int acop = 0, uri_cnt = 0;
-	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERTY_SIZE] = {"\0", };
+	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERTY_SIZE] = "\0";
 	char *acp_uri = NULL;
 
 	if(node->acpi)  {
@@ -1059,19 +1060,19 @@ int Get_acop(Node *node) {
 	for(int i=0; i<uri_cnt; i++) {
 		Node *acp = Find_Node_by_URI(cb, arr_acp_uri[i]);
 
-		if(acp) acop = (acop | get_acop_origin(origin, acp));
+		if(acp) acop = (acop | get_acop_origin(origin, acp, 0));
 	}
-
-	if(node->ty == t_ACP) acop = (acop | get_acop_origin(origin, node));
 
 	return acop;
 }
 
-int get_acop_origin(char *origin, Node *acp) {
+int get_acop_origin(char *origin, Node *acp, int flag) {
+	if(!origin) return 0;
+
 	int ret_acop = 0, cnt = 0;
 	char *acor, *acop, arr_acor[1024], arr_acop[1024];
 
-	if(acp->ty == t_ACP) {
+	if(flag) {
 		strcpy(arr_acor, acp->pvs_acor);
 		strcpy(arr_acop, acp->pvs_acop);
 	} else {
