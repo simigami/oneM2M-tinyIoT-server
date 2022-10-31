@@ -32,11 +32,11 @@ Node* Parse_URI(Node *cb, char *uri, Operation *op) {
 	strcpy(uri_array, uri);
 
 	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
-	int index_s = 0, index_e = 0;
+	int index_s = 0, index_end = 0;
 
 	uri_parse = strtok(uri_array, "/");
 	if(uri_parse) {
-		strcpy(uri_strtok[index_e++], uri_parse);
+		strcpy(uri_strtok[index_end++], uri_parse);
 	} else {
 		return NULL;
 	}
@@ -44,25 +44,25 @@ Node* Parse_URI(Node *cb, char *uri, Operation *op) {
 	while(uri_parse) {
 		uri_parse = strtok(NULL, "/");
 		if(uri_parse) {
-			strcpy(uri_strtok[index_e++], uri_parse);
+			strcpy(uri_strtok[index_end++], uri_parse);
 		}
 	}
 
-	index_e--;
+	index_end--;
 
 	if(!strcmp(uri_strtok[0], "viewer")) {
 		*op = o_VIEWER; index_s++;
-	} else if(!strcmp(uri_strtok[index_e], "la") || !strcmp(uri_strtok[index_e], "latest")) {
-		*op = o_LA; index_e--;
-	} else if(!strcmp(uri_strtok[index_e], "ol") || !strcmp(uri_strtok[index_e], "oldest")) {
-		*op = o_OL; index_e--;
-	} else if(strstr(uri_strtok[index_e], "4-20")) {
-		*op = o_CIN_RI; Retrieve_CIN_Ri(uri_strtok[index_e]); return NULL;
+	} else if(!strcmp(uri_strtok[index_end], "la") || !strcmp(uri_strtok[index_end], "latest")) {
+		*op = o_LA; index_end--;
+	} else if(!strcmp(uri_strtok[index_end], "ol") || !strcmp(uri_strtok[index_end], "oldest")) {
+		*op = o_OL; index_end--;
+	} else if(strstr(uri_strtok[index_end], "4-20")) {
+		*op = o_CIN_RI; Retrieve_CIN_Ri(uri_strtok[index_end]); return NULL;
 	}
 
 	strcpy(uri_array,"/\0");
 
-	for(int i=index_s; i<=index_e; i++) {
+	for(int i=index_s; i<=index_end; i++) {
 		strcat(uri_array,uri_strtok[i]);
 		strcat(uri_array,"/");
 	}
