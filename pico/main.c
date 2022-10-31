@@ -104,7 +104,7 @@ void init() {
 }
 
 void Create_Object(Node *pnode) {
-	if((Get_acop(pnode) & acop_Create) != acop_Create) {
+	if((get_acop(pnode) & acop_Create) != acop_Create) {
 		fprintf(stderr,"Originator has no privilege\n");
 		HTTP_403;
 		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
@@ -165,7 +165,7 @@ void Create_Object(Node *pnode) {
 }
 
 void Retrieve_Object(Node *pnode) {
-	if((Get_acop(pnode) & acop_Retrieve) != acop_Retrieve) {
+	if((get_acop(pnode) & acop_Retrieve) != acop_Retrieve) {
 		fprintf(stderr,"Originator has no privilege\n");
 		HTTP_403;
 		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
@@ -211,7 +211,7 @@ void Retrieve_Object(Node *pnode) {
 }
 
 void Update_Object(Node *pnode) {
-	if((Get_acop(pnode) & acop_Update) != acop_Update) {
+	if((get_acop(pnode) & acop_Update) != acop_Update) {
 		fprintf(stderr,"Originator has no privilege\n");
 		HTTP_403;
 		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
