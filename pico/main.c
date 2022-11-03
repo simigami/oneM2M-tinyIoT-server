@@ -175,6 +175,7 @@ void Retrieve_Object(Node *pnode) {
 	switch(pnode->ty) {
 		
 	case t_CSE :
+		/*
 		//fc: ZeroconfDiscovery
     	if(request_header("X-fc") && !strcmp(request_header("X-fc"), "Zeroconf")) {
         	fprintf(stderr,"\x1b[43mRetrieve CSE Zero-conf\x1b[0m\n");
@@ -187,7 +188,7 @@ void Retrieve_Object(Node *pnode) {
         	Retrieve_CSE(pnode);
       	}
       	break;
-	
+		*/
 	case t_AE : 
 		fprintf(stderr,"\x1b[43mRetrieve AE\x1b[0m\n");
 		Retrieve_AE(pnode);	
