@@ -370,7 +370,7 @@ void Create_Sub(Node *pnode) {
 	HTTP_201_JSON;
 	printf("%s", res_json);
 	char *res = Send_HTTP_Packet(sub->nu, res_json);
-	free(res); res = NULL;
+	if(res) { free(res); res = NULL; }
 	free(res_json); res_json = NULL;
 	Free_Sub(sub); sub = NULL;
 }
