@@ -165,7 +165,7 @@ void Remove_Specific_Asterisk_Payload();
 void Create_Object(Node* pnode);
 void Retrieve_Object(Node *pnode);
 void Update_Object(Node *pnode);
-void Delete_Object();
+void Delete_Object(Node *pnode);
 void Notify_Object(Node *node, char *resjson, Net net);
 
 void Create_AE(Node *pnode);
@@ -219,42 +219,42 @@ void Free_Sub(Sub* sub);
 void Free_ACP(ACP *acp);
 
 //DB
-int display(char* database);
+int DB_display(char* database);
 
-int Store_CSE(CSE* cse_object);
-int Store_AE(AE* ae_object);
-int Store_CNT(CNT* cnt_object);
-int Store_CIN(CIN* cin_object);
-int Store_Sub(Sub *sub_object);
-int Store_ACP(ACP *acp_object);
+int DB_Store_CSE(CSE* cse_object);
+int DB_Store_AE(AE* ae_object);
+int DB_Store_CNT(CNT* cnt_object);
+int DB_Store_CIN(CIN* cin_object);
+int DB_Store_Sub(Sub *sub_object);
+int DB_Store_ACP(ACP *acp_object);
 
-CSE* Get_CSE();
-AE* Get_AE(char *ri);
-CNT* Get_CNT(char *ri);
-CIN* Get_CIN(char *ri);
-Sub* Get_Sub(char* ri);
+CSE* DB_Get_CSE();
+AE* DB_Get_AE(char *ri);
+CNT* DB_Get_CNT(char *ri);
+CIN* DB_Get_CIN(char *ri);
+Sub* DB_Get_Sub(char* ri);
 
-int Update_AE_DB(AE* ae_object);
-int Update_CNT_DB(CNT* cnt_object);
-int Update_Sub_DB(Sub *sub_object);
+int DB_Update_AE(AE* ae_object);
+int DB_Update_CNT_DB(CNT* cnt_object);
+int DB_Update_Sub_DB(Sub *sub_object);
 
-int Delete_CSE(char *ri);
-int Delete_AE(char *ri);
-int Delete_CNT(char *ri);
-int Delete_CIN(char *ri);
-int Delete_Sub(char* ri);
+int DB_Delete_CSE(char *ri);
+int DB_Delete_AE(char *ri);
+int DB_Delete_CNT(char *ri);
+int DB_Delete_CIN(char *ri);
+int DB_Delete_Sub(char* ri);
 
-Node* Get_All_AE();
-Node* Get_All_CNT();
-Node* Get_All_CIN();
-Node* Get_All_Sub();
+Node* DB_Get_All_AE();
+Node* DB_Get_All_CNT();
+Node* DB_Get_All_CIN();
+Node* DB_Get_All_Sub();
 
-Node* Get_CIN_Period(char *start_time, char *end_time);
-Node* Get_CIN_Pi(char* pi);
+//Node* DB_Get_CIN_Period(char *start_time, char *end_time);
+Node* DB_Get_CIN_Pi(char* pi);
 
-char* Label_To_URI(char* label);
-char* URI_To_Label(char* uri);
-int Store_Label(char* label, char* uri);
+//char* Label_To_URI(char* label);
+//char* URI_To_Label(char* uri);
+//int Store_Label(char* label, char* uri);
 
 //Resource Tree
 Node* Create_Node(void *obj, ObjectType ty);

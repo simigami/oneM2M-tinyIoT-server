@@ -93,9 +93,9 @@ void init() {
 	if(access("./CSE.db", 0) == -1) {
 		cse = (CSE*)malloc(sizeof(CSE));
 		Init_CSE(cse);
-		Store_CSE(cse);
+		DB_Store_CSE(cse);
 	} else {
-		cse = Get_CSE();
+		cse = DB_Get_CSE();
 	}
 	rt = (ResourceTree *)malloc(sizeof(rt));
  	rt->cb = Create_Node(cse, t_CSE);
@@ -281,7 +281,7 @@ void Create_AE(Node *pnode) {
 	}
 	Init_AE(ae,pnode->ri);
 	
-	int result = Store_AE(ae);
+	int result = DB_Store_AE(ae);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB store fail\"}");
@@ -307,7 +307,7 @@ void Create_CNT(Node *pnode) {
 	}
 	Init_CNT(cnt,pnode->ri);
 
-	int result = Store_CNT(cnt);
+	int result = DB_Store_CNT(cnt);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB store fail\"}");
@@ -333,7 +333,7 @@ void Create_CIN(Node *pnode) {
 	}
 	Init_CIN(cin,pnode->ri);
 
-	int result = Store_CIN(cin);
+	int result = DB_Store_CIN(cin);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB store fail\"}");
@@ -359,7 +359,7 @@ void Create_Sub(Node *pnode) {
 	}
 	Init_Sub(sub, pnode->ri);
 	
-	int result = Store_Sub(sub);
+	int result = DB_Store_Sub(sub);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB store fail\"}");
@@ -387,7 +387,7 @@ void Create_ACP(Node *pnode) {
 	}
 	Init_ACP(acp, pnode->ri);
 	
-	int result = Store_ACP(acp);
+	int result = DB_Store_ACP(acp);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB store fail\"}");
@@ -407,7 +407,7 @@ void Create_ACP(Node *pnode) {
 
 void Retrieve_CSE(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
-	CSE* gcse = Get_CSE(pnode->ri);
+	CSE* gcse = DB_Get_CSE(pnode->ri);
 	char *res_json = CSE_to_json(gcse);
 	HTTP_200_JSON;
 	printf("%s", res_json);
@@ -417,7 +417,7 @@ void Retrieve_CSE(Node *pnode){
 
 void Retrieve_AE(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
-	AE* gae = Get_AE(pnode->ri);
+	AE* gae = DB_Get_AE(pnode->ri);
 	char *res_json = AE_to_json(gae);
 	HTTP_200_JSON;
 	printf("%s", res_json);
@@ -427,7 +427,7 @@ void Retrieve_AE(Node *pnode){
 
 void Retrieve_CNT(Node *pnode){
 	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
-	CNT* gcnt = Get_CNT(pnode->ri);
+	CNT* gcnt = DB_Get_CNT(pnode->ri);
 	char *res_json = CNT_to_json(gcnt);
 	HTTP_200_JSON;
 	printf("%s", res_json);
@@ -436,7 +436,7 @@ void Retrieve_CNT(Node *pnode){
 }
 
 void Retrieve_CIN(Node *pnode){
-	CIN* gcin = Get_CIN(pnode->ri);
+	CIN* gcin = DB_Get_CIN(pnode->ri);
 	char *res_json = CIN_to_json(gcin);
 	HTTP_200_JSON;
 	printf("%s", res_json);
@@ -445,7 +445,7 @@ void Retrieve_CIN(Node *pnode){
 }
 
 void Retrieve_Sub(Node *pnode){
-	Sub* gsub = Get_Sub(pnode->ri);
+	Sub* gsub = DB_Get_Sub(pnode->ri);
 	char *res_json = Sub_to_json(gsub);
 	HTTP_200_JSON;
 	printf("%s", res_json);
@@ -454,10 +454,10 @@ void Retrieve_Sub(Node *pnode){
 }
 
 void Update_AE(Node *pnode) {
-	AE* after = Get_AE(pnode->ri);
+	AE* after = DB_Get_AE(pnode->ri);
 	
 	Set_AE_Update(after);
-	int result = Update_AE_DB(after);
+	int result = DB_Update_AE(after);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB update fail\"}");
@@ -477,10 +477,10 @@ void Update_AE(Node *pnode) {
 }
 
 void Update_CNT(Node *pnode) {
-	CNT* after = Get_CNT(pnode->ri);
+	CNT* after = DB_Get_CNT(pnode->ri);
 
 	Set_CNT_Update(after);
-	int result = Update_CNT_DB(after);
+	int result = DB_Update_CNT(after);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB update fail\"}");
@@ -501,10 +501,10 @@ void Update_CNT(Node *pnode) {
 }
 
 void Update_Sub(Node *pnode) {
-	Sub* after = Get_Sub(pnode->ri);
+	Sub* after = DB_Get_Sub(pnode->ri);
 	
 	Set_Sub_Update(after);
-	int result = Update_Sub_DB(after);
+	int result = DB_Update_Sub(after);
 	if(result != 1) { 
 		HTTP_500;
 		printf("{\"m2m:dbg\": \"DB update fail\"}");
@@ -536,7 +536,7 @@ void Restruct_ResourceTree(){
 	Node *tail = node_list;
 	
 	if(access("./AE.db", 0) != -1) {
-		Node* ae_list = Get_All_AE();
+		Node* ae_list = DB_Get_All_AE();
 		tail->siblingRight = ae_list;
 		if(ae_list) ae_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
@@ -545,7 +545,7 @@ void Restruct_ResourceTree(){
 	}
 	
 	if(access("./CNT.db", 0) != -1) {
-		Node* cnt_list = Get_All_CNT();
+		Node* cnt_list = DB_Get_All_CNT();
 		tail->siblingRight = cnt_list;
 		if(cnt_list) cnt_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
@@ -554,7 +554,7 @@ void Restruct_ResourceTree(){
 	}
 	
 	if(access("./SUB.db", 0) != -1) {
-		Node* sub_list = Get_All_Sub();
+		Node* sub_list = DB_Get_All_Sub();
 		tail->siblingRight = sub_list;
 		if(sub_list) sub_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
@@ -564,7 +564,7 @@ void Restruct_ResourceTree(){
 	
 	/*
 	if(access("./CIN.db", 0) != -1) {
-		Node* cin_list = Get_All_CIN();
+		Node* cin_list = DB_Get_All_CIN();
 		tail->siblingRight = cin_list;
 		if(cin_list) cin_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;

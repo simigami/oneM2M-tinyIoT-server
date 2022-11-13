@@ -96,7 +96,7 @@ int duplicate_resource_check(Node *pnode) {
 
 void Retrieve_CIN_Ri(char *ri) {
 	fprintf(stderr,"OK\n\x1b[43mRetrieve CIN By Ri\x1b[0m\n");
-	CIN* gcin = Get_CIN(ri);
+	CIN* gcin = DB_Get_CIN(ri);
 	
 	if(gcin) {
 		char *res_json = CIN_to_json(gcin);
@@ -110,7 +110,7 @@ void Retrieve_CIN_Ri(char *ri) {
 		printf("{\"m2m:dbg\": \"invalid object\"}");
 	}
 }
-
+/*
 void CIN_in_period(Node *pnode) {
 	int period = 0;
 	char key[8] = "period=";
@@ -157,7 +157,7 @@ void CIN_in_period(Node *pnode) {
 		cinList = r;
 	}
 }
-
+*/
 void Tree_Viewer_API(Node *node) {
 	fprintf(stderr,"\x1b[43mTree Viewer API\x1b[0m\n");
 	char arr_viewer_data[MAX_TREE_VIEWER_SIZE] = "[";
@@ -210,7 +210,7 @@ void Tree_data(Node *node, char **viewer_data, int cin_size) {
 	}
 
 	if(node->ty != t_Sub && node->ty != t_ACP) {
-		Node *cin_list = Get_CIN_Pi(node->ri);
+		Node *cin_list = DB_Get_CIN_Pi(node->ri);
 
 		if(cin_list) cin_list = Latest_CINs(cin_list, cin_size);
 
