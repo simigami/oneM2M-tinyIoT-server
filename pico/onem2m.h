@@ -233,28 +233,31 @@ AE* DB_Get_AE(char *ri);
 CNT* DB_Get_CNT(char *ri);
 CIN* DB_Get_CIN(char *ri);
 Sub* DB_Get_Sub(char* ri);
-
+ACP* DB_Get_ACP(char* ri);
+/*
 int DB_Update_AE(AE* ae_object);
-int DB_Update_CNT_DB(CNT* cnt_object);
-int DB_Update_Sub_DB(Sub *sub_object);
-
-int DB_Delete_CSE(char *ri);
-int DB_Delete_AE(char *ri);
-int DB_Delete_CNT(char *ri);
-int DB_Delete_CIN(char *ri);
+int DB_Update_CNT(CNT* cnt_object);
+int DB_Update_Sub(Sub *sub_object);
+*/
+int DB_Delete_Object(char *ri);
 int DB_Delete_Sub(char* ri);
+int DB_Delete_ACP(char* ri);
 
+Node* DB_Get_All_CSE();
 Node* DB_Get_All_AE();
 Node* DB_Get_All_CNT();
 Node* DB_Get_All_CIN();
 Node* DB_Get_All_Sub();
+Node* DB_Get_All_ACP();
 
-//Node* DB_Get_CIN_Period(char *start_time, char *end_time);
 Node* DB_Get_CIN_Pi(char* pi);
 
-//char* Label_To_URI(char* label);
-//char* URI_To_Label(char* uri);
-//int Store_Label(char* label, char* uri);
+/*
+Node* DB_Get_CIN_Period(char *start_time, char *end_time);
+char* Label_To_URI(char* label);
+char* URI_To_Label(char* uri);
+int Store_Label(char* label, char* uri);
+*/
 
 //Resource Tree
 Node* Create_Node(void *obj, ObjectType ty);
@@ -267,7 +270,7 @@ Node* Create_ACP_Node(ACP *acp);
 int Add_child(Node *parent, Node *child);
 char* Node_to_json(Node *node);
 Node *Find_Node_by_URI(Node *cse, char *node_uri);
-void Delete_Node_Object(Node *node, int flag);
+void Delete_Node_and_Data(Node *node, int flag);
 void Free_Node(Node *node);
 
 void Tree_Viewer_API(Node *node);

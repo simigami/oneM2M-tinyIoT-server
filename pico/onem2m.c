@@ -492,20 +492,23 @@ int Add_child(Node *parent, Node *child) {
 	return 1;
 }
 
-void Delete_Node_Object(Node *node, int flag) {
+void Delete_Node_and_Data(Node *node, int flag) {
 	switch(node->ty) {
 	case t_AE : 
-		Delete_AE(node->ri); 
+		DB_Delete_Object(node->ri); 
 		break;
 	case t_CNT : 
-		Delete_CNT(node->ri); 
+		DB_Delete_Object(node->ri); 
 		char *noti_json = (char*)malloc(sizeof("resource is deleted successfully") + 1);
 		strcpy(noti_json, "resource is deleted successfully");
 		Notify_Object(node->child,noti_json,noti_event_2); 
 		free(noti_json); noti_json = NULL;
 		break;
 	case t_Sub :
-		Delete_Sub(node->ri);
+		DB_Delete_Sub(node->ri);
+		break;
+	case t_ACP :
+		DB_Delete_ACP(node->ri);
 		break;
 	}
 
@@ -517,10 +520,10 @@ void Delete_Node_Object(Node *node, int flag) {
 		else node->parent->child = right;
 		if(right) right->siblingLeft = left;
 	} else {
-		if(right) Delete_Node_Object(right, 0);
+		if(right) Delete_Node_and_Data(right, 0);
 	}
 	
-	if(node->child) Delete_Node_Object(node->child, 0);
+	if(node->child) Delete_Node_and_Data(node->child, 0);
 	
 	fprintf(stderr,"Free_Node : %s...",node->rn);
 	Free_Node(node); node = NULL;
@@ -786,8 +789,10 @@ void Set_AE_Update(AE* after) {
 		strcpy(after->api, api);
 	}
 
-	if(rr != -1) {
-		after->rr = rr;
+	switch(rr) {
+		case 0: after->rr = false; break;
+		case 1: after->rr = true; break;
+		default: break;
 	}
 }
 
@@ -1033,7 +1038,7 @@ int get_acop(Node *node) {
 
 	if(node->ty == t_ACP) return get_acop_origin(origin, node, 1);
 
-	if(!node->acpi || !strcmp(node->acpi, "")) return ALL_ACOP;
+	if(!node->acpi || !strcmp(node->acpi, "") || !strcmp(node->acpi, " ")) return ALL_ACOP;
 
 	if(!origin) return 0;
 

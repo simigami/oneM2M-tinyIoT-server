@@ -5,6 +5,7 @@
 #include <time.h>
 #include "onem2m.h"
 #define DB_STR_MAX 2048
+#define DB_SEP ";"
 
 /*DB CREATE*/
 DB* DB_CREATE_(DB *dbp){
@@ -179,6 +180,7 @@ int DB_Store_CSE(CSE *cse_object) {
 }
 
 int DB_Store_AE(AE *ae_object) {
+    fprintf(stderr,"[Store AE] %s...",ae_object->ri);
     char* DATABASE = "RESOURCE.db";
 
     DB* dbp;    // db handle
@@ -235,11 +237,12 @@ int DB_Store_AE(AE *ae_object) {
     /* DB close */
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
-
+    fprintf(stderr,"OK\n");
     return 1;
 }
 
 int DB_Store_CNT(CNT *cnt_object) {
+    fprintf(stderr,"[Store CNT] %s...",cnt_object->ri);
     char* DATABASE = "RESOURCE.db";
 
     DB* dbp;    // db handle
@@ -295,11 +298,12 @@ int DB_Store_CNT(CNT *cnt_object) {
     /* DB close */
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
-
+    fprintf(stderr,"OK\n");
     return 1;
 }
 
 int DB_Store_CIN(CIN *cin_object) {
+    fprintf(stderr,"[Store CIN] %s...",cin_object->ri);
     char* DATABASE = "RESOURCE.db";
 
     DB* dbp;    // db handle
@@ -322,7 +326,6 @@ int DB_Store_CIN(CIN *cin_object) {
     if (cin_object->et == NULL) cin_object->et = " ";
 
     if (cin_object->con == NULL) cin_object->con = " ";
-    if (cin_object->csi == NULL) cin_object->csi = " ";
     if (cin_object->cs == '\0') cin_object->cs = 0;
     if (cin_object->st == '\0') cin_object->st = 0;
 
@@ -340,9 +343,9 @@ int DB_Store_CIN(CIN *cin_object) {
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%d;%d",
             cin_object->rn,cin_object->pi,cin_object->ty,cin_object->ct,cin_object->lt,cin_object->et,
-            cin_object->con,cin_object->csi,cin_object->cs,cin_object->st);
+            cin_object->con,cin_object->cs,cin_object->st);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -354,9 +357,10 @@ int DB_Store_CIN(CIN *cin_object) {
     /* DB close */
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
-
+    fprintf(stderr,"OK\n");
     return 1;
 }
+
 
 int DB_Store_Sub(Sub *sub_object) {
     fprintf(stderr,"[Store Sub] %s...",sub_object->ri);
@@ -511,6 +515,7 @@ int DB_Store_Sub(Sub *sub_object) {
 }
 
 int DB_Store_ACP(ACP *acp_object) {
+    fprintf(stderr,"[Store ACP] %s...",acp_object->ri);
     char* DATABASE = "ACP.db";
 
     DB* dbp;    // db handle
@@ -568,11 +573,12 @@ int DB_Store_ACP(ACP *acp_object) {
     /* DB close */
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
-
+    fprintf(stderr,"OK\n");
     return 1;
 }
 
 CSE* DB_Get_CSE(char* ri) {
+    fprintf(stderr,"[Get CSE] %s...", ri);
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -676,11 +682,12 @@ CSE* DB_Get_CSE(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-
+    fprintf(stderr,"OK\n");
     return new_cse;
 }
 
 AE* DB_Get_AE(char* ri) {
+    fprintf(stderr,"[Get AE] %s...", ri);
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -807,11 +814,12 @@ AE* DB_Get_AE(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-
+    fprintf(stderr,"OK\n");
     return new_ae;
 }
 
 CNT* DB_Get_CNT(char* ri) {
+    fprintf(stderr,"[Get CNT] %s...", ri);
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -948,11 +956,12 @@ CNT* DB_Get_CNT(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-
+    fprintf(stderr,"OK\n");
     return new_cnt;
 }
 
 CIN* DB_Get_CIN(char* ri) {
+    fprintf(stderr,"[Get CIN] %s...", ri);
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -1040,21 +1049,13 @@ CIN* DB_Get_CIN(char* ri) {
                     idx++;
                     break;       
                 case 7:
-                if(strcmp(ptr," ")==0) new_cin->cs=NULL; //data is NULL
-                    else{
-                    new_cin->cs = calloc(strlen(ptr),sizeof(char));
-                    strcpy(new_cin->cs, ptr);
-                    }
-                    idx++;
-                    break;   
-                case 8:
                 if(strcmp(ptr,"0")==0) new_cin->cs=0;
                     else
                     new_cin->cs = atoi(ptr);
 
                     idx++;
                     break;            
-                case 9:
+                case 8:
                 if(strcmp(ptr,"0")==0) new_cin->st=0;
                     else
                     new_cin->st = atoi(ptr);
@@ -1072,7 +1073,7 @@ CIN* DB_Get_CIN(char* ri) {
     if (ret != DB_NOTFOUND) {
         dbp->err(dbp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
-        return NULL;
+        exit(0);
     }
     if (cin == 0 || flag==0) {
         fprintf(stderr, "Data not exist\n");
@@ -1084,7 +1085,7 @@ CIN* DB_Get_CIN(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-
+    fprintf(stderr,"OK\n");
     return new_cin;
 }
 
@@ -1235,6 +1236,7 @@ Sub* DB_Get_Sub(char* ri) {
 }
 
 ACP* DB_Get_ACP(char* ri) {
+    fprintf(stderr,"[Get ACP] %s...", ri);
     char* DATABASE = "ACP.db";
 
     //struct to return
@@ -1368,346 +1370,12 @@ ACP* DB_Get_ACP(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-
+    fprintf(stderr,"OK\n");
     return new_acp;
 }
 
-int DB_Update_AE(AE* ae_object) {
-    char* DATABASE = "RESOURCE.db";    
-    DB* dbp;
-    DBC* dbcp;
-    DBT key_ri, data;
-    int ret;
-    char rr[6]="";
-
-    /* ri NULL ERROR*/
-    if(ae_object->ri==NULL){
-        fprintf(stderr,"ri NULL ERROR\n");
-        return -1;
-    }
-
-    //Struct to store in DB
-    AE* ae = calloc(1,sizeof(AE));
-    ae = DB_Get_AE(ae_object->ri);
-
-    if(ae_object->rn!=NULL) strcpy(ae->rn,ae_object->rn);
-    if(ae_object->pi!=NULL) strcpy(ae->pi,ae_object->pi);
-    if(ae_object->ct!=NULL) strcpy(ae->ct,ae_object->ct);
-    if(ae_object->lt!=NULL) strcpy(ae->lt,ae_object->lt);
-    if(ae_object->et!=NULL) strcpy(ae->et,ae_object->et);
-    if(ae_object->api!=NULL) strcpy(ae->api,ae_object->api);
-    if(ae_object->aei!=NULL) strcpy(ae->aei,ae_object->aei);
-
-    if(ae_object->rr == '\0'){
-        if (ae->rr==true) strcpy(rr,"true");
-        else strcpy(rr,"false");
-    }
-
-    if(ae_object->ty!=0) ae->ty=ae_object->ty;
-   
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
-
-    /* key and data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = ae_object->ri;
-    key_ri.size = strlen(ae_object->ri) + 1;
-
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s",
-            ae->rn,ae->pi,ae->ty,ae->ct,ae->lt,
-            ae->et,ae->api,rr,ae->aei);
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-    
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
-    free(ae);
-
-    return 1;
-}
-
-int DB_Update_CNT(CNT* cnt_object) {
-    char* DATABASE = "RESOURCE.db";   
-    DB* dbp;
-    DBC* dbcp;
-    DBT key_ri, data;
-    int ret;
-
-    /* ri NULL ERROR*/
-    if(cnt_object->ri==NULL){
-        fprintf(stderr,"ri NULL ERROR\n");
-        return -1;
-    }
-
-    //Struct to store in DB
-    CNT* cnt = calloc(1,sizeof(CNT));
-    cnt = DB_Get_CNT(cnt_object->ri);
-
-    if(cnt_object->rn!=NULL) strcpy(cnt->rn,cnt_object->rn);
-    if(cnt_object->pi!=NULL) strcpy(cnt->pi,cnt_object->pi);
-    if(cnt_object->ct!=NULL) strcpy(cnt->ct,cnt_object->ct);
-    if(cnt_object->lt!=NULL) strcpy(cnt->lt,cnt_object->lt);
-    if(cnt_object->et!=NULL) strcpy(cnt->et,cnt_object->et);
-    if(cnt_object->lbl!=NULL) strcpy(cnt->lbl,cnt_object->lbl);
-    if(cnt_object->acpi!=NULL) strcpy(cnt->acpi,cnt_object->acpi);    
-    if(cnt_object->ty!=0) cnt->ty=cnt_object->ty;
-    if(cnt_object->cbs!=0) cnt->cbs=cnt_object->cbs;
-    if(cnt_object->cni!=0) cnt->cni=cnt_object->cni;       
-    if(cnt_object->st!=0) cnt->st=cnt_object->st;
-
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
-
-    /* key and data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = cnt_object->ri;
-    key_ri.size = strlen(cnt_object->ri) + 1;
-
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d",
-            cnt->rn,cnt->pi,cnt->ty,cnt->ct,cnt->lt,
-            cnt->et,cnt->lbl,cnt->acpi,cnt->cbs,cnt->cni,cnt->st);
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-    
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
-    dbp->close(dbp, 0);
-    free(cnt);
-
-    return 1;
-}
-
-int DB_Update_Sub(Sub *sub_object) {
-
-    /* ri NULL ERROR*/
-    if(sub_object->ri==NULL){
-        fprintf(stderr,"ri NULL ERROR\n");
-        return 0;
-    }
-
-    /* Not NULL:0, NULL:1 */
-    int rn_f=0, pi_f=0, ct_f=0, lt_f=0, et_f=0, net_f=0,sur_f=0,nct_f=0,nu_f=0, ty_f=0;
-
-    if(sub_object->rn==NULL) rn_f=1;
-    if(sub_object->pi==NULL) pi_f=1;    
-    if(sub_object->ct==NULL) ct_f=1;
-    if(sub_object->lt==NULL) lt_f=1;
-    if(sub_object->et==NULL) et_f=1;
-    if(sub_object->nu==NULL) nu_f=1;
-    if(sub_object->net==NULL) net_f=1;
-    if(sub_object->sur==NULL) sur_f=1;
-    if(sub_object->ty==0) ty_f=1; 
-    if(sub_object->nct==0) nct_f=1;
-
-
-    char* database = "SUB.db";
-
-    DB* dbp;
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return 0;
-    }
-
-    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", database);
-        return 0;
-    }
-
-    /* Acquire a cursor for the database. */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        return 0;
-    }
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    int cnt = 0;
-    int flag = 0;
-    int struct_size = 10;
-
-    DBC* dbcp0;
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        return 0;
-        exit(1);
-    }
-    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-        cnt++;
-        if (strncmp(data.data, sub_object->ri, data.size) == 0) {
-            flag=1;
-            break;
-        }
-    }
-    if (cnt == 0 || flag==0) {
-        fprintf(stderr, "Data not exist\n");
-        return 0;
-    }
-
-    int idx = -1;
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(data.data, sub_object->ri, data.size) == 0) {
-            idx=0;
-        }
-        if(idx!=-1 && idx < struct_size){
-            // idx==0 -> ri
-            if(idx==1 && rn_f==0) {
-                data.size = strlen(sub_object->rn) + 1;
-                strcpy(data.data, sub_object->rn);
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            if(idx==2 && nu_f==0) {
-                data.size = strlen(sub_object->nu) + 1;
-                strcpy(data.data, sub_object->nu);
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            if(idx==3 && net_f==0) {
-                data.size = strlen(sub_object->net) + 1;
-                strcpy(data.data, sub_object->net);
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }            
-            if(idx==4 && sur_f==0) {
-                data.size = strlen(sub_object->sur) + 1;
-                strcpy(data.data, sub_object->sur);
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            if(idx==5 && ct_f==0) {
-                data.size = strlen(sub_object->ct) + 1;
-                strcpy(data.data, sub_object->ct);
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            if(idx==6 && lt_f==0) {
-                data.size = strlen(sub_object->lt) + 1;
-                strcpy(data.data, sub_object->lt);
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            if(idx==7 && et_f==0) {
-                data.size = strlen(sub_object->et) + 1;
-                strcpy(data.data, sub_object->et);
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            if(idx==8 && ty_f==0) {
-                *(int*)data.data=sub_object->ty;
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            if(idx==9 && nct_f==0) {
-                *(int*)data.data=sub_object->nct;
-                dbcp->put(dbcp, &key, &data, DB_CURRENT);
-            }
-            idx++;
-        }
-    }
-    if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
-        fprintf(stderr, "Cursor ERROR\n");
-        return 0;
-    }
-
-    /* Cursors must be closed */
-    if (dbcp0 != NULL)
-        dbcp0->close(dbcp0);
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
-        
-    /* Delete Success */
-    return 1;
-}
-
-int DB_Update_ACP(ACP* acp_object) {
-    char* DATABASE = "ACP.db";    
-    DB* dbp;
-    DBC* dbcp;
-    DBT key_ri, data;
-    int ret;
-
-    /* ri NULL ERROR*/
-    if(acp_object->ri==NULL){
-        fprintf(stderr,"ri NULL ERROR\n");
-        return -1;
-    }
-
-    //Struct to store in DB
-    ACP* acp = calloc(1,sizeof(ACP));
-    acp = DB_Get_ACP(acp_object->ri);
-
-    if(acp_object->rn!=NULL) strcpy(acp->rn,acp_object->rn);
-    if(acp_object->pi!=NULL) strcpy(acp->pi,acp_object->pi);
-    if(acp_object->ct!=NULL) strcpy(acp->ct,acp_object->ct);
-    if(acp_object->lt!=NULL) strcpy(acp->lt,acp_object->lt);
-    if(acp_object->et!=NULL) strcpy(acp->et,acp_object->et);
-    if(acp_object->pv_acor!=NULL) strcpy(acp->pv_acor,acp_object->pv_acor);
-    if(acp_object->pv_acop!=NULL) strcpy(acp->pv_acop,acp_object->pv_acop);
-    if(acp_object->pvs_acor!=NULL) strcpy(acp->pvs_acor,acp_object->pvs_acor);       
-    if(acp_object->pvs_acop!=NULL) strcpy(acp->pvs_acop,acp_object->pvs_acop);    
-    if(acp_object->ty!=0) acp->ty=acp_object->ty;
-   
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
-
-    /* key and data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = acp_object->ri;
-    key_ri.size = strlen(acp_object->ri) + 1;
-
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s",
-            acp->rn,acp->pi,acp->ty,acp->ct,acp->lt,
-            acp->et,acp->pv_acor,acp->pv_acop,acp->pvs_acor,acp->pvs_acop);
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-    
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
-    dbp->close(dbp, 0);
-    free(acp);
-
-    return 1;
-}
-
-int DB_Delete(char* ri) {
+int DB_Delete_Object(char* ri) {
+    fprintf(stderr,"[Delete Object] %s...", ri);
     char* DATABASE = "RESOURCE.db";
     DB* dbp;
     DBC* dbcp;
@@ -1741,6 +1409,7 @@ int DB_Delete(char* ri) {
     if (dbp != NULL)
         dbp->close(dbp, 0);
     
+    fprintf(stderr,"OK\n");
     /* Delete Success */
     return 1;
 }
@@ -1830,6 +1499,7 @@ int DB_Delete_Sub(char* ri) {
 }
 
 int DB_Delete_ACP(char* ri) {
+    fprintf(stderr,"[Delete ACP] %s...", ri);
     char* DATABASE = "ACP.db";
     DB* dbp;
     DBC* dbcp;
@@ -1864,6 +1534,7 @@ int DB_Delete_ACP(char* ri) {
         dbp->close(dbp, 0);
     
     /* Delete Success */
+    fprintf(stderr,"OK\n");
     return 1;
 }
 
@@ -2093,7 +1764,7 @@ Node* DB_Get_All_CNT() {
     return head;
 }
 
-Node* Get_All_Sub(){
+Node* DB_Get_All_Sub(){
     char* database = "SUB.db";
 
     DB* dbp;
@@ -2291,7 +1962,6 @@ Node* DB_Get_All_ACP() {
     return head;
 }
 
-
 Node* DB_Get_CIN_Pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
     char* TYPE = "4-";
@@ -2332,7 +2002,7 @@ Node* DB_Get_CIN_Pi(char* pi) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
     }
-    Node* head = calloc(1,sizeof(Node));
+    Node* head = calloc(cnt,sizeof(Node));
     Node* node;
     node = head;
     

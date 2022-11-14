@@ -71,7 +71,7 @@ end:
 }
 
 CNT* JSON_to_CNT(char *json_payload) {
-	CNT *cnt = (CNT *)calloc(1, sizeof(CNT));
+	CNT *cnt = (CNT *)malloc(sizeof(CNT));
 
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
@@ -90,26 +90,26 @@ CNT* JSON_to_CNT(char *json_payload) {
 	root = cJSON_GetObjectItem(json, "m2m:cnt");
 
 	// rn
-	if(strstr(json_payload,"\"rn\"")) {
-		rn = cJSON_GetObjectItem(root, "rn");
-		if (!cJSON_IsString(rn) && (rn->valuestring == NULL))
-		{
-			goto end;
-		}
-		cnt->rn = cJSON_Print(rn);
-		cnt->rn = strtok(cnt->rn, "\"");
+	rn = cJSON_GetObjectItem(root, "rn");
+	if (!cJSON_IsString(rn) && (rn->valuestring == NULL))
+	{
+		goto end;
 	}
+	cnt->rn = cJSON_Print(rn);
+	cnt->rn = strtok(cnt->rn, "\"");
 
 	// acpi
-	if(strstr(json_payload,"\"acpi\"")) {
-		acpi = cJSON_GetObjectItem(root, "acpi");
-		if (!cJSON_IsString(rn) && (rn->valuestring == NULL))
-		{
-			goto end;
+	acpi = cJSON_GetObjectItem(root, "acpi");
+	int acpi_size = cJSON_GetArraySize(acpi);
+	char acpi_str[100] = { '\0' };
+	for (int i = 0; i < acpi_size; i++) {
+		strcat(acpi_str, cJSON_GetArrayItem(acpi, i)->valuestring);
+		if (i < acpi_size - 1) {
+			strcat(acpi_str, ",");
 		}
-		cnt->acpi = cJSON_Print(acpi);
-		cnt->acpi = strtok(cnt->acpi, "\"");
 	}
+	cnt->acpi = (char *)malloc(sizeof(char *) * strlen(acpi_str) + 1);
+	strcpy(cnt->acpi, acpi_str);
 
 end:
 	cJSON_Delete(json);
@@ -426,6 +426,7 @@ char* CNT_to_json(CNT* cnt_object) {
 
 	cJSON *root = NULL;
 	cJSON *cnt = NULL;
+	cJSON *acpi = NULL;
 
 	/* Our "cnt" item: */
 	root = cJSON_CreateObject();
@@ -440,8 +441,16 @@ char* CNT_to_json(CNT* cnt_object) {
 	cJSON_AddStringToObject(cnt, "et", cnt_object->et);
 	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
-	//cJSON_AddStringToObject(cnt, "lbl", cnt_object->lbl);
-	if(cnt_object->acpi) cJSON_AddStringToObject(cnt, "acpi", cnt_object->acpi);
+	cJSON_AddStringToObject(cnt, "lbl", cnt_object->lbl);
+
+	// acpi
+	acpi = cJSON_CreateArray();
+	char *acpi_str = strtok(cnt_object->acpi, ",");
+	do {
+		cJSON_AddItemToArray(acpi, cJSON_CreateString(acpi_str));
+		acpi_str = strtok(NULL, ",");
+	} while (acpi_str != NULL);
+	cJSON_AddItemToObject(cnt, "acpi", acpi);
 
 	json = cJSON_Print(root);
 
@@ -830,11 +839,11 @@ int Get_JSON_Value_bool(char *key, char *json) {
 	}
 	else if (cJSON_IsTrue(ckey))
 	{
-		return true;
+		return 1;
 	}
 	else if (cJSON_IsFalse(ckey))
 	{
-		return false;
+		return 0;
 	}
 
 end:

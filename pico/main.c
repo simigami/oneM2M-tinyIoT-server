@@ -88,18 +88,18 @@ void route() {
 }
 
 void init() {
-	CSE *cse;
-	
-	if(access("./CSE.db", 0) == -1) {
-		cse = (CSE*)malloc(sizeof(CSE));
+	rt = (ResourceTree *)malloc(sizeof(rt));
+
+	if(access("./RESOURCE.db", 0) == -1) {
+		CSE* cse = (CSE*)malloc(sizeof(CSE));
 		Init_CSE(cse);
 		DB_Store_CSE(cse);
+		rt->cb = Create_Node(cse, t_CSE);
+		Free_CSE(cse); cse = NULL;
 	} else {
-		cse = DB_Get_CSE();
+		rt->cb = DB_Get_All_CSE();
 	}
-	rt = (ResourceTree *)malloc(sizeof(rt));
- 	rt->cb = Create_Node(cse, t_CSE);
- 	Free_CSE(cse); cse = NULL;
+
  	Restruct_ResourceTree();
 }
 
@@ -231,8 +231,8 @@ void Update_Object(Node *pnode) {
 
 	if(duplicate_resource_check(pnode->parent)) {
 		HTTP_209_JSON;
-		fprintf(stderr,"Resource duplicate error\n");
-		printf("{\"m2m:dbg\": \"resource \"rn\" is duplicated\"}");
+		fprintf(stderr,"Resource name duplicate error\n");
+		printf("{\"m2m:dbg\": \"rn is duplicated\"}");
 		return;
 	}
 
@@ -455,15 +455,11 @@ void Retrieve_Sub(Node *pnode){
 
 void Update_AE(Node *pnode) {
 	AE* after = DB_Get_AE(pnode->ri);
-	
+	int result;
+
 	Set_AE_Update(after);
-	int result = DB_Update_AE(after);
-	if(result != 1) { 
-		HTTP_500;
-		printf("{\"m2m:dbg\": \"DB update fail\"}");
-		Free_AE(after); after = NULL;
-		return;
-	}
+	result = DB_Delete_Object(after->ri);
+	result = DB_Store_AE(after);
 	
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
@@ -478,15 +474,11 @@ void Update_AE(Node *pnode) {
 
 void Update_CNT(Node *pnode) {
 	CNT* after = DB_Get_CNT(pnode->ri);
+	int result;
 
 	Set_CNT_Update(after);
-	int result = DB_Update_CNT(after);
-	if(result != 1) { 
-		HTTP_500;
-		printf("{\"m2m:dbg\": \"DB update fail\"}");
-		Free_CNT(after); after = NULL;
-		return;
-	}
+	result = DB_Delete_Object(after->ri);
+	result = DB_Store_CNT(after);
 	
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
@@ -502,15 +494,11 @@ void Update_CNT(Node *pnode) {
 
 void Update_Sub(Node *pnode) {
 	Sub* after = DB_Get_Sub(pnode->ri);
+	int result;
 	
 	Set_Sub_Update(after);
-	int result = DB_Update_Sub(after);
-	if(result != 1) { 
-		HTTP_500;
-		printf("{\"m2m:dbg\": \"DB update fail\"}");
-		Free_Sub(after); after = NULL;
-		return;
-	}
+	result = DB_Delete_Sub(after->ri);
+	result = DB_Store_Sub(after);
 	
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
@@ -525,7 +513,7 @@ void Update_Sub(Node *pnode) {
 
 void Delete_Object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
-	Delete_Node_Object(pnode,1);
+	Delete_Node_and_Data(pnode,1);
 	pnode = NULL;
 	HTTP_200_JSON;
 	printf("{\"m2m:dbg\": \"resource is deleted successfully\"}");
@@ -535,7 +523,7 @@ void Restruct_ResourceTree(){
 	Node *node_list = (Node *)calloc(1,sizeof(Node));
 	Node *tail = node_list;
 	
-	if(access("./AE.db", 0) != -1) {
+	if(access("./RESOURCE.db", 0) != -1) {
 		Node* ae_list = DB_Get_All_AE();
 		tail->siblingRight = ae_list;
 		if(ae_list) ae_list->siblingLeft = tail;
@@ -544,7 +532,7 @@ void Restruct_ResourceTree(){
 		fprintf(stderr,"AE.db is not exist\n");
 	}
 	
-	if(access("./CNT.db", 0) != -1) {
+	if(access("./RESOURCE.db", 0) != -1) {
 		Node* cnt_list = DB_Get_All_CNT();
 		tail->siblingRight = cnt_list;
 		if(cnt_list) cnt_list->siblingLeft = tail;
