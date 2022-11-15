@@ -180,6 +180,7 @@ void Retrieve_CNT(Node *pnode);
 void Retrieve_CIN(Node *pnode);
 void Retrieve_CIN_Ri(char *ri);
 void Retrieve_Sub(Node *pnode);
+void Retrieve_ACP(Node *pnode);
 
 void Update_CSE(Node *pnode);
 void Update_AE(Node *pnode);

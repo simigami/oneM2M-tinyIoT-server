@@ -209,7 +209,7 @@ void Retrieve_Object(Node *pnode) {
 
 	case t_ACP :
 		fprintf(stderr,"\x1b[43mRetrieve ACP\x1b[0m\n");
-		//Retrieve_ACP(pnode);			
+		Retrieve_ACP(pnode);			
 		break;
 	}	
 }
@@ -453,6 +453,15 @@ void Retrieve_Sub(Node *pnode){
 	Free_Sub(gsub); gsub = NULL;
 }
 
+void Retrieve_ACP(Node *pnode){
+	ACP* gacp = DB_Get_ACP(pnode->ri);
+	char *res_json = ACP_to_json(gacp);
+	HTTP_200_JSON;
+	printf("%s", res_json);
+	free(res_json); res_json = NULL; 
+	Free_ACP(gacp); gacp = NULL;
+}
+
 void Update_AE(Node *pnode) {
 	AE* after = DB_Get_AE(pnode->ri);
 	int result;
@@ -509,6 +518,25 @@ void Update_Sub(Node *pnode) {
 	printf("%s", res_json);
 	free(res_json); res_json = NULL;
 	Free_Sub(after); after = NULL;
+}
+
+void Update_ACP(Node *pnode) {
+	ACP* after = DB_Get_ACP(pnode->ri);
+	int result;
+	
+	Set_ACP_Update(after);
+	result = DB_Delete_ACP(after->ri);
+	result = DB_Store_ACP(after);
+	
+	free(pnode->rn);
+	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
+	strcpy(pnode->rn, after->rn);
+	
+	char *res_json = ACP_to_json(after);
+	HTTP_200_JSON;
+	printf("%s", res_json);
+	free(res_json); res_json = NULL;
+	Free_ACP(after); after = NULL;
 }
 
 void Delete_Object(Node* pnode) {
