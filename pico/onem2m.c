@@ -824,6 +824,16 @@ void Set_Sub_Update(Sub* after) {
 	}
 }
 
+void Set_ACP_Update(ACP* after) {
+	char *rn = Get_JSON_Value_char("rn", payload);
+
+	if(rn) {
+		free(after->rn);
+		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
+		strcpy(after->rn, rn);
+	}
+}
+
 void Free_CSE(CSE *cse) {
 	if(cse->ct) free(cse->ct);
 	if(cse->lt) free(cse->lt);

@@ -268,7 +268,7 @@ void Update_Object(Node *pnode) {
 	
 	case t_ACP :
 		fprintf(stderr,"\x1b[45mUpdate ACP\x1b[0m\n");
-		//Update_ACP(pnode);
+		Update_ACP(pnode);
 		break;
 	}
 }

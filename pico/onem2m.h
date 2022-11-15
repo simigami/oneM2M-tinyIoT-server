@@ -186,6 +186,7 @@ void Update_CSE(Node *pnode);
 void Update_AE(Node *pnode);
 void Update_CNT(Node *pnode);
 void Update_Sub(Node *pnode);
+void Update_ACP(Node *pnode);
 
 void Init_CSE(CSE* cse);
 void Init_AE(AE* ae, char *pi);
@@ -196,21 +197,7 @@ void Init_ACP(ACP* acp, char *pi);
 void Set_AE_Update(AE* after);
 void Set_CNT_Update(CNT* after);
 void Set_Sub_Update(Sub* after);
-
-CSE* JSON_to_CSE(char *json_payload);
-AE* JSON_to_AE(char *json_payload);
-CNT* JSON_to_CNT(char *json_payload);
-CIN* JSON_to_CIN(char *json_payload);
-Sub* JSON_to_Sub(char *json_payload);
-ACP* JSON_to_ACP(char *json_payload);
-
-char* CSE_to_json(CSE* cse_object);
-char* AE_to_json(AE* ae_object);
-char* CNT_to_json(CNT* cnt_object);
-char* CIN_to_json(CIN* cin_object);
-char* Sub_to_json(Sub *sub_object);
-char* Noti_to_json(char *sur, int net, char *rep);
-char* ACP_to_json(ACP *acp_object);
+void Set_ACP_Update(ACP* after);
 
 void Free_CSE(CSE* cse);
 void Free_AE(AE* ae);
@@ -280,7 +267,22 @@ void Restruct_ResourceTree();
 Node* Restruct_childs(Node *node, Node *list);
 Node* Latest_CINs(Node *cinList, int num); // use in viewer API
 
-//JSON
+//JSON Parser
+CSE* JSON_to_CSE(char *json_payload);
+AE* JSON_to_AE(char *json_payload);
+CNT* JSON_to_CNT(char *json_payload);
+CIN* JSON_to_CIN(char *json_payload);
+Sub* JSON_to_Sub(char *json_payload);
+ACP* JSON_to_ACP(char *json_payload);
+
+char* CSE_to_json(CSE* cse_object);
+char* AE_to_json(AE* ae_object);
+char* CNT_to_json(CNT* cnt_object);
+char* CIN_to_json(CIN* cin_object);
+char* Sub_to_json(Sub *sub_object);
+char* Noti_to_json(char *sur, int net, char *rep);
+char* ACP_to_json(ACP *acp_object);
+
 char* Get_JSON_Value_char(char *key, char *json);
 int Get_JSON_Value_int(char *key, char *json);
 int Get_JSON_Value_bool(char *key, char *json);
