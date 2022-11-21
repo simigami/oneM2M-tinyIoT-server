@@ -1539,6 +1539,7 @@ int DB_Delete_ACP(char* ri) {
 }
 
 Node* DB_Get_All_CSE() {
+    fprintf(stderr,"\x1b[92m[Get All CSE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
     char* TYPE = "5-";
 
@@ -1609,11 +1610,12 @@ Node* DB_Get_All_CSE() {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-
+    fprintf(stderr,"\n");
     return head;
 }
 
 Node* DB_Get_All_AE() {
+    fprintf(stderr,"\x1b[92m[Get All AE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
     char* TYPE = "2-";
 
@@ -1686,10 +1688,11 @@ Node* DB_Get_All_AE() {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-
+    fprintf(stderr,"\n");
     return head;
 }
 Node* DB_Get_All_CNT() {
+    fprintf(stderr,"\x1b[92m[Get All CNT]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
     char* TYPE = "3-";
 
@@ -1760,11 +1763,12 @@ Node* DB_Get_All_CNT() {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-
+    fprintf(stderr,"\n");
     return head;
 }
 
 Node* DB_Get_All_Sub(){
+    fprintf(stderr,"\x1b[92m[Get All Sub]\x1b[0m\n");
     char* database = "SUB.db";
 
     DB* dbp;
@@ -1883,11 +1887,12 @@ Node* DB_Get_All_Sub(){
     dbcp->close(dbcp0);
     dbcp->close(dbcp);
     dbp->close(dbp, 0);
-
+    fprintf(stderr,"\n");
     return head;
 }
 
 Node* DB_Get_All_ACP() {
+    fprintf(stderr,"\x1b[92m[Get All ACP]\x1b[0m\n");
     char* DATABASE = "ACP.db";
     char* TYPE = "1-";
 
@@ -1958,7 +1963,7 @@ Node* DB_Get_All_ACP() {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-
+    fprintf(stderr,"\n");
     return head;
 }
 

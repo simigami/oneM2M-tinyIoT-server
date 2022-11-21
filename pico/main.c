@@ -31,8 +31,6 @@ void route() {
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
-	//if(Label_To_URI(uri)) { uri = Label_To_URI(uri);}
-
 	Operation op = o_NONE;
 
 	Node* pnode = Parse_URI(rt->cb, uri, &op); // return tree node by URI
@@ -556,17 +554,13 @@ void Restruct_ResourceTree(){
 		tail->siblingRight = ae_list;
 		if(ae_list) ae_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
-	} else {
-		fprintf(stderr,"AE.db is not exist\n");
-	}
-	
-	if(access("./RESOURCE.db", 0) != -1) {
+
 		Node* cnt_list = DB_Get_All_CNT();
 		tail->siblingRight = cnt_list;
 		if(cnt_list) cnt_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
 	} else {
-		fprintf(stderr,"CNT.db is not exist\n");
+		fprintf(stderr,"RESOURCE.db is not exist\n");
 	}
 	
 	if(access("./SUB.db", 0) != -1) {
@@ -577,17 +571,15 @@ void Restruct_ResourceTree(){
 	} else {
 		fprintf(stderr,"SUB.db is not exist\n");
 	}
-	
-	/*
-	if(access("./CIN.db", 0) != -1) {
-		Node* cin_list = DB_Get_All_CIN();
-		tail->siblingRight = cin_list;
-		if(cin_list) cin_list->siblingLeft = tail;
+
+	if(access("./ACP.db", 0) != -1) {
+		Node* acp_list = DB_Get_All_ACP();
+		tail->siblingRight = acp_list;
+		if(acp_list) acp_list->siblingLeft = tail;
 		while(tail->siblingRight) tail = tail->siblingRight;
 	} else {
-		fprintf(stderr,"CIN.db is not exist\n");
+		fprintf(stderr,"ACP.db is not exist\n");
 	}
-	*/
 	
 	Node *fnode = node_list;
 	node_list = node_list->siblingRight;
