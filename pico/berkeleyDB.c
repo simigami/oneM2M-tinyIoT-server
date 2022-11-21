@@ -264,7 +264,7 @@ int DB_Store_CNT(CNT *cnt_object) {
     if (cnt_object->lt == NULL) cnt_object->lt = " ";
     if (cnt_object->et == NULL) cnt_object->et = " ";
     
-    if (cnt_object->lbl == NULL) cnt_object->lbl = " ";
+    if (cnt_object->lbl == NULL) cnt_object->lbl = "NULL";
     if (cnt_object->acpi == NULL) cnt_object->acpi = " ";
     if (cnt_object->cni == '\0') cnt_object->cni = 0;
     if (cnt_object->cbs == '\0') cnt_object->cbs = 0;
@@ -386,7 +386,7 @@ int DB_Store_Sub(Sub *sub_object) {
     if (sub_object->rn == NULL) sub_object->rn = "";
     if (sub_object->ri == NULL) sub_object->ri = "";
     if (sub_object->nu == NULL) sub_object->nu = "";
-    if (sub_object->net == NULL) sub_object->net = "1";
+    if (sub_object->net == NULL) sub_object->net = "0";
     if (sub_object->ct == NULL) sub_object->ct = "";
     if (sub_object->et == NULL) sub_object->et = "";
     if (sub_object->lt == NULL) sub_object->lt = "";
@@ -511,6 +511,9 @@ int DB_Store_Sub(Sub *sub_object) {
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
     fprintf(stderr,"OK\n");
+    if(!strcmp(sub_object->net, "0")) {
+        sub_object->net = NULL;
+    }
     return 1;
 }
 
@@ -957,6 +960,11 @@ CNT* DB_Get_CNT(char* ri) {
     if (dbp != NULL)
         dbp->close(dbp, 0);
     fprintf(stderr,"OK\n");
+
+    if(!strcmp(new_cnt->acpi, "0")) {
+        free(new_cnt->acpi); new_cnt->acpi = NULL;
+    }
+
     return new_cnt;
 }
 
@@ -1147,7 +1155,7 @@ Sub* DB_Get_Sub(char* ri) {
     }
     
     new_sub->pi = malloc(data.size);
-    strcpy(new_sub->pi, data.data);
+    strcpy(new_sub->pi, key.data);
 
     int idx = -1;
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1232,6 +1240,9 @@ Sub* DB_Get_Sub(char* ri) {
     if (dbp != NULL)
         dbp->close(dbp, 0);
     fprintf(stderr,"OK\n");
+    if(!strcmp(new_sub->net, "0")) {
+        new_sub->net = NULL;
+    }
     return new_sub;
 }
 
@@ -1371,6 +1382,7 @@ ACP* DB_Get_ACP(char* ri) {
     if (dbp != NULL)
         dbp->close(dbp, 0);
     fprintf(stderr,"OK\n");
+
     return new_acp;
 }
 
@@ -1930,9 +1942,23 @@ Node* DB_Get_All_ACP() {
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0){
             ACP* acp = DB_Get_ACP((char*)key.data);
-            node->ri = calloc(strlen(acp->ri)+1,sizeof(char));
-            node->rn = calloc(strlen(acp->rn)+1,sizeof(char));
-            node->pi = calloc(strlen(acp->pi)+1,sizeof(char));
+            node->ri = malloc((strlen(acp->ri)+1) * sizeof(char));
+            node->rn = malloc((strlen(acp->rn)+1) * sizeof(char));
+            node->pi = malloc((strlen(acp->pi)+1) * sizeof(char));
+            if(acp->pv_acor && acp->pv_acop) { 
+                node->pv_acor = malloc((strlen(acp->pv_acor)+1) * sizeof(char));
+                node->pv_acop = malloc((strlen(acp->pv_acop)+1) * sizeof(char));
+                strcpy(node->pv_acor,acp->pv_acor);
+                strcpy(node->pv_acop,acp->pv_acop);
+            }
+            if(acp->pvs_acor && acp->pvs_acop) {
+                node->pvs_acor = malloc((strlen(acp->pvs_acor)+1) *sizeof(char));
+                node->pvs_acop = malloc(strlen((acp->pvs_acop)+1) *sizeof(char));
+                strcpy(node->pvs_acor,acp->pvs_acor);
+                strcpy(node->pvs_acop,acp->pvs_acop);
+            }
+
+
 
             strcpy(node->ri,acp->ri);
             strcpy(node->rn,acp->rn);

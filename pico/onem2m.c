@@ -525,7 +525,7 @@ void Delete_Node_and_Data(Node *node, int flag) {
 	
 	if(node->child) Delete_Node_and_Data(node->child, 0);
 	
-	fprintf(stderr,"Free_Node : %s...",node->rn);
+	fprintf(stderr,"[Free_Node] %s...",node->rn);
 	Free_Node(node); node = NULL;
 	fprintf(stderr,"OK\n");
 }
@@ -784,7 +784,7 @@ void Set_AE_Update(AE* after) {
 	}
 
 	if(api) {
-		free(after->api);
+		if(after->api) free(after->api);
 		after->api = (char*)malloc((strlen(api) + 1) * sizeof(char));
 		strcpy(after->api, api);
 	}
@@ -799,7 +799,10 @@ void Set_AE_Update(AE* after) {
 
 void Set_CNT_Update(CNT* after) {
 	char *rn = Get_JSON_Value_char("rn", payload);
-	char *acpi = Get_JSON_Value_char("acpi", payload);
+	char *acpi = NULL;
+
+	if(strstr(payload, "acpi") != NULL) 
+		acpi = Get_JSON_Value_list("acpi", payload);
 
 	if(rn) {
 		free(after->rn);
@@ -816,21 +819,98 @@ void Set_CNT_Update(CNT* after) {
 
 void Set_Sub_Update(Sub* after) {
 	char *rn = Get_JSON_Value_char("rn", payload);
+	char *nu = NULL;
+	char *net = NULL;
+
+	if(strstr(payload,"nu") != NULL) {
+		nu = Get_JSON_Value_list("nu", payload);
+		if(!strcmp(nu, "\0")) {
+			free(nu); nu = after->nu = NULL;
+		}
+	}
+	if(strstr(payload,"enc") != NULL) {
+		if(strstr(payload, "net") != NULL) {
+			net = Get_JSON_Value_list("enc-net", payload);
+			if(!strcmp(net, "\0")) {
+				free(net); net = after->net = NULL;
+			}
+		}
+	}
 
 	if(rn) {
 		free(after->rn);
 		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 		strcpy(after->rn, rn);
 	}
+
+	if(nu) {
+		if(after->nu) free(after->nu);
+		after->nu = (char*)malloc((strlen(nu) + 1) * sizeof(char));
+		strcpy(after->nu, nu);
+	}
+
+	if(net) {
+		if(after->net) free(after->net);
+		after->net = (char*)malloc((strlen(net) + 1) * sizeof(char));
+		strcpy(after->net, net);
+	}
 }
 
 void Set_ACP_Update(ACP* after) {
 	char *rn = Get_JSON_Value_char("rn", payload);
+	char *pv_acor = NULL;
+	char *pv_acop = NULL;
+	char *pvs_acor = NULL;
+	char *pvs_acop = NULL;
+
+	if(strstr(payload, "pv")) {
+		if(strstr(payload, "acr")) {
+			if(strstr(payload, "acor") && strstr(payload, "acop")) {
+				pv_acor = Get_JSON_Value_list("pv-acr-acor", payload); 
+				pv_acop = Get_JSON_Value_list("pv-acr-acop", payload);
+				if(!strcmp(pv_acor, "\0") || !strcmp(pv_acop, "\0")) {
+					free(pv_acor); pv_acor = after->pv_acor = NULL;
+					free(pv_acop); pv_acop = after->pv_acop = NULL;
+				}
+			}
+		}
+	}
+
+	if(strstr(payload, "pvs")) {
+		if(strstr(payload, "acr")) {
+			if(strstr(payload, "acor") && strstr(payload, "acop")) {
+				pvs_acor = Get_JSON_Value_list("pvs-acr-acor", payload);
+				pvs_acop = Get_JSON_Value_list("pvs-acr-acop", payload);
+				if(!strcmp(pvs_acor, "\0") || !strcmp(pvs_acop, "\0")) {
+					free(pvs_acor); pvs_acor = after->pvs_acor = NULL;
+					free(pvs_acop); pvs_acop = after->pvs_acop = NULL;
+				}
+			}
+		}
+	}
 
 	if(rn) {
 		free(after->rn);
 		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 		strcpy(after->rn, rn);
+	}
+
+	if(pv_acor && pv_acop) {
+		if(after->pv_acor) free(after->pv_acor);
+		if(after->pv_acop) free(after->pv_acop);
+		after->pv_acor = (char*)malloc((strlen(pv_acor) + 1) * sizeof(char));
+		after->pv_acop = (char*)malloc((strlen(pv_acop) + 1) * sizeof(char));
+		strcpy(after->pv_acor, pv_acor);
+		strcpy(after->pv_acop, pv_acop);
+	}
+
+	if(pvs_acor && pvs_acop) {
+		if(after->pvs_acor) free(after->pvs_acor);
+		if(after->pvs_acop) free(after->pvs_acop);
+		after->pvs_acor = (char*)malloc((strlen(pvs_acor) + 1) * sizeof(char));
+		after->pvs_acop = (char*)malloc((strlen(pvs_acop) + 1) * sizeof(char));
+		strcpy(after->pvs_acor, pvs_acor);
+		strcpy(after->pvs_acop, pvs_acop);
 	}
 }
 
@@ -1086,9 +1166,17 @@ int get_acop_origin(char *origin, Node *acp, int flag) {
 	char *acor, *acop, arr_acor[1024], arr_acop[1024];
 
 	if(flag) {
+		if(!acp->pvs_acor) {
+			fprintf(stderr,"pvs_acor is NULL\n"); 
+			return 0;
+		}
 		strcpy(arr_acor, acp->pvs_acor);
 		strcpy(arr_acop, acp->pvs_acop);
 	} else {
+		if(!acp->pv_acor) {
+			fprintf(stderr,"pv_acor is NULL\n"); 
+			return 0;
+		}
 		strcpy(arr_acor, acp->pv_acor);
 		strcpy(arr_acop, acp->pv_acop);
 	}

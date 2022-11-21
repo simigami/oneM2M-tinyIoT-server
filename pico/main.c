@@ -18,6 +18,7 @@
 ResourceTree *rt;
 
 int main(int c, char **v) {
+	DB_display("ACP.db");
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 
@@ -170,6 +171,7 @@ void Retrieve_Object(Node *pnode) {
 		return;
 	}
 
+
 	switch(pnode->ty) {
 		
 	case t_CSE :
@@ -316,6 +318,7 @@ void Create_CNT(Node *pnode) {
 	Node* node = Create_Node(cnt, t_CNT);
 	Add_child(pnode,node);
 	
+
 	char *res_json = CNT_to_json(cnt);
 	HTTP_201_JSON;
 	printf("%s", res_json);

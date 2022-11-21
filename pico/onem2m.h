@@ -142,6 +142,7 @@ typedef struct Node {
 	char *pv_acop;
 	char *pvs_acor;
 	char *pvs_acop;
+	char *uri;
 	ObjectType ty;
 	
 	int cinSize;
@@ -286,6 +287,7 @@ char* ACP_to_json(ACP *acp_object);
 char* Get_JSON_Value_char(char *key, char *json);
 int Get_JSON_Value_int(char *key, char *json);
 int Get_JSON_Value_bool(char *key, char *json);
+char *Get_JSON_Value_list(char *key, char *json);
 void Remove_Invalid_Char_JSON(char* json);
 int is_JSON_Valid_Char(char c);
 
