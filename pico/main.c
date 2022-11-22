@@ -32,6 +32,8 @@ void route() {
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
+	int e = 0;
+
 	Operation op = o_NONE;
 
 	Node* pnode = Parse_URI(rt->cb, uri, &op); // return tree node by URI
@@ -103,28 +105,16 @@ void init() {
 }
 
 void Create_Object(Node *pnode) {
-	if((get_acop(pnode) & acop_Create) != acop_Create) {
-		fprintf(stderr,"Originator has no privilege\n");
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
-		return;
-	}
+	int e = 0;
+	ObjectType ty = Parse_ObjectType(); 
+	
+	e = Check_Privilege(pnode, acop_Create);
+	if(e != -1) e = Check_Request_Body();
+	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
+	if(e != -1) e = Check_Resource_Type_Euqal(ty, Parse_ObjectType_Body());
 
-	if(!payload) {
-		HTTP_500;
-		fprintf(stderr,"Request body empty\n");
-		printf("{\"m2m:dbg\": \"request body empty\"}"); 
-		return;
-	}
+	if(e == -1) return;
 
-	if(duplicate_resource_check(pnode)) {
-		HTTP_209_JSON;
-		fprintf(stderr,"Resource duplicate error\n");
-		printf("{\"m2m:dbg\": \"resource is already exist\"}");
-		return;
-	}
-
-	ObjectType ty = Parse_ObjectType(); // parse object type by payload json key -> "m2m:??"
 	switch(ty) {
 
 	case t_CSE :
@@ -164,13 +154,11 @@ void Create_Object(Node *pnode) {
 }
 
 void Retrieve_Object(Node *pnode) {
-	if((get_acop(pnode) & acop_Retrieve) != acop_Retrieve) {
-		fprintf(stderr,"Originator has no privilege\n");
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
-		return;
-	}
+	int e = 0;
 
+	e = Check_Privilege(pnode, acop_Retrieve);
+
+	if(e == -1) return;
 
 	switch(pnode->ty) {
 		
@@ -215,35 +203,15 @@ void Retrieve_Object(Node *pnode) {
 }
 
 void Update_Object(Node *pnode) {
-	if((get_acop(pnode) & acop_Update) != acop_Update) {
-		fprintf(stderr,"Originator has no privilege\n");
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
-		return;
-	}
+	int e  = 0;
+	ObjectType ty = Parse_ObjectType_Body(); 
 
-	if(!payload) {
-		HTTP_500;
-		fprintf(stderr,"Request body empty error\n");
-		printf("{\"m2m:dbg\": \"request body empty\"\n}");
-		return;
-	}
+	e = Check_Privilege(pnode, acop_Update);
+	if(e != -1) e = Check_Request_Body();
+	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
+	if(e != -1) e = Check_Resource_Type_Euqal(ty, pnode->ty);
 
-	if(duplicate_resource_check(pnode->parent)) {
-		HTTP_209_JSON;
-		fprintf(stderr,"Resource name duplicate error\n");
-		printf("{\"m2m:dbg\": \"rn is duplicated\"}");
-		return;
-	}
-
-	ObjectType ty = Parse_ObjectType_Body();
-	
-	if(ty != pnode->ty) {
-		fprintf(stderr,"Update resource type error\n");
-		HTTP_400;
-		printf("{\"m2m:dbg\": \"resource type error\"}");
-		return;
-	}
+	if(e == -1) return;
 	
 	switch(ty) {
 
@@ -276,7 +244,7 @@ void Update_Object(Node *pnode) {
 void Create_AE(Node *pnode) {
 	AE* ae = JSON_to_AE(payload);
 	if(!ae) {
-		Response_JSON_Parse_Error();
+		JSON_Parse_Error();
 		return;
 	}
 	Init_AE(ae,pnode->ri);
@@ -302,7 +270,7 @@ void Create_AE(Node *pnode) {
 void Create_CNT(Node *pnode) {
 	CNT* cnt = JSON_to_CNT(payload);
 	if(!cnt) {
-		Response_JSON_Parse_Error();
+		JSON_Parse_Error();
 		return;
 	}
 	Init_CNT(cnt,pnode->ri);
@@ -329,7 +297,7 @@ void Create_CNT(Node *pnode) {
 void Create_CIN(Node *pnode) {
 	CIN* cin = JSON_to_CIN(payload);
 	if(!cin) {
-		Response_JSON_Parse_Error();
+		JSON_Parse_Error();
 		return;
 	}
 	Init_CIN(cin,pnode->ri);
@@ -355,7 +323,7 @@ void Create_CIN(Node *pnode) {
 void Create_Sub(Node *pnode) {
 	Sub* sub = JSON_to_Sub(payload);
 	if(!sub) {
-		Response_JSON_Parse_Error();
+		JSON_Parse_Error();
 		return;
 	}
 	Init_Sub(sub, pnode->ri);
@@ -383,7 +351,7 @@ void Create_Sub(Node *pnode) {
 void Create_ACP(Node *pnode) {
 	ACP* acp = JSON_to_ACP(payload);
 	if(!acp) {
-		Response_JSON_Parse_Error();
+		JSON_Parse_Error();
 		return;
 	}
 	Init_ACP(acp, pnode->ri);
@@ -623,38 +591,47 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 	return list;
 }
 
-void Response_JSON_Parse_Error(){
+void JSON_Parse_Error(){
 	fprintf(stderr,"Request JSON Invalid\n");
 	printf("{\"m2m:dbg\": \"request JSON invalid\"}");
 }
 
-
-// httpd open source basic functions
-int file_exists(const char *file_name) {
-	struct stat buffer;
-	int exists;
-
-	exists = (stat(file_name, &buffer) == 0);
-
-	return exists;
+int Check_Privilege(Node *node, ACOP acop) {
+	if((get_acop(node) & acop) != acop) {
+		fprintf(stderr,"Originator has no privilege\n");
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
+		return -1;
+	}
+	return 0;
 }
 
-int read_file(const char *file_name) {
-	char buf[CHUNK_SIZE];
-	FILE *file;
-	size_t nread;
-	int err = 1;
-
-	file = fopen(file_name, "r");
-
-	if (file) {
-		while ((nread = fread(buf, 1, sizeof buf, file)) > 0) {
-			fwrite(buf, 1, nread, stdout);
-		}
-
-		err = ferror(file);
-		fclose(file);
+int Check_Request_Body() {
+	if(!payload) {
+		HTTP_500;
+		fprintf(stderr,"Request body empty error\n");
+		printf("{\"m2m:dbg\": \"request body empty\"\n}");
+		return -1;
 	}
-	
-	return err;
+	return 0;
+}
+
+int Check_Resource_Name_Duplicate(Node *node) {
+	if(duplicate_resource_check(node->parent)) {
+		HTTP_209_JSON;
+		fprintf(stderr,"Resource name duplicate error\n");
+		printf("{\"m2m:dbg\": \"rn is duplicated\"}");
+		return -1;
+	}
+	return 0;
+}
+
+int Check_Resource_Type_Equal(ObjectType ty1, ObjectType ty2) {	
+	if(ty1 != ty2) {
+		fprintf(stderr,"Update resource type error\n");
+		HTTP_400;
+		printf("{\"m2m:dbg\": \"resource type error\"}");
+		return -1;
+	}
+	return 0;
 }

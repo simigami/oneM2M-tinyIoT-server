@@ -295,7 +295,13 @@ int is_JSON_Valid_Char(char c);
 struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 char* Send_HTTP_Packet(char *target, char *post_data);
-void Response_JSON_Parse_Error();
+
+//Error
+void JSON_Parse_Error();
+int Check_Privilege(Node *node, ACOP acop);
+int Check_Request_Body();
+int Check_Resource_Name_Duplicate(Node *node);
+int Check_Resource_Type_Euqal(ObjectType type);
 
 //etc
 void init();
