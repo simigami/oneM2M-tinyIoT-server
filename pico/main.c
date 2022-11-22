@@ -32,28 +32,14 @@ void route() {
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
-	int e = 0;
-
 	Operation op = o_NONE;
 
 	Node* pnode = Parse_URI(rt->cb, uri, &op); // return tree node by URI
-	if(!pnode) {
-		if(op != o_CIN_RI) { 
-			fprintf(stderr,"Invalid\n");
-			HTTP_404;
-			printf("{\"m2m:dbg\": \"URI is invalid\"}");
-		}
-		return;
-	} else {
-		fprintf(stderr,"OK\n");
-	} 
+	int e = Result_Parse_URI(pnode, op);
 
-	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
-		fprintf(stderr,"Request payload too large\n");
-		HTTP_413;
-		printf("{\"m2m:dbg\": \"payload is too large\"}");
-		return;
-	}
+	if(e != -1) e = Check_Payload_Size();
+
+	if(e == -1) return;
 
 	if(op == o_NONE) op = Parse_Operation(); // parse operation by HTTP method
 	
@@ -105,13 +91,12 @@ void init() {
 }
 
 void Create_Object(Node *pnode) {
-	int e = 0;
 	ObjectType ty = Parse_ObjectType(); 
 	
-	e = Check_Privilege(pnode, acop_Create);
+	int e = Check_Privilege(pnode, acop_Create);
 	if(e != -1) e = Check_Request_Body();
 	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
-	if(e != -1) e = Check_Resource_Type_Euqal(ty, Parse_ObjectType_Body());
+	if(e != -1) e = Check_Resource_Type_Equal(ty, Parse_ObjectType_Body());
 
 	if(e == -1) return;
 
@@ -154,9 +139,7 @@ void Create_Object(Node *pnode) {
 }
 
 void Retrieve_Object(Node *pnode) {
-	int e = 0;
-
-	e = Check_Privilege(pnode, acop_Retrieve);
+	int e = Check_Privilege(pnode, acop_Retrieve);
 
 	if(e == -1) return;
 
@@ -203,13 +186,12 @@ void Retrieve_Object(Node *pnode) {
 }
 
 void Update_Object(Node *pnode) {
-	int e  = 0;
 	ObjectType ty = Parse_ObjectType_Body(); 
 
-	e = Check_Privilege(pnode, acop_Update);
+	int e = Check_Privilege(pnode, acop_Update);
 	if(e != -1) e = Check_Request_Body();
 	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
-	if(e != -1) e = Check_Resource_Type_Euqal(ty, pnode->ty);
+	if(e != -1) e = Check_Resource_Type_Equal(ty, pnode->ty);
 
 	if(e == -1) return;
 	
@@ -631,6 +613,30 @@ int Check_Resource_Type_Equal(ObjectType ty1, ObjectType ty2) {
 		fprintf(stderr,"Update resource type error\n");
 		HTTP_400;
 		printf("{\"m2m:dbg\": \"resource type error\"}");
+		return -1;
+	}
+	return 0;
+}
+
+int Result_Parse_URI(Node *node, Operation op) {
+	if(!node) {
+		if(op != o_CIN_RI) { 
+			fprintf(stderr,"Invalid\n");
+			HTTP_404;
+			printf("{\"m2m:dbg\": \"URI is invalid\"}");
+		}
+		return -1;
+	} else {
+		fprintf(stderr,"OK\n");
+		return 0;
+	} 
+}
+
+int Check_Payload_Size() {
+	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
+		fprintf(stderr,"Request payload too large\n");
+		HTTP_413;
+		printf("{\"m2m:dbg\": \"payload is too large\"}");
 		return -1;
 	}
 	return 0;

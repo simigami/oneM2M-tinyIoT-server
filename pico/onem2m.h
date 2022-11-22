@@ -301,7 +301,9 @@ void JSON_Parse_Error();
 int Check_Privilege(Node *node, ACOP acop);
 int Check_Request_Body();
 int Check_Resource_Name_Duplicate(Node *node);
-int Check_Resource_Type_Euqal(ObjectType type);
+int Check_Resource_Type_Equal(ObjectType ty1, ObjectType ty2);
+int Result_Parse_URI(Node *node, Operation op);
+int Check_Payload_Size();
 
 //etc
 void init();
