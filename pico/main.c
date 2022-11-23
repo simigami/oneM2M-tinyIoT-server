@@ -18,7 +18,6 @@
 ResourceTree *rt;
 
 int main(int c, char **v) {
-	DB_display("ACP.db");
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 
@@ -42,7 +41,7 @@ void route() {
 	if(e == -1) return;
 
 	if(op == o_NONE) op = Parse_Operation(); // parse operation by HTTP method
-	
+
 	switch(op) {
 	
 	case o_CREATE:	
@@ -59,6 +58,9 @@ void route() {
 
 	case o_VIEWER:
 		Tree_Viewer_API(pnode); break;
+	
+	case o_LA:
+		//Retrieve_CIN_La(pnode); break;
 	
 	case o_OPTIONS:
 		HTTP_200_JSON;
@@ -103,7 +105,7 @@ void Create_Object(Node *pnode) {
 	switch(ty) {
 
 	case t_CSE :
-		/*No Definition such request*/
+		/*no such case*/
 		break;
 		
 	case t_AE :
@@ -143,6 +145,14 @@ void Retrieve_Object(Node *pnode) {
 
 	if(e == -1) return;
 
+	int fu = get_value_querystring_int("fu");
+
+	if(fu == 1) {
+		fprintf(stderr,"\x1b[43mRetrieve FilterCriteria\x1b[0m\n");
+		//Retrieve_Object_FilterCriteria(pnode);
+		return;
+	}
+
 	switch(pnode->ty) {
 		
 	case t_CSE :
@@ -169,8 +179,7 @@ void Retrieve_Object(Node *pnode) {
 		break;
 			
 	case t_CIN :
-		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
-		Retrieve_CIN(pnode);
+		/*no such case*/
 		break;
 
 	case t_Sub :
@@ -190,7 +199,7 @@ void Update_Object(Node *pnode) {
 
 	int e = Check_Privilege(pnode, acop_Update);
 	if(e != -1) e = Check_Request_Body();
-	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
+	if(e != -1) e = Check_Resource_Name_Duplicate(pnode->parent);
 	if(e != -1) e = Check_Resource_Type_Equal(ty, pnode->ty);
 
 	if(e == -1) return;
@@ -267,7 +276,6 @@ void Create_CNT(Node *pnode) {
 	
 	Node* node = Create_Node(cnt, t_CNT);
 	Add_child(pnode,node);
-	
 
 	char *res_json = CNT_to_json(cnt);
 	HTTP_201_JSON;
@@ -599,7 +607,7 @@ int Check_Request_Body() {
 }
 
 int Check_Resource_Name_Duplicate(Node *node) {
-	if(duplicate_resource_check(node->parent)) {
+	if(duplicate_resource_check(node)) {
 		HTTP_209_JSON;
 		fprintf(stderr,"Resource name duplicate error\n");
 		printf("{\"m2m:dbg\": \"rn is duplicated\"}");

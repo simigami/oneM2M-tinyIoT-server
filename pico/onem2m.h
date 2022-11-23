@@ -165,6 +165,7 @@ void Remove_Specific_Asterisk_Payload();
 //oneM2M Resource
 void Create_Object(Node* pnode);
 void Retrieve_Object(Node *pnode);
+void Retrieve_Object_FilterCriteria(Node *pnode);
 void Update_Object(Node *pnode);
 void Delete_Object(Node *pnode);
 void Notify_Object(Node *node, char *resjson, Net net);
@@ -178,7 +179,7 @@ void Create_ACP(Node *pnode);
 void Retrieve_CSE(Node *pnode);
 void Retrieve_AE(Node *pnode);
 void Retrieve_CNT(Node *pnode);
-void Retrieve_CIN(Node *pnode);
+void Retrieve_CIN_La(Node *pnode);
 void Retrieve_CIN_Ri(char *ri);
 void Retrieve_Sub(Node *pnode);
 void Retrieve_ACP(Node *pnode);
@@ -315,6 +316,8 @@ char* JSON_label_value(char *json_payload);
 int net_to_bit(char *net);
 int get_acop(Node *node);
 int get_acop_origin(char *origin, Node *acp, int flag);
+int get_value_querystring_int(char *key);
+void set_node_uri(Node* node);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define MAX_PROPERTY_SIZE 32768

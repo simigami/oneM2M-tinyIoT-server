@@ -1219,3 +1219,32 @@ Node *Find_Node_by_URI(Node *cse, char *node_uri) {
 
 	return node;
 }
+
+int get_value_querystring_int(char *key) {
+	char *value = strstr(qs, key);
+	if(!value) return -1;
+
+	value = value + strlen(key) + 1;
+
+	return atoi(value);
+}
+
+void set_node_uri(Node* node) {
+	if(!node->uri) node->uri = (char*)calloc(MAX_URI_SIZE,sizeof(char));
+
+	Node *p = node;
+	char uri_copy[16][MAX_URI_SIZE];
+	int index = -1;
+
+	while(p) {
+		strcpy(uri_copy[++index],p->rn);
+		p = p->parent;
+	}
+
+	for(int i=index; i>=0; i--) {
+		strcat(node->uri,"/");
+		strcat(node->uri,uri_copy[i]);
+	}
+
+	return;
+}
