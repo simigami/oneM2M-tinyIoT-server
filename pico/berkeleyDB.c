@@ -965,7 +965,7 @@ CNT* DB_Get_CNT(char* ri) {
 }
 
 CIN* DB_Get_CIN(char* ri) {
-    fprintf(stderr,"[Get CIN] %s...", ri);
+    //fprintf(stderr,"[Get CIN] %s...", ri);
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -1089,7 +1089,7 @@ CIN* DB_Get_CIN(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-    fprintf(stderr,"OK\n");
+    //fprintf(stderr,"OK\n");
     return new_cin;
 }
 
@@ -2025,10 +2025,10 @@ Node* DB_Get_CIN_Pi(char* pi) {
             free(cin);
         }
     }
-    fprintf(stderr, "<%d>\n",cnt);
+    //fprintf(stderr, "<%d>\n",cnt);
 
     if (cnt == 0) {
-        fprintf(stderr, "Data not exist\n");
+        //fprintf(stderr, "Data not exist\n");
         return NULL;
     }
     Node* head = calloc(cnt,sizeof(Node));

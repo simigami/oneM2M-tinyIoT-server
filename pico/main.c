@@ -675,8 +675,9 @@ void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **res_json) {
 		node = node->siblingRight;
 	}
 
-	if(ty != -1 || ty == t_CIN) {
+	if(ty == -1 || ty == t_CIN) {
 		for(int i= index; i>=0; i--) {
+			fprintf(stderr,"%s\n",sibling[i]->ri);
 			Node *cin_list = DB_Get_CIN_Pi(sibling[i]->ri);
 			Node *p = cin_list;
 
