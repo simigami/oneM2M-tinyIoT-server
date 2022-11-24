@@ -961,10 +961,6 @@ CNT* DB_Get_CNT(char* ri) {
         dbp->close(dbp, 0);
     fprintf(stderr,"OK\n");
 
-    if(!strcmp(new_cnt->acpi, "0")) {
-        free(new_cnt->acpi); new_cnt->acpi = NULL;
-    }
-
     return new_cnt;
 }
 
@@ -1741,20 +1737,24 @@ Node* DB_Get_All_CNT() {
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0){
-            CNT* CNT = DB_Get_CNT((char*)key.data);
-            node->ri = calloc(strlen(CNT->ri)+1,sizeof(char));
-            node->rn = calloc(strlen(CNT->rn)+1,sizeof(char));
-            node->pi = calloc(strlen(CNT->pi)+1,sizeof(char));
+            CNT* cnt_ = DB_Get_CNT((char*)key.data);
+            node->ri = malloc((strlen(cnt_->ri)+1)*sizeof(char));
+            node->rn = malloc((strlen(cnt_->rn)+1)*sizeof(char));
+            node->pi = malloc((strlen(cnt_->pi)+1)*sizeof(char));
+            if(cnt_->acpi) {
+                node->acpi = malloc((strlen(cnt_->acpi) + 1)*sizeof(char));
+                strcpy(node->acpi, cnt_->acpi);
+            }
 
-            strcpy(node->ri,CNT->ri);
-            strcpy(node->rn,CNT->rn);
-            strcpy(node->pi,CNT->pi);
-            node->ty = CNT->ty;
+            strcpy(node->ri,cnt_->ri);
+            strcpy(node->rn,cnt_->rn);
+            strcpy(node->pi,cnt_->pi);
+            node->ty = cnt_->ty;
 
             node->siblingRight=calloc(1,sizeof(Node));            
             node->siblingRight->siblingLeft = node;
             node = node->siblingRight;
-            free(CNT);
+            free(cnt_);
         }
     }
     if (ret != DB_NOTFOUND) {
@@ -1957,8 +1957,6 @@ Node* DB_Get_All_ACP() {
                 strcpy(node->pvs_acor,acp->pvs_acor);
                 strcpy(node->pvs_acop,acp->pvs_acop);
             }
-
-
 
             strcpy(node->ri,acp->ri);
             strcpy(node->rn,acp->rn);

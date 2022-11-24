@@ -265,14 +265,15 @@ void Remove_Specific_Asterisk_Payload() {
 }
 
 ObjectType Parse_ObjectType() {
-	ObjectType ty;
 	char *ct = request_header("Content-Type");
 	if(!ct) return 0;
-	ct = strstr(ct, "ty=");
-	if(!ct) return 0;
-	int objType = atoi(ct+3);
+	char *qs_ty = strstr(ct, "ty=");
+	if(!qs_ty) return 0;
+	int obj_ty = atoi(qs_ty+3);
+
+	ObjectType ty;
 	
-	switch(objType) {
+	switch(obj_ty) {
 	case 1 : ty = t_ACP; break;
 	case 2 : ty = t_AE; break;
 	case 3 : ty = t_CNT; break;
@@ -287,17 +288,19 @@ ObjectType Parse_ObjectType() {
 ObjectType Parse_ObjectType_Body() {
 	ObjectType ty;
 	
-	char *cse, *ae, *cnt, *sub, *acp;
+	char *cse, *ae, *cnt, *cin, *sub, *acp;
 	
 	cse = strstr(payload, "m2m:cse");
 	ae = strstr(payload, "m2m:ae");
 	cnt = strstr(payload, "m2m:cnt");
+	cin = strstr(payload, "m2m:cin");
 	sub = strstr(payload, "m2m:sub");
 	acp = strstr(payload, "m2m:acp");
 	
 	if(cse) ty = t_CSE;
 	else if(ae) ty = t_AE;
 	else if(cnt) ty = t_CNT;
+	else if(cin) ty = t_CIN;
 	else if(sub) ty = t_Sub;
 	else if(acp) ty = t_ACP;
 	
@@ -541,6 +544,7 @@ void Free_Node(Node *node) {
 	if(node->pv_acor) free(node->pv_acor);
 	if(node->pvs_acor) free(node->pvs_acor);
 	if(node->pvs_acop) free(node->pvs_acop);
+	if(node->uri) free(node->uri);
 	free(node); node = NULL;
 }
 

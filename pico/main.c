@@ -98,6 +98,7 @@ void Create_Object(Node *pnode) {
 	int e = Check_Privilege(pnode, acop_Create);
 	if(e != -1) e = Check_Request_Body();
 	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
+	fprintf(stderr,"%d %d\n",ty, Parse_ObjectType_Body());
 	if(e != -1) e = Check_Resource_Type_Equal(ty, Parse_ObjectType_Body());
 
 	if(e == -1) return;
@@ -149,7 +150,7 @@ void Retrieve_Object(Node *pnode) {
 
 	if(fu == 1) {
 		fprintf(stderr,"\x1b[43mRetrieve FilterCriteria\x1b[0m\n");
-		//Retrieve_Object_FilterCriteria(pnode);
+		Retrieve_Object_FilterCriteria(pnode);
 		return;
 	}
 
@@ -618,7 +619,7 @@ int Check_Resource_Name_Duplicate(Node *node) {
 
 int Check_Resource_Type_Equal(ObjectType ty1, ObjectType ty2) {	
 	if(ty1 != ty2) {
-		fprintf(stderr,"Update resource type error\n");
+		fprintf(stderr,"Resource type error\n");
 		HTTP_400;
 		printf("{\"m2m:dbg\": \"resource type error\"}");
 		return -1;
@@ -648,4 +649,67 @@ int Check_Payload_Size() {
 		return -1;
 	}
 	return 0;
+}
+
+void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **res_json) {
+	if(!node) return;
+
+	Node *child[1024];
+	Node *sibling[1024];
+	int index = -1;
+
+	while(node) {
+		if(!node->uri) set_node_uri(node);
+
+		if(ty != -1) {
+			if(node->ty == ty) {
+				strcat(*res_json, node->uri);
+				strcat(*res_json, "\n");
+			}
+		} else {
+			strcat(*res_json, node->uri);
+			strcat(*res_json, ",\n");
+		}
+		child[++index] = node->child;
+		sibling[index] = node;
+		node = node->siblingRight;
+	}
+
+	if(ty != -1 || ty == t_CIN) {
+		for(int i= index; i>=0; i--) {
+			Node *cin_list = DB_Get_CIN_Pi(sibling[i]->ri);
+			Node *p = cin_list;
+
+			while(p) {
+				strcat(*res_json, sibling[i]->uri);
+				strcat(*res_json, "/");
+				strcat(*res_json, p->ri);
+				strcat(*res_json, ",\n");
+				p = p->siblingRight;
+			}
+
+			while(cin_list) {
+				Node *right = cin_list->siblingRight;
+
+				Free_Node(cin_list);
+				cin_list = right;
+			}
+		}
+	}
+
+	for(int i = index; i>=0; i--) {
+		Retrieve_FilterCriteria_Data(child[i], ty, res_json);
+	} 
+}
+
+void Retrieve_Object_FilterCriteria(Node *pnode) {
+	char *res_json = (char*)calloc(MAX_PAYLOAD_SIZE,sizeof(char));
+	ObjectType ty = get_value_querystring_int("ty");
+
+	Retrieve_FilterCriteria_Data(pnode->child, ty, &res_json);
+
+	HTTP_200_JSON;
+	printf("%s",res_json);
+
+	return;
 }
