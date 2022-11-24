@@ -452,6 +452,12 @@ void Update_CNT(Node *pnode) {
 	free(pnode->rn);
 	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
 	strcpy(pnode->rn, after->rn);
+
+	if(pnode->acpi) {
+		free(pnode->acpi);
+		pnode->acpi = (char *)malloc((strlen(after->acpi) + 1) * sizeof(char));
+		strcpy(pnode->acpi, after->acpi);
+	}
 	
 	char *res_json = CNT_to_json(after);
 	HTTP_200_JSON;
@@ -589,9 +595,9 @@ void JSON_Parse_Error(){
 
 int Check_Privilege(Node *node, ACOP acop) {
 	if((get_acop(node) & acop) != acop) {
-		fprintf(stderr,"Originator has no privilege\n");
+		fprintf(stderr,"Origin has no privilege\n");
 		HTTP_403;
-		printf("{\"m2m:dbg\": \"originator has no privilege\"}");
+		printf("{\"m2m:dbg\": \"access denied\"}");
 		return -1;
 	}
 	return 0;
