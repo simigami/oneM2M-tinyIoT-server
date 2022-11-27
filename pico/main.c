@@ -683,7 +683,7 @@ void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **discovery_li
 		node = node->siblingRight;
 	}
 
-	if(ty == -1 || ty == t_CIN) {
+	if((ty == -1 || ty == t_CIN) && curr < level) {
 		for(int i= 0; i <= index; i++) {
 			Node *cin_list_head = DB_Get_CIN_Pi(sibling[i]->ri);
 			Node *p = cin_list_head;
