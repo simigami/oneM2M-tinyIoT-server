@@ -260,8 +260,9 @@ Node* Create_ACP_Node(ACP *acp);
 int Add_child(Node *parent, Node *child);
 char* Node_to_json(Node *node);
 Node *Find_Node_by_URI(Node *cse, char *node_uri);
-void Delete_Node_and_Data(Node *node, int flag);
+void Delete_Node_and_DB_Data(Node *node, int flag);
 void Free_Node(Node *node);
+void Free_Node_List(Node *node);
 
 void Tree_Viewer_API(Node *node);
 void Tree_data(Node *node, char **viewer_data, int cin_size);
@@ -284,6 +285,7 @@ char* CIN_to_json(CIN* cin_object);
 char* Sub_to_json(Sub *sub_object);
 char* Noti_to_json(char *sur, int net, char *rep);
 char* ACP_to_json(ACP *acp_object);
+char* Discovery_to_json(char **result, int size);
 
 char* Get_JSON_Value_char(char *key, char *json);
 int Get_JSON_Value_int(char *key, char *json);

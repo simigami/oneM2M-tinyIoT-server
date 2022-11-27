@@ -507,7 +507,7 @@ void Update_ACP(Node *pnode) {
 
 void Delete_Object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
-	Delete_Node_and_Data(pnode,1);
+	Delete_Node_and_DB_Data(pnode,1);
 	pnode = NULL;
 	HTTP_200_JSON;
 	printf("{\"m2m:dbg\": \"resource is deleted successfully\"}");
@@ -657,11 +657,12 @@ int Check_Payload_Size() {
 	return 0;
 }
 
-void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **res_json) {
-	if(!node) return;
+void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **discovery_list, int *size, int level, int curr) {
+	if(!node || curr > level) return;
 
 	Node *child[1024];
 	Node *sibling[1024];
+	char node_uri[1024][MAX_URI_SIZE];
 	int index = -1;
 
 	while(node) {
@@ -669,53 +670,56 @@ void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **res_json) {
 
 		if(ty != -1) {
 			if(node->ty == ty) {
-				strcat(*res_json, node->uri);
-				strcat(*res_json, "\n");
+				discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
+				strcpy(discovery_list[(*size)++], node->uri);
 			}
 		} else {
-			strcat(*res_json, node->uri);
-			strcat(*res_json, ",\n");
+			discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
+			strcpy(discovery_list[(*size)++], node->uri);
 		}
 		child[++index] = node->child;
 		sibling[index] = node;
+		strcpy(node_uri[index], node->uri);
 		node = node->siblingRight;
 	}
 
 	if(ty == -1 || ty == t_CIN) {
-		for(int i= index; i>=0; i--) {
-			Node *cin_list = DB_Get_CIN_Pi(sibling[i]->ri);
-			Node *p = cin_list;
+		for(int i= 0; i <= index; i++) {
+			Node *cin_list_head = DB_Get_CIN_Pi(sibling[i]->ri);
+			Node *p = cin_list_head;
 
 			while(p) {
-				strcat(*res_json, sibling[i]->uri);
-				strcat(*res_json, "/");
-				strcat(*res_json, p->ri);
-				strcat(*res_json, ",\n");
+				discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
+				strcpy(discovery_list[*size], node_uri[i]);
+				strcat(discovery_list[*size], "/");
+				strcat(discovery_list[*size], p->ri);
+				(*size)++;
 				p = p->siblingRight;
 			}
 
-			while(cin_list) {
-				Node *right = cin_list->siblingRight;
-
-				Free_Node(cin_list);
-				cin_list = right;
-			}
+			Free_Node_List(cin_list_head);
 		}
 	}
 
-	for(int i = index; i>=0; i--) {
-		Retrieve_FilterCriteria_Data(child[i], ty, res_json);
+	for(int i = 0; i<=index; i++) {
+		Retrieve_FilterCriteria_Data(child[i], ty, discovery_list, size, level, curr+1);
 	} 
 }
 
 void Retrieve_Object_FilterCriteria(Node *pnode) {
-	char *res_json = (char*)calloc(MAX_PAYLOAD_SIZE,sizeof(char));
+	char **discovery_list = (char**)malloc(4096*sizeof(char*));
+	int size = 0;
 	ObjectType ty = get_value_querystring_int("ty");
+	int level = get_value_querystring_int("lvl");
+	if(level == -1) level = 987654321;
 
-	Retrieve_FilterCriteria_Data(pnode->child, ty, &res_json);
+	Retrieve_FilterCriteria_Data(pnode->child, ty, discovery_list, &size, level, 1);
+
+	char *res_json = Discovery_to_json(discovery_list, size);
 
 	HTTP_200_JSON;
 	printf("%s",res_json);
+	free(res_json); res_json = NULL;
 
 	return;
 }

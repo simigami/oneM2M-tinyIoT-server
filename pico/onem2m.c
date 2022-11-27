@@ -210,21 +210,20 @@ void Tree_data(Node *node, char **viewer_data, int cin_size) {
 	}
 
 	if(node->ty != t_Sub && node->ty != t_ACP) {
-		Node *cin_list = DB_Get_CIN_Pi(node->ri);
+		Node *cin_list_head = DB_Get_CIN_Pi(node->ri);
 
-		if(cin_list) cin_list = Latest_CINs(cin_list, cin_size);
+		if(cin_list_head) cin_list_head = Latest_CINs(cin_list_head, cin_size);
 
-		Node *p = cin_list;
+		Node *p = cin_list_head;
 
 		while(p) {
 			json = Node_to_json(p);
 			strcat(*viewer_data, ",");
 			strcat(*viewer_data, json);
 			free(json); json = NULL;
-			p = p->siblingRight;
-			Free_Node(cin_list);
-			cin_list = p;			
+			p = p->siblingRight;		
 		}
+		Free_Node_List(cin_list_head);
 	}
 }
 
@@ -495,7 +494,7 @@ int Add_child(Node *parent, Node *child) {
 	return 1;
 }
 
-void Delete_Node_and_Data(Node *node, int flag) {
+void Delete_Node_and_DB_Data(Node *node, int flag) {
 	switch(node->ty) {
 	case t_AE : 
 		DB_Delete_Object(node->ri); 
@@ -523,10 +522,10 @@ void Delete_Node_and_Data(Node *node, int flag) {
 		else node->parent->child = right;
 		if(right) right->siblingLeft = left;
 	} else {
-		if(right) Delete_Node_and_Data(right, 0);
+		if(right) Delete_Node_and_DB_Data(right, 0);
 	}
 	
-	if(node->child) Delete_Node_and_Data(node->child, 0);
+	if(node->child) Delete_Node_and_DB_Data(node->child, 0);
 	
 	fprintf(stderr,"[Free_Node] %s...",node->rn);
 	Free_Node(node); node = NULL;
@@ -546,6 +545,15 @@ void Free_Node(Node *node) {
 	if(node->pvs_acop) free(node->pvs_acop);
 	if(node->uri) free(node->uri);
 	free(node); node = NULL;
+}
+
+void Free_Node_List(Node *node) {
+	while(node) {
+		Node *right = node->siblingRight;
+
+		Free_Node(node);
+		node = right;
+	}
 }
 
 char *Get_LocalTime(int diff) {

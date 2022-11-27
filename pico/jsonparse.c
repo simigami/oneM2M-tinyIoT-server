@@ -226,7 +226,6 @@ Sub* JSON_to_Sub(char *json_payload) {
 		strcpy(sub->nu, nu_str);
 	}
 
-
 end:
 	cJSON_Delete(json);
 
@@ -521,7 +520,6 @@ char* Sub_to_json(Sub *sub_object) {
 		cJSON_AddItemToObject(sub, "nu", nu);
 	}
 
-
 	// net
 	cJSON_AddItemToObject(sub, "enc", enc = cJSON_CreateObject());
 
@@ -635,7 +633,6 @@ char* ACP_to_json(ACP *acp_object) {
 		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
 	}
 
-
 	// pvs
 	cJSON_AddItemToObject(acp, "pvs", pvs = cJSON_CreateObject());
 
@@ -676,7 +673,30 @@ char* ACP_to_json(ACP *acp_object) {
 		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
 	}
 
-	
+	json = cJSON_Print(root);
+
+	cJSON_Delete(root);
+
+	return json;
+}
+
+char* Discovery_to_json(char **result, int size) {
+	char *json = NULL;
+
+	cJSON *root = NULL;
+	cJSON *uril = NULL;
+
+	/* Our "cnt" item: */
+	root = cJSON_CreateObject();
+
+	// uril
+	uril = cJSON_CreateArray();
+
+	for(int i=0; i<size; i++) {
+		cJSON_AddItemToArray(uril, cJSON_CreateString(result[i]));
+	}
+	cJSON_AddItemToObject(root, "m2m:uril", uril);
+
 	json = cJSON_Print(root);
 
 	cJSON_Delete(root);
@@ -704,7 +724,6 @@ char* JSON_label_value(char *json_payload) {
 	//Extracting resources from json_payload
 	resource = strstr(json_payload, "m2m:");
 	resource = strtok(resource, "\"");
-
 
 	root = cJSON_GetObjectItem(json, resource);
 
