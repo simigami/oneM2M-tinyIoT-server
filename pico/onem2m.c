@@ -8,6 +8,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <malloc.h>
+#include <sys/timeb.h>
 
 int Validate_oneM2M_Standard() {
 	int ret = 1;
@@ -806,6 +807,9 @@ void Set_AE_Update(AE* after) {
 		case 1: after->rr = true; break;
 		default: break;
 	}
+
+	if(after->lt) free(after->lt);
+	after->lt = Get_LocalTime(0);
 }
 
 
@@ -827,6 +831,9 @@ void Set_CNT_Update(CNT* after) {
 		after->acpi = (char*)malloc((strlen(acpi) + 1) * sizeof(char)); 
 		strcpy(after->acpi, acpi);
 	}
+
+	if(after->lt) free(after->lt);
+	after->lt = Get_LocalTime(0);
 }
 
 void Set_Sub_Update(Sub* after) {
@@ -866,6 +873,9 @@ void Set_Sub_Update(Sub* after) {
 		after->net = (char*)malloc((strlen(net) + 1) * sizeof(char));
 		strcpy(after->net, net);
 	}
+
+	if(after->lt) free(after->lt);
+	after->lt = Get_LocalTime(0);
 }
 
 void Set_ACP_Update(ACP* after) {
@@ -924,6 +934,9 @@ void Set_ACP_Update(ACP* after) {
 		strcpy(after->pvs_acor, pvs_acor);
 		strcpy(after->pvs_acop, pvs_acop);
 	}
+
+	if(after->lt) free(after->lt);
+	after->lt = Get_LocalTime(0);
 }
 
 void Free_CSE(CSE *cse) {
@@ -1049,19 +1062,17 @@ char *resource_identifier(ObjectType ty, char *ct) {
 		case t_ACP : strcpy(ri, "1-"); break;
 	}
 
-	strcat(ri, ct);
+	struct timespec specific_time;
+    int millsec;
 
-	srand(time(NULL));
+	char buf[32] = "\0";
 
-	int r = 1000 + rand()%9000;
+    clock_gettime(CLOCK_REALTIME, &specific_time);
+    millsec = floor(specific_time.tv_nsec/1.0e6);
 
-	char ran[5] = "\0\0\0\0\0";
-	for(int i=0; i<4; i++) {
-		ran[i] = r % 10 + '0';
-		r /= 10;
-	}
+	sprintf(buf, "%s%03d",ct, millsec);
 
-	strcat(ri, ran);
+	strcat(ri, buf);
 
 	return ri;
 }

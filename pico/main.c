@@ -98,7 +98,6 @@ void Create_Object(Node *pnode) {
 	int e = Check_Privilege(pnode, acop_Create);
 	if(e != -1) e = Check_Request_Body();
 	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
-	fprintf(stderr,"%d %d\n",ty, Parse_ObjectType_Body());
 	if(e != -1) e = Check_Resource_Type_Equal(ty, Parse_ObjectType_Body());
 
 	if(e == -1) return;
