@@ -10,21 +10,6 @@
 #include <malloc.h>
 #include <sys/timeb.h>
 
-int Validate_oneM2M_Standard() {
-	int ret = 1;
-
-	if(!request_header("X-M2M-RI")) {
-		fprintf(stderr,"Request has no \"X-M2M-RI\" Header\n");
-		ret = 0;
-	} 
-	if(!request_header("X-M2M-Origin")) {
-		fprintf(stderr,"Request has no \"X-M2M-Origin\" Header\n");
-		ret = 0;		
-	}
-	
-	return ret;
-}
-
 Node* Parse_URI(Node *cb, char *uri, Operation *op) {
 	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri);
 	char uri_array[MAX_URI_SIZE];
@@ -47,7 +32,6 @@ Node* Parse_URI(Node *cb, char *uri, Operation *op) {
 			strcpy(uri_strtok[index_end++], uri_parse);
 		}
 	}
-
 	index_end--;
 
 	if(!strcmp(uri_strtok[0], "viewer")) {
@@ -56,18 +40,21 @@ Node* Parse_URI(Node *cb, char *uri, Operation *op) {
 		*op = o_LA; index_end--;
 	} else if(!strcmp(uri_strtok[index_end], "ol") || !strcmp(uri_strtok[index_end], "oldest")) {
 		*op = o_OL; index_end--;
-	} else if(strstr(uri_strtok[index_end], "4-20")) {
-		*op = o_CIN_RI; Retrieve_CIN_Ri(uri_strtok[index_end]); return NULL;
 	}
 
-	strcpy(uri_array,"/\0");
-
+	uri_array = "\0";
 	for(int i=index_s; i<=index_end; i++) {
-		strcat(uri_array,uri_strtok[i]);
-		strcat(uri_array,"/");
+		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
 	}
 
-	return Find_Node_by_URI(cb, uri_array);
+	Node* node = Find_Node_by_uri(uri_array);
+	if(node) return node;
+
+	for(int i=index_s; i<index_end; i++) {
+		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
+	}
+	node = Find_Node_by_URI(uri_array);
+	node = DB_Get_CIN_Pi(node->ri);
 }
 
 Operation Parse_Operation(){
@@ -1270,4 +1257,14 @@ void set_node_uri(Node* node) {
 	}
 
 	return;
+}
+
+int check_origin() {
+	if(request_header("X-M2M-Origin")) {
+		return 1;
+	} else {
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"DB store fail\"}");
+		return 0;
+	}
 }

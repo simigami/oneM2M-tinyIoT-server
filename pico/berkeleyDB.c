@@ -1699,6 +1699,7 @@ Node* DB_Get_All_AE() {
     fprintf(stderr,"\n");
     return head;
 }
+
 Node* DB_Get_All_CNT() {
     fprintf(stderr,"\x1b[92m[Get All CNT]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
@@ -2079,4 +2080,4 @@ Node* DB_Get_CIN_Pi(char* pi) {
         dbp->close(dbp, 0); 
 
     return head;
-}
+}d
