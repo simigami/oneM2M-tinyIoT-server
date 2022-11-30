@@ -15,8 +15,7 @@ typedef enum {
 	o_VIEWER,
 	o_TEST,
 	o_LA,
-	o_OL,
-	o_CIN_RI
+	o_OL
 }Operation;
 
 typedef enum {
@@ -179,6 +178,7 @@ void Create_ACP(Node *pnode);
 void Retrieve_CSE(Node *pnode);
 void Retrieve_AE(Node *pnode);
 void Retrieve_CNT(Node *pnode);
+void Retrieve_CIN(Node *pnode);
 void Retrieve_CIN_La(Node *pnode);
 void Retrieve_CIN_Ri(char *ri);
 void Retrieve_Sub(Node *pnode);
@@ -269,6 +269,7 @@ void Tree_data(Node *node, char **viewer_data, int cin_size);
 void Restruct_ResourceTree();
 Node* Restruct_childs(Node *node, Node *list);
 Node* Latest_CINs(Node *cinList, int num); // use in viewer API
+Node *find_latest_oldest(Node* node, Operation *op);
 
 //JSON Parser
 CSE* JSON_to_CSE(char *json_payload);
@@ -299,13 +300,13 @@ struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 char* Send_HTTP_Packet(char *target, char *post_data);
 
-//Error
+//Exception
 void JSON_Parse_Error();
 int Check_Privilege(Node *node, ACOP acop);
 int Check_Request_Body();
 int Check_Resource_Name_Duplicate(Node *node);
 int Check_Resource_Type_Equal(ObjectType ty1, ObjectType ty2);
-int Result_Parse_URI(Node *node, Operation op);
+int Result_Parse_URI(Node *node);
 int Check_Payload_Size();
 
 //etc
@@ -322,7 +323,8 @@ int get_value_querystring_int(char *key);
 void set_node_uri(Node* node);
 
 #define MAX_TREE_VIEWER_SIZE 65536
-#define MAX_PROPERTY_SIZE 32768
+#define MAX_PROPERTY_SIZE 16384
 #define MAX_URI_SIZE 1024
 #define EXPIRE_TIME -3600*24*365*2
 #define ALL_ACOP acop_Create + acop_Retrieve + acop_Update + acop_Delete + acop_Notify + acop_Discovery
+#define MAX_PAYLOAD_SIZE 16384

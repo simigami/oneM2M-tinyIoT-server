@@ -17,44 +17,69 @@ Node* Parse_URI(Node *cb, char *uri, Operation *op) {
 	strcpy(uri_array, uri);
 
 	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
-	int index_s = 0, index_end = 0;
+	int index_start = 0, index_end = -1;
 
 	uri_parse = strtok(uri_array, "/");
-	if(uri_parse) {
-		strcpy(uri_strtok[index_end++], uri_parse);
-	} else {
-		return NULL;
-	}
 
 	while(uri_parse) {
+		strcpy(uri_strtok[++index_end], uri_parse);
 		uri_parse = strtok(NULL, "/");
-		if(uri_parse) {
-			strcpy(uri_strtok[index_end++], uri_parse);
-		}
 	}
-	index_end--;
 
-	if(!strcmp(uri_strtok[0], "viewer")) {
-		*op = o_VIEWER; index_s++;
-	} else if(!strcmp(uri_strtok[index_end], "la") || !strcmp(uri_strtok[index_end], "latest")) {
+	if(!strcmp(uri_strtok[0], "viewer")) index_start++;
+	if(!strcmp(uri_strtok[index_end], "la") || !strcmp(uri_strtok[index_end], "latest")) {
 		*op = o_LA; index_end--;
 	} else if(!strcmp(uri_strtok[index_end], "ol") || !strcmp(uri_strtok[index_end], "oldest")) {
 		*op = o_OL; index_end--;
 	}
 
-	uri_array = "\0";
-	for(int i=index_s; i<=index_end; i++) {
+	strcpy(uri_array, "\0");
+	for(int i=index_start; i<=index_end; i++) {
 		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
 	}
+	Node* node = Find_Node_by_URI(cb, uri_array);
+	
+	if(node && (*op == o_LA || *op == o_OL)) node = find_latest_oldest(node, op);
 
-	Node* node = Find_Node_by_uri(uri_array);
-	if(node) return node;
+	if(index_start == 1) *op = o_VIEWER;
 
-	for(int i=index_s; i<index_end; i++) {
-		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
+	return node;
+}
+
+Node *find_latest_oldest(Node* node, Operation *op) {
+	if(node->ty == t_CNT) {
+		Node *head = DB_Get_CIN_Pi(node->ri);
+		Node *cin = head;
+
+		if(cin) {
+			if(*op == o_OL) {
+				head = head->siblingRight;
+				cin->siblingRight = NULL;
+			} else {
+				while(cin->siblingRight) cin = cin->siblingRight;
+				if(cin->siblingLeft) cin->siblingLeft->siblingRight = NULL;
+				cin->siblingLeft = NULL;
+			}
+			if(head != cin) Free_Node_List(head);
+			*op = o_NONE;
+			if(cin) cin->parent = node;
+			return cin;
+		}
+	} else if(node->ty == t_AE){
+		node = node->child;
+		while(node) {
+			if(node->ty == t_CNT) break;
+			node = node->siblingRight;
+		}
+		if(node && *op == o_LA) {
+			while(node->siblingRight && node->siblingRight->ty == t_CNT) {
+				node = node->siblingRight;
+			}
+		}
+		*op = o_NONE;
+		return node;
 	}
-	node = Find_Node_by_URI(uri_array);
-	node = DB_Get_CIN_Pi(node->ri);
+	return NULL;
 }
 
 Operation Parse_Operation(){
@@ -804,7 +829,7 @@ void Set_CNT_Update(CNT* after) {
 	char *rn = Get_JSON_Value_char("rn", payload);
 	char *acpi = NULL;
 
-	if(strstr(payload, "acpi") != NULL) 
+	if(strstr(payload, "acpi") != NULL)
 		acpi = Get_JSON_Value_list("acpi", payload);
 
 	if(rn) {
@@ -1208,24 +1233,49 @@ int get_acop_origin(char *origin, Node *acp, int flag) {
 	return ret_acop;
 }
 
-Node *Find_Node_by_URI(Node *cse, char *node_uri) {
-	Node *node = cse;
-
+Node *Find_Node_by_URI(Node *cb, char *node_uri) {
+	Node *node = cb, *pnode = NULL;
 	node_uri = strtok(node_uri, "/");
 
 	if(!node_uri) return NULL;
 
-	while(node) {
+	char uri_array[64][MAX_URI_SIZE];
+	int index = -1;
+
+	while(node_uri) {
+		strcpy(uri_array[++index], node_uri);
+		node_uri = strtok(NULL, "/");
+	}
+
+	for(int i=0; i<=index; i++) {
 		while(node) {
-			if(!strcmp(node->rn, node_uri)) break;
+			if(!strcmp(node->rn, uri_array[i])) break;
 			node = node->siblingRight;
 		}
-		
-		node_uri = strtok(NULL, "/");
-		if(!node_uri) break;
-		
-		if(node) node = node->child;
+		if(i == index-1) pnode = node;
+		if(!node) break;
+		if(i != index) node = node->child;
 	}
+
+	if(node) return node;
+
+	Node *head;
+
+	if(pnode) {
+		head = DB_Get_CIN_Pi(pnode->ri);
+		node = head;
+		while(node) {
+			if(!strcmp(node->rn, uri_array[index])) break;
+			node = node->siblingRight;
+		}
+	}
+
+	if(node) {
+		if(node->siblingLeft) node->siblingLeft->siblingRight = node->siblingRight;
+		if(node->siblingRight) node->siblingRight->siblingLeft = node->siblingLeft;
+	}
+
+	if(head) Free_Node_List(head);
 
 	return node;
 }

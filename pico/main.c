@@ -13,7 +13,6 @@
 #define PUBLIC_DIR "./public"
 #define INDEX_HTML "/index.html"
 #define NOT_FOUND_HTML "/404.html"
-#define MAX_PAYLOAD_SIZE 16384
 
 ResourceTree *rt;
 
@@ -34,7 +33,7 @@ void route() {
 	Operation op = o_NONE;
 
 	Node* pnode = Parse_URI(rt->cb, uri, &op); // return tree node by URI
-	int e = Result_Parse_URI(pnode, op);
+	int e = Result_Parse_URI(pnode);
 
 	if(e != -1) e = Check_Payload_Size();
 
@@ -59,9 +58,6 @@ void route() {
 	case o_VIEWER:
 		Tree_Viewer_API(pnode); break;
 	
-	case o_LA:
-		//Retrieve_CIN_La(pnode); break;
-	
 	case o_OPTIONS:
 		HTTP_200_JSON;
 		printf("{\"m2m:dbg\": \"respond options method request\"}");
@@ -69,8 +65,9 @@ void route() {
 	
 	default:
 		HTTP_500;
-		printf("{\"m2m:dbg\": \"unexpected server error\"}");
+		printf("{\"m2m:dbg\": \"internal server error\"}");
 	}
+	if(pnode->ty == t_CIN) Free_Node(pnode);
 
 	end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
     fprintf(stderr,"Run time :%lf\n", (end-start)); 
@@ -179,7 +176,8 @@ void Retrieve_Object(Node *pnode) {
 		break;
 			
 	case t_CIN :
-		/*no such case*/
+		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
+		Retrieve_CIN(pnode);			
 		break;
 
 	case t_Sub :
@@ -233,6 +231,11 @@ void Update_Object(Node *pnode) {
 }
 
 void Create_AE(Node *pnode) {
+	if(pnode->ty != t_CSE) {
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"AE can only be created under CSE\"}");
+		return;
+	}
 	AE* ae = JSON_to_AE(payload);
 	if(!ae) {
 		JSON_Parse_Error();
@@ -259,6 +262,11 @@ void Create_AE(Node *pnode) {
 }
 
 void Create_CNT(Node *pnode) {
+	if(pnode->ty != t_CNT && pnode->ty != t_AE) {
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"container can only be created under AE, container\"}");
+		return;
+	}
 	CNT* cnt = JSON_to_CNT(payload);
 	if(!cnt) {
 		JSON_Parse_Error();
@@ -285,6 +293,11 @@ void Create_CNT(Node *pnode) {
 }
 
 void Create_CIN(Node *pnode) {
+	if(pnode->ty != t_CNT) {
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"contentinstance can only be created under container\"}");
+		return;
+	}
 	CIN* cin = JSON_to_CIN(payload);
 	if(!cin) {
 		JSON_Parse_Error();
@@ -311,6 +324,11 @@ void Create_CIN(Node *pnode) {
 }
 
 void Create_Sub(Node *pnode) {
+	if(pnode->ty == t_CIN) {
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"subscription can not be created under contentinstance\"}");
+		return;
+	}
 	Sub* sub = JSON_to_Sub(payload);
 	if(!sub) {
 		JSON_Parse_Error();
@@ -339,6 +357,11 @@ void Create_Sub(Node *pnode) {
 }
 
 void Create_ACP(Node *pnode) {
+	if(pnode->ty != t_CSE && pnode->ty != t_AE) {
+		HTTP_403;
+		printf("{\"m2m:dbg\": \"ACP can only be created under CSE, AE\"}");
+		return;
+	}
 	ACP* acp = JSON_to_ACP(payload);
 	if(!acp) {
 		JSON_Parse_Error();
@@ -593,6 +616,9 @@ void JSON_Parse_Error(){
 }
 
 int Check_Privilege(Node *node, ACOP acop) {
+	if(node->ty == t_CIN) node = node->parent;
+	if(node->ty != t_CNT) return 0;
+
 	if((get_acop(node) & acop) != acop) {
 		fprintf(stderr,"Origin has no privilege\n");
 		HTTP_403;
@@ -632,13 +658,11 @@ int Check_Resource_Type_Equal(ObjectType ty1, ObjectType ty2) {
 	return 0;
 }
 
-int Result_Parse_URI(Node *node, Operation op) {
+int Result_Parse_URI(Node *node) {
 	if(!node) {
-		if(op != o_CIN_RI) { 
-			fprintf(stderr,"Invalid\n");
-			HTTP_404;
-			printf("{\"m2m:dbg\": \"URI is invalid\"}");
-		}
+		fprintf(stderr,"Invalid\n");
+		HTTP_404;
+		printf("{\"m2m:dbg\": \"URI is invalid\"}");
 		return -1;
 	} else {
 		fprintf(stderr,"OK\n");
@@ -656,15 +680,20 @@ int Check_Payload_Size() {
 	return 0;
 }
 
-void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **discovery_list, int *size, int level, int curr) {
+void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **discovery_list, int *size, int level, int curr, int flag) {
 	if(!node || curr > level) return;
 
 	Node *child[1024];
 	Node *sibling[1024];
-	char node_uri[1024][MAX_URI_SIZE];
 	int index = -1;
 
-	while(node) {
+	if(flag == 1) {
+		if(!node->uri) set_node_uri(node);
+		child[++index] = node->child;
+		sibling[index] = node;
+	}
+
+	while(node && flag == 0) {
 		if(!node->uri) set_node_uri(node);
 
 		if(ty != -1) {
@@ -678,7 +707,6 @@ void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **discovery_li
 		}
 		child[++index] = node->child;
 		sibling[index] = node;
-		strcpy(node_uri[index], node->uri);
 		node = node->siblingRight;
 	}
 
@@ -689,7 +717,7 @@ void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **discovery_li
 
 			while(p) {
 				discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
-				strcpy(discovery_list[*size], node_uri[i]);
+				strcpy(discovery_list[*size], sibling[i]->uri);
 				strcat(discovery_list[*size], "/");
 				strcat(discovery_list[*size], p->ri);
 				(*size)++;
@@ -701,20 +729,22 @@ void Retrieve_FilterCriteria_Data(Node *node, ObjectType ty, char **discovery_li
 	}
 
 	for(int i = 0; i<=index; i++) {
-		Retrieve_FilterCriteria_Data(child[i], ty, discovery_list, size, level, curr+1);
+		Retrieve_FilterCriteria_Data(child[i], ty, discovery_list, size, level, curr+1, 0);
 	} 
 }
 
 void Retrieve_Object_FilterCriteria(Node *pnode) {
-	char **discovery_list = (char**)malloc(4096*sizeof(char*));
+	char **discovery_list = (char**)malloc(65536*sizeof(char*));
 	int size = 0;
 	ObjectType ty = get_value_querystring_int("ty");
 	int level = get_value_querystring_int("lvl");
 	if(level == -1) level = 987654321;
 
-	Retrieve_FilterCriteria_Data(pnode->child, ty, discovery_list, &size, level, 1);
+	Retrieve_FilterCriteria_Data(pnode, ty, discovery_list, &size, level, 0, 1);
 
 	char *res_json = Discovery_to_json(discovery_list, size);
+	for(int i=0; i<size; i++) free(discovery_list[i]);
+	free(discovery_list);
 
 	HTTP_200_JSON;
 	printf("%s",res_json);

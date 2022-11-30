@@ -748,7 +748,7 @@ char* Get_JSON_Value_char(char *key, char *json) {
 	strcat(tmp,"\"");
 	if(!strstr(json,tmp)) return NULL;
 
-	char json_copy[1024];
+	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
 	char *value = NULL;
 
@@ -791,7 +791,7 @@ int Get_JSON_Value_int(char *key, char *json) {
 	strcat(tmp,"\"");
 	if(!strstr(json,tmp)) return 0;
 
-	char json_copy[1024];
+	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
 	int value = 0;
 
@@ -833,7 +833,7 @@ int Get_JSON_Value_bool(char *key, char *json) {
 	strcat(tmp,"\"");
 	if(!strstr(json,tmp)) return -1;
 
-	char json_copy[1024];
+	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
 
 	cJSON *root = NULL;
@@ -876,7 +876,7 @@ end:
 
 char *Get_JSON_Value_list(char *key_str, char *json) {
 	char key_arr[16], *key;
-	char json_copy[1024];
+	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
 	char *value = NULL;
 

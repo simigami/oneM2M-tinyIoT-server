@@ -1002,7 +1002,7 @@ CIN* DB_Get_CIN(char* ri) {
                 case 0:
                 if(strcmp(ptr," ")==0) new_cin->rn=NULL; //data is NULL
                     else{
-                    new_cin->rn = calloc(strlen(ptr),sizeof(char));
+                    new_cin->rn = malloc(strlen(ptr)*sizeof(char));
                     strcpy(new_cin->rn, ptr);
                     }
                     idx++;
@@ -1010,7 +1010,7 @@ CIN* DB_Get_CIN(char* ri) {
                 case 1:
                 if(strcmp(ptr," ")==0) new_cin->pi=NULL; //data is NULL
                     else{
-                    new_cin->pi = calloc(strlen(ptr),sizeof(char));
+                    new_cin->pi = malloc(strlen(ptr)*sizeof(char));
                     strcpy(new_cin->pi, ptr);
                     }
                     idx++;
@@ -1025,13 +1025,13 @@ CIN* DB_Get_CIN(char* ri) {
                 case 3:
                 if(strcmp(ptr," ")==0) new_cin->ct=NULL; //data is NULL
                     else{
-                    new_cin->ct = calloc(strlen(ptr),sizeof(char));
+                    new_cin->ct = malloc(strlen(ptr)*sizeof(char));
                     strcpy(new_cin->ct, ptr);
                     }
                     idx++;
                     break;
                 case 4:
-                    new_cin->lt = calloc(strlen(ptr),sizeof(char));
+                    new_cin->lt = malloc(strlen(ptr)*sizeof(char));
                     strcpy(new_cin->lt, ptr);
 
                     idx++;
@@ -1039,7 +1039,7 @@ CIN* DB_Get_CIN(char* ri) {
                 case 5:
                 if(strcmp(ptr," ")==0) new_cin->et=NULL; //data is NULL
                     else{
-                    new_cin->et = calloc(strlen(ptr),sizeof(char));
+                    new_cin->et = malloc(strlen(ptr)*sizeof(char));
                     strcpy(new_cin->et, ptr);
                     }
                     idx++;
@@ -1047,7 +1047,7 @@ CIN* DB_Get_CIN(char* ri) {
                 case 6:
                 if(strcmp(ptr," ")==0) new_cin->con=NULL; //data is NULL
                     else{
-                    new_cin->con = calloc(strlen(ptr),sizeof(char));
+                    new_cin->con = malloc(strlen(ptr)*sizeof(char));
                     strcpy(new_cin->con, ptr);
                     }
                     idx++;
@@ -1098,7 +1098,7 @@ Sub* DB_Get_Sub(char* ri) {
     char* database = "SUB.db";
 
     //store AE
-    Sub* new_sub = (Sub*)malloc(sizeof(Sub));
+    Sub* new_sub = (Sub*)calloc(1, sizeof(Sub));
 
     DB* dbp;
     DBC* dbcp;
@@ -2032,7 +2032,7 @@ Node* DB_Get_CIN_Pi(char* pi) {
         //fprintf(stderr, "Data not exist\n");
         return NULL;
     }
-    Node* head = calloc(cnt,sizeof(Node));
+    Node* head = calloc(1,sizeof(Node));
     Node* node;
     node = head;
     
@@ -2042,9 +2042,9 @@ Node* DB_Get_CIN_Pi(char* pi) {
             CIN *cin = DB_Get_CIN((char*)key.data);
             //find pi
             if(strncmp(pi, cin->pi, strlen(pi)) == 0){
-                node->ri = calloc(strlen(cin->ri)+1,sizeof(char));
-                node->rn = calloc(strlen(cin->rn)+1,sizeof(char));
-                node->pi = calloc(strlen(cin->pi)+1,sizeof(char));
+                node->ri = malloc((strlen(cin->ri)+1)*sizeof(char));
+                node->rn = malloc((strlen(cin->rn)+1)*sizeof(char));
+                node->pi = malloc((strlen(cin->pi)+1)*sizeof(char));
 
                 strcpy(node->ri,cin->ri);
                 strcpy(node->rn,cin->rn);
@@ -2064,11 +2064,8 @@ Node* DB_Get_CIN_Pi(char* pi) {
         return NULL;
     }    
 
-    node->siblingLeft->siblingRight = NULL;
-    free(node);
-    free(node->rn);
-    free(node->pi);
-    free(node->ri);  
+    if(node->siblingLeft) node->siblingLeft->siblingRight = NULL;
+    Free_Node(node); 
     node = NULL;
 
     /* Cursors must be closed */
@@ -2080,4 +2077,4 @@ Node* DB_Get_CIN_Pi(char* pi) {
         dbp->close(dbp, 0); 
 
     return head;
-}d
+}
