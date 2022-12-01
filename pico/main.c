@@ -60,7 +60,7 @@ void route() {
 	
 	case o_OPTIONS:
 		HTTP_200_JSON;
-		printf("{\"m2m:dbg\": \"respond options method request\"}");
+		printf("{\"m2m:dbg\": \"response about options method\"}");
 		break;
 	
 	default:
@@ -94,6 +94,7 @@ void Create_Object(Node *pnode) {
 	
 	int e = Check_Privilege(pnode, acop_Create);
 	if(e != -1) e = Check_Request_Body();
+	if(e != -1) e = Check_JSON_Format();
 	if(e != -1) e = Check_Resource_Name_Duplicate(pnode);
 	if(e != -1) e = Check_Resource_Type_Equal(ty, Parse_ObjectType_Body());
 
@@ -197,6 +198,7 @@ void Update_Object(Node *pnode) {
 
 	int e = Check_Privilege(pnode, acop_Update);
 	if(e != -1) e = Check_Request_Body();
+	if(e != -1) e = Check_JSON_Format();
 	if(e != -1) e = Check_Resource_Name_Duplicate(pnode->parent);
 	if(e != -1) e = Check_Resource_Type_Equal(ty, pnode->ty);
 
@@ -238,7 +240,7 @@ void Create_AE(Node *pnode) {
 	}
 	AE* ae = JSON_to_AE(payload);
 	if(!ae) {
-		JSON_Parse_Error();
+		No_Mandatory_Error();
 		return;
 	}
 	Init_AE(ae,pnode->ri);
@@ -269,7 +271,7 @@ void Create_CNT(Node *pnode) {
 	}
 	CNT* cnt = JSON_to_CNT(payload);
 	if(!cnt) {
-		JSON_Parse_Error();
+		No_Mandatory_Error();
 		return;
 	}
 	Init_CNT(cnt,pnode->ri);
@@ -300,7 +302,7 @@ void Create_CIN(Node *pnode) {
 	}
 	CIN* cin = JSON_to_CIN(payload);
 	if(!cin) {
-		JSON_Parse_Error();
+		No_Mandatory_Error();
 		return;
 	}
 	Init_CIN(cin,pnode->ri);
@@ -331,7 +333,7 @@ void Create_Sub(Node *pnode) {
 	}
 	Sub* sub = JSON_to_Sub(payload);
 	if(!sub) {
-		JSON_Parse_Error();
+		No_Mandatory_Error();
 		return;
 	}
 	Init_Sub(sub, pnode->ri);
@@ -364,7 +366,7 @@ void Create_ACP(Node *pnode) {
 	}
 	ACP* acp = JSON_to_ACP(payload);
 	if(!acp) {
-		JSON_Parse_Error();
+		No_Mandatory_Error();
 		return;
 	}
 	Init_ACP(acp, pnode->ri);
@@ -615,9 +617,23 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 	return list;
 }
 
-void JSON_Parse_Error(){
-	fprintf(stderr,"Request JSON Invalid\n");
-	printf("{\"m2m:dbg\": \"request JSON invalid\"}");
+void No_Mandatory_Error(){
+	fprintf(stderr,"No Mandatory Property\n");
+	HTTP_400;
+	printf("{\"m2m:dbg\": \"insufficient mandatory attribute\"}");
+}
+
+int Check_JSON_Format() {
+	cJSON *json = cJSON_Parse(payload);
+	if(json == NULL) {
+		fprintf(stderr,"Body Format Invalid\n");
+		HTTP_400;
+		printf("{\"m2m:dbg\": \"body format invalid\"}");
+		cJSON_Delete(json);
+		return -1;
+	}
+	cJSON_Delete(json);
+	return 0;
 }
 
 int Check_Privilege(Node *node, ACOP acop) {
@@ -647,7 +663,7 @@ int Check_Resource_Name_Duplicate(Node *node) {
 	if(duplicate_resource_check(node)) {
 		HTTP_209_JSON;
 		fprintf(stderr,"Resource name duplicate error\n");
-		printf("{\"m2m:dbg\": \"rn is duplicated\"}");
+		printf("{\"m2m:dbg\": \"resource name is duplicated\"}");
 		return -1;
 	}
 	return 0;

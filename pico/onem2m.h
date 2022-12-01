@@ -159,7 +159,7 @@ Node* Parse_URI(Node *cb, char *uri_array, Operation *op);
 Operation Parse_Operation();
 ObjectType Parse_ObjectType();
 ObjectType Parse_ObjectType_Body();
-void Remove_Specific_Asterisk_Payload();
+void Normalization_Payload();
 
 //oneM2M Resource
 void Create_Object(Node* pnode);
@@ -301,13 +301,14 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 char* Send_HTTP_Packet(char *target, char *post_data);
 
 //Exception
-void JSON_Parse_Error();
+void No_Mandatory_Error();
 int Check_Privilege(Node *node, ACOP acop);
 int Check_Request_Body();
 int Check_Resource_Name_Duplicate(Node *node);
 int Check_Resource_Type_Equal(ObjectType ty1, ObjectType ty2);
 int Result_Parse_URI(Node *node);
 int Check_Payload_Size();
+int Check_JSON_Format();
 
 //etc
 void init();

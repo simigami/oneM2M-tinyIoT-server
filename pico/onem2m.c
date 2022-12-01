@@ -264,7 +264,7 @@ void Object_Test_API(Node *node) {
 	return;
 }
 
-void Remove_Specific_Asterisk_Payload() {
+void Normalization_Payload() {
 	int index = 0;
 
 	for(int i=0; i<payload_size; i++) {
@@ -626,7 +626,6 @@ void Init_AE(AE* ae, char *pi) {
 	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *aei = request_header("X-M2M-Origin"); 
 	char *ri = resource_identifier(t_AE, ct);
-	char tmp[MAX_PROPERTY_SIZE];
 	int m_aei = 0;
 
 	if(!aei) {
@@ -634,14 +633,11 @@ void Init_AE(AE* ae, char *pi) {
 		aei = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 		strcpy(aei, ri);
 	}
-	
-	strcpy(tmp,ae->api);
-	ae->api = (char*)malloc((strlen(ae->api) + 1) * sizeof(char));
-	strcpy(ae->api,tmp);
-	
-	strcpy(tmp,ae->rn);
-	ae->rn = (char*)malloc((strlen(ae->rn) + 1) * sizeof(char));
-	strcpy(ae->rn,tmp);
+
+	if(!ae->rn) {
+		ae->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(ae->rn, ri);
+	}
 	
 	ae->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	ae->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
@@ -649,7 +645,6 @@ void Init_AE(AE* ae, char *pi) {
 	ae->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	ae->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	ae->aei = (char*)malloc((strlen(aei) + 1) * sizeof(char));
-	
 	strcpy(ae->ri, ri);
 	strcpy(ae->pi, pi);
 	strcpy(ae->et, et);
@@ -669,18 +664,10 @@ void Init_CNT(CNT* cnt, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *ri = resource_identifier(t_CNT, ct);
-	char tmp[MAX_PROPERTY_SIZE];
 	
-	if(cnt->rn) {
-		strcpy(tmp,cnt->rn);
-		cnt->rn = (char*)malloc((strlen(cnt->rn) + 1) * sizeof(char));
-		strcpy(cnt->rn,tmp);
-	}
-
-	if(cnt->acpi) {
-		strcpy(tmp,cnt->acpi);
-		cnt->acpi = (char*)malloc((strlen(cnt->acpi) + 1) * sizeof(char));
-		strcpy(cnt->acpi,tmp);
+	if(!cnt->rn) {
+		cnt->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(cnt->rn, ri);
 	}
 	
 	cnt->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -708,11 +695,6 @@ void Init_CIN(CIN* cin, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *ri = resource_identifier(t_CIN, ct);
-	char tmp[MAX_PROPERTY_SIZE];
-	
-	strcpy(tmp,cin->con);
-	cin->con = (char*)malloc((strlen(cin->con) + 1) * sizeof(char));
-	strcpy(cin->con,tmp);
 	
 	cin->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cin->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -740,11 +722,16 @@ void Init_Sub(Sub* sub, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *ri = resource_identifier(t_Sub, ct);
-	char tmp[MAX_PROPERTY_SIZE];
 
-	strcpy(tmp,sub->rn);
-	sub->rn = (char*)malloc((strlen(sub->rn) + 1) * sizeof(char));
-	strcpy(sub->rn,tmp);
+	if(!sub->rn) {
+		sub->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(sub->rn, ri);
+	}
+
+	if(!sub->net) {
+		sub->net = (char*)malloc(2*sizeof(char));
+		strcpy(sub->net,"1");
+	}
 
 	sub->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	sub->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
@@ -773,11 +760,11 @@ void Init_ACP(ACP* acp, char *pi) {
 	char *ct = Get_LocalTime(0);
 	char *et = Get_LocalTime(EXPIRE_TIME);
 	char *ri = resource_identifier(t_ACP, ct);
-	char tmp[MAX_PROPERTY_SIZE];
-	
-	strcpy(tmp,acp->rn);
-	acp->rn = (char*)malloc((strlen(acp->rn) + 1) * sizeof(char));
-	strcpy(acp->rn,tmp);
+
+	if(!acp->rn) {
+		acp->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(acp->rn, ri);
+	}
 	
 	acp->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	acp->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
@@ -806,12 +793,14 @@ void Set_AE_Update(AE* after) {
 		free(after->rn);
 		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 		strcpy(after->rn, rn);
+		free(rn);
 	}
 
 	if(api) {
-		if(after->api) free(after->api);
+		free(after->api);
 		after->api = (char*)malloc((strlen(api) + 1) * sizeof(char));
 		strcpy(after->api, api);
+		free(api);
 	}
 
 	switch(rr) {
