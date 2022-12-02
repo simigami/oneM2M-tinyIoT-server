@@ -774,7 +774,6 @@ void Init_ACP(ACP* acp, char *pi) {
 
 void Set_AE_Update(AE* after) {
 	char *rn = Get_JSON_Value_char("rn", payload);
-	char *api = Get_JSON_Value_char("api", payload);
 	int rr = Get_JSON_Value_bool("rr", payload);
 
 	if(rn) {
@@ -782,13 +781,6 @@ void Set_AE_Update(AE* after) {
 		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 		strcpy(after->rn, rn);
 		free(rn);
-	}
-
-	if(api) {
-		free(after->api);
-		after->api = (char*)malloc((strlen(api) + 1) * sizeof(char));
-		strcpy(after->api, api);
-		free(api);
 	}
 
 	switch(rr) {
@@ -933,7 +925,6 @@ void Set_Node_Update(Node *node, void *after) {
 	if(node->rn) {free(node->rn); node->rn = NULL;}
 	if(node->uri) {free(node->uri); node->uri = NULL;}
 	if(node->acpi) {free(node->acpi); node->acpi = NULL;}
-	if(node->sur) {free(node->sur); node->sur = NULL;}
 	if(node->nu) {free(node->nu); node->nu = NULL;}
 	if(node->pv_acor && node->pv_acop) {
 		free(node->pv_acor); node->pv_acor = NULL; 
@@ -946,32 +937,48 @@ void Set_Node_Update(Node *node, void *after) {
 	
 	switch(ty) {
 	case t_AE:
-		node->rn = (char*)malloc((strlen((AE*)after->rn) + 1)*sizeof(char));
-		strcpy(node->rn, after->rn);
+		AE *ae = (AE*)after;
+		node->rn = (char*)malloc((strlen(ae->rn) + 1)*sizeof(char));
+		strcpy(node->rn, ae->rn);
 		break;
+
 	case t_CNT:
-		node->rn = (char*)malloc((strlen((CNT*)after->rn) + 1)*sizeof(char));
-		strcpy(node->rn, after->rn);
-		if(after->acpi) {
-			node->acpi = (char*)malloc((strlen((CNT*)after->acpi) + 1)*sizeof(char));
-			strcpy(node->acpi, after->acpi);
+		CNT *cnt = (CNT*)after;
+		node->rn = (char*)malloc((strlen(cnt->rn) + 1)*sizeof(char));
+		strcpy(node->rn, cnt->rn);
+		if(cnt->acpi) {
+			node->acpi = (char*)malloc((strlen(cnt->acpi) + 1)*sizeof(char));
+			strcpy(node->acpi, cnt->acpi);
 		}
 		break;
+
 	case t_Sub:
-		node->rn = (char*)malloc((strlen((Sub*)after->rn) + 1)*sizeof(char));
-		strcpy(node->rn, after->rn);
-		node->net = net_to_bit(after->net);
-		if(after->nu) {
-			node->nu = (char*)malloc((strlen((CNT*)after->nu) + 1)*sizeof(char));
-			strcpy(node->nu, after->nu);
-		}
-		if(after->sur) {
-			node->uri = 
+		Sub *sub = (Sub*)after;
+		node->rn = (char*)malloc((strlen(sub->rn) + 1)*sizeof(char));
+		strcpy(node->rn, sub->rn);
+		node->net = net_to_bit(sub->net);
+		if(sub->nu) {
+			node->nu = (char*)malloc((strlen(sub->nu) + 1)*sizeof(char));
+			strcpy(node->nu, sub->nu);
 		}
 		break;
+
 	case t_ACP:
-		node->rn = (char*)malloc((strlen((ACP*)after->rn) + 1)*sizeof(char));
-		strcpy(node->rn, after->rn);
+		ACP *acp = (ACP*)after;
+		node->rn = (char*)malloc((strlen(acp->rn) + 1)*sizeof(char));
+		strcpy(node->rn, acp->rn);
+		if(acp->pv_acor && acp->pv_acop) {
+			node->pv_acor = (char*)malloc((strlen(acp->pv_acor) + 1)*sizeof(char));
+			node->pv_acop = (char*)malloc((strlen(acp->pv_acop) + 1)*sizeof(char));
+			strcpy(node->pv_acor, acp->pv_acor);
+			strcpy(node->pv_acop, acp->pv_acop);
+		}
+		if(acp->pvs_acor && acp->pvs_acop) {
+			node->pvs_acor = (char*)malloc((strlen(acp->pvs_acor) + 1)*sizeof(char));
+			node->pvs_acop = (char*)malloc((strlen(acp->pvs_acop) + 1)*sizeof(char));
+			strcpy(node->pvs_acor, acp->pvs_acor);
+			strcpy(node->pvs_acop, acp->pvs_acop);
+		}
 		break;
 	}
 }
@@ -1049,8 +1056,8 @@ void Notify_Object(Node *node, char *res_json, Net net) {
 	Remove_Invalid_Char_JSON(res_json);
 	while(node) {
 		if(node->ty == t_Sub && (net & node->net) == net) {
-			if(!node->uri) node->uri = set_node_uri(node);
-			char *noti_json = Noti_to_json(node->sur, (int)log2((double)net ) + 1, res_json);
+			if(!node->uri) set_node_uri(node);
+			char *noti_json = Noti_to_json(node->uri, (int)log2((double)net ) + 1, res_json);
 			char *res = Send_HTTP_Packet(node->nu, noti_json);
 			free(noti_json); noti_json = NULL;
 			if(res) { free(res); res = NULL; }
@@ -1157,7 +1164,10 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
     }
 	if(post_data) Remove_Invalid_Char_JSON(post_data);
 
-    data.data[0] = '\0';
+	char nu[MAX_PROPERTY_SIZE];
+	strcpy(nu, target);
+
+	target = strtok(nu, ",");
 
     CURLcode res;
 
@@ -1169,13 +1179,17 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
 		
-		curl_easy_setopt(curl, CURLOPT_URL, target);
-        res = curl_easy_perform(curl);
-		
-        if(res != CURLE_OK) {
-                fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                        curl_easy_strerror(res));
-        }
+		while(target) {
+			data.data[0] = '\0';
+			curl_easy_setopt(curl, CURLOPT_URL, target);
+			res = curl_easy_perform(curl);
+			
+			if(res != CURLE_OK) {
+				fprintf(stderr, "curl_easy_perform() failed: %s\n",
+				curl_easy_strerror(res));
+			}
+			target = strtok(NULL, ",");
+		}
 		
         curl_easy_cleanup(curl);
     }

@@ -302,6 +302,7 @@ char* Send_HTTP_Packet(char *target, char *post_data);
 
 //Exception
 void No_Mandatory_Error();
+void Parent_Type_Error();
 int Check_Privilege(Node *node, ACOP acop);
 int Check_Request_Body();
 int Check_Resource_Name_Duplicate(Node *node);

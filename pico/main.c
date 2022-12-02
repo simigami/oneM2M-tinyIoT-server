@@ -234,8 +234,7 @@ void Update_Object(Node *pnode) {
 
 void Create_AE(Node *pnode) {
 	if(pnode->ty != t_CSE) {
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"AE can only be created under CSE\"}");
+		Parent_Type_Error();
 		return;
 	}
 	AE* ae = JSON_to_AE(payload);
@@ -259,14 +258,14 @@ void Create_AE(Node *pnode) {
 	char *res_json = AE_to_json(ae);
 	HTTP_201_JSON;
 	printf("%s", res_json);
+	Notify_Object(pnode->child, res_json, noti_event_3);
 	free(res_json); res_json = NULL;
 	Free_AE(ae); ae = NULL;
 }
 
 void Create_CNT(Node *pnode) {
 	if(pnode->ty != t_CNT && pnode->ty != t_AE) {
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"container can only be created under AE, container\"}");
+		Parent_Type_Error();
 		return;
 	}
 	CNT* cnt = JSON_to_CNT(payload);
@@ -290,14 +289,14 @@ void Create_CNT(Node *pnode) {
 	char *res_json = CNT_to_json(cnt);
 	HTTP_201_JSON;
 	printf("%s", res_json);
+	Notify_Object(pnode->child, res_json, noti_event_3);
 	free(res_json); res_json = NULL; 
 	Free_CNT(cnt); cnt = NULL;
 }
 
 void Create_CIN(Node *pnode) {
 	if(pnode->ty != t_CNT) {
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"contentinstance can only be created under container\"}");
+		Parent_Type_Error();
 		return;
 	}
 	CIN* cin = JSON_to_CIN(payload);
@@ -325,9 +324,8 @@ void Create_CIN(Node *pnode) {
 }
 
 void Create_Sub(Node *pnode) {
-	if(pnode->ty == t_CIN) {
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"subscription can not be created under contentinstance\"}");
+	if(pnode->ty == t_CIN || pnode->ty == t_Sub) {
+		Parent_Type_Error();
 		return;
 	}
 	Sub* sub = JSON_to_Sub(payload);
@@ -352,6 +350,7 @@ void Create_Sub(Node *pnode) {
 	HTTP_201_JSON;
 	printf("%s", res_json);
 	char *res = Send_HTTP_Packet(sub->nu, res_json);
+	Notify_Object(pnode->child, res_json, noti_event_3);
 	if(res) { free(res); res = NULL; }
 	free(res_json); res_json = NULL;
 	Free_Sub(sub); sub = NULL;
@@ -359,8 +358,7 @@ void Create_Sub(Node *pnode) {
 
 void Create_ACP(Node *pnode) {
 	if(pnode->ty != t_CSE && pnode->ty != t_AE) {
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"ACP can only be created under CSE, AE\"}");
+		Parent_Type_Error();
 		return;
 	}
 	ACP* acp = JSON_to_ACP(payload);
@@ -384,6 +382,7 @@ void Create_ACP(Node *pnode) {
 	char *res_json = ACP_to_json(acp);
 	HTTP_201_JSON;
 	printf("%s", res_json);
+	Notify_Object(pnode->child, res_json, noti_event_3);
 	free(res_json); res_json = NULL; 
 	Free_ACP(acp); acp = NULL;
 }
@@ -447,16 +446,14 @@ void Update_AE(Node *pnode) {
 	int result;
 
 	Set_AE_Update(after);
+	Set_Node_Update(pnode, after);
 	result = DB_Delete_Object(after->ri);
 	result = DB_Store_AE(after);
-	
-	free(pnode->rn);
-	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
-	strcpy(pnode->rn, after->rn);
 	
 	char *res_json = AE_to_json(after);
 	HTTP_200_JSON;
 	printf("%s", res_json);
+	Notify_Object(pnode->child, res_json, noti_event_1);
 	free(res_json); res_json = NULL; 
 	Free_AE(after); after = NULL;
 }
@@ -466,18 +463,9 @@ void Update_CNT(Node *pnode) {
 	int result;
 
 	Set_CNT_Update(after);
+	Set_Node_Update(pnode, after);
 	result = DB_Delete_Object(after->ri);
 	result = DB_Store_CNT(after);
-	
-	free(pnode->rn);
-	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
-	strcpy(pnode->rn, after->rn);
-
-	if(pnode->acpi) {
-		free(pnode->acpi);
-		pnode->acpi = (char *)malloc((strlen(after->acpi) + 1) * sizeof(char));
-		strcpy(pnode->acpi, after->acpi);
-	}
 	
 	char *res_json = CNT_to_json(after);
 	HTTP_200_JSON;
@@ -492,12 +480,9 @@ void Update_Sub(Node *pnode) {
 	int result;
 	
 	Set_Sub_Update(after);
+	Set_Node_Update(pnode, after);
 	result = DB_Delete_Sub(after->ri);
 	result = DB_Store_Sub(after);
-	
-	free(pnode->rn);
-	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
-	strcpy(pnode->rn, after->rn);
 	
 	char *res_json = Sub_to_json(after);
 	HTTP_200_JSON;
@@ -511,16 +496,14 @@ void Update_ACP(Node *pnode) {
 	int result;
 	
 	Set_ACP_Update(after);
+	Set_Node_Update(pnode, after);
 	result = DB_Delete_ACP(after->ri);
 	result = DB_Store_ACP(after);
-	
-	free(pnode->rn);
-	pnode->rn = (char *)malloc((strlen(after->rn) + 1) * sizeof(char));
-	strcpy(pnode->rn, after->rn);
 	
 	char *res_json = ACP_to_json(after);
 	HTTP_200_JSON;
 	printf("%s", res_json);
+	Notify_Object(pnode->child, res_json, noti_event_1);
 	free(res_json); res_json = NULL;
 	Free_ACP(after); after = NULL;
 }
@@ -614,9 +597,15 @@ Node* Restruct_childs(Node *pnode, Node *list) {
 }
 
 void No_Mandatory_Error(){
-	fprintf(stderr,"No Mandatory Property\n");
+	fprintf(stderr,"No Mandatory Error\n");
 	HTTP_400;
 	printf("{\"m2m:dbg\": \"insufficient mandatory attribute\"}");
+}
+
+void Parent_Type_Error(){
+	fprintf(stderr,"Parent Type Error\n");
+	HTTP_403;
+	printf("{\"m2m:dbg\": \"resource can not be created under type of parent\"}");
 }
 
 int Check_JSON_Format() {
