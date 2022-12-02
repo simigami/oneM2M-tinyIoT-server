@@ -1,0 +1,505 @@
+{
+	"info": {
+		"_postman_id": "f6856a38-79fd-4b94-8d7d-65cb1bfd12b2",
+		"name": "Tiny_IoT_API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21079157"
+	},
+	"item": [
+		{
+			"name": "AE CREATE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/vnd.onem2m-res+json; ty=2",
+						"type": "text"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "CAE001",
+						"type": "text"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "oneM2M_AE_BV_01",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:ae\": {\n        \"rn\" : \"test_AE1\",\n        \"api\": \"tiny_iot\",\n        \"rr\" : false\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CNT CREATE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "E0M"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json; ty=3"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:cnt\": {\n        \"rn\" : \"test_CNT1\"\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}/test_AE1",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}",
+						"test_AE1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CIN CREATE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "eom"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json; ty=4"
+					},
+					{
+						"key": "fc",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:cin\": {\n        \"con\" : \"on\"\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}/test_AE1/test_CNT1",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}",
+						"test_AE1",
+						"test_CNT1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SUB CREATE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json; ty=23",
+						"type": "text"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "pm",
+						"type": "text"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "1234",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:sub\": {\n        \"rn\" : \"test_Sub1\",\n        \"enc\": {\n            \"net\": [\n                1,2,3,4\n            ]\n        },\n        \"nu\" : [\"http://localhost:7000\", \"http://localhost:6000\"]\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}/test_AE1/test_CNT1",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}",
+						"test_AE1",
+						"test_CNT1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ACP CREATE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "eom"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json; ty=1"
+					},
+					{
+						"key": "fc",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:acp\": {\n        \"rn\": \"test_ACP1\",\n        \"pv\": {\n            \"acr\": [\n                {\n                    \"acco\": [],\n                    \"acor\": [\"eom\"],\n                    \"acop\": \"63\"\n                }\n            ]\n        },\n        \"pvs\": {\n            \"acr\": [\n                {\n                    \"acco\": [],\n                    \"acor\": [\n                        \"justin2\"\n                    ],\n                    \"acop\": \"59\"\n                },\n                {\n                    \"acor\": [\n                        \"eom\"\n                    ],\n                    \"acop\": \"63\"\n                }\n            ]\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "AE UPDATE",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json; ty=2",
+						"type": "text"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "JE",
+						"type": "text"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "1234",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:ae\": {\n        \"rr\" : true\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}/test_AE1",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}",
+						"test_AE1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CNT UPDATE",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "eom"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json; ty=3",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:cnt\": {\n        \"rn\" : \"test_CNT2\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}/test_AE1/test_CNT1",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}",
+						"test_AE1",
+						"test_CNT1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SUB UPDATE",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "SM"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json; ty=3"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:sub\": {\n        \"enc\": {\n            \"net\": [\n                1,2,3,4\n            ]\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}/test_Sub1",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}",
+						"test_Sub1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ACP UPDATE",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "eom"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json; ty=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"m2m:acp\": {\n        \"pv\": {\n            \"acr\": [\n                {\n                    \"acco\": [],\n                    \"acor\": [\"eom\"],\n                    \"acop\": \"63\"\n                }\n            ]\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}/test_ACP1",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}",
+						"test_ACP1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Resource RETRIEVE",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "eom",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Resource Tree Viewer API",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "12345"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "SM"
+					},
+					{
+						"key": "X-fc",
+						"value": "Zeroconf",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "{{tinyIoT_host}}/viewer/{{cse_base}}",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"viewer",
+						"{{cse_base}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Resource DELETE",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-M2M-RI",
+						"value": "1234sdafadsfgtrfg5"
+					},
+					{
+						"key": "X-M2M-Origin",
+						"value": "S20170713200332320Bdfl"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{tinyIoT_host}}/{{cse_base}}",
+					"host": [
+						"{{tinyIoT_host}}"
+					],
+					"path": [
+						"{{cse_base}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
