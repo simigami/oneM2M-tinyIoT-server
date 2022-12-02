@@ -322,7 +322,6 @@ void Create_CIN(Node *pnode) {
 	Notify_Object(pnode->child, res_json, noti_event_3);
 	free(res_json); res_json = NULL; 
 	Free_CIN(cin); cin = NULL;
-	pnode->cinSize++;
 }
 
 void Create_Sub(Node *pnode) {
@@ -390,7 +389,6 @@ void Create_ACP(Node *pnode) {
 }
 
 void Retrieve_CSE(Node *pnode){
-	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CSE* gcse = DB_Get_CSE(pnode->ri);
 	char *res_json = CSE_to_json(gcse);
 	HTTP_200_JSON;
@@ -400,7 +398,6 @@ void Retrieve_CSE(Node *pnode){
 }
 
 void Retrieve_AE(Node *pnode){
-	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	AE* gae = DB_Get_AE(pnode->ri);
 	char *res_json = AE_to_json(gae);
 	HTTP_200_JSON;
@@ -410,7 +407,6 @@ void Retrieve_AE(Node *pnode){
 }
 
 void Retrieve_CNT(Node *pnode){
-	fprintf(stderr,"Child CIN Size : %d\n",pnode->cinSize);
 	CNT* gcnt = DB_Get_CNT(pnode->ri);
 	char *res_json = CNT_to_json(gcnt);
 	HTTP_200_JSON;

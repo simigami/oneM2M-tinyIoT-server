@@ -143,8 +143,7 @@ typedef struct Node {
 	char *pvs_acop;
 	char *uri;
 	ObjectType ty;
-	
-	int cinSize;
+
 	int net;
 }Node;
 
@@ -200,6 +199,7 @@ void Set_AE_Update(AE* after);
 void Set_CNT_Update(CNT* after);
 void Set_Sub_Update(Sub* after);
 void Set_ACP_Update(ACP* after);
+void Set_Node_Update(Node* node, void *after);
 
 void Free_CSE(CSE* cse);
 void Free_AE(AE* ae);

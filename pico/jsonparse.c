@@ -243,7 +243,7 @@ Sub* JSON_to_Sub(char *json_payload) {
 		return NULL;
 	}
 	else {
-		char nu_str[128] = { '\0' };
+		char nu_str[MAX_PROPERTY_SIZE] = { '\0' };
 		int is_NULL = 0;
 		for (int i = 0; i < nu_size; i++) {
 			if (isspace(cJSON_GetArrayItem(nu, i)->valuestring[0]) || (cJSON_GetArrayItem(nu, i)->valuestring[0] == 0)) {

@@ -258,12 +258,6 @@ Node *Latest_CINs(Node* cinList, int num) {
 	return head;
 }
 
-void Object_Test_API(Node *node) {
-	HTTP_200_JSON;
-	printf("{\"cin-size\": %d}",node->cinSize);
-	return;
-}
-
 void Normalization_Payload() {
 	int index = 0;
 
@@ -355,7 +349,6 @@ Node* Create_CSE_Node(CSE *cse) {
 	strcpy(node->pi, cse->pi);
 
 	node->ty = t_CSE;
-	node->cinSize = 0;
 
 	return node;
 }
@@ -374,7 +367,6 @@ Node* Create_AE_Node(AE *ae) {
 	strcpy(node->pi, ae->pi);
 
 	node->ty = t_AE;
-	node->cinSize = 0;
 
 	return node;
 }
@@ -399,7 +391,6 @@ Node* Create_CNT_Node(CNT *cnt) {
 	
 
 	node->ty = t_CNT;
-	node->cinSize = 0;
 
 	return node;
 }
@@ -418,7 +409,6 @@ Node* Create_CIN_Node(CIN *cin) {
 	strcpy(node->pi, cin->pi);
 
 	node->ty = t_CIN;
-	node->cinSize = 0;
 
 	return node;
 }
@@ -441,7 +431,6 @@ Node* Create_Sub_Node(Sub *sub) {
 	strcpy(node->sur, sub->sur);
 
 	node->ty = t_Sub;
-	node->cinSize = 0;
 	node->net = net_to_bit(sub->net);
 
 	return node;
@@ -469,7 +458,6 @@ Node* Create_ACP_Node(ACP *acp) {
 	strcpy(node->pvs_acop, acp->pvs_acop);
 
 	node->ty = t_ACP;
-	node->cinSize = 0;
 
 	return node;
 }
@@ -940,6 +928,54 @@ void Set_ACP_Update(ACP* after) {
 	after->lt = Get_LocalTime(0);
 }
 
+void Set_Node_Update(Node *node, void *after) {
+	ObjectType ty = node->ty;
+	if(node->rn) {free(node->rn); node->rn = NULL;}
+	if(node->uri) {free(node->uri); node->uri = NULL;}
+	if(node->acpi) {free(node->acpi); node->acpi = NULL;}
+	if(node->sur) {free(node->sur); node->sur = NULL;}
+	if(node->nu) {free(node->nu); node->nu = NULL;}
+	if(node->pv_acor && node->pv_acop) {
+		free(node->pv_acor); node->pv_acor = NULL; 
+		free(node->pv_acop); node->pv_acop = NULL;
+	}
+	if(node->pvs_acor && node->pvs_acop) {
+		free(node->pvs_acor); node->pvs_acor = NULL;
+		free(node->pvs_acop); node->pvs_acop = NULL;
+	}
+	
+	switch(ty) {
+	case t_AE:
+		node->rn = (char*)malloc((strlen((AE*)after->rn) + 1)*sizeof(char));
+		strcpy(node->rn, after->rn);
+		break;
+	case t_CNT:
+		node->rn = (char*)malloc((strlen((CNT*)after->rn) + 1)*sizeof(char));
+		strcpy(node->rn, after->rn);
+		if(after->acpi) {
+			node->acpi = (char*)malloc((strlen((CNT*)after->acpi) + 1)*sizeof(char));
+			strcpy(node->acpi, after->acpi);
+		}
+		break;
+	case t_Sub:
+		node->rn = (char*)malloc((strlen((Sub*)after->rn) + 1)*sizeof(char));
+		strcpy(node->rn, after->rn);
+		node->net = net_to_bit(after->net);
+		if(after->nu) {
+			node->nu = (char*)malloc((strlen((CNT*)after->nu) + 1)*sizeof(char));
+			strcpy(node->nu, after->nu);
+		}
+		if(after->sur) {
+			node->uri = 
+		}
+		break;
+	case t_ACP:
+		node->rn = (char*)malloc((strlen((ACP*)after->rn) + 1)*sizeof(char));
+		strcpy(node->rn, after->rn);
+		break;
+	}
+}
+
 void Free_CSE(CSE *cse) {
 	if(cse->ct) free(cse->ct);
 	if(cse->lt) free(cse->lt);
@@ -1013,6 +1049,7 @@ void Notify_Object(Node *node, char *res_json, Net net) {
 	Remove_Invalid_Char_JSON(res_json);
 	while(node) {
 		if(node->ty == t_Sub && (net & node->net) == net) {
+			if(!node->uri) node->uri = set_node_uri(node);
 			char *noti_json = Noti_to_json(node->sur, (int)log2((double)net ) + 1, res_json);
 			char *res = Send_HTTP_Packet(node->nu, noti_json);
 			free(noti_json); noti_json = NULL;
@@ -1118,6 +1155,7 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
         fprintf(stderr, "Failed to allocate memory.\n");
         return NULL;
     }
+	if(post_data) Remove_Invalid_Char_JSON(post_data);
 
     data.data[0] = '\0';
 
@@ -1126,14 +1164,12 @@ char *Send_HTTP_Packet(char* target, char *post_data) {
     curl = curl_easy_init();
 
     if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, target);
-		if(post_data){
-			Remove_Invalid_Char_JSON(post_data);
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
-		}
+		if(post_data) curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
+		
+		curl_easy_setopt(curl, CURLOPT_URL, target);
         res = curl_easy_perform(curl);
 		
         if(res != CURLE_OK) {
