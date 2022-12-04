@@ -17,6 +17,7 @@
 ResourceTree *rt;
 
 int main(int c, char **v) {
+	DB_display("ACP.db");
 	init();
  	char *port = c == 1 ? "3000" : v[1];
 
@@ -618,10 +619,10 @@ int Check_JSON_Format() {
 
 int Check_Privilege(Node *node, ACOP acop) {
 	if(node->ty == t_CIN) node = node->parent;
-	if(node->ty != t_CNT) return 0;
+	if(node->ty != t_CNT && node->ty != t_ACP) return 0;
 
 	if((get_acop(node) & acop) != acop) {
-		fprintf(stderr,"Origin has no privilege\n");
+		fprintf(stderr,"X-M2M-Origin has no privilege\n");
 		HTTP_403;
 		printf("{\"m2m:dbg\": \"access denied\"}");
 		return -1;

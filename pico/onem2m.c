@@ -866,9 +866,9 @@ void Set_ACP_Update(ACP* after) {
 	char *pvs_acor = NULL;
 	char *pvs_acop = NULL;
 
-	if(strstr(payload, "pv")) {
-		if(strstr(payload, "acr")) {
-			if(strstr(payload, "acor") && strstr(payload, "acop")) {
+	if(strstr(payload, "\"pv\"")) {
+		if(strstr(payload, "\"acr\"")) {
+			if(strstr(payload, "\"acor\"") && strstr(payload, "acop")) {
 				pv_acor = Get_JSON_Value_list("pv-acr-acor", payload); 
 				pv_acop = Get_JSON_Value_list("pv-acr-acop", payload);
 				if(!strcmp(pv_acor, "\0") || !strcmp(pv_acop, "\0")) {
@@ -879,9 +879,9 @@ void Set_ACP_Update(ACP* after) {
 		}
 	}
 
-	if(strstr(payload, "pvs")) {
-		if(strstr(payload, "acr")) {
-			if(strstr(payload, "acor") && strstr(payload, "acop")) {
+	if(strstr(payload, "\"pvs\"")) {
+		if(strstr(payload, "\"acr\"")) {
+			if(strstr(payload, "\"acor\"") && strstr(payload, "\"acop\"")) {
 				pvs_acor = Get_JSON_Value_list("pvs-acr-acor", payload);
 				pvs_acop = Get_JSON_Value_list("pvs-acr-acop", payload);
 				if(!strcmp(pvs_acor, "\0") || !strcmp(pvs_acop, "\0")) {
