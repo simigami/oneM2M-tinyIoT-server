@@ -11,8 +11,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <fcntl.h>
 
-#define MAX_CONNECTIONS 1000
+#define MAX_CONNECTIONS 1024
 #define BUF_SIZE 65535
 #define QUEUE_SIZE 1000000
 
@@ -33,11 +34,13 @@ char *method, // "GET" or "POST"
 
 int payload_size;
 
-void *respondThread(void *s) {
+void *respond_thread(void *s) {
+  pthread_mutex_lock(&mutex_lock);
 	int *slot = (int *)s;
 	respond(*slot);
 	close(clients[*slot]);
 	clients[*slot] = -1;
+  pthread_mutex_unlock(&mutex_lock);
 	return NULL;
 }
 
@@ -65,18 +68,21 @@ void serve_forever(const char *PORT) {
 
   // ACCEPT connections
   while (1) {
-
+    fprintf(stderr,"before accept\n");
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
+    fprintf(stderr,"after accept\n");
+
+    int flag = fcntl(clients[slot], F_GETFL, O_NONBLOCK);
 
     if (clients[slot] < 0) {
       perror("accept() error");
       exit(1);
     } else {
-      
+      fprintf(stderr,"before thread\n");
       pthread_t threadID;
-      pthread_create(&threadID, NULL, respondThread, (void*)&slot);
+      pthread_create(&threadID, NULL, respond_thread, (void*)&slot);
       pthread_join(threadID, NULL);
-    
+      fprintf(stderr,"after thread\n");
       /*
     	if (fork() == 0) {
     		close(listenfd);
@@ -91,6 +97,7 @@ void serve_forever(const char *PORT) {
     }
     while (clients[slot] != -1)
       slot = (slot + 1) % MAX_CONNECTIONS;
+      fprintf(stderr,"slot : %d\n", slot);
   }
 }
 
@@ -179,12 +186,26 @@ void respond(int slot) {
   int rcvd;
   
   buf = malloc(BUF_SIZE);
+  fprintf(stderr,"before recv\n");
+  fprintf(stderr,"clients[slot] : %d\n",clients[slot]);
   rcvd = recv(clients[slot], buf, BUF_SIZE, 0);
+  fprintf(stderr,"after recv\n");
+  fprintf(stderr,"clients[slot] : %d\n",clients[slot]);
+  if(buf) {
+    fprintf(stderr,"\n=============================\n");
+    int len = strlen(buf);
+    fprintf(stderr,"%s",buf);
+    fprintf(stderr,"\n=============================\n");
+  }
 
-  if (rcvd < 0) // receive error
+  if (rcvd < 0){ // receive error
     fprintf(stderr, ("recv() error\n"));
-  else if (rcvd == 0) // receive socket closed
+    return;
+  }
+  else if (rcvd == 0) { // receive socket closed
     fprintf(stderr, "Client disconnected upexpectedly.\n");
+    return;
+  }
   else // message received
   {
     buf[rcvd] = '\0';
@@ -241,12 +262,10 @@ void respond(int slot) {
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
 
-    pthread_mutex_lock(&mutex_lock);
-
+    fprintf(stderr,"before route\n");
     // call router
     route();
-    
-    pthread_mutex_unlock(&mutex_lock);
+    fprintf(stderr,"after route\n");
 
     // tidy up
     fflush(stdout);
