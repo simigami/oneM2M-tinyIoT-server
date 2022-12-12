@@ -7,13 +7,6 @@
 #include <unistd.h>
 #include "onem2m.h"
 
-#define CHUNK_SIZE 1024 // read 1024 bytes at a time
-
-// Public directory settings
-#define PUBLIC_DIR "./public"
-#define INDEX_HTML "/index.html"
-#define NOT_FOUND_HTML "/404.html"
-
 ResourceTree *rt;
 
 char response_header[1024];
