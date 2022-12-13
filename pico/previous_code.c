@@ -1,9 +1,9 @@
-// Create_Node
-Node *Create_Node(char *rn, char *ri, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop) {}
+// create_node
+Node *create_node(char *rn, char *ri, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop) {}
 
-// Parse_URI
-Node* Parse_URI(Node *cb, char *uri_array) {
-	fprintf(stderr,"Parse_URI \x1b[33m%s\x1b[0m...",uri_array);
+// parse_uri
+Node* parse_uri(Node *cb, char *uri_array) {
+	fprintf(stderr,"parse_uri \x1b[33m%s\x1b[0m...",uri_array);
 	//char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
 	Node *node = NULL;
@@ -27,20 +27,20 @@ Node* Parse_URI(Node *cb, char *uri_array) {
 		char *cin_ri;
 		if((cin_ri = strstr(uri_parse, "4-20")) != NULL) {
 			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN By Ri\x1b[0m\n");
-			Retrieve_CIN_Ri(cin_ri);
+			retrieve_cin_by_ri(cin_ri);
 			return NULL;
 		}
 	
 		if(!strcmp("la", uri_parse) || !strcmp("latest", uri_parse)) {
-			while(node->siblingRight) {
-				if(node->ty == t_CIN && node->siblingRight->ty != t_CIN) break;
-				node = node->siblingRight;
+			while(node->sibling_right) {
+				if(node->ty == TY_CIN && node->sibling_right->ty != TY_CIN) break;
+				node = node->sibling_right;
 			}
 			la_ol = 1;
 		} else if(!strcmp("ol", uri_parse) || !strcmp("oldest", uri_parse)) {
 			while(node) {
-				if(node->ty == t_CIN) break;
-				node = node->siblingRight;
+				if(node->ty == TY_CIN) break;
+				node = node->sibling_right;
 			}
 			la_ol = 1;
 		}
@@ -49,7 +49,7 @@ Node* Parse_URI(Node *cb, char *uri_array) {
 		{
 			while(node) {
 				if(!strcmp(node->rn,uri_parse)) break;
-				node = node->siblingRight;
+				node = node->sibling_right;
 			}
 		}
 
@@ -61,7 +61,7 @@ Node* Parse_URI(Node *cb, char *uri_array) {
 		
 		if(!strcmp(uri_parse, "cinperiod")) {
 			fprintf(stderr,"OK\n\x1b[43mRetrieve CIN in Period\x1b[0m\n");
-			CIN_in_period(node);
+			cin_in_period(node);
 			return NULL;
 		}
 		
@@ -71,11 +71,11 @@ Node* Parse_URI(Node *cb, char *uri_array) {
 	if(node) {
 		if(viewer) {
 			fprintf(stderr,"OK\n\x1b[43mTree Viewer API\x1b[0m\n");
-			Tree_Viewer_API(node);
+			tree_viewer_api(node);
 			return NULL;
 		} else if(test) {
 			fprintf(stderr,"OK\n\x1b[43mObject Test API\x1b[0m\n");
-			Object_Test_API(node);
+			object_test_api(node);
 			return NULL;
 		}
 	} else if(!node) {
@@ -90,40 +90,40 @@ Node* Parse_URI(Node *cb, char *uri_array) {
 	return node;
 }
 
-//Tree_data
-void Tree_data(Node *node, char **viewer_data, int cin_num) {
-	if(node->ty == t_CIN) {
+//tree_viewer_data
+void tree_viewer_data(Node *node, char **viewer_data, int cin_num) {
+	if(node->ty == TY_CIN) {
 		Node *cinLatest = Get_CIN_Pi(node->pi);
 		
 		Node *p = cinLatest;
 		
-		cinLatest = Latest_CINs(cinLatest, cin_num);
+		cinLatest = latest_cin_list(cinLatest, cin_num);
 		
 		while(cinLatest) {
-			char *json = Node_to_json(cinLatest);
+			char *json = node_to_json(cinLatest);
 			strcat(*viewer_data, ",");
 			strcat(*viewer_data, json);
-			Node *right = cinLatest->siblingRight;
-			Free_Node(cinLatest);
+			Node *right = cinLatest->sibling_right;
+			free_node(cinLatest);
 			cinLatest = right;
 		}
 		return;
 	}
 	
-	char *json = Node_to_json(node);
+	char *json = node_to_json(node);
 	strcat(*viewer_data, ",");
 	strcat(*viewer_data, json);
 	
 	node = node->child;
 	
 	while(node) {
-		Tree_data(node, viewer_data, cin_num);
-		if(node->ty == t_CIN) {
-			while(node->siblingRight && node->siblingRight->ty != t_Sub) {
-				node = node->siblingRight;
+		tree_viewer_data(node, viewer_data, cin_num);
+		if(node->ty == TY_CIN) {
+			while(node->sibling_right && node->sibling_right->ty != TY_SUB) {
+				node = node->sibling_right;
 			}
 		}
-		node = node->siblingRight;
+		node = node->sibling_right;
 	}
 }
 
@@ -156,3 +156,15 @@ int read_file(const char *file_name) {
 	
 	return err;
 }
+
+/*
+if (fork() == 0) {
+	close(listenfd);
+	respond(slot);
+	close(clients[slot]);
+	clients[slot] = -1;
+	exit(0);
+} else {
+	close(clients[slot]);
+}
+*/

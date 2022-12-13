@@ -2715,30 +2715,30 @@ Node* Get_All_AE() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
-            node_pi->siblingRight->siblingLeft = node_pi;
-            node_pi = node_pi->siblingRight;
+            node_pi->sibling_right = (Node *)calloc(1,sizeof(Node));
+            node_pi->sibling_right->sibling_left = node_pi;
+            node_pi = node_pi->sibling_right;
         }
         if (strncmp(key.data, "ri", key.size) == 0) {
             node_ri->ri = malloc(data.size);
             strcpy(node_ri->ri, data.data);
-            node_ri = node_ri->siblingRight;
+            node_ri = node_ri->sibling_right;
 
         }
         if (strncmp(key.data, "rn", key.size) == 0) {
             node_rn->rn = malloc(data.size);
             strcpy(node_rn->rn, data.data);
-            node_rn = node_rn->siblingRight;
+            node_rn = node_rn->sibling_right;
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
             node_ty->ty = *(int*)data.data;
-            node_ty = node_ty->siblingRight;
+            node_ty = node_ty->sibling_right;
         }
     }
 
-    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    if(node_pi->sibling_left) node_pi->sibling_left->sibling_right = NULL;
     else head = NULL;
-    Free_Node(node_pi);
+    free_node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
@@ -2821,35 +2821,35 @@ Node* Get_All_CNT() {
             //delete this
             node_pi->acpi = NULL;
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
-            node_pi->siblingRight->siblingLeft = node_pi;
-            node_pi = node_pi->siblingRight;
+            node_pi->sibling_right = (Node *)calloc(1,sizeof(Node));
+            node_pi->sibling_right->sibling_left = node_pi;
+            node_pi = node_pi->sibling_right;
         }
         if (strncmp(key.data, "ri", key.size) == 0) {
             node_ri->ri = malloc(data.size);
             strcpy(node_ri->ri, data.data);
-            node_ri = node_ri->siblingRight;
+            node_ri = node_ri->sibling_right;
 
         }
         if (strncmp(key.data, "rn", key.size) == 0) {
             node_rn->rn = malloc(data.size);
             strcpy(node_rn->rn, data.data);
-            node_rn = node_rn->siblingRight;
+            node_rn = node_rn->sibling_right;
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
             node_ty->ty = *(int*)data.data;
-            node_ty = node_ty->siblingRight;
+            node_ty = node_ty->sibling_right;
         }
         /*
         if (strncmp(key.data, "acpi", key.size) == 0) {
             node_acpi->acpi = data.data;
-            node_acpi = node_acpi->siblingRight;
+            node_acpi = node_acpi->sibling_right;
         }*/
     }
 
-    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    if(node_pi->sibling_left) node_pi->sibling_left->sibling_right = NULL;
     else head = NULL;
-    Free_Node(node_pi);
+    free_node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
@@ -2929,30 +2929,30 @@ Node* Get_All_CIN() {
         if (strncmp(key.data, "pi", key.size) == 0) {
             node_pi->pi = malloc(data.size);
             strcpy(node_pi->pi, data.data);
-            node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
-            node_pi->siblingRight->siblingLeft = node_pi;
-            node_pi = node_pi->siblingRight;
+            node_pi->sibling_right = (Node *)calloc(1,sizeof(Node));
+            node_pi->sibling_right->sibling_left = node_pi;
+            node_pi = node_pi->sibling_right;
         }
         if (strncmp(key.data, "ri", key.size) == 0) {
             node_ri->ri = malloc(data.size);
             strcpy(node_ri->ri, data.data);
-            node_ri = node_ri->siblingRight;
+            node_ri = node_ri->sibling_right;
 
         }
         if (strncmp(key.data, "rn", key.size) == 0) {
             node_rn->rn = malloc(data.size);
             strcpy(node_rn->rn, data.data);
-            node_rn = node_rn->siblingRight;
+            node_rn = node_rn->sibling_right;
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
             node_ty->ty = *(int*)data.data;
-            node_ty = node_ty->siblingRight;
+            node_ty = node_ty->sibling_right;
         }
     }
 
-    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    if(node_pi->sibling_left) node_pi->sibling_left->sibling_right = NULL;
     else head = NULL;
-    Free_Node(node_pi);
+    free_node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
@@ -3027,12 +3027,12 @@ Node* Get_All_Sub(){
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         switch (idx) {
             case 0:
-                node->ty = t_Sub;
+                node->ty = TY_SUB;
                 node->ri = malloc(data.size);
                 strcpy(node->ri, data.data);
 
-                node->siblingRight = (Node*)malloc(sizeof(Node));
-                node->siblingRight->siblingLeft = node;
+                node->sibling_right = (Node*)malloc(sizeof(Node));
+                node->sibling_right->sibling_left = node;
 
                 idx++;
                 break;
@@ -3068,7 +3068,7 @@ Node* Get_All_Sub(){
                 node->pi = malloc(key.size);
                 strcpy(node->pi, key.data);
 
-                node = node->siblingRight;
+                node = node->sibling_right;
                 idx++;
                 break;
             default:
@@ -3077,7 +3077,7 @@ Node* Get_All_Sub(){
         }
     }
 
-    node->siblingLeft->siblingRight = NULL;
+    node->sibling_left->sibling_right = NULL;
     free(node);
     node = NULL;
 
@@ -3201,9 +3201,9 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
                 //printf("[%d]", idx % cnt);
                 node_pi->pi = malloc(data.size);
                 strcpy(node_pi->pi, data.data);
-                node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
-                node_pi->siblingRight->siblingLeft = node_pi;
-                node_pi = node_pi->siblingRight;
+                node_pi->sibling_right = (Node *)calloc(1,sizeof(Node));
+                node_pi->sibling_right->sibling_left = node_pi;
+                node_pi = node_pi->sibling_right;
             }
             idx++;
         }
@@ -3211,7 +3211,7 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
             if (arr[idx % cnt]) {
                 node_ri->ri = malloc(data.size);
                 strcpy(node_ri->ri, data.data);
-                node_ri = node_ri->siblingRight;
+                node_ri = node_ri->sibling_right;
             }
             idx++;
         }
@@ -3219,14 +3219,14 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
             if (arr[idx % cnt]) {
                 node_rn->rn = malloc(data.size);
                 strcpy(node_rn->rn, data.data);
-                node_rn = node_rn->siblingRight;
+                node_rn = node_rn->sibling_right;
             }
             idx++;
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
             if (arr[idx % cnt]) {
                 node_ty->ty = *(int*)data.data;
-                node_ty = node_ty->siblingRight;
+                node_ty = node_ty->sibling_right;
             }
             idx++;
         }
@@ -3234,9 +3234,9 @@ Node* Get_CIN_Period(char* start_time, char* end_time) {
     }
     // for (int i = 0; i < cnt; i++) printf("%d ", arr[i]);
 
-    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    if(node_pi->sibling_left) node_pi->sibling_left->sibling_right = NULL;
     else head = NULL;
-    Free_Node(node_pi);
+    free_node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {
@@ -3345,9 +3345,9 @@ Node* Get_CIN_Pi(char* pi) {
                 //printf("[%d]", idx % cnt);
                 node_pi->pi = malloc(data.size);
                 strcpy(node_pi->pi, data.data);
-                node_pi->siblingRight = (Node *)calloc(1,sizeof(Node));
-                node_pi->siblingRight->siblingLeft = node_pi;
-                node_pi = node_pi->siblingRight;
+                node_pi->sibling_right = (Node *)calloc(1,sizeof(Node));
+                node_pi->sibling_right->sibling_left = node_pi;
+                node_pi = node_pi->sibling_right;
             }
             idx++;
         }
@@ -3355,7 +3355,7 @@ Node* Get_CIN_Pi(char* pi) {
             if (arr[idx % cnt]) {
                 node_ri->ri = malloc(data.size);
                 strcpy(node_ri->ri, data.data);
-                node_ri = node_ri->siblingRight;
+                node_ri = node_ri->sibling_right;
             }
             idx++;
         }
@@ -3363,22 +3363,22 @@ Node* Get_CIN_Pi(char* pi) {
             if (arr[idx % cnt]) {
                 node_rn->rn = malloc(data.size);
                 strcpy(node_rn->rn, data.data);
-                node_rn = node_rn->siblingRight;
+                node_rn = node_rn->sibling_right;
             }
             idx++;
         }
         if (strncmp(key.data, "ty", key.size) == 0) {
             if (arr[idx % cnt]) {
                 node_ty->ty = *(int*)data.data;
-                node_ty = node_ty->siblingRight;
+                node_ty = node_ty->sibling_right;
             }
             idx++;
         }
     }
 
-    if(node_pi->siblingLeft) node_pi->siblingLeft->siblingRight = NULL;
+    if(node_pi->sibling_left) node_pi->sibling_left->sibling_right = NULL;
     else head = NULL;
-    Free_Node(node_pi);
+    free_node(node_pi);
     node_ri = node_pi = node_rn = node_ty = NULL;
 
     if (ret != DB_NOTFOUND) {

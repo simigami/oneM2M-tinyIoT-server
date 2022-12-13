@@ -17,7 +17,7 @@ void eliminate_quotation_mark(char *s){
 	s[index] = '\0';
 }
 
-AE* JSON_to_AE(char *json_payload) {
+AE* json_to_ae(char *json_payload) {
 	AE *ae = (AE *)calloc(1,sizeof(AE));
 
 	cJSON *root = NULL;
@@ -90,7 +90,7 @@ end:
 	return ae;
 }
 
-CNT* JSON_to_CNT(char *json_payload) {
+CNT* json_to_cnt(char *json_payload) {
 	CNT *cnt = (CNT *)calloc(1,sizeof(CNT));
 
 	cJSON *root = NULL;
@@ -161,7 +161,7 @@ end:
 	return cnt;
 }
 
-CIN* JSON_to_CIN(char *json_payload) {
+CIN* json_to_cin(char *json_payload) {
 	CIN *cin = (CIN *)calloc(1,sizeof(CIN));
 
 	cJSON *root = NULL;
@@ -212,7 +212,7 @@ end:
 	return cin;
 }
 
-Sub* JSON_to_Sub(char *json_payload) {
+Sub* json_to_sub(char *json_payload) {
 	Sub *sub = (Sub *)calloc(1,sizeof(Sub));
 
 	cJSON *root = NULL;
@@ -306,7 +306,7 @@ end:
 	return sub;
 }
 
-ACP* JSON_to_ACP(char *json_payload) {
+ACP* json_to_acp(char *json_payload) {
 	ACP *acp = (ACP *)malloc(sizeof(ACP));
 
 	cJSON *root = NULL;
@@ -490,7 +490,7 @@ end:
 	return acp;
 }
 
-char* Node_to_json(Node *node) {
+char* node_to_json(Node *node) {
 	char *json = NULL;
 
 	cJSON *obj = NULL;
@@ -513,7 +513,7 @@ char* Node_to_json(Node *node) {
 	return json;
 }
 
-char* CSE_to_json(CSE* cse_object) {
+char* cse_to_json(CSE* cse_object) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -537,7 +537,7 @@ char* CSE_to_json(CSE* cse_object) {
 	return json;
 }
 
-char* AE_to_json(AE *ae_object) {
+char* ae_to_json(AE *ae_object) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -564,7 +564,7 @@ char* AE_to_json(AE *ae_object) {
 	return json;
 }
 
-char* CNT_to_json(CNT* cnt_object) {
+char* cnt_to_json(CNT* cnt_object) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -603,7 +603,7 @@ char* CNT_to_json(CNT* cnt_object) {
 	return json;
 }
 
-char* CIN_to_json(CIN* cin_object) {
+char* cin_to_json(CIN* cin_object) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -630,7 +630,7 @@ char* CIN_to_json(CIN* cin_object) {
 	return json;
 }
 
-char* Sub_to_json(Sub *sub_object) {
+char* sub_to_json(Sub *sub_object) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -684,7 +684,7 @@ char* Sub_to_json(Sub *sub_object) {
 	return json;
 }
 
-char* Noti_to_json(char *sur, int net, char *rep) {
+char* notification_to_json(char *sur, int net, char *rep) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -706,7 +706,7 @@ char* Noti_to_json(char *sur, int net, char *rep) {
 	return json;
 }
 
-char* ACP_to_json(ACP *acp_object) {
+char* acp_to_json(ACP *acp_object) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -821,7 +821,7 @@ char* ACP_to_json(ACP *acp_object) {
 	return json;
 }
 
-char* Discovery_to_json(char **result, int size) {
+char* discovery_to_json(char **result, int size) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
@@ -845,7 +845,7 @@ char* Discovery_to_json(char **result, int size) {
 	return json;
 }
 
-char* JSON_label_value(char *json_payload) {
+char* json_label_value(char *json_payload) {
 	char *resource = NULL;
 	char *label_value = NULL;
 
@@ -883,7 +883,7 @@ end:
 	return label_value;
 }
 
-char* Get_JSON_Value_char(char *key, char *json) {
+char* get_json_value_char(char *key, char *json) {
 	char tmp[16] = "\"";
 	strcat(tmp,key);
 	strcat(tmp,"\"");
@@ -926,7 +926,7 @@ end:
 	return value;
 }
 
-int Get_JSON_Value_int(char *key, char *json) {
+int get_json_value_int(char *key, char *json) {
 	char tmp[16] = "\"";
 	strcat(tmp,key);
 	strcat(tmp,"\"");
@@ -968,7 +968,7 @@ end:
 	return value;
 }
 
-int Get_JSON_Value_bool(char *key, char *json) {
+int get_json_value_bool(char *key, char *json) {
 	char tmp[16] = "\"";
 	strcat(tmp,key);
 	strcat(tmp,"\"");
@@ -1015,7 +1015,7 @@ end:
 	cJSON_Delete(cjson);
 }
 
-char *Get_JSON_Value_list(char *key_str, char *json) {
+char *get_json_value_list(char *key_str, char *json) {
 	char key_arr[16], *key;
 	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
