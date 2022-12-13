@@ -276,6 +276,11 @@ void respond_to_client(int status, char *json) {
 		strcpy(response_json, json);
 	}
 
+  if(!response_json) {
+    fprintf(stderr,"response_json is NULL\n");
+    return;
+  }
+
 	char content_length[16];
 
 	sprintf(content_length, "%ld", strlen(response_json));
@@ -293,4 +298,5 @@ void respond_to_client(int status, char *json) {
 		case 500: HTTP_500; break;
 	}
 	printf("%s",response_json);
+  //free(response_json);
 }

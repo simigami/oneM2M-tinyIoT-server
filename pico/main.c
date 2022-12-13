@@ -36,7 +36,7 @@ void route() {
 	}
 	if(header_value = request_header("X-M2M-RVI")) {
 		set_response_header("X-M2M-RVI", header_value);
-	} 
+	}
 
 	Node* pnode = parse_uri(rt->cb, uri, &op); // return tree node by URI
 	int e = result_parse_uri(pnode);
