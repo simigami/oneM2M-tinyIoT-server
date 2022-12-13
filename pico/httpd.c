@@ -68,7 +68,7 @@ void serve_forever(const char *PORT) {
 
   // ACCEPT connections
   while (1) {
-    fprintf(stderr,"\ncall accept()...");
+    fprintf(stderr,"\nsocket accept()...");
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
     fprintf(stderr,"OK\n");
 
@@ -172,7 +172,7 @@ void respond(int slot) {
   int rcvd;
   
   buf = malloc(BUF_SIZE);
-  fprintf(stderr,"call recv()...");
+  fprintf(stderr,"socket recv()...");
   rcvd = recv(clients[slot], buf, BUF_SIZE, 0);
   fprintf(stderr,"OK\n");
   if(buf) {

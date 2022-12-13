@@ -168,3 +168,10 @@ if (fork() == 0) {
 	close(clients[slot]);
 }
 */
+
+/*
+Node* DB_Get_CIN_Period(char *start_time, char *end_time);
+char* Label_To_URI(char* label);
+char* URI_To_Label(char* uri);
+int Store_Label(char* label, char* uri);
+*/

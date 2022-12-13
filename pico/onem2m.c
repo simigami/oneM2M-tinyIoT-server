@@ -50,7 +50,7 @@ Node* parse_uri(Node *cb, char *uri, Operation *op) {
 
 Node *find_latest_oldest(Node* node, Operation *op) {
 	if(node->ty == TY_CNT) {
-		Node *head = db_get_cin_by_pi(node->ri);
+		Node *head = db_get_cin_list_by_pi(node->ri);
 		Node *cin = head;
 
 		if(cin) {
@@ -161,7 +161,7 @@ void tree_viewer_data(Node *node, char **viewer_data, int cin_size) {
 	}
 
 	if(node->ty != TY_SUB && node->ty != TY_ACP) {
-		Node *cin_list_head = db_get_cin_by_pi(node->ri);
+		Node *cin_list_head = db_get_cin_list_by_pi(node->ri);
 
 		if(cin_list_head) cin_list_head = latest_cin_list(cin_list_head, cin_size);
 
@@ -326,7 +326,6 @@ Node* create_cnt_node(CNT *cnt) {
 		node->acpi = (char*)malloc((strlen(cnt->acpi) + 1) * sizeof(char));
 		strcpy(node->acpi, cnt->acpi);
 	}
-	
 
 	node->ty = TY_CNT;
 
@@ -996,10 +995,9 @@ void notify_object(Node *node, char *res_json, NET net) {
 	while(node) {
 		if(node->ty == TY_SUB && (net & node->net) == net) {
 			if(!node->uri) set_node_uri(node);
-			char *noti_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, res_json);
-			char *res = send_http_packet(node->nu, noti_json);
-			free(noti_json); noti_json = NULL;
-			if(res) { free(res); res = NULL; }
+			char *notify_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, res_json);
+			int result = send_http_packet(node->nu, notify_json);
+			free(notify_json); notify_json = NULL;
 		}
 		node = node->sibling_right;
 	}
@@ -1068,10 +1066,6 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data) {
     char* tmp;
 
     data->size += (size * nmemb);
-
-#ifdef DEBUG
-    fprintf(stderr, "data at %p size=%ld nmemb=%ld\n", ptr, size, nmemb);
-#endif
     tmp = realloc(data->data, data->size + 1); /* +1 for '\0' */
 
     if(tmp) {
@@ -1090,7 +1084,7 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data) {
     return size * nmemb;
 }
 
-char *send_http_packet(char* target, char *post_data) {
+int send_http_packet(char* target, char *post_data) {
     CURL *curl;
     struct url_data data;
 
@@ -1099,7 +1093,7 @@ char *send_http_packet(char* target, char *post_data) {
 
     if(NULL == data.data) {
         fprintf(stderr, "Failed to allocate memory.\n");
-        return NULL;
+        return EXIT_FAILURE;
     }
 	if(post_data) remove_invalid_char_json(post_data);
 
@@ -1133,7 +1127,9 @@ char *send_http_packet(char* target, char *post_data) {
         curl_easy_cleanup(curl);
     }
 
-    return data.data;
+	if(data.data) free(data.data);
+
+    return EXIT_SUCCESS;
 }
 
 int get_acop(Node *node) {
@@ -1253,7 +1249,7 @@ Node *find_node_by_uri(Node *cb, char *node_uri) {
 	Node *head;
 
 	if(pnode) {
-		head = db_get_cin_by_pi(pnode->ri);
+		head = db_get_cin_list_by_pi(pnode->ri);
 		node = head;
 		while(node) {
 			if(!strcmp(node->rn, uri_array[index])) break;
@@ -1285,7 +1281,7 @@ void set_node_uri(Node* node) {
 	if(!node->uri) node->uri = (char*)calloc(MAX_URI_SIZE,sizeof(char));
 
 	Node *p = node;
-	char uri_copy[16][MAX_URI_SIZE];
+	char uri_copy[32][MAX_URI_SIZE];
 	int index = -1;
 
 	while(p) {

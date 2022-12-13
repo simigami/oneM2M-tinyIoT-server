@@ -51,7 +51,6 @@ AE* json_to_ae(char *json_payload) {
 	else {
 		ae->api = cJSON_Print(api);
 		eliminate_quotation_mark(ae->api);
-		//ae->api = strtok(ae->api, "\"");
 	}
 
 
@@ -81,7 +80,6 @@ AE* json_to_ae(char *json_payload) {
 	else {
 		ae->rn = cJSON_Print(rn);
 		eliminate_quotation_mark(ae->rn);
-		//ae->rn = strtok(ae->rn, "\"");
 	}
 
 end:
@@ -845,49 +843,10 @@ char* discovery_to_json(char **result, int size) {
 	return json;
 }
 
-char* json_label_value(char *json_payload) {
-	char *resource = NULL;
-	char *label_value = NULL;
-
-	cJSON *root = NULL;
-	cJSON *lbl = NULL;
-
-	cJSON* json = cJSON_Parse(json_payload);
-	if (json == NULL) {
-		const char *error_ptr = cJSON_GetErrorPtr();
-		if (error_ptr != NULL)
-		{
-			//fprintf(stderr, "Error before: %s\n", error_ptr);
-		}
-		return NULL;
-	}
-
-	//Extracting resources from json_payload
-	resource = strstr(json_payload, "m2m:");
-	resource = strtok(resource, "\"");
-
-	root = cJSON_GetObjectItem(json, resource);
-
-	//lbl
-	lbl = cJSON_GetObjectItem(root, "lbl");
-	if (!cJSON_IsString(lbl) && lbl->valuestring == NULL)
-	{
-		goto end;
-	}
-	label_value = cJSON_Print(lbl);
-	label_value = strtok(label_value, "\"");
-
-end:
-	cJSON_Delete(json);
-
-	return label_value;
-}
-
 char* get_json_value_char(char *key, char *json) {
-	char tmp[16] = "\"";
-	strcat(tmp,key);
-	strcat(tmp,"\"");
-	if(!strstr(json,tmp)) return NULL;
+	char key_exist_check[16];
+	sprintf(key_exist_check,"\"%s\"",key);
+	if(!strstr(json,key_exist_check)) return NULL;
 
 	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
@@ -927,10 +886,9 @@ end:
 }
 
 int get_json_value_int(char *key, char *json) {
-	char tmp[16] = "\"";
-	strcat(tmp,key);
-	strcat(tmp,"\"");
-	if(!strstr(json,tmp)) return 0;
+	char key_exist_check[16];
+	sprintf(key_exist_check,"\"%s\"",key);
+	if(!strstr(json,key_exist_check)) return -1;
 
 	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
@@ -969,10 +927,9 @@ end:
 }
 
 int get_json_value_bool(char *key, char *json) {
-	char tmp[16] = "\"";
-	strcat(tmp,key);
-	strcat(tmp,"\"");
-	if(!strstr(json,tmp)) return -1;
+	char key_exist_check[16];
+	sprintf(key_exist_check,"\"%s\"",key);
+	if(!strstr(json,key_exist_check)) return -1;
 
 	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;
@@ -1016,6 +973,10 @@ end:
 }
 
 char *get_json_value_list(char *key_str, char *json) {
+	char key_exist_check[16];
+	sprintf(key_exist_check,"\"%s\"",key_str);
+	if(!strstr(json,key_exist_check)) return NULL;
+
 	char key_arr[16], *key;
 	char json_copy[MAX_PAYLOAD_SIZE];
 	char *resource = NULL;

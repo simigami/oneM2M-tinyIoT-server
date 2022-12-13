@@ -1992,7 +1992,7 @@ Node* db_get_all_acp() {
     return head;
 }
 
-Node* db_get_cin_by_pi(char* pi) {
+Node* db_get_cin_list_by_pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
     char* TYPE = "4-";
 

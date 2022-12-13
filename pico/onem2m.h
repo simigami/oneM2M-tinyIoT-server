@@ -152,7 +152,6 @@ typedef struct {
 }ResourceTree;
 
 //http request
-int validate_onem2m_standard();
 Node* parse_uri(Node *cb, char *uri_array, Operation *op);
 Operation parse_operation();
 ObjectType parse_object_type();
@@ -235,14 +234,7 @@ Node* db_get_all_cin();
 Node* db_get_all_sub();
 Node* db_get_all_acp();
 
-Node* db_get_cin_by_pi(char* pi);
-
-/*
-Node* DB_Get_CIN_Period(char *start_time, char *end_time);
-char* Label_To_URI(char* label);
-char* URI_To_Label(char* uri);
-int Store_Label(char* label, char* uri);
-*/
+Node* db_get_cin_list_by_pi(char* pi);
 
 //resource tree
 Node* create_node(void *obj, ObjectType ty);
@@ -294,7 +286,7 @@ int is_json_valid_char(char c);
 //http etc
 struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
-char* send_http_packet(char *target, char *post_data);
+int send_http_packet(char *target, char *post_data);
 
 //exception
 void no_mandatory_error();
