@@ -1618,7 +1618,6 @@ Node* db_get_all_cse() {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-    fprintf(stderr,"\n");
     return head;
 }
 
@@ -1696,7 +1695,6 @@ Node* db_get_all_ae() {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-    fprintf(stderr,"\n");
     return head;
 }
 
