@@ -5,7 +5,12 @@
 #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdint.h>
 #include "onem2m.h"
+#include "jsonparse.h"
+#include "berkeleyDB.h"
+#include "httpd.h"
+#include "cJSON.h"
 
 ResourceTree *rt;
 
@@ -614,7 +619,7 @@ int check_request_body_empty() {
 int check_resource_name_duplicate(Node *node) {
 	if(!node) return 0;
 
-	if(find_same_resource_name(node)) {
+	if(check_same_resource_name_exists(node)) {
 		fprintf(stderr,"Resource name duplicate error\n");
 		respond_to_client(209, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
 		return -1;

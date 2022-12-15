@@ -1,5 +1,5 @@
-#ifndef _HTTPD_H___
-#define _HTTPD_H___
+#ifndef __HTTPD_H__
+#define __HTTPD_H__
 
 #include <stdio.h>
 #include <string.h>

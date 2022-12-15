@@ -1,4 +1,3 @@
-#include "onem2m.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -9,6 +8,10 @@
 #include <ctype.h>
 #include <malloc.h>
 #include <sys/timeb.h>
+#include "onem2m.h"
+#include "berkeleyDB.h"
+#include "jsonparse.h"
+#include "httpd.h"
 
 extern char response_headers[1024];
 
@@ -96,7 +99,7 @@ Operation parse_operation(){
 	return op;
 }
 
-int find_same_resource_name(Node *pnode) {
+int check_same_resource_name_exists(Node *pnode) {
 	Node* node = pnode->child;
 	char* rn = get_json_value_char("rn",payload);
 	if(!rn) return 0;
@@ -523,7 +526,7 @@ char *get_local_time(int diff) {
 
 void init_cse(CSE* cse) {
 	char *ct = get_local_time(0);
-	char *ri = resource_identifer(TY_CSE, ct);
+	char *ri = resource_identifier(TY_CSE, ct);
 	char rn[1024] = "TinyIoT";
 	
 	cse->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -550,7 +553,7 @@ void init_ae(AE* ae, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *aei = NULL; //request_header("X-M2M-Origin"); 
-	char *ri = resource_identifer(TY_AE, ct);
+	char *ri = resource_identifier(TY_AE, ct);
 	int m_aei = 0;
 	
 	if(!aei) {
@@ -589,7 +592,7 @@ void init_ae(AE* ae, char *pi) {
 void init_cnt(CNT* cnt, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifer(TY_CNT, ct);
+	char *ri = resource_identifier(TY_CNT, ct);
 	
 	if(!cnt->rn) {
 		cnt->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -620,7 +623,7 @@ void init_cnt(CNT* cnt, char *pi) {
 void init_cin(CIN* cin, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifer(TY_CIN, ct);
+	char *ri = resource_identifier(TY_CIN, ct);
 	
 	cin->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cin->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -647,7 +650,7 @@ void init_cin(CIN* cin, char *pi) {
 void init_sub(Sub* sub, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifer(TY_SUB, ct);
+	char *ri = resource_identifier(TY_SUB, ct);
 
 	if(!sub->rn) {
 		sub->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -685,7 +688,7 @@ void init_sub(Sub* sub, char *pi) {
 void init_acp(ACP* acp, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifer(TY_ACP, ct);
+	char *ri = resource_identifier(TY_ACP, ct);
 
 	if(!acp->rn) {
 		acp->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -990,12 +993,12 @@ void free_acp(ACP* acp) {
 	free(acp); acp = NULL;
 }
 
-void notify_object(Node *node, char *res_json, NET net) {
-	remove_invalid_char_json(res_json);
+void notify_object(Node *node, char *response_json, NET net) {
+	remove_invalid_char_json(response_json);
 	while(node) {
 		if(node->ty == TY_SUB && (net & node->net) == net) {
 			if(!node->uri) set_node_uri(node);
-			char *notify_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, res_json);
+			char *notify_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, response_json);
 			int result = send_http_packet(node->nu, notify_json);
 			free(notify_json); notify_json = NULL;
 		}
@@ -1032,7 +1035,7 @@ int net_to_bit(char *net) {
 	return ret;
 }
 
-char *resource_identifer(ObjectType ty, char *ct) {
+char *resource_identifier(ObjectType ty, char *ct) {
 	char *ri = (char *)malloc(24 * sizeof(char));
 
 	switch(ty) {

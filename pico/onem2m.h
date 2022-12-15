@@ -1,8 +1,7 @@
-#include <stdio.h>
+#ifndef __ONEM2M_H__
+#define __ONEM2M_H__
+
 #include <stdbool.h>
-#include <db.h>
-#include "cJSON.h"
-#include "httpd.h"
 
 //enum
 typedef enum {
@@ -164,7 +163,7 @@ void retrieve_object(Node *pnode);
 void retrieve_object_filtercriteria(Node *pnode);
 void update_object(Node *pnode);
 void delete_object(Node *pnode);
-void notify_object(Node *node, char *res_json, NET net);
+void notify_object(Node *node, char *response_json, NET net);
 
 void create_ae(Node *pnode);
 void create_cnt(Node *pnode);
@@ -206,36 +205,6 @@ void free_cin(CIN* cin);
 void free_sub(Sub* sub);
 void free_acp(ACP *acp);
 
-//database
-int db_display(char* database);
-
-int db_store_cse(CSE* cse_object);
-int db_store_ae(AE* ae_object);
-int db_store_cnt(CNT* cnt_object);
-int db_store_cin(CIN* cin_object);
-int db_store_sub(Sub *sub_object);
-int db_store_acp(ACP *acp_object);
-
-CSE* db_get_cse();
-AE* db_get_ae(char *ri);
-CNT* db_get_cnt(char *ri);
-CIN* db_get_cin(char *ri);
-Sub* db_get_sub(char* ri);
-ACP* db_get_acp(char* ri);
-
-int db_delete_object(char *ri);
-int db_delete_sub(char* ri);
-int db_delete_acp(char* ri);
-
-Node* db_get_all_cse();
-Node* db_get_all_ae();
-Node* db_get_all_cnt();
-Node* db_get_all_cin();
-Node* db_get_all_sub();
-Node* db_get_all_acp();
-
-Node* db_get_cin_list_by_pi(char* pi);
-
 //resource tree
 Node* create_node(void *obj, ObjectType ty);
 Node* create_cse_node(CSE *cse);
@@ -245,7 +214,6 @@ Node* create_cin_node(CIN *cin);
 Node* create_sub_node(Sub *sub);
 Node* create_acp_node(ACP *acp);
 int add_child_resource_tree(Node *parent, Node *child);
-char* node_to_json(Node *node);
 Node *find_node_by_uri(Node *cse, char *node_uri);
 void delete_node_and_db_data(Node *node, int flag);
 void free_node(Node *node);
@@ -256,30 +224,10 @@ void tree_viewer_data(Node *node, char **viewer_data, int cin_size);
 void restruct_resource_tree();
 Node* restruct_resource_tree_child(Node *node, Node *list);
 Node* latest_cin_list(Node *cinList, int num); // use in viewer API
-Node *find_latest_oldest(Node* node, Operation *op);
-int find_same_resource_name(Node *pnode);
+Node* find_latest_oldest(Node* node, Operation *op);
+int check_same_resource_name_exists(Node *pnode);
 
-//json parser
-CSE* json_to_cse(char *json_payload);
-AE* json_to_ae(char *json_payload);
-CNT* json_to_cnt(char *json_payload);
-CIN* json_to_cin(char *json_payload);
-Sub* json_to_sub(char *json_payload);
-ACP* json_to_acp(char *json_payload);
-
-char* cse_to_json(CSE* cse_object);
-char* ae_to_json(AE* ae_object);
-char* cnt_to_json(CNT* cnt_object);
-char* cin_to_json(CIN* cin_object);
-char* sub_to_json(Sub *sub_object);
-char* notification_to_json(char *sur, int net, char *rep);
-char* acp_to_json(ACP *acp_object);
-char* discovery_to_json(char **result, int size);
-
-char* get_json_value_char(char *key, char *json);
-int get_json_value_int(char *key, char *json);
-int get_json_value_bool(char *key, char *json);
-char *get_json_value_list(char *key, char *json);
+//json
 void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
 
@@ -302,7 +250,7 @@ int check_json_format();
 //etc
 void init();
 char* get_local_time(int diff);
-char* resource_identifer(ObjectType ty, char *ct);
+char* resource_identifier(ObjectType ty, char *ct);
 void cin_in_period(Node *pnode);
 void object_test_api(Node *node);
 char* json_label_value(char *json_payload);
@@ -318,3 +266,5 @@ void set_node_uri(Node* node);
 #define EXPIRE_TIME -3600*24*365*2
 #define ALL_ACOP ACOP_CREATE + ACOP_RETRIEVE + ACOP_UPDATE + ACOP_DELETE + ACOP_NOTIFY + ACOP_DISCOVERY
 #define MAX_PAYLOAD_SIZE 16384
+
+#endif

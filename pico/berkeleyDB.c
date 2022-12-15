@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <db.h>
 #include "onem2m.h"
-#define DB_STR_MAX 2048
-#define DB_SEP ";"
+#include "berkeleyDB.h"
 
 /*DB CREATE*/
 DB* DB_CREATE_(DB *dbp){

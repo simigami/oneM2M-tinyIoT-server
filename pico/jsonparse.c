@@ -1,10 +1,11 @@
-#include "onem2m.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include "onem2m.h"
+#include "jsonparse.h"
+#include "cJSON.h"
 
 void eliminate_quotation_mark(char *s){
 	int len = strlen(s);
