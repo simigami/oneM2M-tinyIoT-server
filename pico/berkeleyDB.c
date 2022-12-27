@@ -961,6 +961,8 @@ CNT* db_get_cnt(char* ri) {
         dbp->close(dbp, 0);
     fprintf(stderr,"OK\n");
 
+    
+
     return new_cnt;
 }
 

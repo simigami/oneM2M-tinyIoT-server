@@ -155,7 +155,6 @@ Node* parse_uri(Node *cb, char *uri_array, Operation *op);
 Operation parse_operation();
 ObjectType parse_object_type();
 ObjectType parse_object_type_in_request_body();
-void normalization_payload();
 
 //onem2m resource
 void create_object(Node* pnode);

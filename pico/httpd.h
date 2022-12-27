@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "onem2m.h"
 
 // Client request
 extern char *method, // "GET" or "POST"
@@ -21,6 +22,8 @@ char *request_header(const char *name);
 void set_response_header(char *key, char *value);
 
 void respond_to_client(int status, char *json);
+
+void normalization_payload();
 
 typedef struct {
   char *name, *value;
