@@ -199,18 +199,6 @@ Node *latest_cin_list(Node* cinList, int num) {
 	return head;
 }
 
-void normalization_payload() {
-	int index = 0;
-
-	for(int i=0; i<payload_size; i++) {
-		if(is_json_valid_char(payload[i])) {
-			payload[index++] =  payload[i];
-		}
-	}
-
-	payload[index] = '\0';
-}
-
 ObjectType parse_object_type() {
 	char *ct = request_header("Content-Type");
 	if(!ct) return 0;

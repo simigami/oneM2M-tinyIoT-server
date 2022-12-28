@@ -23,7 +23,7 @@ int *clients;
 static void start_server(const char *);
 static void respond(int);
 
-static char *buf;
+static char *buf[MAX_CONNECTIONS];
 extern char *response_json;
 char *response_headers;
 
@@ -36,8 +36,8 @@ char *method, // "GET" or "POST"
 
 int payload_size;
 
-void *respond_thread(void *s) {
-	int *slot = (int *)s;
+void *respond_thread(void *ps) {
+  int *slot = (int*)ps;
 	respond(*slot);
 	close(clients[*slot]);
 	clients[*slot] = -1;
@@ -68,9 +68,7 @@ void serve_forever(const char *PORT) {
 
   // ACCEPT connections
   while (1) {
-    fprintf(stderr,"\nsocket accept()...");
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
-    fprintf(stderr,"OK\n");
 
     int flag = fcntl(clients[slot], F_GETFL, O_NONBLOCK);
 
@@ -78,9 +76,10 @@ void serve_forever(const char *PORT) {
       perror("accept() error");
       exit(1);
     } else {
-      pthread_t threadID;
-      pthread_create(&threadID, NULL, respond_thread, (void*)&slot);
-      pthread_join(threadID, NULL);
+      pthread_t thread_id;
+      int s = slot;
+      int *ps = &s; 
+      pthread_create(&thread_id, NULL, respond_thread, (void*)ps);
     }
     while (clients[slot] != -1)
       slot = (slot + 1) % MAX_CONNECTIONS;
@@ -171,15 +170,8 @@ static void uri_unescape(char *uri) {
 void respond(int slot) {
   int rcvd;
   
-  buf = malloc(BUF_SIZE);
-  fprintf(stderr,"socket recv()...");
-  rcvd = recv(clients[slot], buf, BUF_SIZE, 0);
-  fprintf(stderr,"OK\n");
-  if(buf) {
-    fprintf(stderr,"\n==============Buffer Received==============\n\n");
-    fprintf(stderr,"%s",buf);
-    fprintf(stderr,"==========================================\n");
-  }
+  buf[slot] = malloc(BUF_SIZE);
+  rcvd = recv(clients[slot], buf[slot], BUF_SIZE, 0);
 
   if (rcvd < 0){ // receive error
     fprintf(stderr, ("recv() error\n"));
@@ -191,14 +183,19 @@ void respond(int slot) {
   }
   else // message received
   {
-    buf[rcvd] = '\0';
+    pthread_mutex_lock(&mutex_lock);
 
-    method = strtok(buf, " \t\r\n");
+    buf[slot][rcvd] = '\0';
+    fprintf(stderr,"\n\033[34m======================Buffer received======================\033[0m\n\n");
+    fprintf(stderr,"%s",buf[slot]);
+    fprintf(stderr,"\n\033[34m==========================================================\033[0m\n");
+
+    method = strtok(buf[slot], " \t\r\n");
     uri = strtok(NULL, " \t");
     prot = strtok(NULL, " \t\r\n");
 
     if(!uri) {
-      fprintf(stderr,"URI NULL Error\n");
+      fprintf(stderr,"uri is NULL\n");
       return;
     }
 
@@ -238,14 +235,12 @@ void respond(int slot) {
     t = strtok(NULL, "\r\n");
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
-    payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
+    payload_size = t2 ? atol(t2) : (rcvd - (t - buf[slot]));
     if(payload) normalization_payload();
     // bind clientfd to stdout, making it easier to write
     int clientfd = clients[slot];
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
-
-    pthread_mutex_lock(&mutex_lock);
 
     // call router
     route();
@@ -257,7 +252,7 @@ void respond(int slot) {
     shutdown(STDOUT_FILENO, SHUT_WR);
     //close(STDOUT_FILENO);
   }
-  free(buf);
+  free(buf[slot]);
 }
 
 void set_response_header(char *key, char *value) {
@@ -299,4 +294,16 @@ void respond_to_client(int status, char *json) {
 	}
 	printf("%s",response_json);
   //free(response_json);
+}
+
+void normalization_payload() {
+	int index = 0;
+
+	for(int i=0; i<payload_size; i++) {
+		if(is_json_valid_char(payload[i])) {
+			payload[index++] =  payload[i];
+		}
+	}
+
+	payload[index] = '\0';
 }
