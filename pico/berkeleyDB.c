@@ -244,6 +244,7 @@ int db_store_ae(AE *ae_object) {
 int db_store_cnt(CNT *cnt_object) {
     fprintf(stderr,"[Store CNT] %s...",cnt_object->ri);
     char* DATABASE = "RESOURCE.db";
+    char* blankspace = " ";
 
     DB* dbp;    // db handle
     DBC* dbcp;
@@ -257,15 +258,15 @@ int db_store_cnt(CNT *cnt_object) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
-    if (cnt_object->rn == NULL) cnt_object->rn = " ";
-    if (cnt_object->pi == NULL) cnt_object->pi = " ";
+    if (cnt_object->rn == NULL) cnt_object->rn = blankspace;
+    if (cnt_object->pi == NULL) cnt_object->pi = blankspace;
     if (cnt_object->ty == '\0') cnt_object->ty = 0;
-    if (cnt_object->ct == NULL) cnt_object->ct = " ";
-    if (cnt_object->lt == NULL) cnt_object->lt = " ";
-    if (cnt_object->et == NULL) cnt_object->et = " ";
+    if (cnt_object->ct == NULL) cnt_object->ct = blankspace;
+    if (cnt_object->lt == NULL) cnt_object->lt = blankspace;
+    if (cnt_object->et == NULL) cnt_object->et = blankspace;
     
+    if (cnt_object->acpi == NULL) cnt_object->acpi = blankspace;
     if (cnt_object->lbl == NULL) cnt_object->lbl = "NULL";
-    if (cnt_object->acpi == NULL) cnt_object->acpi = " ";
     if (cnt_object->cni == '\0') cnt_object->cni = 0;
     if (cnt_object->cbs == '\0') cnt_object->cbs = 0;
     if (cnt_object->st == '\0') cnt_object->st = 0;
@@ -298,6 +299,20 @@ int db_store_cnt(CNT *cnt_object) {
     /* DB close */
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
+
+    if (cnt_object->rn == blankspace) cnt_object->rn = NULL;
+    if (cnt_object->pi == blankspace) cnt_object->pi = NULL;
+    if (cnt_object->ty == 0) cnt_object->ty = '\0';
+    if (cnt_object->ct == blankspace) cnt_object->ct = NULL;
+    if (cnt_object->lt == blankspace) cnt_object->lt = NULL;
+    if (cnt_object->et == blankspace) cnt_object->et = NULL;
+    
+    if (cnt_object->acpi == blankspace) cnt_object->acpi = NULL;
+    if (strcmp(cnt_object->lbl, "NULL") == 0) cnt_object->lbl = NULL;
+    if (cnt_object->cni == 0) cnt_object->cni = '\0';
+    if (cnt_object->cbs == 0) cnt_object->cbs = '\0';
+    if (cnt_object->st == 0) cnt_object->st = '\0';
+
     fprintf(stderr,"OK\n");
     return 1;
 }
