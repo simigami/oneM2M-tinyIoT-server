@@ -12,6 +12,7 @@
 #include "berkeleyDB.h"
 #include "jsonparse.h"
 #include "httpd.h"
+#include "config.h"
 
 extern char response_headers[1024];
 
@@ -515,7 +516,7 @@ char *get_local_time(int diff) {
 void init_cse(CSE* cse) {
 	char *ct = get_local_time(0);
 	char *ri = resource_identifier(TY_CSE, ct);
-	char rn[1024] = "TinyIoT";
+	char rn[1024] = CSE_BASE;
 	
 	cse->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cse->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
@@ -1124,12 +1125,12 @@ int send_http_packet(char* target, char *post_data) {
 }
 
 int get_acop(Node *node) {
-	char *requestheader_origin = request_header("X-M2M-Origin");
+	char *request_header_origin = request_header("X-M2M-Origin");
 	char origin[128];
 	int acop = 0;
 	
-	if(requestheader_origin) {
-		strcpy(origin, requestheader_origin);
+	if(request_header_origin) {
+		strcpy(origin, request_header_origin);
 	} else {
 		strcpy(origin, "all");
 	}

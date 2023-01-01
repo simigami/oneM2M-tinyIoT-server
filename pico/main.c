@@ -11,6 +11,7 @@
 #include "berkeleyDB.h"
 #include "httpd.h"
 #include "cJSON.h"
+#include "config.h"
 
 ResourceTree *rt;
 
@@ -19,9 +20,8 @@ char *response_json;
 
 int main(int c, char **v) {
 	init();
- 	char *port = c == 1 ? "3000" : v[1];
 
-	serve_forever(port); // main oneM2M operation logic in void route()    
+	serve_forever(SERVER_PORT); // main oneM2M operation logic in void route()    
 
 	return 0;
 }

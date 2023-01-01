@@ -1,4 +1,5 @@
 #include "httpd.h"
+#include "config.h"
 
 #include <arpa/inet.h>
 #include <ctype.h>
@@ -80,6 +81,7 @@ void serve_forever(const char *PORT) {
       int s = slot;
       int *ps = &s; 
       pthread_create(&thread_id, NULL, respond_thread, (void*)ps);
+      if(MONO_THREAD) pthread_join(thread_id, NULL);
     }
     while (clients[slot] != -1)
       slot = (slot + 1) % MAX_CONNECTIONS;
