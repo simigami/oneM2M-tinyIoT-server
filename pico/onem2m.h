@@ -247,7 +247,7 @@ int check_payload_size();
 int check_json_format();
 
 //etc
-void init();
+void init_server();
 char* get_local_time(int diff);
 char* resource_identifier(ObjectType ty, char *ct);
 void cin_in_period(Node *pnode);

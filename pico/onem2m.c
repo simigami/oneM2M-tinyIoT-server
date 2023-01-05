@@ -515,8 +515,8 @@ char *get_local_time(int diff) {
 
 void init_cse(CSE* cse) {
 	char *ct = get_local_time(0);
-	char *ri = resource_identifier(TY_CSE, ct);
-	char rn[1024] = CSE_BASE;
+	char *ri = CSE_BASE_RI;
+	char *rn = CSE_BASE_NAME;
 	
 	cse->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cse->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
@@ -535,22 +535,12 @@ void init_cse(CSE* cse) {
 	cse->ty = TY_CSE;
 	
 	free(ct); ct = NULL;
-	free(ri); ri = NULL;
 }
 
 void init_ae(AE* ae, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *aei = NULL; //request_header("X-M2M-Origin"); 
 	char *ri = resource_identifier(TY_AE, ct);
-	int m_aei = 0;
-	
-	if(!aei) {
-		m_aei = 1;
-		aei = (char*)malloc((strlen(ri) + 2) * sizeof(char));
-		strcpy(aei, "C");
-		strcat(aei, ri);
-	}
 
 	if(!ae->rn) {
 		ae->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -562,17 +552,16 @@ void init_ae(AE* ae, char *pi) {
 	ae->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
 	ae->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	ae->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	ae->aei = (char*)malloc((strlen(aei) + 1) * sizeof(char));
+	ae->aei = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	strcpy(ae->ri, ri);
 	strcpy(ae->pi, pi);
 	strcpy(ae->et, et);
 	strcpy(ae->ct, ct);
 	strcpy(ae->lt, ct);
-	strcpy(ae->aei, aei);
+	strcpy(ae->aei, ri);
 	
 	ae->ty = TY_AE;
 	
-	if(m_aei) {free(aei); aei = NULL;}
 	free(ct); ct = NULL;
 	free(et); et = NULL;
 	free(ri); ri = NULL;
@@ -1029,7 +1018,7 @@ char *resource_identifier(ObjectType ty, char *ct) {
 
 	switch(ty) {
 		case TY_CSE : strcpy(ri, "5-"); break;
-		case TY_AE : strcpy(ri, "2-"); break;
+		case TY_AE : strcpy(ri, "CAE"); break;
 		case TY_CNT : strcpy(ri, "3-"); break;
 		case TY_CIN : strcpy(ri, "4-"); break;
 		case TY_SUB : strcpy(ri, "23-"); break;

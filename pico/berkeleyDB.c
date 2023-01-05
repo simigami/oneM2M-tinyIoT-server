@@ -600,7 +600,7 @@ CSE* db_get_cse(char* ri) {
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
-    CSE* new_cse= calloc(1,sizeof(CSE));
+    CSE* new_cse= NULL;
 
     DB* dbp;
     DBC* dbcp;
@@ -622,6 +622,7 @@ CSE* db_get_cse(char* ri) {
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         cnt++;
         if (strncmp(key.data, ri, key.size) == 0) {
+            new_cse= calloc(1,sizeof(CSE));
             flag=1;
             // ri = key
             new_cse->ri = calloc(key.size,sizeof(char));
@@ -1566,7 +1567,7 @@ int db_delete_acp(char* ri) {
 Node* db_get_all_cse() {
     fprintf(stderr,"\x1b[92m[Get All CSE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
-    char* TYPE = "5-";
+    const char* TYPE = "5-";
 
     DB* dbp;
     DBC* dbcp;
@@ -1641,7 +1642,7 @@ Node* db_get_all_cse() {
 Node* db_get_all_ae() {
     fprintf(stderr,"\x1b[92m[Get All AE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
-    char* TYPE = "2-";
+    const const char* TYPE = "CAE";
 
     DB* dbp;
     DBC* dbcp;
@@ -1718,7 +1719,7 @@ Node* db_get_all_ae() {
 Node* db_get_all_cnt() {
     fprintf(stderr,"\x1b[92m[Get All CNT]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
-    char* TYPE = "3-";
+    const char* TYPE = "3-";
 
     DB* dbp;
     DBC* dbcp;
@@ -1922,7 +1923,7 @@ Node* db_get_all_sub(){
 Node* db_get_all_acp() {
     fprintf(stderr,"\x1b[92m[Get All ACP]\x1b[0m\n");
     char* DATABASE = "ACP.db";
-    char* TYPE = "1-";
+    const char* TYPE = "1-";
 
     DB* dbp;
     DBC* dbcp;
@@ -2009,7 +2010,7 @@ Node* db_get_all_acp() {
 
 Node* db_get_cin_list_by_pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
-    char* TYPE = "4-";
+    const char* TYPE = "4-";
 
     DB* dbp;
     DBC* dbcp;

@@ -19,7 +19,7 @@ extern char *response_headers;
 char *response_json;
 
 int main(int c, char **v) {
-	init();
+	init_server();
 
 	serve_forever(SERVER_PORT); // main oneM2M operation logic in void route()    
 
@@ -81,20 +81,23 @@ void route() {
     fprintf(stderr,"Run time :%lf\n", (end-start));
 }
 
-void init() {
+void init_server() {
 	response_headers = (char *)calloc(4096,sizeof(char));
 
 	rt = (ResourceTree *)malloc(sizeof(rt));
+	
+	CSE *cse;
 
 	if(access("./RESOURCE.db", 0) == -1) {
-		CSE* cse = (CSE*)malloc(sizeof(CSE));
+		cse = (CSE*)malloc(sizeof(CSE));
 		init_cse(cse);
 		db_store_cse(cse);
-		rt->cb = create_node(cse, TY_CSE);
-		free_cse(cse); cse = NULL;
 	} else {
-		rt->cb = db_get_all_cse();
+		cse = db_get_cse(CSE_BASE_RI);
 	}
+	
+	rt->cb = create_node(cse, TY_CSE);
+	free_cse(cse); cse = NULL;
 
  	restruct_resource_tree();
 }
