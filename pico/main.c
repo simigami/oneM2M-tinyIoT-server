@@ -234,7 +234,7 @@ void update_object(Node *pnode) {
 }
 
 void create_ae(Node *pnode) {
-	if(pnode->ty != TY_CSE) {
+	if(pnode->ty != TY_CSE && pnode->ty != TY_AE) {
 		parent_type_error();
 		return;
 	}
@@ -280,7 +280,6 @@ void create_cnt(Node *pnode) {
 		free_cnt(cnt); cnt = NULL;
 		return;
 	}
-	if(!strcmp(cnt->acpi, " ")) cnt->acpi = NULL;
 	
 	Node* node = create_node(cnt, TY_CNT);
 	add_child_resource_tree(pnode,node);
@@ -495,7 +494,7 @@ void delete_object(Node* pnode) {
 		respond_to_client(403, "{\"m2m:dbg\": \"CSE can not be deleted\"}");
 		return;
 	}
-	strcat(response_headers,"\nX-M2M-RSC: 2002");
+	set_response_header("X-M2M-RSC", "2002");
 	delete_node_and_db_data(pnode,1);
 	pnode = NULL;
 	respond_to_client(200, "{\"m2m:dbg\": \"resource is deleted successfully\"}");
@@ -613,7 +612,7 @@ int check_privilege(Node *node, ACOP acop) {
 int check_request_body_empty() {
 	if(!payload) {
 		fprintf(stderr,"Request body empty error\n");
-		respond_to_client(500, "{\"m2m:dbg\": \"request body empty\"\n}");
+		respond_to_client(500, "{\"m2m:dbg\": \"request body empty\"}");
 		return -1;
 	}
 	return 0;

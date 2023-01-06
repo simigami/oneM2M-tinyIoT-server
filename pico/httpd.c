@@ -283,18 +283,21 @@ void respond_to_client(int status, char *json) {
 	sprintf(content_length, "%ld", strlen(response_json));
 	set_response_header("Content-Length", content_length);
 
+  fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
 	switch(status) {
-		case 200: HTTP_200; break;
-		case 201: HTTP_201; break;
-		case 209: HTTP_209; break;
-		case 400: HTTP_400; break;
-		case 403: HTTP_403; break;
-		case 404: HTTP_404; break;
-		case 406: HTTP_406; break;
-		case 413: HTTP_413; break;
-		case 500: HTTP_500; break;
+		case 200: HTTP_200; LOG_HTTP_200; break;
+		case 201: HTTP_201; LOG_HTTP_201; break;
+		case 209: HTTP_209; LOG_HTTP_209; break;
+		case 400: HTTP_400; LOG_HTTP_400; break;
+		case 403: HTTP_403; LOG_HTTP_403; break;
+		case 404: HTTP_404; LOG_HTTP_404; break;
+		case 406: HTTP_406; LOG_HTTP_406; break;
+		case 413: HTTP_413; LOG_HTTP_413; break;
+		case 500: HTTP_500; LOG_HTTP_500; break;
 	}
 	printf("%s",response_json);
+  fprintf(stderr,"%s\n",response_json);
+  fprintf(stderr,"\n\n\033[34m==========================================================\033[0m\n");
   //free(response_json);
 }
 

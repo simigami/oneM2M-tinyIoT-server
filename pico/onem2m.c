@@ -145,10 +145,9 @@ void tree_viewer_api(Node *node) {
 		}
 	}
 	
-	fprintf(stderr,"tree_viewer_api Content-Size : %ld\n",strlen(res));
+	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
 
-	HTTP_200;
-	printf("%s",res);
+	respond_to_client(200, res);
 }
 
 void tree_viewer_data(Node *node, char **viewer_data, int cin_size) {
