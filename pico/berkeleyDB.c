@@ -1642,7 +1642,7 @@ Node* db_get_all_cse() {
 Node* db_get_all_ae() {
     fprintf(stderr,"\x1b[92m[Get All AE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
-    const const char* TYPE = "CAE";
+    const const char* TYPE = "C";
 
     DB* dbp;
     DBC* dbcp;
@@ -1661,7 +1661,7 @@ Node* db_get_all_ae() {
     DBC* dbcp0;
     dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0) 
+        if (strncmp(key.data, TYPE , 1) == 0) 
             cnt++;
     }
     //fprintf(stderr, "<%d>\n",cnt);
@@ -1676,7 +1676,7 @@ Node* db_get_all_ae() {
     node = head;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0){
+        if (strncmp(key.data, TYPE , 1) == 0){
             AE* ae = db_get_ae((char*)key.data);
             node->ri = calloc(strlen(ae->ri)+1,sizeof(char));
             node->rn = calloc(strlen(ae->rn)+1,sizeof(char));

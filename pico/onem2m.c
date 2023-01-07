@@ -100,19 +100,6 @@ Operation parse_operation(){
 	return op;
 }
 
-int check_same_resource_name_exists(Node *pnode) {
-	Node* node = pnode->child;
-	char* rn = get_json_value_char("rn",payload);
-	if(!rn) return 0;
-
-	while(node) {
-		if(!strcmp(node->rn, rn)) return 1;
-		node = node->sibling_right;
-	}
-
-	return 0;
-}
-
 void tree_viewer_api(Node *node) {
 	fprintf(stderr,"\x1b[43mTree Viewer API\x1b[0m\n");
 	char arr_viewer_data[MAX_TREE_VIEWER_SIZE] = "[";
@@ -147,7 +134,7 @@ void tree_viewer_api(Node *node) {
 	
 	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
 
-	respond_to_client(200, res);
+	respond_to_client(200, res, "2000");
 }
 
 void tree_viewer_data(Node *node, char **viewer_data, int cin_size) {
@@ -1013,11 +1000,18 @@ int net_to_bit(char *net) {
 }
 
 char *resource_identifier(ObjectType ty, char *ct) {
-	char *ri = (char *)malloc(24 * sizeof(char));
+	char *ri = (char *)calloc(24, sizeof(char));
 
 	switch(ty) {
-		case TY_CSE : strcpy(ri, "5-"); break;
-		case TY_AE : strcpy(ri, "CAE"); break;
+		case TY_AE : 
+			char *origin = request_header("X-M2M-Origin");
+			if(origin) {
+				if(origin[0] != 'C') strcpy(ri, "C");
+				strcat(ri, origin);
+				return ri;
+			} else {
+				strcpy(ri, "CAE");
+			} break;
 		case TY_CNT : strcpy(ri, "3-"); break;
 		case TY_CIN : strcpy(ri, "4-"); break;
 		case TY_SUB : strcpy(ri, "23-"); break;

@@ -266,7 +266,7 @@ void set_response_header(char *key, char *value) {
   return;
 }
 
-void respond_to_client(int status, char *json) {
+void respond_to_client(int status, char *json, char *rsc) {
 	if(json) {
 		if(response_json) free(response_json);
 		response_json = (char *)malloc((strlen(json) + 1) * sizeof(char));
@@ -282,6 +282,7 @@ void respond_to_client(int status, char *json) {
 
 	sprintf(content_length, "%ld", strlen(response_json));
 	set_response_header("Content-Length", content_length);
+  set_response_header("X-M2M-RSC", rsc);
 
   fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
 	switch(status) {

@@ -224,7 +224,6 @@ void restruct_resource_tree();
 Node* restruct_resource_tree_child(Node *node, Node *list);
 Node* latest_cin_list(Node *cinList, int num); // use in viewer API
 Node* find_latest_oldest(Node* node, Operation *op);
-int check_same_resource_name_exists(Node *pnode);
 
 //json
 void remove_invalid_char_json(char* json);
@@ -237,10 +236,13 @@ int send_http_packet(char *target, char *post_data);
 
 //exception
 void no_mandatory_error();
-void parent_type_error();
+void child_type_error();
 int check_privilege(Node *node, ACOP acop);
 int check_request_body_empty();
 int check_resource_name_duplicate(Node *node);
+int check_same_resource_name_exists(Node *pnode);
+int check_resource_aei_duplicate(Node *node);
+int check_same_resource_aei_exists(Node *node);
 int check_resource_type_equal(ObjectType ty1, ObjectType ty2);
 int result_parse_uri(Node *node);
 int check_payload_size();
