@@ -71,8 +71,6 @@ void serve_forever(const char *PORT) {
   while (1) {
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
 
-    int flag = fcntl(clients[slot], F_GETFL, O_NONBLOCK);
-
     if (clients[slot] < 0) {
       perror("accept() error");
       exit(1);

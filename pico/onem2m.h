@@ -224,6 +224,7 @@ void restruct_resource_tree();
 Node* restruct_resource_tree_child(Node *node, Node *list);
 Node* latest_cin_list(Node *cinList, int num); // use in viewer API
 Node* find_latest_oldest(Node* node, Operation *op);
+void set_node_uri(Node* node);
 
 //json
 void remove_invalid_char_json(char* json);
@@ -259,7 +260,7 @@ int net_to_bit(char *net);
 int get_acop(Node *node);
 int get_acop_origin(char *origin, Node *acp, int flag);
 int get_value_querystring_int(char *key);
-void set_node_uri(Node* node);
+void log_runtime(double start);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define MAX_PROPERTY_SIZE 16384

@@ -209,6 +209,8 @@ ObjectType parse_object_type() {
 
 ObjectType parse_object_type_in_request_body() {
 	ObjectType ty;
+
+	if(payload == NULL) return -1;
 	
 	char *cse, *ae, *cnt, *cin, *sub, *acp;
 	

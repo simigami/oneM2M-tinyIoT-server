@@ -27,7 +27,7 @@ int main(int c, char **v) {
 }
 
 void route() {
-    double start, end;
+    double start;
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
@@ -47,7 +47,10 @@ void route() {
 	int e = result_parse_uri(pnode);
 
 	if(e != -1) e = check_payload_size();
-	if(e == -1) return;
+	if(e == -1)  {
+		log_runtime(start);
+		return;
+	}
 
 	if(op == OP_NONE) op = parse_operation(); // parse operation by HTTP method
 
@@ -77,7 +80,11 @@ void route() {
 	}
 	if(pnode->ty == TY_CIN) free_node(pnode);
 
-	end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
+	log_runtime(start);
+}
+
+void log_runtime(double start) {
+	double end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
     fprintf(stderr,"Run time :%lf\n", (end-start));
 }
 
@@ -105,8 +112,8 @@ void init_server() {
 void create_object(Node *pnode) {
 	ObjectType ty = parse_object_type(); 
 	
-	int e = check_privilege(pnode, ACOP_CREATE);
-	if(e != -1) e = check_request_body_empty();
+	int e = check_request_body_empty();
+	if(e != -1) e = check_privilege(pnode, ACOP_CREATE);
 	if(e != -1) e = check_json_format();
 	if(e != -1) e = check_resource_name_duplicate(pnode);
 	if(e != -1) e = check_resource_type_equal(ty, parse_object_type_in_request_body());
@@ -191,10 +198,10 @@ void retrieve_object(Node *pnode) {
 }
 
 void update_object(Node *pnode) {
-	ObjectType ty = parse_object_type_in_request_body(); 
+	ObjectType ty = parse_object_type_in_request_body();
 
-	int e = check_privilege(pnode, ACOP_UPDATE);
-	if(e != -1) e = check_request_body_empty();
+	int e = check_request_body_empty();
+	if(e != -1) e = check_privilege(pnode, ACOP_UPDATE);
 	if(e != -1) e = check_json_format();
 	if(e != -1) e = check_resource_name_duplicate(pnode->parent);
 	if(e != -1) e = check_resource_type_equal(ty, pnode->ty);
@@ -337,7 +344,6 @@ void create_sub(Node *pnode) {
 	
 	response_json = sub_to_json(sub);
 	respond_to_client(201, NULL, "2001");
-	result = send_http_packet(sub->nu, response_json);
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
 	free(response_json); response_json = NULL;
 	free_sub(sub); sub = NULL;
@@ -421,6 +427,15 @@ void retrieve_acp(Node *pnode){
 }
 
 void update_ae(Node *pnode) {
+	char invalid_key[][16] = {"m2m:ae-ty", "m2m:ae-pi", "m2m:ae-ri"};
+	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(json_key_exist(payload, invalid_key[i])) {
+			respond_to_client(200, "{\"m2m:dbg\": \"unsupported attribute on update\"}", "4000");
+			return;
+		}
+	}
+
 	AE* after = db_get_ae(pnode->ri);
 	int result;
 
@@ -485,6 +500,11 @@ void update_acp(Node *pnode) {
 
 void delete_object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
+	if(pnode->ty == TY_AE) {
+		if(check_privilege(pnode, ACOP_DELETE) == -1) {
+			return;
+		}
+	}
 	if(pnode->ty == TY_CSE) {
 		respond_to_client(403, "{\"m2m:dbg\": \"CSE can not be deleted\"}", "4005");
 		return;
@@ -608,7 +628,7 @@ int check_privilege(Node *node, ACOP acop) {
 
 	if(node->ty == TY_CIN) node = node->parent;
 
-	if(node->ty == TY_CNT && node->ty == TY_ACP && (get_acop(node) & acop) != acop) {
+	if((node->ty == TY_CNT || node->ty == TY_ACP) && (get_acop(node) & acop) != acop) {
 		deny = true;
 	}
 

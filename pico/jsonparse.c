@@ -56,7 +56,6 @@ AE* json_to_ae(char *json_payload) {
 
 
 	// rr (mandatory)
-	//rr = cJSON_GetObjectItemCaseSensitive(root, "rr");
 	if (!cJSON_IsTrue(rr) && !cJSON_IsFalse(rr))
 	{
 		fprintf(stderr, "Invalid rr\n");
@@ -1084,4 +1083,36 @@ end:
 	cJSON_Delete(cjson);
 
 	return value;
+}
+
+bool json_key_exist(char *json, char *key) {
+	cJSON *root = cJSON_Parse(json);
+
+	if(root == NULL) {
+		return false;
+	}
+
+	char key_str[64], keys[8][8];
+	strcpy(key_str, key);
+
+	char *k = strtok(key_str, "-");
+	int index = 0;
+	while(k) {
+		strcpy(keys[index++], k);
+		k = strtok(NULL, "-");
+	}
+
+	cJSON *json_key, *parent = root;
+
+	for(int i=0; i<index; i++) {
+		json_key = cJSON_GetObjectItem(parent, keys[i]);
+		if(!json_key) { 
+			cJSON_Delete(root);
+			return false;
+		}
+		parent = json_key;
+	}
+
+	cJSON_Delete(root);
+	return true;
 }
