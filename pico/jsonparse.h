@@ -20,6 +20,7 @@ char* node_to_json(Node *node);
 char* acp_to_json(ACP *acp_object);
 char* discovery_to_json(char **result, int size);
 
+char* get_json_value_string(char *json, char *key);
 char* get_json_value_char(char *key, char *json);
 int get_json_value_int(char *key, char *json);
 int get_json_value_bool(char *key, char *json);

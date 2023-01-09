@@ -236,6 +236,7 @@ void update_object(Node *pnode) {
 
 void create_ae(Node *pnode) {
 	if(check_resource_aei_duplicate(pnode)) return;
+	if(check_resource_name_invalid(TY_AE)) return;
 	if(pnode->ty != TY_CSE) {
 		child_type_error();
 		return;
@@ -803,4 +804,37 @@ void retrieve_object_filtercriteria(Node *pnode) {
 	free(response_json); response_json = NULL;
 
 	return;
+}
+
+int check_resource_name_invalid(ObjectType ty) {
+	char key[16];
+
+	switch(ty) {
+		case TY_AE: strcpy(key, "m2m:ae"); break;
+		case TY_CNT: strcpy(key, "m2m:cnt"); break;
+		case TY_SUB: strcpy(key, "m2m:sub"); break;
+		case TY_ACP: strcpy(key, "m2m:acp"); break;
+	}
+
+	strcat(key, "-rn");
+
+	char *rn = get_json_value_string(payload, key);
+	if(!rn) return 0;
+	int len_rn = strlen(rn);
+
+	for(int i=0; i<len_rn; i++) {
+		if(rn[i] != '_' && rn[i] != '-' && !is_rn_valid_char(rn[i])) {
+			fprintf(stderr,"Resource name is invalid");
+			respond_to_client(406, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}", "4102");
+			free(rn);
+			return -1;
+		}
+	}
+
+	free(rn);
+	return 0;
+}
+
+bool is_rn_valid_char(char c) {
+	return ((48 <= c && c <=57) || (65 <= c && c <= 90) || (97 <= c && c <= 122));
 }

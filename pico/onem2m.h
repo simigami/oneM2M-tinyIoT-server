@@ -229,6 +229,7 @@ void set_node_uri(Node* node);
 //json
 void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
+bool is_rn_valid_char(char c);
 
 //http etc
 struct url_data { size_t size; char* data;};
@@ -248,6 +249,7 @@ int check_resource_type_equal(ObjectType ty1, ObjectType ty2);
 int result_parse_uri(Node *node);
 int check_payload_size();
 int check_json_format();
+int check_resource_name_invalid(ObjectType ty);
 
 //etc
 void init_server();
