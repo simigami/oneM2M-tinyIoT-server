@@ -510,15 +510,15 @@ void init_cse(CSE* cse) {
 	cse->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 	cse->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	cse->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	cse->csi = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	cse->csi = (char*)malloc((strlen(rn) + 2) * sizeof(char));
 	cse->pi = (char*)malloc((strlen("NULL") + 1) * sizeof(char));
 	
 	strcpy(cse->ri, ri);
 	strcpy(cse->rn, rn);
 	strcpy(cse->ct, ct);
 	strcpy(cse->lt, ct);
-	strcpy(cse->csi,ct);
-	strcpy(cse->pi,"NULL");
+	strcpy(cse->csi,rn);
+	strcpy(cse->pi, "NULL");
 	
 	cse->ty = TY_CSE;
 	
@@ -986,7 +986,7 @@ void remove_invalid_char_json(char* json) {
 }
 
 int is_json_valid_char(char c){
-	return ('!' <= c && c <= '~');
+	return (('!' <= c && c <= '~') || c == ' ');
 }
 
 int net_to_bit(char *net) {

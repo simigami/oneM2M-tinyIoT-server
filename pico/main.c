@@ -622,7 +622,7 @@ int check_privilege(Node *node, ACOP acop) {
 		}
 
 		char *origin = request_header("X-M2M-Origin");
-		if(!origin || strcmp(origin, ae_node->ri)) {
+		if(!origin || (strcmp(origin, ae_node->ri) && strcmp(origin,"CAdmin"))) {
 			deny = true;
 		}
 	}
@@ -825,7 +825,7 @@ int check_resource_name_invalid(ObjectType ty) {
 	for(int i=0; i<len_rn; i++) {
 		if(rn[i] != '_' && rn[i] != '-' && !is_rn_valid_char(rn[i])) {
 			fprintf(stderr,"Resource name is invalid");
-			respond_to_client(406, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}", "4102");
+			respond_to_client(406, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}", "4000");
 			free(rn);
 			return -1;
 		}

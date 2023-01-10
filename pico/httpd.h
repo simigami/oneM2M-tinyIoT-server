@@ -23,7 +23,7 @@ void set_response_header(char *key, char *value);
 
 void respond_to_client(int status, char *json, char *rsc);
 
-void normalization_payload();
+void normalize_payload();
 
 typedef struct {
   char *name, *value;
