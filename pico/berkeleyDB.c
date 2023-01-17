@@ -266,7 +266,7 @@ int db_store_cnt(CNT *cnt_object) {
     if (cnt_object->et == NULL) cnt_object->et = blankspace;
     
     if (cnt_object->acpi == NULL) cnt_object->acpi = blankspace;
-    if (cnt_object->lbl == NULL) cnt_object->lbl = "NULL";
+    if (cnt_object->lbl == NULL) cnt_object->lbl = blankspace;
     if (cnt_object->cni == '\0') cnt_object->cni = 0;
     if (cnt_object->cbs == '\0') cnt_object->cbs = 0;
     if (cnt_object->st == '\0') cnt_object->st = 0;
@@ -308,7 +308,7 @@ int db_store_cnt(CNT *cnt_object) {
     if (cnt_object->et == blankspace) cnt_object->et = NULL;
     
     if (cnt_object->acpi == blankspace) cnt_object->acpi = NULL;
-    if (strcmp(cnt_object->lbl, "NULL") == 0) cnt_object->lbl = NULL;
+    if (cnt_object->lbl == blankspace) cnt_object->lbl = NULL;
     if (cnt_object->cni == 0) cnt_object->cni = '\0';
     if (cnt_object->cbs == 0) cnt_object->cbs = '\0';
     if (cnt_object->st == 0) cnt_object->st = '\0';

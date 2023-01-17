@@ -25,6 +25,7 @@ char* get_json_value_char(char *key, char *json);
 int get_json_value_int(char *key, char *json);
 int get_json_value_bool(char *key, char *json);
 char *get_json_value_list(char *key, char *json);
+char* get_json_value_list_v2(char *json, char *key);
 
 bool json_key_exist(char *json, char *key);
 

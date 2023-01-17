@@ -47,7 +47,7 @@ void route() {
 	int e = result_parse_uri(pnode);
 
 	if(e != -1) e = check_payload_size();
-	if(e == -1)  {
+	if(e == -1) {
 		log_runtime(start);
 		return;
 	}
@@ -113,10 +113,10 @@ void create_object(Node *pnode) {
 	ObjectType ty = parse_object_type(); 
 	
 	int e = check_request_body_empty();
-	if(e != -1) e = check_privilege(pnode, ACOP_CREATE);
+	if(e != -1) e = check_resource_type_equal(ty, parse_object_type_in_request_body());
+	if(e != -1) e = check_privilege(pnode, ACOP_CREATE, OP_CREATE, ty);
 	if(e != -1) e = check_json_format();
 	if(e != -1) e = check_resource_name_duplicate(pnode);
-	if(e != -1) e = check_resource_type_equal(ty, parse_object_type_in_request_body());
 	if(e == -1) return;
 
 	switch(ty) {	
@@ -152,7 +152,7 @@ void create_object(Node *pnode) {
 }
 
 void retrieve_object(Node *pnode) {
-	int e = check_privilege(pnode, ACOP_RETRIEVE);
+	int e = check_privilege(pnode, ACOP_RETRIEVE, OP_RETRIEVE, pnode->ty);
 
 	if(e == -1) return;
 
@@ -201,7 +201,7 @@ void update_object(Node *pnode) {
 	ObjectType ty = parse_object_type_in_request_body();
 
 	int e = check_request_body_empty();
-	if(e != -1) e = check_privilege(pnode, ACOP_UPDATE);
+	if(e != -1) e = check_privilege(pnode, ACOP_UPDATE, OP_UPDATE, ty);
 	if(e != -1) e = check_json_format();
 	if(e != -1) e = check_resource_name_duplicate(pnode->parent);
 	if(e != -1) e = check_resource_type_equal(ty, pnode->ty);
@@ -266,7 +266,7 @@ void create_ae(Node *pnode) {
 }
 
 void create_cnt(Node *pnode) {
-	if(pnode->ty != TY_CNT && pnode->ty != TY_AE) {
+	if(pnode->ty != TY_CNT && pnode->ty != TY_AE && pnode->ty != TY_CSE) {
 		child_type_error();
 		return;
 	}
@@ -453,6 +453,15 @@ void update_ae(Node *pnode) {
 }
 
 void update_cnt(Node *pnode) {
+	char invalid_key[][16] = {"m2m:cnt-ty", "m2m:cnt-pi", "m2m:cnt-ri"};
+	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(json_key_exist(payload, invalid_key[i])) {
+			respond_to_client(200, "{\"m2m:dbg\": \"unsupported attribute on update\"}", "4000");
+			return;
+		}
+	}
+
 	CNT* after = db_get_cnt(pnode->ri);
 	int result;
 
@@ -501,8 +510,8 @@ void update_acp(Node *pnode) {
 
 void delete_object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
-	if(pnode->ty == TY_AE) {
-		if(check_privilege(pnode, ACOP_DELETE) == -1) {
+	if(pnode->ty == TY_AE || pnode->ty == TY_CNT) {
+		if(check_privilege(pnode, ACOP_DELETE, OP_DELETE, pnode->ty) == -1) {
 			return;
 		}
 	}
@@ -612,19 +621,25 @@ int check_json_format() {
 	return 0;
 }
 
-int check_privilege(Node *node, ACOP acop) {
+int check_privilege(Node *node, ACOP acop, Operation op, ObjectType target_ty) {
 	bool deny = false;
 
-	if(node->ty == TY_CNT || node->ty == TY_AE) {
-		Node *ae_node = node;
-		while(ae_node->ty != TY_AE) {
-			ae_node = ae_node->parent;
-		}
+	Node *parent_node = node;
 
-		char *origin = request_header("X-M2M-Origin");
-		if(!origin || (strcmp(origin, ae_node->ri) && strcmp(origin,"CAdmin"))) {
+	while(parent_node && parent_node->ty != TY_AE) {
+		parent_node = parent_node->parent;
+	}
+
+	char *origin = request_header("X-M2M-Origin");
+
+	if(!origin) {
+		if(!(op == OP_CREATE && target_ty == TY_AE)) {
 			deny = true;
 		}
+	} else if(!strcmp(origin, "CAdmin")) {
+		deny = false;
+	} else if((parent_node && strcmp(origin, parent_node->ri))) {
+		deny = true;
 	}
 
 	if(node->ty == TY_CIN) node = node->parent;
@@ -634,7 +649,7 @@ int check_privilege(Node *node, ACOP acop) {
 	}
 
 	if(deny) {
-		fprintf(stderr,"X-M2M-Origin has no privilege\n");
+		fprintf(stderr,"Originator has no privilege\n");
 		respond_to_client(403, "{\"m2m:dbg\": \"originator has no privilege.\"}", "4103");
 		return -1;
 	}
@@ -645,7 +660,7 @@ int check_privilege(Node *node, ACOP acop) {
 int check_request_body_empty() {
 	if(!payload) {
 		fprintf(stderr,"Request body empty error\n");
-		respond_to_client(400, "{\"m2m:dbg\": \"request body is empty\"}", "4000");
+		respond_to_client(400, "{\"m2m:dbg\": \"request body is empty\"}", "5000");
 		return -1;
 	}
 	return 0;

@@ -18,7 +18,8 @@ typedef enum {
 }Operation;
 
 typedef enum {
-	TY_ACP = 1,
+	TY_NONE = 0,
+	TY_ACP,
 	TY_AE,
 	TY_CNT,
 	TY_CIN,
@@ -239,7 +240,7 @@ int send_http_packet(char *target, char *post_data);
 //exception
 void no_mandatory_error();
 void child_type_error();
-int check_privilege(Node *node, ACOP acop);
+int check_privilege(Node *node, ACOP acop, Operation op, ObjectType target_ty);
 int check_request_body_empty();
 int check_resource_name_duplicate(Node *node);
 int check_same_resource_name_exists(Node *pnode);

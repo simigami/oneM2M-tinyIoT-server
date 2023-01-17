@@ -210,23 +210,22 @@ ObjectType parse_object_type() {
 ObjectType parse_object_type_in_request_body() {
 	ObjectType ty;
 
-	if(payload == NULL) return -1;
+	if(payload == NULL) return TY_NONE;
 	
-	char *cse, *ae, *cnt, *cin, *sub, *acp;
+	cJSON *json = cJSON_Parse(payload);
+	if(!json) {
+		return TY_NONE;
+	}
 	
-	cse = strstr(payload, "m2m:cb");
-	ae = strstr(payload, "m2m:ae");
-	cnt = strstr(payload, "m2m:cnt");
-	cin = strstr(payload, "m2m:cin");
-	sub = strstr(payload, "m2m:sub");
-	acp = strstr(payload, "m2m:acp");
-	
-	if(cse) ty = TY_CSE;
-	else if(ae) ty = TY_AE;
-	else if(cnt) ty = TY_CNT;
-	else if(cin) ty = TY_CIN;
-	else if(sub) ty = TY_SUB;
-	else if(acp) ty = TY_ACP;
+	if(cJSON_GetObjectItem(json, "m2m:cb") || cJSON_GetObjectItem(json, "m2m:cse")) ty = TY_CSE;
+	else if(cJSON_GetObjectItem(json, "m2m:ae")) ty = TY_AE;
+	else if(cJSON_GetObjectItem(json, "m2m:cnt")) ty = TY_CNT;
+	else if(cJSON_GetObjectItem(json, "m2m:cin")) ty = TY_CIN;
+	else if(cJSON_GetObjectItem(json, "m2m:sub")) ty = TY_SUB;
+	else if(cJSON_GetObjectItem(json, "m2m:acp")) ty = TY_ACP;
+	else ty = TY_NONE;
+
+	cJSON_Delete(json);
 	
 	return ty;
 }
@@ -517,7 +516,8 @@ void init_cse(CSE* cse) {
 	strcpy(cse->rn, rn);
 	strcpy(cse->ct, ct);
 	strcpy(cse->lt, ct);
-	strcpy(cse->csi,rn);
+	strcpy(cse->csi,"/");
+	strcat(cse->csi,rn);
 	strcpy(cse->pi, "NULL");
 	
 	cse->ty = TY_CSE;
@@ -704,9 +704,15 @@ void set_ae_update(AE* after) {
 void set_cnt_update(CNT* after) {
 	char *rn = get_json_value_char("rn", payload);
 	char *acpi = NULL;
+	char *lbl = NULL;
 
-	if(strstr(payload, "\"acpi\"") != NULL)
-		acpi = get_json_value_list("acpi", payload);
+	if(json_key_exist(payload, "m2m:cnt-acpi")) {
+		acpi = get_json_value_list(payload, "m2m:cnt-acpi");
+	}
+	
+	if(json_key_exist(payload, "m2m:cnt-lbl")) {
+		lbl = get_json_value_list_v2(payload, "m2m:cnt-lbl");
+	}
 
 	if(rn) {
 		free(after->rn);
@@ -718,6 +724,12 @@ void set_cnt_update(CNT* after) {
 		if(after->acpi) free(after->acpi);
 		after->acpi = (char*)malloc((strlen(acpi) + 1) * sizeof(char)); 
 		strcpy(after->acpi, acpi);
+	}
+
+	if(lbl) {
+		if(after->lbl) free(after->lbl);
+		after->lbl = (char*)malloc((strlen(lbl) + 1) * sizeof(char)); 
+		strcpy(after->lbl, lbl);
 	}
 
 	if(after->lt) free(after->lt);
@@ -1125,7 +1137,7 @@ int get_acop(Node *node) {
 		return acop;
 	}
 
-	if(!node->acpi || !strcmp(node->acpi, "") || !strcmp(node->acpi, " ")) return ALL_ACOP;
+	if(!node->acpi) return ALL_ACOP;
 
 	Node *cb = node;
 	while(cb->parent) cb = cb->parent;
