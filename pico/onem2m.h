@@ -9,12 +9,7 @@ typedef enum {
 	OP_CREATE,
 	OP_RETRIEVE,
 	OP_UPDATE,
-	OP_DELETE,
-	OP_OPTIONS,
-	OP_VIEWER,
-	OP_TEST,
-	OP_LATEST,
-	OP_OLDEST
+	OP_DELETE
 }Operation;
 
 typedef enum {
@@ -157,7 +152,8 @@ typedef struct {
 	char *rqi;
 	char *rsc;
 	char *pc;
-	int op;
+	char *rvi;
+	Operation op;
 	int ty;
 }oneM2Mprimitive
 

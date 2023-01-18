@@ -36,6 +36,25 @@ int main(int c, char **v) {
 
 void handle_http_request() {
 	oneM2Mprimitive o2pt;
+	if(payload) {
+		o2pt.pc = (char *)malloc((strlen(payload) + 1) * sizeof(char));
+		strcpy(o2pt.pc, payload);
+	} else {
+		o2pt.pc = NULL;
+	}
+	char *origin;
+	if((origin = request_header("X-M2M-Origin"))) {
+		o2pt.fr = (char *)malloc((strlen(origin) + 1) * sizeof(char));
+		strcpy(o2pt.fr, origin);
+	} else {
+		o2pt.fr = NULL;
+	}
+	if(uri) {
+		o2pt.to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
+		strcpy(o2pt.to, uri);
+	} else {
+		o2pt.to = NULL;
+	}
 	route(o2pt);
 }
 
