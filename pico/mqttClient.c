@@ -27,6 +27,7 @@
 #endif
 
 #include "mqttClient.h"
+#include <pthread.h>
 
 /* Requires BSD Style Socket */
 //#ifdef HAVE_SOCKET
@@ -45,9 +46,7 @@
 #define MQTT_KEEP_ALIVE_SEC  60
 #define MQTT_CMD_TIMEOUT_MS  30000
 #define MQTT_CON_TIMEOUT_MS  5000
-#define MQTT_CLIENT_ID       "WolfMQTTClientSimple"
-#define MQTT_TOPIC_NAME      "wolfMQTT/example/testTopic"
-#define MQTT_PUBLISH_MSG     "Test Publish"
+#define MQTT_CLIENT_ID       "TinyIoT"
 #define MQTT_USERNAME        NULL
 #define MQTT_PASSWORD        NULL
 #ifdef ENABLE_MQTT_TLS
@@ -57,9 +56,9 @@
     #define MQTT_USE_TLS     0
     #define MQTT_PORT        1883
 #endif
-#define MQTT_MAX_PACKET_SZ   1024
+#define MQTT_MAX_PACKET_SZ   16384
 #define INVALID_SOCKET_FD    -1
-#define PRINT_BUFFER_SIZE    80
+#define PRINT_BUFFER_SIZE    256
 
 /* temporary config*/
 #define CSE_CSI "TinyIoT"
@@ -73,6 +72,8 @@ static byte mSendBuf[MQTT_MAX_PACKET_SZ];
 static byte mReadBuf[MQTT_MAX_PACKET_SZ];
 static volatile word16 mPacketIdLast;
 
+extern pthread_mutex_t mutex_lock;
+
 /* Local Functions */
 
 /* msg_new on first data callback */
@@ -81,12 +82,19 @@ static volatile word16 mPacketIdLast;
 /* msg->buffer: Payload buffer */
 /* msg->buffer_len: Payload buffer length */
 /* msg->buffer_pos: Payload buffer position */
+
+
 static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     byte msg_new, byte msg_done)
 {
     byte buf[PRINT_BUFFER_SIZE+1];
     word32 len;
 
+    cJSON *json = NULL;
+    oneM2Mprimitive o2pt;
+    
+    memset(o2pt, 0, sizeof(oneM2Mprimitive));
+    
     (void)client;
 
     if (msg_new) {
@@ -110,14 +118,55 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     }
     XMEMCPY(buf, msg->buffer, len);
     buf[len] = '\0'; /* Make sure its null terminated */
-    PRINTF("Payload (%d - %d) printing %d bytes:" LINE_END "%s",
-        msg->buffer_pos, msg->buffer_pos + msg->buffer_len, len, buf);
 
-    if (msg_done) {
-        PRINTF("MQTT Message: Done");
+    fprintf(stderr,"\n\033[34m======================Buffer received======================\033[0m\n\n");
+    fprintf(stderr,"%s",buf);
+    fprintf(stderr,"\n\033[34m==========================================================\033[0m\n");
+    /*if(cJSON_IsInvalid(buf)){
+        fprintf(stderr, "invalid json\n");
+        return MQTT_CODE_CONTINUE;
+    }*/
+    json = cJSON_Parse(buf);
+
+    if(json == NULL){
+        fprintf(stderr, "Json Parse Error\n");
+        return MQTT_CODE_SUCCESS;
     }
 
+    /* fill primitives */
+    o2pt.op = get_json_value_int(json, "op");
+    o2pt.to = get_json_value_string(json, "to");
+    o2pt.fr = get_json_value_string(json, "fr");
+    o2pt.pc = get_json_value_string(json, "pc");
+    o2pt.rvi = get_json_value_string(json, "rqi");
+    o2pt.ty = get_json_value_int(json, "ty");
+
+    if(o2pt.op == NULL || o2pt.to == NULL || o2pt.fr == NULL ||
+        o2pt.ty == NULL || o2pt.rvi == NULL ){
+            fprintf(stderr, "Invalid request\n");
+            return MQTT_CODE_SUCCESS;
+    }
+
+    
+    route(o2pt);
+    
+    if(op < 0 || op > 9){
+        fprintf(stderr, "invalid operation\n");
+        return MQTT_CODE_SUCCESS;
+    }
+
+    fprintf(stderr, "op : %d\n", op);
+    
+
+    pthread_mutex_trylock(&mutex_lock);
+    handle_request(pnode, op, buf);
+
     /* Return negative to terminate publish processing */
+    pthread_mutex_unlock(&mutex_lock);
+
+
+    cJSON_Delete(json);
+    
     return MQTT_CODE_SUCCESS;
 }
 
@@ -424,11 +473,14 @@ int mqtt_ser(void)
         goto exit;
     }
     PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        MQTT_TOPIC_NAME, MQTT_QOS);
+        reqTopic, MQTT_QOS);
+    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
+        respTopic, MQTT_QOS);
 
 
 
     /* Publish */
+    /*
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));
     mqttObj.publish.qos = MQTT_QOS;
     mqttObj.publish.topic_name = MQTT_TOPIC_NAME;
@@ -441,6 +493,7 @@ int mqtt_ser(void)
     }
     PRINTF("MQTT Publish: Topic %s, Qos %d, Message %s",
         mqttObj.publish.topic_name, mqttObj.publish.qos, mqttObj.publish.buffer);
+        */
 
     /* Wait for messages */
     while (1) {
