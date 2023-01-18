@@ -1,0 +1,8 @@
+pico/berkeleyDB.o
+pico/berkeleyDB.o
+pico/main.o
+pico/server
+pico/RESOURCE.db
+pico/wolfmqtt/mqtt_client.o
+pico/wolfmqtt/mqtt_packet.o
+pico/wolfmqtt/mqtt_socket.o

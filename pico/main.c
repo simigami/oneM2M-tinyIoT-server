@@ -6,20 +6,31 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "berkeleyDB.h"
 #include "httpd.h"
 #include "cJSON.h"
 #include "config.h"
+#include "mqttClient.h"
 
 ResourceTree *rt;
 
 extern char *response_headers;
 char *response_json;
+void *mqtt_serve();
 
 int main(int c, char **v) {
-	init_server();
+	pthread_t mqtt;
+	int mqtt_thread_id;
+	init();
+
+	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
+	if(mqtt_thread_id < 0){
+		fprintf(stderr, "MQTT thread create error\n");
+		return 0;
+	}
 
 	serve_forever(SERVER_PORT); // main oneM2M operation logic in void route()    
 
@@ -107,6 +118,8 @@ void init_server() {
 	free_cse(cse); cse = NULL;
 
  	restruct_resource_tree();
+
+
 }
 
 void create_object(Node *pnode) {
@@ -819,6 +832,12 @@ void retrieve_object_filtercriteria(Node *pnode) {
 	free(response_json); response_json = NULL;
 
 	return;
+}
+
+
+void *mqtt_serve(){
+	int result = 0;
+	result = mqtt_ser();
 }
 
 int check_resource_name_invalid(ObjectType ty) {
