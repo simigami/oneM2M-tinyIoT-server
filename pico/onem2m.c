@@ -971,12 +971,12 @@ void free_acp(ACP* acp) {
 	free(acp); acp = NULL;
 }
 
-void notify_object(Node *node, char *response_json, NET net) {
-	remove_invalid_char_json(response_json);
+void notify_object(Node *node, char *response_payload, NET net) {
+	remove_invalid_char_json(response_payload);
 	while(node) {
 		if(node->ty == TY_SUB && (net & node->net) == net) {
 			if(!node->uri) set_node_uri(node);
-			char *notify_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, response_json);
+			char *notify_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, response_payload);
 			int result = send_http_packet(node->nu, notify_json);
 			free(notify_json); notify_json = NULL;
 		}

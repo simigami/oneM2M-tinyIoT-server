@@ -25,7 +25,7 @@ static void start_server(const char *);
 static void respond(int);
 
 static char *buf[MAX_CONNECTIONS];
-extern char *response_json;
+extern char *response_payload;
 char *response_headers;
 
 // Client request
@@ -266,19 +266,19 @@ void set_response_header(char *key, char *value) {
 
 void respond_to_client(int status, char *json, char *rsc) {
 	if(json) {
-		if(response_json) free(response_json);
-		response_json = (char *)malloc((strlen(json) + 1) * sizeof(char));
-		strcpy(response_json, json);
+		if(response_payload) free(response_payload);
+		response_payload = (char *)malloc((strlen(json) + 1) * sizeof(char));
+		strcpy(response_payload, json);
 	}
 
-  if(!response_json) {
-    fprintf(stderr,"response_json is NULL\n");
+  if(!response_payload) {
+    fprintf(stderr,"response_payload is NULL\n");
     return;
   }
 
 	char content_length[16];
 
-	sprintf(content_length, "%ld", strlen(response_json));
+	sprintf(content_length, "%ld", strlen(response_payload));
 	set_response_header("Content-Length", content_length);
   set_response_header("X-M2M-RSC", rsc);
 
@@ -294,10 +294,10 @@ void respond_to_client(int status, char *json, char *rsc) {
 		case 413: HTTP_413; LOG_HTTP_413; break;
 		case 500: HTTP_500; LOG_HTTP_500; break;
 	}
-	printf("%s",response_json);
-  fprintf(stderr,"%s\n",response_json);
+	printf("%s",response_payload);
+  fprintf(stderr,"%s\n",response_payload);
   fprintf(stderr,"\n\n\033[34m==========================================================\033[0m\n");
-  //free(response_json);
+  //free(response_payload);
 }
 
 void normalize_payload() {

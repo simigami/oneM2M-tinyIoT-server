@@ -16,9 +16,6 @@
 #include "mqttClient.h"
 
 ResourceTree *rt;
-
-extern char *response_headers;
-char *response_json;
 void *mqtt_serve();
 
 int main(int c, char **v) {
@@ -37,7 +34,12 @@ int main(int c, char **v) {
 	return 0;
 }
 
-void route() {
+void handle_http_request() {
+	oneM2Mprimitive o2pt;
+	route(o2pt);
+}
+
+void route(oneM2Mprimitive o2pt) {
     double start;
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
@@ -270,11 +272,11 @@ void create_ae(Node *pnode) {
 	
 	Node* node = create_node(ae, TY_AE);
 	add_child_resource_tree(pnode,node);
-	response_json = ae_to_json(ae);
+	response_payload = ae_to_json(ae);
 
 	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
-	free(response_json); response_json = NULL;
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free(response_payload); response_payload = NULL;
 	free_ae(ae); ae = NULL;
 }
 
@@ -300,10 +302,10 @@ void create_cnt(Node *pnode) {
 	Node* node = create_node(cnt, TY_CNT);
 	add_child_resource_tree(pnode,node);
 
-	response_json = cnt_to_json(cnt);
+	response_payload = cnt_to_json(cnt);
 	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
-	free(response_json); response_json = NULL; 
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free(response_payload); response_payload = NULL; 
 	free_cnt(cnt); cnt = NULL;
 }
 
@@ -327,10 +329,10 @@ void create_cin(Node *pnode) {
 		return;
 	}
 	
-	response_json = cin_to_json(cin);
+	response_payload = cin_to_json(cin);
 	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
-	free(response_json); response_json = NULL; 
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free(response_payload); response_payload = NULL; 
 	free_cin(cin); cin = NULL;
 }
 
@@ -356,10 +358,10 @@ void create_sub(Node *pnode) {
 	Node* node = create_node(sub, TY_SUB);
 	add_child_resource_tree(pnode,node);
 	
-	response_json = sub_to_json(sub);
+	response_payload = sub_to_json(sub);
 	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
-	free(response_json); response_json = NULL;
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free(response_payload); response_payload = NULL;
 	free_sub(sub); sub = NULL;
 }
 
@@ -385,58 +387,58 @@ void create_acp(Node *pnode) {
 	Node* node = create_node(acp, TY_ACP);
 	add_child_resource_tree(pnode,node);
 	
-	response_json = acp_to_json(acp);
+	response_payload = acp_to_json(acp);
 	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
-	free(response_json); response_json = NULL; 
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free(response_payload); response_payload = NULL; 
 	free_acp(acp); acp = NULL;
 }
 
 void retrieve_cse(Node *pnode){
 	CSE* gcse = db_get_cse(pnode->ri);
-	response_json = cse_to_json(gcse);
+	response_payload = cse_to_json(gcse);
 	respond_to_client(200, NULL, "2000");
-	free(response_json); response_json = NULL; 
+	free(response_payload); response_payload = NULL; 
 	free_cse(gcse); gcse = NULL;
 }
 
 void retrieve_ae(Node *pnode){
 	AE* gae = db_get_ae(pnode->ri);
-	response_json = ae_to_json(gae);
+	response_payload = ae_to_json(gae);
 	respond_to_client(200, NULL, "2000");
-	free(response_json); response_json = NULL;
+	free(response_payload); response_payload = NULL;
 	free_ae(gae); gae = NULL;
 }
 
 void retrieve_cnt(Node *pnode){
 	CNT* gcnt = db_get_cnt(pnode->ri);
-	response_json = cnt_to_json(gcnt);
+	response_payload = cnt_to_json(gcnt);
 	respond_to_client(200, NULL, "2000");
-	free(response_json); response_json = NULL;
+	free(response_payload); response_payload = NULL;
 	free_cnt(gcnt); gcnt = NULL;
 }
 
 void retrieve_cin(Node *pnode){
 	CIN* gcin = db_get_cin(pnode->ri);
-	response_json = cin_to_json(gcin);
+	response_payload = cin_to_json(gcin);
 	respond_to_client(200, NULL, "2000");
-	free(response_json); response_json = NULL; 
+	free(response_payload); response_payload = NULL; 
 	free_cin(gcin); gcin = NULL;
 }
 
 void retrieve_sub(Node *pnode){
 	Sub* gsub = db_get_sub(pnode->ri);
-	response_json = sub_to_json(gsub);
+	response_payload = sub_to_json(gsub);
 	respond_to_client(200, NULL, "2000");
-	free(response_json); response_json = NULL; 
+	free(response_payload); response_payload = NULL; 
 	free_sub(gsub); gsub = NULL;
 }
 
 void retrieve_acp(Node *pnode){
 	ACP* gacp = db_get_acp(pnode->ri);
-	response_json = acp_to_json(gacp);
+	response_payload = acp_to_json(gacp);
 	respond_to_client(200, NULL, "2000");
-	free(response_json); response_json = NULL; 
+	free(response_payload); response_payload = NULL; 
 	free_acp(gacp); gacp = NULL;
 }
 
@@ -458,10 +460,10 @@ void update_ae(Node *pnode) {
 	result = db_delete_object(after->ri);
 	result = db_store_ae(after);
 	
-	response_json = ae_to_json(after);
+	response_payload = ae_to_json(after);
 	respond_to_client(200, NULL, "2004");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_1);
-	free(response_json); response_json = NULL; 
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	free(response_payload); response_payload = NULL; 
 	free_ae(after); after = NULL;
 }
 
@@ -483,10 +485,10 @@ void update_cnt(Node *pnode) {
 	result = db_delete_object(after->ri);
 	result = db_store_cnt(after);
 	
-	response_json = cnt_to_json(after);
+	response_payload = cnt_to_json(after);
 	respond_to_client(200, NULL, "2004");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_1);
-	free(response_json); response_json = NULL;
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	free(response_payload); response_payload = NULL;
 	free_cnt(after); after = NULL;
 }
 
@@ -499,9 +501,9 @@ void update_sub(Node *pnode) {
 	result = db_delete_sub(after->ri);
 	result = db_store_sub(after);
 	
-	response_json = sub_to_json(after);
+	response_payload = sub_to_json(after);
 	respond_to_client(200, NULL, "2004");
-	free(response_json); response_json = NULL;
+	free(response_payload); response_payload = NULL;
 	free_sub(after); after = NULL;
 }
 
@@ -514,10 +516,10 @@ void update_acp(Node *pnode) {
 	result = db_delete_acp(after->ri);
 	result = db_store_acp(after);
 	
-	response_json = acp_to_json(after);
+	response_payload = acp_to_json(after);
 	respond_to_client(200, NULL, "2004");
-	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_1);
-	free(response_json); response_json = NULL;
+	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	free(response_payload); response_payload = NULL;
 	free_acp(after); after = NULL;
 }
 
@@ -825,11 +827,11 @@ void retrieve_object_filtercriteria(Node *pnode) {
 
 	retrieve_filtercriteria_data(pnode, ty, discovery_list, &size, level, 0, 1);
 
-	response_json = discovery_to_json(discovery_list, size);
+	response_payload = discovery_to_json(discovery_list, size);
 	respond_to_client(200, NULL, "2000");
 	for(int i=0; i<size; i++) free(discovery_list[i]);
 	free(discovery_list);
-	free(response_json); response_json = NULL;
+	free(response_payload); response_payload = NULL;
 
 	return;
 }

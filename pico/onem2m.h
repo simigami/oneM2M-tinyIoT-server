@@ -151,6 +151,16 @@ typedef struct {
 	Node *cb;
 }ResourceTree;
 
+typedef struct {
+	char *to;
+	char *fr;
+	char *rqi;
+	char *rsc;
+	char *pc;
+	int op;
+	int ty;
+}oneM2Mprimitive
+
 //http request
 Node* parse_uri(Node *cb, char *uri_array, Operation *op);
 Operation parse_operation();
@@ -163,7 +173,7 @@ void retrieve_object(Node *pnode);
 void retrieve_object_filtercriteria(Node *pnode);
 void update_object(Node *pnode);
 void delete_object(Node *pnode);
-void notify_object(Node *node, char *response_json, NET net);
+void notify_object(Node *node, char *response_payload, NET net);
 
 void create_ae(Node *pnode);
 void create_cnt(Node *pnode);
@@ -266,10 +276,7 @@ int get_value_querystring_int(char *key);
 void log_runtime(double start);
 
 #define MAX_TREE_VIEWER_SIZE 65536
-#define MAX_PROPERTY_SIZE 16384
-#define MAX_URI_SIZE 1024
 #define EXPIRE_TIME -3600*24*365*2
 #define ALL_ACOP ACOP_CREATE + ACOP_RETRIEVE + ACOP_UPDATE + ACOP_DELETE + ACOP_NOTIFY + ACOP_DISCOVERY
-#define MAX_PAYLOAD_SIZE 16384
 
 #endif
