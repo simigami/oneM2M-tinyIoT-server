@@ -71,8 +71,6 @@ void serve_forever(const char *PORT) {
   while (1) {
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
 
-    int flag = fcntl(clients[slot], F_GETFL, O_NONBLOCK);
-
     if (clients[slot] < 0) {
       perror("accept() error");
       exit(1);
@@ -238,7 +236,7 @@ void respond(int slot) {
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf[slot]));
-    if(payload) normalization_payload();
+    if(payload) normalize_payload();
     // bind clientfd to stdout, making it easier to write
     int clientfd = clients[slot];
     dup2(clientfd, STDOUT_FILENO);
@@ -266,7 +264,7 @@ void set_response_header(char *key, char *value) {
   return;
 }
 
-void respond_to_client(int status, char *json) {
+void respond_to_client(int status, char *json, char *rsc) {
 	if(json) {
 		if(response_json) free(response_json);
 		response_json = (char *)malloc((strlen(json) + 1) * sizeof(char));
@@ -282,23 +280,27 @@ void respond_to_client(int status, char *json) {
 
 	sprintf(content_length, "%ld", strlen(response_json));
 	set_response_header("Content-Length", content_length);
+  set_response_header("X-M2M-RSC", rsc);
 
+  fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
 	switch(status) {
-		case 200: HTTP_200; break;
-		case 201: HTTP_201; break;
-		case 209: HTTP_209; break;
-		case 400: HTTP_400; break;
-		case 403: HTTP_403; break;
-		case 404: HTTP_404; break;
-		case 406: HTTP_406; break;
-		case 413: HTTP_413; break;
-		case 500: HTTP_500; break;
+		case 200: HTTP_200; LOG_HTTP_200; break;
+		case 201: HTTP_201; LOG_HTTP_201; break;
+		case 209: HTTP_209; LOG_HTTP_209; break;
+		case 400: HTTP_400; LOG_HTTP_400; break;
+		case 403: HTTP_403; LOG_HTTP_403; break;
+		case 404: HTTP_404; LOG_HTTP_404; break;
+		case 406: HTTP_406; LOG_HTTP_406; break;
+		case 413: HTTP_413; LOG_HTTP_413; break;
+		case 500: HTTP_500; LOG_HTTP_500; break;
 	}
 	printf("%s",response_json);
+  fprintf(stderr,"%s\n",response_json);
+  fprintf(stderr,"\n\n\033[34m==========================================================\033[0m\n");
   //free(response_json);
 }
 
-void normalization_payload() {
+void normalize_payload() {
 	int index = 0;
 
 	for(int i=0; i<payload_size; i++) {

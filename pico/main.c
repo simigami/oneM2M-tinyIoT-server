@@ -38,7 +38,7 @@ int main(int c, char **v) {
 }
 
 void route() {
-    double start, end;
+    double start;
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
@@ -58,7 +58,10 @@ void route() {
 	int e = result_parse_uri(pnode);
 
 	if(e != -1) e = check_payload_size();
-	if(e == -1) return;
+	if(e == -1) {
+		log_runtime(start);
+		return;
+	}
 
 	if(op == OP_NONE) op = parse_operation(); // parse operation by HTTP method
 
@@ -80,32 +83,39 @@ void route() {
 		tree_viewer_api(pnode); break;
 	
 	case OP_OPTIONS:
-		respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}");
+		respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}", "2000");
 		break;
 	
 	default:
-		respond_to_client(500, "{\"m2m:dbg\": \"internal server error\"}");
+		respond_to_client(500, "{\"m2m:dbg\": \"internal server error\"}", "5000");
 	}
 	if(pnode->ty == TY_CIN) free_node(pnode);
 
-	end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
+	log_runtime(start);
+}
+
+void log_runtime(double start) {
+	double end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
     fprintf(stderr,"Run time :%lf\n", (end-start));
 }
 
-void init() {
+void init_server() {
 	response_headers = (char *)calloc(4096,sizeof(char));
 
 	rt = (ResourceTree *)malloc(sizeof(rt));
+	
+	CSE *cse;
 
 	if(access("./RESOURCE.db", 0) == -1) {
-		CSE* cse = (CSE*)malloc(sizeof(CSE));
+		cse = (CSE*)malloc(sizeof(CSE));
 		init_cse(cse);
 		db_store_cse(cse);
-		rt->cb = create_node(cse, TY_CSE);
-		free_cse(cse); cse = NULL;
 	} else {
-		rt->cb = db_get_all_cse();
+		cse = db_get_cse(CSE_BASE_RI);
 	}
+	
+	rt->cb = create_node(cse, TY_CSE);
+	free_cse(cse); cse = NULL;
 
  	restruct_resource_tree();
 
@@ -115,14 +125,12 @@ void init() {
 void create_object(Node *pnode) {
 	ObjectType ty = parse_object_type(); 
 	
-	int e = check_privilege(pnode, ACOP_CREATE);
-	if(e != -1) e = check_request_body_empty();
+	int e = check_request_body_empty();
+	if(e != -1) e = check_resource_type_equal(ty, parse_object_type_in_request_body());
+	if(e != -1) e = check_privilege(pnode, ACOP_CREATE, OP_CREATE, ty);
 	if(e != -1) e = check_json_format();
 	if(e != -1) e = check_resource_name_duplicate(pnode);
-	if(e != -1) e = check_resource_type_equal(ty, parse_object_type_in_request_body());
 	if(e == -1) return;
-
-	set_response_header("X-M2M-RSC", "2001");
 
 	switch(ty) {	
 	case TY_AE :
@@ -152,16 +160,14 @@ void create_object(Node *pnode) {
 
 	default :
 		fprintf(stderr,"Resource type error (Content-Type Header Invalid)\n");
-		respond_to_client(400, "{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}");
+		respond_to_client(400, "{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}", "4000");
 	}	
 }
 
 void retrieve_object(Node *pnode) {
-	int e = check_privilege(pnode, ACOP_RETRIEVE);
+	int e = check_privilege(pnode, ACOP_RETRIEVE, OP_RETRIEVE, pnode->ty);
 
 	if(e == -1) return;
-
-	set_response_header("X-M2M-RSC", "2000");
 
 	int fu = get_value_querystring_int("fu");
 
@@ -205,16 +211,14 @@ void retrieve_object(Node *pnode) {
 }
 
 void update_object(Node *pnode) {
-	ObjectType ty = parse_object_type_in_request_body(); 
+	ObjectType ty = parse_object_type_in_request_body();
 
-	int e = check_privilege(pnode, ACOP_UPDATE);
-	if(e != -1) e = check_request_body_empty();
+	int e = check_request_body_empty();
+	if(e != -1) e = check_privilege(pnode, ACOP_UPDATE, OP_UPDATE, ty);
 	if(e != -1) e = check_json_format();
 	if(e != -1) e = check_resource_name_duplicate(pnode->parent);
 	if(e != -1) e = check_resource_type_equal(ty, pnode->ty);
 	if(e == -1) return;
-
-	set_response_header("X-M2M-RSC", "2004");
 	
 	switch(ty) {
 	case TY_AE :
@@ -239,13 +243,15 @@ void update_object(Node *pnode) {
 
 	default :
 		fprintf(stderr,"Resource type do not support PUT method\n");
-		respond_to_client(400, "{\"m2m:dbg\": \"not support PUT method about resource type\"}");
+		respond_to_client(400, "{\"m2m:dbg\": \"`PUT` method unsupported\"}","4005");
 	}
 }
 
 void create_ae(Node *pnode) {
+	if(check_resource_aei_duplicate(pnode)) return;
+	if(check_resource_name_invalid(TY_AE)) return;
 	if(pnode->ty != TY_CSE) {
-		parent_type_error();
+		child_type_error();
 		return;
 	}
 	AE* ae = json_to_ae(payload);
@@ -257,7 +263,7 @@ void create_ae(Node *pnode) {
 	
 	int result = db_store_ae(ae);
 	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}");
+		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
 		free_ae(ae); ae = NULL;
 		return;
 	}
@@ -266,15 +272,15 @@ void create_ae(Node *pnode) {
 	add_child_resource_tree(pnode,node);
 	response_json = ae_to_json(ae);
 
-	respond_to_client(201, NULL);
+	respond_to_client(201, NULL, "2001");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
 	free(response_json); response_json = NULL;
 	free_ae(ae); ae = NULL;
 }
 
 void create_cnt(Node *pnode) {
-	if(pnode->ty != TY_CNT && pnode->ty != TY_AE) {
-		parent_type_error();
+	if(pnode->ty != TY_CNT && pnode->ty != TY_AE && pnode->ty != TY_CSE) {
+		child_type_error();
 		return;
 	}
 	CNT* cnt = json_to_cnt(payload);
@@ -286,17 +292,16 @@ void create_cnt(Node *pnode) {
 
 	int result = db_store_cnt(cnt);
 	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}");
+		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
 		free_cnt(cnt); cnt = NULL;
 		return;
 	}
-	if(!strcmp(cnt->acpi, " ")) cnt->acpi = NULL;
 	
 	Node* node = create_node(cnt, TY_CNT);
 	add_child_resource_tree(pnode,node);
 
 	response_json = cnt_to_json(cnt);
-	respond_to_client(201, NULL);
+	respond_to_client(201, NULL, "2001");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
 	free(response_json); response_json = NULL; 
 	free_cnt(cnt); cnt = NULL;
@@ -304,7 +309,7 @@ void create_cnt(Node *pnode) {
 
 void create_cin(Node *pnode) {
 	if(pnode->ty != TY_CNT) {
-		parent_type_error();
+		child_type_error();
 		return;
 	}
 	CIN* cin = json_to_cin(payload);
@@ -316,14 +321,14 @@ void create_cin(Node *pnode) {
 
 	int result = db_store_cin(cin);
 	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}");
+		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
 		free_cin(cin);
 		cin = NULL;
 		return;
 	}
 	
 	response_json = cin_to_json(cin);
-	respond_to_client(201, NULL);
+	respond_to_client(201, NULL, "2001");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
 	free(response_json); response_json = NULL; 
 	free_cin(cin); cin = NULL;
@@ -331,7 +336,7 @@ void create_cin(Node *pnode) {
 
 void create_sub(Node *pnode) {
 	if(pnode->ty == TY_CIN || pnode->ty == TY_SUB) {
-		parent_type_error();
+		child_type_error();
 		return;
 	}
 	Sub* sub = json_to_sub(payload);
@@ -343,7 +348,7 @@ void create_sub(Node *pnode) {
 	
 	int result = db_store_sub(sub);
 	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}");
+		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
 		free_sub(sub); sub = NULL;
 		return;
 	}
@@ -352,8 +357,7 @@ void create_sub(Node *pnode) {
 	add_child_resource_tree(pnode,node);
 	
 	response_json = sub_to_json(sub);
-	respond_to_client(201, NULL);
-	result = send_http_packet(sub->nu, response_json);
+	respond_to_client(201, NULL, "2001");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
 	free(response_json); response_json = NULL;
 	free_sub(sub); sub = NULL;
@@ -361,7 +365,7 @@ void create_sub(Node *pnode) {
 
 void create_acp(Node *pnode) {
 	if(pnode->ty != TY_CSE && pnode->ty != TY_AE) {
-		parent_type_error();
+		child_type_error();
 		return;
 	}
 	ACP* acp = json_to_acp(payload);
@@ -373,7 +377,7 @@ void create_acp(Node *pnode) {
 	
 	int result = db_store_acp(acp);
 	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}");
+		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
 		free_acp(acp); acp = NULL;
 		return;
 	}
@@ -382,7 +386,7 @@ void create_acp(Node *pnode) {
 	add_child_resource_tree(pnode,node);
 	
 	response_json = acp_to_json(acp);
-	respond_to_client(201, NULL);
+	respond_to_client(201, NULL, "2001");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_3);
 	free(response_json); response_json = NULL; 
 	free_acp(acp); acp = NULL;
@@ -391,7 +395,7 @@ void create_acp(Node *pnode) {
 void retrieve_cse(Node *pnode){
 	CSE* gcse = db_get_cse(pnode->ri);
 	response_json = cse_to_json(gcse);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2000");
 	free(response_json); response_json = NULL; 
 	free_cse(gcse); gcse = NULL;
 }
@@ -399,7 +403,7 @@ void retrieve_cse(Node *pnode){
 void retrieve_ae(Node *pnode){
 	AE* gae = db_get_ae(pnode->ri);
 	response_json = ae_to_json(gae);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2000");
 	free(response_json); response_json = NULL;
 	free_ae(gae); gae = NULL;
 }
@@ -407,7 +411,7 @@ void retrieve_ae(Node *pnode){
 void retrieve_cnt(Node *pnode){
 	CNT* gcnt = db_get_cnt(pnode->ri);
 	response_json = cnt_to_json(gcnt);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2000");
 	free(response_json); response_json = NULL;
 	free_cnt(gcnt); gcnt = NULL;
 }
@@ -415,7 +419,7 @@ void retrieve_cnt(Node *pnode){
 void retrieve_cin(Node *pnode){
 	CIN* gcin = db_get_cin(pnode->ri);
 	response_json = cin_to_json(gcin);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2000");
 	free(response_json); response_json = NULL; 
 	free_cin(gcin); gcin = NULL;
 }
@@ -423,7 +427,7 @@ void retrieve_cin(Node *pnode){
 void retrieve_sub(Node *pnode){
 	Sub* gsub = db_get_sub(pnode->ri);
 	response_json = sub_to_json(gsub);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2000");
 	free(response_json); response_json = NULL; 
 	free_sub(gsub); gsub = NULL;
 }
@@ -431,12 +435,21 @@ void retrieve_sub(Node *pnode){
 void retrieve_acp(Node *pnode){
 	ACP* gacp = db_get_acp(pnode->ri);
 	response_json = acp_to_json(gacp);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2000");
 	free(response_json); response_json = NULL; 
 	free_acp(gacp); gacp = NULL;
 }
 
 void update_ae(Node *pnode) {
+	char invalid_key[][16] = {"m2m:ae-ty", "m2m:ae-pi", "m2m:ae-ri"};
+	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(json_key_exist(payload, invalid_key[i])) {
+			respond_to_client(200, "{\"m2m:dbg\": \"unsupported attribute on update\"}", "4000");
+			return;
+		}
+	}
+
 	AE* after = db_get_ae(pnode->ri);
 	int result;
 
@@ -446,13 +459,22 @@ void update_ae(Node *pnode) {
 	result = db_store_ae(after);
 	
 	response_json = ae_to_json(after);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2004");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_1);
 	free(response_json); response_json = NULL; 
 	free_ae(after); after = NULL;
 }
 
 void update_cnt(Node *pnode) {
+	char invalid_key[][16] = {"m2m:cnt-ty", "m2m:cnt-pi", "m2m:cnt-ri"};
+	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(json_key_exist(payload, invalid_key[i])) {
+			respond_to_client(200, "{\"m2m:dbg\": \"unsupported attribute on update\"}", "4000");
+			return;
+		}
+	}
+
 	CNT* after = db_get_cnt(pnode->ri);
 	int result;
 
@@ -462,7 +484,7 @@ void update_cnt(Node *pnode) {
 	result = db_store_cnt(after);
 	
 	response_json = cnt_to_json(after);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2004");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_1);
 	free(response_json); response_json = NULL;
 	free_cnt(after); after = NULL;
@@ -478,7 +500,7 @@ void update_sub(Node *pnode) {
 	result = db_store_sub(after);
 	
 	response_json = sub_to_json(after);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2004");
 	free(response_json); response_json = NULL;
 	free_sub(after); after = NULL;
 }
@@ -493,7 +515,7 @@ void update_acp(Node *pnode) {
 	result = db_store_acp(after);
 	
 	response_json = acp_to_json(after);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2004");
 	notify_object(pnode->child, response_json, NOTIFICATION_EVENT_1);
 	free(response_json); response_json = NULL;
 	free_acp(after); after = NULL;
@@ -501,14 +523,18 @@ void update_acp(Node *pnode) {
 
 void delete_object(Node* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
+	if(pnode->ty == TY_AE || pnode->ty == TY_CNT) {
+		if(check_privilege(pnode, ACOP_DELETE, OP_DELETE, pnode->ty) == -1) {
+			return;
+		}
+	}
 	if(pnode->ty == TY_CSE) {
-		respond_to_client(403, "{\"m2m:dbg\": \"CSE can not be deleted\"}");
+		respond_to_client(403, "{\"m2m:dbg\": \"CSE can not be deleted\"}", "4005");
 		return;
 	}
-	strcat(response_headers,"\nX-M2M-RSC: 2002");
 	delete_node_and_db_data(pnode,1);
 	pnode = NULL;
-	respond_to_client(200, "{\"m2m:dbg\": \"resource is deleted successfully\"}");
+	respond_to_client(200, "{\"m2m:dbg\": \"resource is deleted successfully\"}", "2002");
 }
 
 void restruct_resource_tree(){
@@ -588,19 +614,19 @@ Node* restruct_resource_tree_child(Node *pnode, Node *list) {
 
 void no_mandatory_error(){
 	fprintf(stderr,"No Mandatory Error\n");
-	respond_to_client(400, "{\"m2m:dbg\": \"insufficient mandatory attribute\"}");
+	respond_to_client(400, "{\"m2m:dbg\": \"insufficient mandatory attribute\"}", "4102");
 }
 
-void parent_type_error(){
-	fprintf(stderr,"Parent Type Error\n");
-	respond_to_client(403, "{\"m2m:dbg\": \"resource can not be created under type of parent\"}");
+void child_type_error(){
+	fprintf(stderr,"Child Type Error\n");
+	respond_to_client(403, "{\"m2m:dbg\": \"child can not be created under the type of parent\"}", "4108");
 }
 
 int check_json_format() {
 	cJSON *json = cJSON_Parse(payload);
 	if(json == NULL) {
 		fprintf(stderr,"Body Format Invalid\n");
-		respond_to_client(400,"{\"m2m:dbg\": \"body format invalid\"}");
+		respond_to_client(400,"{\"m2m:dbg\": \"body format invalid\"}", "4000");
 		cJSON_Delete(json);
 		return -1;
 	}
@@ -608,23 +634,78 @@ int check_json_format() {
 	return 0;
 }
 
-int check_privilege(Node *node, ACOP acop) {
-	if(node->ty == TY_CIN) node = node->parent;
-	if(node->ty != TY_CNT && node->ty != TY_ACP) return 0;
+int check_privilege(Node *node, ACOP acop, Operation op, ObjectType target_ty) {
+	bool deny = false;
 
-	if((get_acop(node) & acop) != acop) {
-		fprintf(stderr,"X-M2M-Origin has no privilege\n");
-		respond_to_client(403, "{\"m2m:dbg\": \"access denied\"}");
+	Node *parent_node = node;
+
+	while(parent_node && parent_node->ty != TY_AE) {
+		parent_node = parent_node->parent;
+	}
+
+	char *origin = request_header("X-M2M-Origin");
+
+	if(!origin) {
+		if(!(op == OP_CREATE && target_ty == TY_AE)) {
+			deny = true;
+		}
+	} else if(!strcmp(origin, "CAdmin")) {
+		deny = false;
+	} else if((parent_node && strcmp(origin, parent_node->ri))) {
+		deny = true;
+	}
+
+	if(node->ty == TY_CIN) node = node->parent;
+
+	if((node->ty == TY_CNT || node->ty == TY_ACP) && (get_acop(node) & acop) != acop) {
+		deny = true;
+	}
+
+	if(deny) {
+		fprintf(stderr,"Originator has no privilege\n");
+		respond_to_client(403, "{\"m2m:dbg\": \"originator has no privilege.\"}", "4103");
 		return -1;
 	}
+
 	return 0;
 }
 
 int check_request_body_empty() {
 	if(!payload) {
 		fprintf(stderr,"Request body empty error\n");
-		respond_to_client(500, "{\"m2m:dbg\": \"request body empty\"\n}");
+		respond_to_client(400, "{\"m2m:dbg\": \"request body is empty\"}", "5000");
 		return -1;
+	}
+	return 0;
+}
+
+int check_resource_aei_duplicate(Node *node) {
+	if(!node) return 0;
+
+	if(check_same_resource_aei_exists(node)) {
+		fprintf(stderr,"Resource aei duplicate error\n");
+		respond_to_client(209, "{\"m2m:dbg\": \"attribute `aei` is duplicated\"}", "4117");
+		return -1;
+	}
+	return 0;
+}
+
+int check_same_resource_aei_exists(Node *node) {
+	char *origin = request_header("X-M2M-Origin");
+	if(!origin) return 0;
+
+	char aei[128] = {'\0'};
+	if(origin[0] != 'C') {
+		aei[0] = 'C';
+	}
+	strcpy(aei, origin);
+	node = node->child;
+
+	while(node) {
+		if(!strcmp(node->ri, aei)) {
+			return 1;
+		}
+		node = node->sibling_right;
 	}
 	return 0;
 }
@@ -634,16 +715,29 @@ int check_resource_name_duplicate(Node *node) {
 
 	if(check_same_resource_name_exists(node)) {
 		fprintf(stderr,"Resource name duplicate error\n");
-		respond_to_client(209, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
+		respond_to_client(209, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}", "4105");
 		return -1;
 	}
+	return 0;
+}
+
+int check_same_resource_name_exists(Node *pnode) {
+	Node* node = pnode->child;
+	char* rn = get_json_value_char("rn",payload);
+	if(!rn) return 0;
+
+	while(node) {
+		if(!strcmp(node->rn, rn)) return 1;
+		node = node->sibling_right;
+	}
+
 	return 0;
 }
 
 int check_resource_type_equal(ObjectType ty1, ObjectType ty2) {	
 	if(ty1 != ty2) {
 		fprintf(stderr,"Resource type error\n");
-		respond_to_client(400, "{\"m2m:dbg\": \"resource type error\"}");
+		respond_to_client(400, "{\"m2m:dbg\": \"resource type error\"}", "4000");
 		return -1;
 	}
 	return 0;
@@ -652,7 +746,7 @@ int check_resource_type_equal(ObjectType ty1, ObjectType ty2) {
 int result_parse_uri(Node *node) {
 	if(!node) {
 		fprintf(stderr,"Invalid\n");
-		respond_to_client(404, "{\"m2m:dbg\": \"URI is invalid\"}");
+		respond_to_client(404, "{\"m2m:dbg\": \"URI is invalid\"}", "4004");
 		return -1;
 	} else {
 		fprintf(stderr,"OK\n");
@@ -663,7 +757,7 @@ int result_parse_uri(Node *node) {
 int check_payload_size() {
 	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
 		fprintf(stderr,"Request payload too large\n");
-		respond_to_client(413, "{\"m2m:dbg\": \"payload is too large\"}");
+		respond_to_client(413, "{\"m2m:dbg\": \"payload is too large\"}", "5207");
 		return -1;
 	}
 	return 0;
@@ -732,7 +826,7 @@ void retrieve_object_filtercriteria(Node *pnode) {
 	retrieve_filtercriteria_data(pnode, ty, discovery_list, &size, level, 0, 1);
 
 	response_json = discovery_to_json(discovery_list, size);
-	respond_to_client(200, NULL);
+	respond_to_client(200, NULL, "2000");
 	for(int i=0; i<size; i++) free(discovery_list[i]);
 	free(discovery_list);
 	free(response_json); response_json = NULL;
@@ -740,7 +834,41 @@ void retrieve_object_filtercriteria(Node *pnode) {
 	return;
 }
 
+
 void *mqtt_serve(){
 	int result = 0;
 	result = mqtt_ser();
+}
+
+int check_resource_name_invalid(ObjectType ty) {
+	char key[16];
+
+	switch(ty) {
+		case TY_AE: strcpy(key, "m2m:ae"); break;
+		case TY_CNT: strcpy(key, "m2m:cnt"); break;
+		case TY_SUB: strcpy(key, "m2m:sub"); break;
+		case TY_ACP: strcpy(key, "m2m:acp"); break;
+	}
+
+	strcat(key, "-rn");
+
+	char *rn = get_json_value_string(payload, key);
+	if(!rn) return 0;
+	int len_rn = strlen(rn);
+
+	for(int i=0; i<len_rn; i++) {
+		if(rn[i] != '_' && rn[i] != '-' && !is_rn_valid_char(rn[i])) {
+			fprintf(stderr,"Resource name is invalid");
+			respond_to_client(406, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}", "4000");
+			free(rn);
+			return -1;
+		}
+	}
+
+	free(rn);
+	return 0;
+}
+
+bool is_rn_valid_char(char c) {
+	return ((48 <= c && c <=57) || (65 <= c && c <= 90) || (97 <= c && c <= 122));
 }

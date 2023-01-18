@@ -100,19 +100,6 @@ Operation parse_operation(){
 	return op;
 }
 
-int check_same_resource_name_exists(Node *pnode) {
-	Node* node = pnode->child;
-	char* rn = get_json_value_char("rn",payload);
-	if(!rn) return 0;
-
-	while(node) {
-		if(!strcmp(node->rn, rn)) return 1;
-		node = node->sibling_right;
-	}
-
-	return 0;
-}
-
 void tree_viewer_api(Node *node) {
 	fprintf(stderr,"\x1b[43mTree Viewer API\x1b[0m\n");
 	char arr_viewer_data[MAX_TREE_VIEWER_SIZE] = "[";
@@ -145,10 +132,9 @@ void tree_viewer_api(Node *node) {
 		}
 	}
 	
-	fprintf(stderr,"tree_viewer_api Content-Size : %ld\n",strlen(res));
+	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
 
-	HTTP_200;
-	printf("%s",res);
+	respond_to_client(200, res, "2000");
 }
 
 void tree_viewer_data(Node *node, char **viewer_data, int cin_size) {
@@ -223,22 +209,23 @@ ObjectType parse_object_type() {
 
 ObjectType parse_object_type_in_request_body() {
 	ObjectType ty;
+
+	if(payload == NULL) return TY_NONE;
 	
-	char *cse, *ae, *cnt, *cin, *sub, *acp;
+	cJSON *json = cJSON_Parse(payload);
+	if(!json) {
+		return TY_NONE;
+	}
 	
-	cse = strstr(payload, "m2m:cb");
-	ae = strstr(payload, "m2m:ae");
-	cnt = strstr(payload, "m2m:cnt");
-	cin = strstr(payload, "m2m:cin");
-	sub = strstr(payload, "m2m:sub");
-	acp = strstr(payload, "m2m:acp");
-	
-	if(cse) ty = TY_CSE;
-	else if(ae) ty = TY_AE;
-	else if(cnt) ty = TY_CNT;
-	else if(cin) ty = TY_CIN;
-	else if(sub) ty = TY_SUB;
-	else if(acp) ty = TY_ACP;
+	if(cJSON_GetObjectItem(json, "m2m:cb") || cJSON_GetObjectItem(json, "m2m:cse")) ty = TY_CSE;
+	else if(cJSON_GetObjectItem(json, "m2m:ae")) ty = TY_AE;
+	else if(cJSON_GetObjectItem(json, "m2m:cnt")) ty = TY_CNT;
+	else if(cJSON_GetObjectItem(json, "m2m:cin")) ty = TY_CIN;
+	else if(cJSON_GetObjectItem(json, "m2m:sub")) ty = TY_SUB;
+	else if(cJSON_GetObjectItem(json, "m2m:acp")) ty = TY_ACP;
+	else ty = TY_NONE;
+
+	cJSON_Delete(json);
 	
 	return ty;
 }
@@ -515,42 +502,33 @@ char *get_local_time(int diff) {
 
 void init_cse(CSE* cse) {
 	char *ct = get_local_time(0);
-	char *ri = resource_identifier(TY_CSE, ct);
-	char rn[1024] = CSE_BASE;
+	char *ri = CSE_BASE_RI;
+	char *rn = CSE_BASE_NAME;
 	
 	cse->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cse->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
 	cse->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	cse->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	cse->csi = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	cse->csi = (char*)malloc((strlen(rn) + 2) * sizeof(char));
 	cse->pi = (char*)malloc((strlen("NULL") + 1) * sizeof(char));
 	
 	strcpy(cse->ri, ri);
 	strcpy(cse->rn, rn);
 	strcpy(cse->ct, ct);
 	strcpy(cse->lt, ct);
-	strcpy(cse->csi,ct);
-	strcpy(cse->pi,"NULL");
+	strcpy(cse->csi,"/");
+	strcat(cse->csi,rn);
+	strcpy(cse->pi, "NULL");
 	
 	cse->ty = TY_CSE;
 	
 	free(ct); ct = NULL;
-	free(ri); ri = NULL;
 }
 
 void init_ae(AE* ae, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *aei = NULL; //request_header("X-M2M-Origin"); 
 	char *ri = resource_identifier(TY_AE, ct);
-	int m_aei = 0;
-	
-	if(!aei) {
-		m_aei = 1;
-		aei = (char*)malloc((strlen(ri) + 2) * sizeof(char));
-		strcpy(aei, "C");
-		strcat(aei, ri);
-	}
 
 	if(!ae->rn) {
 		ae->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -562,17 +540,16 @@ void init_ae(AE* ae, char *pi) {
 	ae->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
 	ae->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	ae->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	ae->aei = (char*)malloc((strlen(aei) + 1) * sizeof(char));
+	ae->aei = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	strcpy(ae->ri, ri);
 	strcpy(ae->pi, pi);
 	strcpy(ae->et, et);
 	strcpy(ae->ct, ct);
 	strcpy(ae->lt, ct);
-	strcpy(ae->aei, aei);
+	strcpy(ae->aei, ri);
 	
 	ae->ty = TY_AE;
 	
-	if(m_aei) {free(aei); aei = NULL;}
 	free(ct); ct = NULL;
 	free(et); et = NULL;
 	free(ri); ri = NULL;
@@ -727,9 +704,15 @@ void set_ae_update(AE* after) {
 void set_cnt_update(CNT* after) {
 	char *rn = get_json_value_char("rn", payload);
 	char *acpi = NULL;
+	char *lbl = NULL;
 
-	if(strstr(payload, "\"acpi\"") != NULL)
-		acpi = get_json_value_list("acpi", payload);
+	if(json_key_exist(payload, "m2m:cnt-acpi")) {
+		acpi = get_json_value_list(payload, "m2m:cnt-acpi");
+	}
+	
+	if(json_key_exist(payload, "m2m:cnt-lbl")) {
+		lbl = get_json_value_list_v2(payload, "m2m:cnt-lbl");
+	}
 
 	if(rn) {
 		free(after->rn);
@@ -741,6 +724,12 @@ void set_cnt_update(CNT* after) {
 		if(after->acpi) free(after->acpi);
 		after->acpi = (char*)malloc((strlen(acpi) + 1) * sizeof(char)); 
 		strcpy(after->acpi, acpi);
+	}
+
+	if(lbl) {
+		if(after->lbl) free(after->lbl);
+		after->lbl = (char*)malloc((strlen(lbl) + 1) * sizeof(char)); 
+		strcpy(after->lbl, lbl);
 	}
 
 	if(after->lt) free(after->lt);
@@ -1009,7 +998,7 @@ void remove_invalid_char_json(char* json) {
 }
 
 int is_json_valid_char(char c){
-	return ('!' <= c && c <= '~');
+	return (('!' <= c && c <= '~') || c == ' ');
 }
 
 int net_to_bit(char *net) {
@@ -1025,11 +1014,18 @@ int net_to_bit(char *net) {
 }
 
 char *resource_identifier(ObjectType ty, char *ct) {
-	char *ri = (char *)malloc(24 * sizeof(char));
+	char *ri = (char *)calloc(24, sizeof(char));
 
 	switch(ty) {
-		case TY_CSE : strcpy(ri, "5-"); break;
-		case TY_AE : strcpy(ri, "2-"); break;
+		case TY_AE : 
+			char *origin = request_header("X-M2M-Origin");
+			if(origin) {
+				if(origin[0] != 'C') strcpy(ri, "C");
+				strcat(ri, origin);
+				return ri;
+			} else {
+				strcpy(ri, "CAE");
+			} break;
 		case TY_CNT : strcpy(ri, "3-"); break;
 		case TY_CIN : strcpy(ri, "4-"); break;
 		case TY_SUB : strcpy(ri, "23-"); break;
@@ -1141,7 +1137,7 @@ int get_acop(Node *node) {
 		return acop;
 	}
 
-	if(!node->acpi || !strcmp(node->acpi, "") || !strcmp(node->acpi, " ")) return ALL_ACOP;
+	if(!node->acpi) return ALL_ACOP;
 
 	Node *cb = node;
 	while(cb->parent) cb = cb->parent;

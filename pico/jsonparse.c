@@ -7,7 +7,7 @@
 #include "jsonparse.h"
 #include "cJSON.h"
 
-void eliminate_quotation_mark(char *s){
+void remove_quotation_mark(char *s){
 	int len = strlen(s);
 	int index = 0;
 
@@ -37,6 +37,7 @@ AE* json_to_ae(char *json_payload) {
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:ae");
+	if(!root) return NULL;
 
 	// api (mandatory)
 	api = cJSON_GetObjectItem(root, "api");
@@ -51,12 +52,11 @@ AE* json_to_ae(char *json_payload) {
 	}
 	else {
 		ae->api = cJSON_Print(api);
-		eliminate_quotation_mark(ae->api);
+		remove_quotation_mark(ae->api);
 	}
 
 
 	// rr (mandatory)
-	//rr = cJSON_GetObjectItemCaseSensitive(root, "rr");
 	if (!cJSON_IsTrue(rr) && !cJSON_IsFalse(rr))
 	{
 		fprintf(stderr, "Invalid rr\n");
@@ -80,7 +80,7 @@ AE* json_to_ae(char *json_payload) {
 	}
 	else {
 		ae->rn = cJSON_Print(rn);
-		eliminate_quotation_mark(ae->rn);
+		remove_quotation_mark(ae->rn);
 	}
 
 end:
@@ -95,6 +95,7 @@ CNT* json_to_cnt(char *json_payload) {
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
 	cJSON *acpi = NULL;
+	cJSON *lbl = NULL;
 
 	cJSON* json = cJSON_Parse(json_payload);
 	if (json == NULL) {
@@ -108,6 +109,7 @@ CNT* json_to_cnt(char *json_payload) {
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:cnt");
+	if(!root) return NULL;
 
 	// rn (optional)
 	rn = cJSON_GetObjectItem(root, "rn");
@@ -116,7 +118,7 @@ CNT* json_to_cnt(char *json_payload) {
 	}
 	else {
 		cnt->rn = cJSON_Print(rn);
-		eliminate_quotation_mark(cnt->rn);
+		remove_quotation_mark(cnt->rn);
 	}
 
 
@@ -153,6 +155,39 @@ CNT* json_to_cnt(char *json_payload) {
 		}
 	}
 
+	// lbl (optional)
+	lbl = cJSON_GetObjectItem(root, "lbl");
+	if (lbl == NULL) {
+		cnt->lbl = NULL;
+	}
+	else {
+		int lbl_size = cJSON_GetArraySize(lbl);
+		int is_NULL_flag = 0;
+		if (lbl_size == 0) {
+			cnt->lbl = NULL;
+		}
+		else {
+			char lbl_str[MAX_PROPERTY_SIZE] = { '\0' };
+			for (int i = 0; i < lbl_size; i++) {
+				if (isspace(cJSON_GetArrayItem(lbl, i)->valuestring[0]) || (cJSON_GetArrayItem(lbl, i)->valuestring[0] == 0)) {
+					cnt->lbl = NULL;
+					is_NULL_flag = 1;
+					break;
+				}
+				else {
+					strcat(lbl_str, cJSON_GetArrayItem(lbl, i)->valuestring);
+					if (i < lbl_size - 1) {
+						strcat(lbl_str, ",");
+					}
+				}
+			}
+			if (is_NULL_flag != 1) {
+				cnt->lbl = (char *)malloc(sizeof(char *) * strlen(lbl_str) + 1);
+				strcpy(cnt->lbl, lbl_str);
+			}
+		}
+	}
+
 
 end:
 	cJSON_Delete(json);
@@ -181,6 +216,7 @@ CIN* json_to_cin(char *json_payload) {
 	}
 
 	root = cJSON_GetObjectItem(json, "m2m:cin");
+	if(!root) return NULL;
 
 	// con (mandatory)
 	con = cJSON_GetObjectItem(root, "con");
@@ -191,7 +227,7 @@ CIN* json_to_cin(char *json_payload) {
 		return NULL;
 	}
 	cin->con = cJSON_Print(con);
-	eliminate_quotation_mark(cin->con);
+	remove_quotation_mark(cin->con);
 
 	/*
 	// rn (optional)
@@ -201,7 +237,7 @@ CIN* json_to_cin(char *json_payload) {
 	}
 	else {
 		cin->rn = cJSON_Print(rn);
-		eliminate_quotation_mark(cin->rn);
+		remove_quotation_mark(cin->rn);
 	}
 	*/
 
@@ -268,7 +304,7 @@ Sub* json_to_sub(char *json_payload) {
 	}
 	else {
 		sub->rn = cJSON_Print(rn);
-		eliminate_quotation_mark(sub->rn);
+		remove_quotation_mark(sub->rn);
 	}
 
 	// enc (optional)
@@ -480,7 +516,7 @@ ACP* json_to_acp(char *json_payload) {
 	}
 	else {
 		acp->rn = cJSON_Print(rn);
-		eliminate_quotation_mark(acp->rn);
+		remove_quotation_mark(acp->rn);
 	}
 
 end:
@@ -565,10 +601,12 @@ char* ae_to_json(AE *ae_object) {
 
 char* cnt_to_json(CNT* cnt_object) {
 	char *json = NULL;
+	char str_array[256];
 
 	cJSON *root = NULL;
 	cJSON *cnt = NULL;
 	cJSON *acpi = NULL;
+	cJSON *lbl = NULL;
 
 	/* Our "cnt" item: */
 	root = cJSON_CreateObject();
@@ -585,15 +623,27 @@ char* cnt_to_json(CNT* cnt_object) {
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
 
 	// acpi
-	acpi = cJSON_CreateArray();
-
-	if(cnt_object->acpi && strcmp(cnt_object->acpi," ")) {
-		char *acpi_str = strtok(cnt_object->acpi, ",");
+	if(cnt_object->acpi) {
+		acpi = cJSON_CreateArray();
+		strcpy(str_array, cnt_object->acpi);
+		char *acpi_str = strtok(str_array, ",");
 		do {
 			cJSON_AddItemToArray(acpi, cJSON_CreateString(acpi_str));
 			acpi_str = strtok(NULL, ",");
 		} while (acpi_str != NULL);
 		cJSON_AddItemToObject(cnt, "acpi", acpi);
+	}
+
+	//lbl
+	if(cnt_object->lbl) {
+		lbl = cJSON_CreateArray();
+		strcpy(str_array, cnt_object->lbl);
+		char *lbl_str = strtok(str_array, ",");
+		do {
+			cJSON_AddItemToArray(lbl, cJSON_CreateString(lbl_str));
+			lbl_str = strtok(NULL, ",");
+		} while(lbl_str != NULL);
+		cJSON_AddItemToObject(cnt, "lbl", lbl);
 	}
 	json = cJSON_Print(root);
 
@@ -878,12 +928,92 @@ char* get_json_value_char(char *key, char *json) {
 		goto end;
 	}
 	value = cJSON_Print(ckey);
-	eliminate_quotation_mark(value);
+	remove_quotation_mark(value);
 
 end:
 	cJSON_Delete(cjson);
 
 	return value;
+}
+
+char* get_json_value_string(char *json, char *key) {
+	cJSON *root = cJSON_Parse(json);
+
+	if(root == NULL) {
+		return NULL;
+	}
+
+	char key_str[64], keys[8][8];
+	strcpy(key_str, key);
+
+	char *k = strtok(key_str, "-");
+	int index = 0;
+	while(k) {
+		strcpy(keys[index++], k);
+		k = strtok(NULL, "-");
+	}
+
+	cJSON *json_key, *parent = root;
+
+	for(int i=0; i<index; i++) {
+		json_key = cJSON_GetObjectItem(parent, keys[i]);
+		if(!json_key) { 
+			cJSON_Delete(root);
+			return NULL;
+		}
+		parent = json_key;
+	}
+
+	char *value_string = cJSON_Print(json_key);
+	remove_quotation_mark(value_string);
+	cJSON_Delete(root);
+	return value_string;
+}
+
+char* get_json_value_list_v2(char *json, char *key) {
+	cJSON *root = cJSON_Parse(json);
+
+	if(root == NULL) {
+		return NULL;
+	}
+
+	char key_str[64], keys[8][8];
+	strcpy(key_str, key);
+
+	char *k = strtok(key_str, "-");
+	int index = 0;
+	while(k) {
+		strcpy(keys[index++], k);
+		k = strtok(NULL, "-");
+	}
+
+	cJSON *json_key, *parent = root;
+
+	for(int i=0; i<index; i++) {
+		json_key = cJSON_GetObjectItem(parent, keys[i]);
+		if(!json_key) { 
+			cJSON_Delete(root);
+			return NULL;
+		}
+		parent = json_key;
+	}
+
+	int list_size = cJSON_GetArraySize(json_key);
+	if(list_size == 0) return NULL;
+	char value_list_str[256] = "\0";
+
+	for(int i=0; i<list_size; i++) {
+		strcat(value_list_str, cJSON_GetArrayItem(json_key, i)->valuestring);
+		if(i < list_size - 1) {
+			strcat(value_list_str, ",");
+		}
+	}
+
+	char *value_list = (char*)malloc(strlen((value_list_str) + 1) * sizeof(char));
+	strcpy(value_list, value_list_str);
+	remove_quotation_mark(value_list);
+	cJSON_Delete(root);
+	return value_list;
 }
 
 int get_json_value_int(char *key, char *json) {
@@ -1084,4 +1214,36 @@ end:
 	cJSON_Delete(cjson);
 
 	return value;
+}
+
+bool json_key_exist(char *json, char *key) {
+	cJSON *root = cJSON_Parse(json);
+
+	if(root == NULL) {
+		return false;
+	}
+
+	char key_str[64], keys[8][8];
+	strcpy(key_str, key);
+
+	char *k = strtok(key_str, "-");
+	int index = 0;
+	while(k) {
+		strcpy(keys[index++], k);
+		k = strtok(NULL, "-");
+	}
+
+	cJSON *json_key, *parent = root;
+
+	for(int i=0; i<index; i++) {
+		json_key = cJSON_GetObjectItem(parent, keys[i]);
+		if(!json_key) { 
+			cJSON_Delete(root);
+			return false;
+		}
+		parent = json_key;
+	}
+
+	cJSON_Delete(root);
+	return true;
 }

@@ -18,7 +18,8 @@ typedef enum {
 }Operation;
 
 typedef enum {
-	TY_ACP = 1,
+	TY_NONE = 0,
+	TY_ACP,
 	TY_AE,
 	TY_CNT,
 	TY_CIN,
@@ -224,11 +225,12 @@ void restruct_resource_tree();
 Node* restruct_resource_tree_child(Node *node, Node *list);
 Node* latest_cin_list(Node *cinList, int num); // use in viewer API
 Node* find_latest_oldest(Node* node, Operation *op);
-int check_same_resource_name_exists(Node *pnode);
+void set_node_uri(Node* node);
 
 //json
 void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
+bool is_rn_valid_char(char c);
 
 //http etc
 struct url_data { size_t size; char* data;};
@@ -237,17 +239,21 @@ int send_http_packet(char *target, char *post_data);
 
 //exception
 void no_mandatory_error();
-void parent_type_error();
-int check_privilege(Node *node, ACOP acop);
+void child_type_error();
+int check_privilege(Node *node, ACOP acop, Operation op, ObjectType target_ty);
 int check_request_body_empty();
 int check_resource_name_duplicate(Node *node);
+int check_same_resource_name_exists(Node *pnode);
+int check_resource_aei_duplicate(Node *node);
+int check_same_resource_aei_exists(Node *node);
 int check_resource_type_equal(ObjectType ty1, ObjectType ty2);
 int result_parse_uri(Node *node);
 int check_payload_size();
 int check_json_format();
+int check_resource_name_invalid(ObjectType ty);
 
 //etc
-void init();
+void init_server();
 char* get_local_time(int diff);
 char* resource_identifier(ObjectType ty, char *ct);
 void cin_in_period(Node *pnode);
@@ -257,7 +263,7 @@ int net_to_bit(char *net);
 int get_acop(Node *node);
 int get_acop_origin(char *origin, Node *acp, int flag);
 int get_value_querystring_int(char *key);
-void set_node_uri(Node* node);
+void log_runtime(double start);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define MAX_PROPERTY_SIZE 16384
