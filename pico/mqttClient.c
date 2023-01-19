@@ -84,16 +84,17 @@ extern pthread_mutex_t mutex_lock;
 /* msg->buffer_pos: Payload buffer position */
 
 
+
 static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     byte msg_new, byte msg_done)
 {
     byte buf[PRINT_BUFFER_SIZE+1];
     word32 len;
 
-    cJSON *json = NULL;
-    oneM2Mprimitive o2pt;
+    cJSON *json = NULL, *pjson = NULL;
+    oneM2MPrimitive o2pt;
     
-    memset(o2pt, 0, sizeof(oneM2Mprimitive));
+    memset(&o2pt, 0, sizeof(oneM2MPrimitive));
     
     (void)client;
 
@@ -122,50 +123,50 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     fprintf(stderr,"\n\033[34m======================Buffer received======================\033[0m\n\n");
     fprintf(stderr,"%s",buf);
     fprintf(stderr,"\n\033[34m==========================================================\033[0m\n");
-    /*if(cJSON_IsInvalid(buf)){
-        fprintf(stderr, "invalid json\n");
-        return MQTT_CODE_CONTINUE;
-    }*/
+
     json = cJSON_Parse(buf);
 
-    if(json == NULL){
-        fprintf(stderr, "Json Parse Error\n");
+    if(!json){
+        fprintf(stderr, "Invalid request\n");
+        fprintf(stderr, "ERROR before %10s\n", cJSON_GetErrorPtr());
         return MQTT_CODE_SUCCESS;
     }
 
     /* fill primitives */
-    o2pt.op = get_json_value_int(json, "op");
-    o2pt.to = get_json_value_string(json, "to");
-    o2pt.fr = get_json_value_string(json, "fr");
-    o2pt.pc = get_json_value_string(json, "pc");
-    o2pt.rvi = get_json_value_string(json, "rqi");
-    o2pt.ty = get_json_value_int(json, "ty");
+    pjson = cJSON_GetObjectItem(json, "op");
+    o2pt.op = pjson->valueint;
+
+    pjson = cJSON_GetObjectItem(json, "to");
+    o2pt.to = cJSON_Print(pjson);
+
+    pjson = cJSON_GetObjectItem(json, "fr");
+    o2pt.fr = cJSON_Print(pjson);
+
+    o2pt.pc = buf;
+
+    pjson = cJSON_GetObjectItem(json, "rqi");
+    o2pt.rvi = cJSON_Print(pjson);
+
+    pjson = cJSON_GetObjectItem(json, "fr");
+    o2pt.fr = cJSON_Print(pjson);
+
+    pjson = cJSON_GetObjectItem(json, "ty");
+    o2pt.ty = pjson->valueint;
+    fprintf(stderr, "%d, %d, %s, %s\n", o2pt.op, o2pt.ty, o2pt.to, o2pt.fr);
+
 
     if(o2pt.op == NULL || o2pt.to == NULL || o2pt.fr == NULL ||
         o2pt.ty == NULL || o2pt.rvi == NULL ){
             fprintf(stderr, "Invalid request\n");
+            fprintf(stderr, "%d, %d, %s, %s\n", o2pt.op, o2pt.ty, o2pt.to, o2pt.fr);
             return MQTT_CODE_SUCCESS;
     }
-
-    
-    route(o2pt);
-    
-    if(op < 0 || op > 9){
-        fprintf(stderr, "invalid operation\n");
-        return MQTT_CODE_SUCCESS;
-    }
-
-    fprintf(stderr, "op : %d\n", op);
-    
-
     pthread_mutex_trylock(&mutex_lock);
-    handle_request(pnode, op, buf);
-
-    /* Return negative to terminate publish processing */
+    route(o2pt);
     pthread_mutex_unlock(&mutex_lock);
 
 
-    cJSON_Delete(json);
+    cJSON_Delete(o2pt.pc);
     
     return MQTT_CODE_SUCCESS;
 }
