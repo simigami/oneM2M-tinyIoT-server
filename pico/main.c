@@ -21,8 +21,8 @@ void *mqtt_serve();
 int main(int c, char **v) {
 	pthread_t mqtt;
 	int mqtt_thread_id;
-	init();
-
+	init_server();
+	
 	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
 	if(mqtt_thread_id < 0){
 		fprintf(stderr, "MQTT thread create error\n");
@@ -35,82 +35,84 @@ int main(int c, char **v) {
 }
 
 void handle_http_request() {
-	oneM2Mprimitive o2pt;
+	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+	char *header;
+
 	if(payload) {
-		o2pt.pc = (char *)malloc((strlen(payload) + 1) * sizeof(char));
-		strcpy(o2pt.pc, payload);
-	} else {
-		o2pt.pc = NULL;
-	}
-	char *origin;
-	if((origin = request_header("X-M2M-Origin"))) {
-		o2pt.fr = (char *)malloc((strlen(origin) + 1) * sizeof(char));
-		strcpy(o2pt.fr, origin);
-	} else {
-		o2pt.fr = NULL;
-	}
+		o2pt->pc = (char *)malloc((strlen(payload) + 1) * sizeof(char));
+		strcpy(o2pt->pc, payload);
+	} 
+
+	if((header = request_header("X-M2M-Origin"))) {
+		o2pt->fr = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->fr, header);
+	} 
+
+	if((header = request_header("X-M2M-RI"))) {
+		o2pt->rqi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rqi, header);
+	} 
+
+	if((header = request_header("X-M2M-RVI"))) {
+		o2pt->rvi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rvi, header);
+	} 
+
 	if(uri) {
-		o2pt.to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
-		strcpy(o2pt.to, uri);
-	} else {
-		o2pt.to = NULL;
-	}
+		o2pt->to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
+		strcpy(o2pt->to, uri+1);
+	} 
+
+	o2pt->op = http_parse_operation();
+	o2pt->ty = http_parse_object_type();
+
+	o2pt->prot = PROT_HTTP;
+
 	route(o2pt);
 }
 
-void route(oneM2Mprimitive o2pt) {
+void route(oneM2MPrimitive *o2pt) {
     double start;
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
-	Operation op = OP_NONE;
+	RTNode* target_rtnode = parse_uri(rt->cb, o2pt);
+	int e = result_parse_uri(target_rtnode, o2pt);
 
-	memset(response_headers, 0, sizeof(response_headers));
+	fprintf(stderr,"target_object_rn : %s\n", target_rtnode->rn);
 
-	char *header_value;
-	if((header_value = request_header("X-M2M-RI"))) {
-		set_response_header("X-M2M-RI", header_value);
-	}
-	if(header_value = request_header("X-M2M-RVI")) {
-		set_response_header("X-M2M-RVI", header_value);
-	}
-
-	Node* pnode = parse_uri(rt->cb, uri, &op); // return tree node by URI
-	int e = result_parse_uri(pnode);
-
-	if(e != -1) e = check_payload_size();
+	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
 		log_runtime(start);
 		return;
 	}
 
-	if(op == OP_NONE) op = parse_operation(); // parse operation by HTTP method
-
-	switch(op) {
+	switch(o2pt->op) {
 	
-	case OP_CREATE:	
-		create_object(pnode); break;
+	//case OP_CREATE:	
+		//create_object(target_rtnode); break;
 	
-	case OP_RETRIEVE:
-		retrieve_object(pnode);	break;
+	//case OP_RETRIEVE:
+		//retrieve_object(target_rtnode);	break;
 		
-	case OP_UPDATE: 
-		update_object(pnode); break;
+	//case OP_UPDATE: 
+		//update_object(target_rtnode); break;
 		
-	case OP_DELETE:
-		delete_object(pnode); break;
+	//case OP_DELETE:
+		//delete_object(target_rtnode); break;
 
-	case OP_VIEWER:
-		tree_viewer_api(pnode); break;
+	//case OP_VIEWER:
+		//tree_viewer_api(target_rtnode); break;
 	
-	case OP_OPTIONS:
-		respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}", "2000");
-		break;
+	//case OP_OPTIONS:
+		//respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}", "2000");
+		//break;
 	
 	default:
-		respond_to_client(500, "{\"m2m:dbg\": \"internal server error\"}", "5000");
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"internal server error\"}");
+		respond_to_client(500, o2pt);
 	}
-	if(pnode->ty == TY_CIN) free_node(pnode);
+	if(target_rtnode->ty == TY_CIN) free_rtnode(target_rtnode);
 
 	log_runtime(start);
 }
@@ -121,8 +123,6 @@ void log_runtime(double start) {
 }
 
 void init_server() {
-	response_headers = (char *)calloc(4096,sizeof(char));
-
 	rt = (ResourceTree *)malloc(sizeof(rt));
 	
 	CSE *cse;
@@ -139,11 +139,113 @@ void init_server() {
 	free_cse(cse); cse = NULL;
 
  	restruct_resource_tree();
-
-
 }
 
-void create_object(Node *pnode) {
+void restruct_resource_tree(){
+	RTNode *rtnode_list = (RTNode *)calloc(1,sizeof(RTNode));
+	RTNode *tail = rtnode_list;
+	
+	if(access("./RESOURCE.db", 0) != -1) {
+		RTNode* ae_list = db_get_all_ae();
+		tail->sibling_right = ae_list;
+		if(ae_list) ae_list->sibling_left = tail;
+		while(tail->sibling_right) tail = tail->sibling_right;
+
+		RTNode* cnt_list = db_get_all_cnt();
+		tail->sibling_right = cnt_list;
+		if(cnt_list) cnt_list->sibling_left = tail;
+		while(tail->sibling_right) tail = tail->sibling_right;
+	} else {
+		fprintf(stderr,"RESOURCE.db is not exist\n");
+	}
+	
+	if(access("./SUB.db", 0) != -1) {
+		RTNode* sub_list = db_get_all_sub();
+		tail->sibling_right = sub_list;
+		if(sub_list) sub_list->sibling_left = tail;
+		while(tail->sibling_right) tail = tail->sibling_right;
+	} else {
+		fprintf(stderr,"SUB.db is not exist\n");
+	}
+
+	if(access("./ACP.db", 0) != -1) {
+		RTNode* acp_list = db_get_all_acp();
+		tail->sibling_right = acp_list;
+		if(acp_list) acp_list->sibling_left = tail;
+		while(tail->sibling_right) tail = tail->sibling_right;
+	} else {
+		fprintf(stderr,"ACP.db is not exist\n");
+	}
+	
+	RTNode *prtnode = rtnode_list;
+	rtnode_list = rtnode_list->sibling_right;
+	if(rtnode_list) rtnode_list->sibling_left = NULL;
+	free_rtnode(prtnode);
+	
+	if(rtnode_list) restruct_resource_tree_child(rt->cb, rtnode_list);
+}
+
+RTNode* restruct_resource_tree_child(RTNode *parent_rtnode, RTNode *list) {
+	RTNode *rtnode = list;
+	
+	while(rtnode) {
+		RTNode *right = rtnode->sibling_right;
+
+		if(!strcmp(parent_rtnode->ri, rtnode->pi)) {
+			RTNode *left = rtnode->sibling_left;
+			
+			if(!left) {
+				list = right;
+			} else {
+				left->sibling_right = right;
+			}
+			
+			if(right) right->sibling_left = left;
+			rtnode->sibling_left = rtnode->sibling_right = NULL;
+			add_child_resource_tree(parent_rtnode, rtnode);
+		}
+		rtnode = right;
+	}
+	RTNode *child = parent_rtnode->child;
+	
+	while(child) {
+		list = restruct_resource_tree_child(child, list);
+		child = child->sibling_right;
+	}
+	
+	return list;
+}
+
+void *mqtt_serve(){
+	int result = 0;
+	result = mqtt_ser();
+}
+
+int check_payload_size(oneM2MPrimitive *o2pt) {
+	if(o2pt->pc && strlen(o2pt->pc) > MAX_PAYLOAD_SIZE) {
+		fprintf(stderr,"Request payload too large\n");
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload is too large\"}");
+		respond_to_client(413, o2pt);
+		return -1;
+	}
+	return 0;
+}
+
+int result_parse_uri(RTNode *node, oneM2MPrimitive *o2pt) {
+	if(!node) {
+		fprintf(stderr,"Invalid\n");
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"URI is invalid\"}");
+		respond_to_client(404, o2pt);
+		return -1;
+	} else {
+		fprintf(stderr,"OK\n");
+		return 0;
+	} 
+}
+
+/*
+
+void create_object(RTNode *pnode) {
 	ObjectType ty = parse_object_type(); 
 	
 	int e = check_request_body_empty();
@@ -185,7 +287,7 @@ void create_object(Node *pnode) {
 	}	
 }
 
-void retrieve_object(Node *pnode) {
+void retrieve_object(RTNode *pnode) {
 	int e = check_privilege(pnode, ACOP_RETRIEVE, OP_RETRIEVE, pnode->ty);
 
 	if(e == -1) return;
@@ -231,7 +333,7 @@ void retrieve_object(Node *pnode) {
 	}	
 }
 
-void update_object(Node *pnode) {
+void update_object(RTNode *pnode) {
 	ObjectType ty = parse_object_type_in_request_body();
 
 	int e = check_request_body_empty();
@@ -268,7 +370,7 @@ void update_object(Node *pnode) {
 	}
 }
 
-void create_ae(Node *pnode) {
+void create_ae(RTNode *pnode) {
 	if(check_resource_aei_duplicate(pnode)) return;
 	if(check_resource_name_invalid(TY_AE)) return;
 	if(pnode->ty != TY_CSE) {
@@ -289,7 +391,7 @@ void create_ae(Node *pnode) {
 		return;
 	}
 	
-	Node* node = create_node(ae, TY_AE);
+	RTNode* node = create_node(ae, TY_AE);
 	add_child_resource_tree(pnode,node);
 	response_payload = ae_to_json(ae);
 
@@ -299,7 +401,7 @@ void create_ae(Node *pnode) {
 	free_ae(ae); ae = NULL;
 }
 
-void create_cnt(Node *pnode) {
+void create_cnt(RTNode *pnode) {
 	if(pnode->ty != TY_CNT && pnode->ty != TY_AE && pnode->ty != TY_CSE) {
 		child_type_error();
 		return;
@@ -318,7 +420,7 @@ void create_cnt(Node *pnode) {
 		return;
 	}
 	
-	Node* node = create_node(cnt, TY_CNT);
+	RTNode* node = create_node(cnt, TY_CNT);
 	add_child_resource_tree(pnode,node);
 
 	response_payload = cnt_to_json(cnt);
@@ -328,7 +430,7 @@ void create_cnt(Node *pnode) {
 	free_cnt(cnt); cnt = NULL;
 }
 
-void create_cin(Node *pnode) {
+void create_cin(RTNode *pnode) {
 	if(pnode->ty != TY_CNT) {
 		child_type_error();
 		return;
@@ -355,7 +457,7 @@ void create_cin(Node *pnode) {
 	free_cin(cin); cin = NULL;
 }
 
-void create_sub(Node *pnode) {
+void create_sub(RTNode *pnode) {
 	if(pnode->ty == TY_CIN || pnode->ty == TY_SUB) {
 		child_type_error();
 		return;
@@ -374,7 +476,7 @@ void create_sub(Node *pnode) {
 		return;
 	}
 	
-	Node* node = create_node(sub, TY_SUB);
+	RTNode* node = create_node(sub, TY_SUB);
 	add_child_resource_tree(pnode,node);
 	
 	response_payload = sub_to_json(sub);
@@ -384,7 +486,7 @@ void create_sub(Node *pnode) {
 	free_sub(sub); sub = NULL;
 }
 
-void create_acp(Node *pnode) {
+void create_acp(RTNode *pnode) {
 	if(pnode->ty != TY_CSE && pnode->ty != TY_AE) {
 		child_type_error();
 		return;
@@ -403,7 +505,7 @@ void create_acp(Node *pnode) {
 		return;
 	}
 	
-	Node* node = create_node(acp, TY_ACP);
+	RTNode* node = create_node(acp, TY_ACP);
 	add_child_resource_tree(pnode,node);
 	
 	response_payload = acp_to_json(acp);
@@ -413,7 +515,7 @@ void create_acp(Node *pnode) {
 	free_acp(acp); acp = NULL;
 }
 
-void retrieve_cse(Node *pnode){
+void retrieve_cse(RTNode *pnode){
 	CSE* gcse = db_get_cse(pnode->ri);
 	response_payload = cse_to_json(gcse);
 	respond_to_client(200, NULL, "2000");
@@ -421,7 +523,7 @@ void retrieve_cse(Node *pnode){
 	free_cse(gcse); gcse = NULL;
 }
 
-void retrieve_ae(Node *pnode){
+void retrieve_ae(RTNode *pnode){
 	AE* gae = db_get_ae(pnode->ri);
 	response_payload = ae_to_json(gae);
 	respond_to_client(200, NULL, "2000");
@@ -429,7 +531,7 @@ void retrieve_ae(Node *pnode){
 	free_ae(gae); gae = NULL;
 }
 
-void retrieve_cnt(Node *pnode){
+void retrieve_cnt(RTNode *pnode){
 	CNT* gcnt = db_get_cnt(pnode->ri);
 	response_payload = cnt_to_json(gcnt);
 	respond_to_client(200, NULL, "2000");
@@ -437,7 +539,7 @@ void retrieve_cnt(Node *pnode){
 	free_cnt(gcnt); gcnt = NULL;
 }
 
-void retrieve_cin(Node *pnode){
+void retrieve_cin(RTNode *pnode){
 	CIN* gcin = db_get_cin(pnode->ri);
 	response_payload = cin_to_json(gcin);
 	respond_to_client(200, NULL, "2000");
@@ -445,7 +547,7 @@ void retrieve_cin(Node *pnode){
 	free_cin(gcin); gcin = NULL;
 }
 
-void retrieve_sub(Node *pnode){
+void retrieve_sub(RTNode *pnode){
 	Sub* gsub = db_get_sub(pnode->ri);
 	response_payload = sub_to_json(gsub);
 	respond_to_client(200, NULL, "2000");
@@ -453,7 +555,7 @@ void retrieve_sub(Node *pnode){
 	free_sub(gsub); gsub = NULL;
 }
 
-void retrieve_acp(Node *pnode){
+void retrieve_acp(RTNode *pnode){
 	ACP* gacp = db_get_acp(pnode->ri);
 	response_payload = acp_to_json(gacp);
 	respond_to_client(200, NULL, "2000");
@@ -461,7 +563,7 @@ void retrieve_acp(Node *pnode){
 	free_acp(gacp); gacp = NULL;
 }
 
-void update_ae(Node *pnode) {
+void update_ae(RTNode *pnode) {
 	char invalid_key[][16] = {"m2m:ae-ty", "m2m:ae-pi", "m2m:ae-ri"};
 	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
@@ -486,7 +588,7 @@ void update_ae(Node *pnode) {
 	free_ae(after); after = NULL;
 }
 
-void update_cnt(Node *pnode) {
+void update_cnt(RTNode *pnode) {
 	char invalid_key[][16] = {"m2m:cnt-ty", "m2m:cnt-pi", "m2m:cnt-ri"};
 	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
@@ -511,7 +613,7 @@ void update_cnt(Node *pnode) {
 	free_cnt(after); after = NULL;
 }
 
-void update_sub(Node *pnode) {
+void update_sub(RTNode *pnode) {
 	Sub* after = db_get_sub(pnode->ri);
 	int result;
 	
@@ -526,7 +628,7 @@ void update_sub(Node *pnode) {
 	free_sub(after); after = NULL;
 }
 
-void update_acp(Node *pnode) {
+void update_acp(RTNode *pnode) {
 	ACP* after = db_get_acp(pnode->ri);
 	int result;
 	
@@ -542,7 +644,7 @@ void update_acp(Node *pnode) {
 	free_acp(after); after = NULL;
 }
 
-void delete_object(Node* pnode) {
+void delete_object(RTNode* pnode) {
 	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
 	if(pnode->ty == TY_AE || pnode->ty == TY_CNT) {
 		if(check_privilege(pnode, ACOP_DELETE, OP_DELETE, pnode->ty) == -1) {
@@ -556,81 +658,6 @@ void delete_object(Node* pnode) {
 	delete_node_and_db_data(pnode,1);
 	pnode = NULL;
 	respond_to_client(200, "{\"m2m:dbg\": \"resource is deleted successfully\"}", "2002");
-}
-
-void restruct_resource_tree(){
-	Node *node_list = (Node *)calloc(1,sizeof(Node));
-	Node *tail = node_list;
-	
-	if(access("./RESOURCE.db", 0) != -1) {
-		Node* ae_list = db_get_all_ae();
-		tail->sibling_right = ae_list;
-		if(ae_list) ae_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-
-		Node* cnt_list = db_get_all_cnt();
-		tail->sibling_right = cnt_list;
-		if(cnt_list) cnt_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		fprintf(stderr,"RESOURCE.db is not exist\n");
-	}
-	
-	if(access("./SUB.db", 0) != -1) {
-		Node* sub_list = db_get_all_sub();
-		tail->sibling_right = sub_list;
-		if(sub_list) sub_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		fprintf(stderr,"SUB.db is not exist\n");
-	}
-
-	if(access("./ACP.db", 0) != -1) {
-		Node* acp_list = db_get_all_acp();
-		tail->sibling_right = acp_list;
-		if(acp_list) acp_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		fprintf(stderr,"ACP.db is not exist\n");
-	}
-	
-	Node *fnode = node_list;
-	node_list = node_list->sibling_right;
-	if(node_list) node_list->sibling_left = NULL;
-	free_node(fnode);
-	
-	if(node_list) restruct_resource_tree_child(rt->cb, node_list);
-}
-
-Node* restruct_resource_tree_child(Node *pnode, Node *list) {
-	Node *node = list;
-	
-	while(node) {
-		Node *right = node->sibling_right;
-
-		if(!strcmp(pnode->ri, node->pi)) {
-			Node *left = node->sibling_left;
-			
-			if(!left) {
-				list = right;
-			} else {
-				left->sibling_right = right;
-			}
-			
-			if(right) right->sibling_left = left;
-			node->sibling_left = node->sibling_right = NULL;
-			add_child_resource_tree(pnode, node);
-		}
-		node = right;
-	}
-	Node *child = pnode->child;
-	
-	while(child) {
-		list = restruct_resource_tree_child(child, list);
-		child = child->sibling_right;
-	}
-	
-	return list;
 }
 
 void no_mandatory_error(){
@@ -655,10 +682,10 @@ int check_json_format() {
 	return 0;
 }
 
-int check_privilege(Node *node, ACOP acop, Operation op, ObjectType target_ty) {
+int check_privilege(RTNode *node, ACOP acop, Operation op, ObjectType target_ty) {
 	bool deny = false;
 
-	Node *parent_node = node;
+	RTNode *parent_node = node;
 
 	while(parent_node && parent_node->ty != TY_AE) {
 		parent_node = parent_node->parent;
@@ -700,7 +727,7 @@ int check_request_body_empty() {
 	return 0;
 }
 
-int check_resource_aei_duplicate(Node *node) {
+int check_resource_aei_duplicate(RTNode *node) {
 	if(!node) return 0;
 
 	if(check_same_resource_aei_exists(node)) {
@@ -711,7 +738,7 @@ int check_resource_aei_duplicate(Node *node) {
 	return 0;
 }
 
-int check_same_resource_aei_exists(Node *node) {
+int check_same_resource_aei_exists(RTNode *node) {
 	char *origin = request_header("X-M2M-Origin");
 	if(!origin) return 0;
 
@@ -731,7 +758,7 @@ int check_same_resource_aei_exists(Node *node) {
 	return 0;
 }
 
-int check_resource_name_duplicate(Node *node) {
+int check_resource_name_duplicate(RTNode *node) {
 	if(!node) return 0;
 
 	if(check_same_resource_name_exists(node)) {
@@ -742,8 +769,8 @@ int check_resource_name_duplicate(Node *node) {
 	return 0;
 }
 
-int check_same_resource_name_exists(Node *pnode) {
-	Node* node = pnode->child;
+int check_same_resource_name_exists(RTNode *pnode) {
+	RTNode* node = pnode->child;
 	char* rn = get_json_value_char("rn",payload);
 	if(!rn) return 0;
 
@@ -764,31 +791,11 @@ int check_resource_type_equal(ObjectType ty1, ObjectType ty2) {
 	return 0;
 }
 
-int result_parse_uri(Node *node) {
-	if(!node) {
-		fprintf(stderr,"Invalid\n");
-		respond_to_client(404, "{\"m2m:dbg\": \"URI is invalid\"}", "4004");
-		return -1;
-	} else {
-		fprintf(stderr,"OK\n");
-		return 0;
-	} 
-}
-
-int check_payload_size() {
-	if(payload && payload_size > MAX_PAYLOAD_SIZE) {
-		fprintf(stderr,"Request payload too large\n");
-		respond_to_client(413, "{\"m2m:dbg\": \"payload is too large\"}", "5207");
-		return -1;
-	}
-	return 0;
-}
-
-void retrieve_filtercriteria_data(Node *node, ObjectType ty, char **discovery_list, int *size, int level, int curr, int flag) {
+void retrieve_filtercriteria_data(RTNode *node, ObjectType ty, char **discovery_list, int *size, int level, int curr, int flag) {
 	if(!node || curr > level) return;
 
-	Node *child[1024];
-	Node *sibling[1024];
+	RTNode *child[1024];
+	RTNode *sibling[1024];
 	int index = -1;
 
 	if(flag == 1) {
@@ -816,8 +823,8 @@ void retrieve_filtercriteria_data(Node *node, ObjectType ty, char **discovery_li
 
 	if((ty == -1 || ty == TY_CIN) && curr < level) {
 		for(int i= 0; i <= index; i++) {
-			Node *cin_list_head = db_get_cin_list_by_pi(sibling[i]->ri);
-			Node *p = cin_list_head;
+			RTNode *cin_list_head = db_get_cin_list_by_pi(sibling[i]->ri);
+			RTNode *p = cin_list_head;
 
 			while(p) {
 				discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
@@ -828,7 +835,7 @@ void retrieve_filtercriteria_data(Node *node, ObjectType ty, char **discovery_li
 				p = p->sibling_right;
 			}
 
-			free_node_list(cin_list_head);
+			free_rtnode_list(cin_list_head);
 		}
 	}
 
@@ -837,7 +844,7 @@ void retrieve_filtercriteria_data(Node *node, ObjectType ty, char **discovery_li
 	} 
 }
 
-void retrieve_object_filtercriteria(Node *pnode) {
+void retrieve_object_filtercriteria(RTNode *pnode) {
 	char **discovery_list = (char**)malloc(65536*sizeof(char*));
 	int size = 0;
 	ObjectType ty = get_value_querystring_int("ty");
@@ -853,12 +860,6 @@ void retrieve_object_filtercriteria(Node *pnode) {
 	free(response_payload); response_payload = NULL;
 
 	return;
-}
-
-
-void *mqtt_serve(){
-	int result = 0;
-	result = mqtt_ser();
 }
 
 int check_resource_name_invalid(ObjectType ty) {
@@ -893,3 +894,4 @@ int check_resource_name_invalid(ObjectType ty) {
 bool is_rn_valid_char(char c) {
 	return ((48 <= c && c <=57) || (65 <= c && c <= 90) || (97 <= c && c <= 122));
 }
+*/

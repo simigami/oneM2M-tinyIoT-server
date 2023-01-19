@@ -7,6 +7,7 @@
 #include "onem2m.h"
 #include "berkeleyDB.h"
 
+
 /*DB CREATE*/
 DB* DB_CREATE_(DB *dbp){
     int ret;
@@ -1564,7 +1565,7 @@ int db_delete_acp(char* ri) {
     return 1;
 }
 
-Node* db_get_all_cse() {
+RTNode* db_get_all_cse() {
     fprintf(stderr,"\x1b[92m[Get All CSE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "5-";
@@ -1596,8 +1597,8 @@ Node* db_get_all_cse() {
         return NULL;
     }
 
-    Node* head = calloc(1,sizeof(Node));
-    Node* node;
+    RTNode* head = calloc(1,sizeof(RTNode));
+    RTNode* node;
     node = head;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1612,7 +1613,7 @@ Node* db_get_all_cse() {
             strcpy(node->pi,cse->pi);
             node->ty = cse->ty;
 
-            node->sibling_right=calloc(1,sizeof(Node));            
+            node->sibling_right=calloc(1,sizeof(RTNode));            
             node->sibling_right->sibling_left = node;
             node = node->sibling_right;
             free(cse);
@@ -1639,7 +1640,7 @@ Node* db_get_all_cse() {
     return head;
 }
 
-Node* db_get_all_ae() {
+RTNode* db_get_all_ae() {
     fprintf(stderr,"\x1b[92m[Get All AE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
     const const char* TYPE = "C";
@@ -1671,8 +1672,8 @@ Node* db_get_all_ae() {
         return NULL;
     }
 
-    Node* head = calloc(1,sizeof(Node));
-    Node* node;
+    RTNode* head = calloc(1,sizeof(RTNode));
+    RTNode* node;
     node = head;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1688,8 +1689,8 @@ Node* db_get_all_ae() {
             strcpy(node->pi,ae->pi);
             node->ty = ae->ty;
 
-            node->sibling_right=(Node*)calloc(1,sizeof(Node));
-            //node->sibling_right=calloc(1,sizeof(Node));            
+            node->sibling_right=(RTNode*)calloc(1,sizeof(RTNode));
+            //node->sibling_right=calloc(1,sizeof(RTNode));            
             node->sibling_right->sibling_left = node;
             node = node->sibling_right;
             free(ae);
@@ -1716,7 +1717,7 @@ Node* db_get_all_ae() {
     return head;
 }
 
-Node* db_get_all_cnt() {
+RTNode* db_get_all_cnt() {
     fprintf(stderr,"\x1b[92m[Get All CNT]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "3-";
@@ -1748,8 +1749,8 @@ Node* db_get_all_cnt() {
         return NULL;
     }
 
-    Node* head = calloc(1,sizeof(Node));
-    Node* node;
+    RTNode* head = calloc(1,sizeof(RTNode));
+    RTNode* node;
     node = head;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1768,7 +1769,7 @@ Node* db_get_all_cnt() {
             strcpy(node->pi,cnt_->pi);
             node->ty = cnt_->ty;
 
-            node->sibling_right=calloc(1,sizeof(Node));            
+            node->sibling_right=calloc(1,sizeof(RTNode));            
             node->sibling_right->sibling_left = node;
             node = node->sibling_right;
             free(cnt_);
@@ -1796,7 +1797,7 @@ Node* db_get_all_cnt() {
     return head;
 }
 
-Node* db_get_all_sub(){
+RTNode* db_get_all_sub(){
     fprintf(stderr,"\x1b[92m[Get All Sub]\x1b[0m\n");
     char* database = "SUB.db";
 
@@ -1850,8 +1851,8 @@ Node* db_get_all_sub(){
     char* tmp;
 
 
-    Node* head = (Node*)calloc(cnt, sizeof(Node));
-    Node* node;
+    RTNode* head = (RTNode*)calloc(cnt, sizeof(RTNode));
+    RTNode* node;
     node = head;
     //node_ri = node_pi = node_rn = node_nu = node_sub_bit = head;
     
@@ -1862,7 +1863,7 @@ Node* db_get_all_sub(){
                 node->ri = malloc(data.size);
                 strcpy(node->ri, data.data);
 
-                node->sibling_right = (Node*)calloc(1,sizeof(Node));
+                node->sibling_right = (RTNode*)calloc(1,sizeof(RTNode));
                 node->sibling_right->sibling_left = node;
 
                 idx++;
@@ -1920,7 +1921,7 @@ Node* db_get_all_sub(){
     return head;
 }
 
-Node* db_get_all_acp() {
+RTNode* db_get_all_acp() {
     fprintf(stderr,"\x1b[92m[Get All ACP]\x1b[0m\n");
     char* DATABASE = "ACP.db";
     const char* TYPE = "1-";
@@ -1952,8 +1953,8 @@ Node* db_get_all_acp() {
         return NULL;
     }
 
-    Node* head = calloc(1,sizeof(Node));
-    Node* node;
+    RTNode* head = calloc(1,sizeof(RTNode));
+    RTNode* node;
     node = head;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1980,7 +1981,7 @@ Node* db_get_all_acp() {
             strcpy(node->pi,acp->pi);
             node->ty = acp->ty;
 
-            node->sibling_right=calloc(1,sizeof(Node));            
+            node->sibling_right=calloc(1,sizeof(RTNode));            
             node->sibling_right->sibling_left = node;
             node = node->sibling_right;
             free(acp);
@@ -2008,7 +2009,7 @@ Node* db_get_all_acp() {
     return head;
 }
 
-Node* db_get_cin_list_by_pi(char* pi) {
+RTNode* db_get_cin_list_by_pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "4-";
 
@@ -2048,8 +2049,8 @@ Node* db_get_cin_list_by_pi(char* pi) {
         //fprintf(stderr, "Data not exist\n");
         return NULL;
     }
-    Node* head = calloc(1,sizeof(Node));
-    Node* node;
+    RTNode* head = calloc(1,sizeof(RTNode));
+    RTNode* node;
     node = head;
     
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -2067,7 +2068,7 @@ Node* db_get_cin_list_by_pi(char* pi) {
                 strcpy(node->pi,cin->pi);
                 node->ty = cin->ty;
 
-                node->sibling_right=calloc(1,sizeof(Node));            
+                node->sibling_right=calloc(1,sizeof(RTNode));            
                 node->sibling_right->sibling_left = node;
                 node = node->sibling_right;
             }
@@ -2081,7 +2082,7 @@ Node* db_get_cin_list_by_pi(char* pi) {
     }    
 
     if(node->sibling_left) node->sibling_left->sibling_right = NULL;
-    free_node(node); 
+    free_rtnode(node); 
     node = NULL;
 
     /* Cursors must be closed */

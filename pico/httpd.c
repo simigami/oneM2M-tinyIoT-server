@@ -71,6 +71,7 @@ void serve_forever(const char *PORT) {
   while (1) {
     clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
 
+    fprintf(stderr,"error : %d\n", clients[slot]);
     if (clients[slot] < 0) {
       perror("accept() error");
       exit(1);
@@ -243,7 +244,7 @@ void respond(int slot) {
     close(clientfd);
 
     // call router
-    route();
+    handle_http_request();
 
     pthread_mutex_unlock(&mutex_lock);
 
@@ -255,6 +256,17 @@ void respond(int slot) {
   free(buf[slot]);
 }
 
+Operation http_parse_operation(){
+	Operation op;
+
+	if(strcmp(method, "POST") == 0) op = OP_CREATE;
+	else if(strcmp(method, "GET") == 0) op = OP_RETRIEVE;
+	else if (strcmp(method, "PUT") == 0) op = OP_UPDATE;
+	else if (strcmp(method, "DELETE") == 0) op = OP_DELETE;
+
+	return op;
+}
+
 void set_response_header(char *key, char *value) {
   char header[1024];
 
@@ -264,23 +276,17 @@ void set_response_header(char *key, char *value) {
   return;
 }
 
-void respond_to_client(int status, char *json, char *rsc) {
-	if(json) {
-		if(response_payload) free(response_payload);
-		response_payload = (char *)malloc((strlen(json) + 1) * sizeof(char));
-		strcpy(response_payload, json);
-	}
-
-  if(!response_payload) {
-    fprintf(stderr,"response_payload is NULL\n");
+void respond_to_client(int status, oneM2MPrimitive *o2pt) {
+  if(!o2pt->pc) {
+    fprintf(stderr,"o2pt->pc is NULL\n");
     return;
   }
 
 	char content_length[16];
 
-	sprintf(content_length, "%ld", strlen(response_payload));
+	sprintf(content_length, "%ld", strlen(o2pt->pc));
 	set_response_header("Content-Length", content_length);
-  set_response_header("X-M2M-RSC", rsc);
+  set_response_header("X-M2M-RSC", o2pt->rsc);
 
   fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
 	switch(status) {
@@ -294,10 +300,9 @@ void respond_to_client(int status, char *json, char *rsc) {
 		case 413: HTTP_413; LOG_HTTP_413; break;
 		case 500: HTTP_500; LOG_HTTP_500; break;
 	}
-	printf("%s",response_payload);
-  fprintf(stderr,"%s\n",response_payload);
+	printf("%s",o2pt->pc);
+  fprintf(stderr,"%s\n",o2pt->pc);
   fprintf(stderr,"\n\n\033[34m==========================================================\033[0m\n");
-  //free(response_payload);
 }
 
 void normalize_payload() {

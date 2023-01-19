@@ -1,12 +1,12 @@
 // create_node
-Node *create_node(char *rn, char *ri, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop) {}
+RTNode *create_node(char *rn, char *ri, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop) {}
 
 // parse_uri
-Node* parse_uri(Node *cb, char *uri_array) {
+RTNode* parse_uri(RTNode *cb, char *uri_array) {
 	fprintf(stderr,"parse_uri \x1b[33m%s\x1b[0m...",uri_array);
 	//char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
-	Node *node = NULL;
+	RTNode *node = NULL;
 
 	//strcpy(uri_array, uri);
 	
@@ -91,11 +91,11 @@ Node* parse_uri(Node *cb, char *uri_array) {
 }
 
 //tree_viewer_data
-void tree_viewer_data(Node *node, char **viewer_data, int cin_num) {
+void tree_viewer_data(RTNode *node, char **viewer_data, int cin_num) {
 	if(node->ty == TY_CIN) {
-		Node *cinLatest = Get_CIN_Pi(node->pi);
+		RTNode *cinLatest = Get_CIN_Pi(node->pi);
 		
-		Node *p = cinLatest;
+		RTNode *p = cinLatest;
 		
 		cinLatest = latest_cin_list(cinLatest, cin_num);
 		
@@ -103,8 +103,8 @@ void tree_viewer_data(Node *node, char **viewer_data, int cin_num) {
 			char *json = node_to_json(cinLatest);
 			strcat(*viewer_data, ",");
 			strcat(*viewer_data, json);
-			Node *right = cinLatest->sibling_right;
-			free_node(cinLatest);
+			RTNode *right = cinLatest->sibling_right;
+			free_rtnode(cinLatest);
 			cinLatest = right;
 		}
 		return;
@@ -170,7 +170,7 @@ if (fork() == 0) {
 */
 
 /*
-Node* DB_Get_CIN_Period(char *start_time, char *end_time);
+RTNode* DB_Get_CIN_Period(char *start_time, char *end_time);
 char* Label_To_URI(char* label);
 char* URI_To_Label(char* uri);
 int Store_Label(char* label, char* uri);

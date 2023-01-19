@@ -6,6 +6,7 @@
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "cJSON.h"
+#include "config.h"
 
 void remove_quotation_mark(char *s){
 	int len = strlen(s);
@@ -525,7 +526,7 @@ end:
 	return acp;
 }
 
-char* node_to_json(Node *node) {
+char* node_to_json(RTNode *node) {
 	char *json = NULL;
 
 	cJSON *obj = NULL;

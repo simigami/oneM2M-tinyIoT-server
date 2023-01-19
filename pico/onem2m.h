@@ -5,11 +5,20 @@
 
 //enum
 typedef enum {
+	PROT_HTTP = 1,
+	PROT_MQTT
+}Protocol;
+
+typedef enum {
 	OP_NONE = 0,
 	OP_CREATE,
 	OP_RETRIEVE,
 	OP_UPDATE,
-	OP_DELETE
+	OP_DELETE,
+	OP_VIEWER = 1000,
+	OP_OPTIONS,
+	OP_LATEST,
+	OP_OLDEST
 }Operation;
 
 typedef enum {
@@ -120,11 +129,11 @@ typedef struct {
 } ACP;
 
 //Resource Tree
-typedef struct Node {
-	struct Node *parent;
-	struct Node *child;
-	struct Node *sibling_left;
-	struct Node *sibling_right;
+typedef struct RTNode {
+	struct RTNode *parent;
+	struct RTNode *child;
+	struct RTNode *sibling_left;
+	struct RTNode *sibling_right;
 	
 	char *rn;
 	char *ri;
@@ -140,10 +149,10 @@ typedef struct Node {
 	ObjectType ty;
 
 	int net;
-}Node;
+}RTNode;
 
 typedef struct {  
-	Node *cb;
+	RTNode *cb;
 }ResourceTree;
 
 typedef struct {
@@ -151,46 +160,46 @@ typedef struct {
 	char *fr;
 	char *rqi;
 	char *rsc;
-	char *pc;
 	char *rvi;
+	char *pc;
 	Operation op;
+	Protocol prot;
 	int ty;
-}oneM2Mprimitive
+}oneM2MPrimitive;
 
 //http request
-Node* parse_uri(Node *cb, char *uri_array, Operation *op);
-Operation parse_operation();
-ObjectType parse_object_type();
+RTNode* parse_uri(RTNode *cb, oneM2MPrimitive *o2pt);
+ObjectType http_parse_object_type();
 ObjectType parse_object_type_in_request_body();
 
 //onem2m resource
-void create_object(Node* pnode);
-void retrieve_object(Node *pnode);
-void retrieve_object_filtercriteria(Node *pnode);
-void update_object(Node *pnode);
-void delete_object(Node *pnode);
-void notify_object(Node *node, char *response_payload, NET net);
+void create_object(RTNode* pnode);
+void retrieve_object(RTNode *pnode);
+void retrieve_object_filtercriteria(RTNode *pnode);
+void update_object(RTNode *pnode);
+void delete_object(RTNode *pnode);
+void notify_object(RTNode *node, char *response_payload, NET net);
 
-void create_ae(Node *pnode);
-void create_cnt(Node *pnode);
-void create_cin(Node *pnode);
-void create_sub(Node *pnode);
-void create_acp(Node *pnode);
+void create_ae(RTNode *pnode);
+void create_cnt(RTNode *pnode);
+void create_cin(RTNode *pnode);
+void create_sub(RTNode *pnode);
+void create_acp(RTNode *pnode);
 
-void retrieve_cse(Node *pnode);
-void retrieve_ae(Node *pnode);
-void retrieve_cnt(Node *pnode);
-void retrieve_cin(Node *pnode);
-void retrieve_cin_latest(Node *pnode);
+void retrieve_cse(RTNode *pnode);
+void retrieve_ae(RTNode *pnode);
+void retrieve_cnt(RTNode *pnode);
+void retrieve_cin(RTNode *pnode);
+void retrieve_cin_latest(RTNode *pnode);
 void retrieve_cin_by_ri(char *ri);
-void retrieve_sub(Node *pnode);
-void retrieve_acp(Node *pnode);
+void retrieve_sub(RTNode *pnode);
+void retrieve_acp(RTNode *pnode);
 
-void update_cse(Node *pnode);
-void update_ae(Node *pnode);
-void update_cnt(Node *pnode);
-void update_sub(Node *pnode);
-void update_acp(Node *pnode);
+void update_cse(RTNode *pnode);
+void update_ae(RTNode *pnode);
+void update_cnt(RTNode *pnode);
+void update_sub(RTNode *pnode);
+void update_acp(RTNode *pnode);
 
 void init_cse(CSE* cse);
 void init_ae(AE* ae, char *pi);
@@ -202,7 +211,7 @@ void set_ae_update(AE* after);
 void set_cnt_update(CNT* after);
 void set_sub_update(Sub* after);
 void set_acp_update(ACP* after);
-void set_node_update(Node* node, void *after);
+void set_node_update(RTNode* node, void *after);
 
 void free_cse(CSE* cse);
 void free_ae(AE* ae);
@@ -212,26 +221,26 @@ void free_sub(Sub* sub);
 void free_acp(ACP *acp);
 
 //resource tree
-Node* create_node(void *obj, ObjectType ty);
-Node* create_cse_node(CSE *cse);
-Node* create_ae_node(AE *ae);
-Node* create_cnt_node(CNT *cnt);
-Node* create_cin_node(CIN *cin);
-Node* create_sub_node(Sub *sub);
-Node* create_acp_node(ACP *acp);
-int add_child_resource_tree(Node *parent, Node *child);
-Node *find_node_by_uri(Node *cse, char *node_uri);
-void delete_node_and_db_data(Node *node, int flag);
-void free_node(Node *node);
-void free_node_list(Node *node);
+RTNode* create_node(void *obj, ObjectType ty);
+RTNode* create_cse_node(CSE *cse);
+RTNode* create_ae_node(AE *ae);
+RTNode* create_cnt_node(CNT *cnt);
+RTNode* create_cin_node(CIN *cin);
+RTNode* create_sub_node(Sub *sub);
+RTNode* create_acp_node(ACP *acp);
+int add_child_resource_tree(RTNode *parent, RTNode *child);
+RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
+void delete_node_and_db_data(RTNode *node, int flag);
+void free_rtnode(RTNode *node);
+void free_rtnode_list(RTNode *node);
 
-void tree_viewer_api(Node *node);
-void tree_viewer_data(Node *node, char **viewer_data, int cin_size);
+void tree_viewer_api(RTNode *node);
+void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size);
 void restruct_resource_tree();
-Node* restruct_resource_tree_child(Node *node, Node *list);
-Node* latest_cin_list(Node *cinList, int num); // use in viewer API
-Node* find_latest_oldest(Node* node, Operation *op);
-void set_node_uri(Node* node);
+RTNode* restruct_resource_tree_child(RTNode *node, RTNode *list);
+RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
+RTNode* find_latest_oldest(RTNode* node, Operation *op);
+void set_node_uri(RTNode* node);
 
 //json
 void remove_invalid_char_json(char* json);
@@ -246,15 +255,15 @@ int send_http_packet(char *target, char *post_data);
 //exception
 void no_mandatory_error();
 void child_type_error();
-int check_privilege(Node *node, ACOP acop, Operation op, ObjectType target_ty);
+int check_privilege(RTNode *node, ACOP acop, Operation op, ObjectType target_ty);
 int check_request_body_empty();
-int check_resource_name_duplicate(Node *node);
-int check_same_resource_name_exists(Node *pnode);
-int check_resource_aei_duplicate(Node *node);
-int check_same_resource_aei_exists(Node *node);
+int check_resource_name_duplicate(RTNode *node);
+int check_same_resource_name_exists(RTNode *pnode);
+int check_resource_aei_duplicate(RTNode *node);
+int check_same_resource_aei_exists(RTNode *node);
 int check_resource_type_equal(ObjectType ty1, ObjectType ty2);
-int result_parse_uri(Node *node);
-int check_payload_size();
+int result_parse_uri(RTNode *node, oneM2MPrimitive *o2pt);
+int check_payload_size(oneM2MPrimitive *o2pt);
 int check_json_format();
 int check_resource_name_invalid(ObjectType ty);
 
@@ -262,14 +271,17 @@ int check_resource_name_invalid(ObjectType ty);
 void init_server();
 char* get_local_time(int diff);
 char* resource_identifier(ObjectType ty, char *ct);
-void cin_in_period(Node *pnode);
-void object_test_api(Node *node);
+void cin_in_period(RTNode *pnode);
+void object_test_api(RTNode *node);
 char* json_label_value(char *json_payload);
 int net_to_bit(char *net);
-int get_acop(Node *node);
-int get_acop_origin(char *origin, Node *acp, int flag);
+int get_acop(RTNode *node);
+int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
 void log_runtime(double start);
+void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc);
+void handle_http_request();
+void respond_to_client(int status, oneM2MPrimitive *o2pt);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

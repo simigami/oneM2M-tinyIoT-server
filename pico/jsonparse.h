@@ -16,7 +16,7 @@ char* cnt_to_json(CNT* cnt_object);
 char* cin_to_json(CIN* cin_object);
 char* sub_to_json(Sub *sub_object);
 char* notification_to_json(char *sur, int net, char *rep);
-char* node_to_json(Node *node);
+char* node_to_json(RTNode *node);
 char* acp_to_json(ACP *acp_object);
 char* discovery_to_json(char **result, int size);
 

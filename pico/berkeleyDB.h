@@ -21,14 +21,14 @@ int db_delete_object(char *ri);
 int db_delete_sub(char* ri);
 int db_delete_acp(char* ri);
 
-Node* db_get_all_cse();
-Node* db_get_all_ae();
-Node* db_get_all_cnt();
-Node* db_get_all_cin();
-Node* db_get_all_sub();
-Node* db_get_all_acp();
+RTNode* db_get_all_cse();
+RTNode* db_get_all_ae();
+RTNode* db_get_all_cnt();
+RTNode* db_get_all_cin();
+RTNode* db_get_all_sub();
+RTNode* db_get_all_acp();
 
-Node* db_get_cin_list_by_pi(char* pi);
+RTNode* db_get_cin_list_by_pi(char* pi);
 
 #define DB_STR_MAX 2048
 #define DB_SEP ";"

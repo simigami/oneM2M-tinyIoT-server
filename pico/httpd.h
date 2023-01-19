@@ -16,14 +16,10 @@ extern int payload_size;
 
 // Server control functions
 void serve_forever(const char *PORT);
-
 char *request_header(const char *name);
-
 void set_response_header(char *key, char *value);
-
-void respond_to_client(int status, char *json, char *rsc);
-
 void normalize_payload();
+Operation http_parse_operation();
 
 typedef struct {
   char *name, *value;
