@@ -114,6 +114,7 @@ void route(oneM2MPrimitive *o2pt) {
 	if(target_rtnode->ty == TY_CIN) free_rtnode(target_rtnode);
 
 	log_runtime(start);
+
 }
 
 void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
@@ -172,6 +173,7 @@ void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	o2pt->pc = cse_to_json(gcse);
 	set_o2pt_rsc(o2pt, "2000");
 	respond_to_client(200, o2pt);
+	mqtt_response_to_client(o2pt);
 	free_cse(gcse); gcse = NULL;
 }
 

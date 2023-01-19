@@ -83,7 +83,7 @@ extern pthread_mutex_t mutex_lock;
 /* msg->buffer_len: Payload buffer length */
 /* msg->buffer_pos: Payload buffer position */
 
-
+static word16 mqtt_get_packetid(void);
 
 static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     byte msg_new, byte msg_done)
@@ -152,7 +152,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     pjson = cJSON_GetObjectItem(json, "ty");
     o2pt.ty = pjson->valueint;
-    fprintf(stderr, "%d, %d, %s, %s\n", o2pt.op, o2pt.ty, o2pt.to, o2pt.fr);
+    //fprintf(stderr, "%d, %d, %s, %s\n", o2pt.op, o2pt.ty, o2pt.to, o2pt.fr);
 
 
     if(o2pt.op == NULL || o2pt.to == NULL || o2pt.fr == NULL ||
@@ -169,6 +169,45 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     cJSON_Delete(o2pt.pc);
     
     return MQTT_CODE_SUCCESS;
+}
+
+int mqtt_response_to_client(oneM2MPrimitive *o2pt){
+    MqttPublish mqttPub;
+    char *respTopic;
+    int rc = 0;
+
+    respTopic =(char *) malloc(256);
+
+    fprintf(stderr, "publishing mqtt response \n");
+
+    sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, CSE_CSI, o2pt->fr);
+    fprintf(stderr, "[*] Topic : %s\n", respTopic);
+    //sprintf(payload, o2pt->pc);
+
+    XMEMSET(&mqttPub, 0, sizeof(MqttPublish));
+    mqttPub.retain = 0;
+    mqttPub.qos = MQTT_QOS;
+    mqttPub.topic_name = respTopic;
+    mqttPub.packet_id = mqtt_get_packetid();
+    mqttPub.buffer = o2pt->pc;
+    mqttPub.total_len = XSTRLEN(o2pt->pc);
+
+    do{
+        rc = MqttClient_Publish(&mClient, &mqttPub);
+    } while(rc == MQTT_CODE_PUB_CONTINUE);
+
+    if(rc != MQTT_CODE_SUCCESS){
+        return rc;
+    }
+
+    fprintf(stderr, "MQTT Publish: Topic %s, Qos %d, Message %s",
+        mqttPub.topic_name, mqttPub.qos, mqttPub.buffer);
+
+    fprintf(stderr, "\nrc : %s\n", MqttClient_ReturnCodeToString(rc));
+
+    free(respTopic);
+    
+    return rc;
 }
 
 static void setup_timeout(struct timeval* tv, int timeout_ms)
@@ -458,7 +497,7 @@ int mqtt_ser(void)
     respTopic = (char*) malloc(30);
 
     sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_CSI, "/#");
-    sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_CSI, "/+/#");
+    //sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp412/", CSE_CSI, "/+/#");
 
     /* Subscribe and wait for Ack */
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));
@@ -481,20 +520,20 @@ int mqtt_ser(void)
 
 
     /* Publish */
-    /*
+    
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));
     mqttObj.publish.qos = MQTT_QOS;
-    mqttObj.publish.topic_name = MQTT_TOPIC_NAME;
+    mqttObj.publish.topic_name = "test";
     mqttObj.publish.packet_id = mqtt_get_packetid();
-    mqttObj.publish.buffer = (byte*)MQTT_PUBLISH_MSG;
-    mqttObj.publish.total_len = XSTRLEN(MQTT_PUBLISH_MSG);
+    mqttObj.publish.buffer = "12312";
+    mqttObj.publish.total_len = 6;
     rc = MqttClient_Publish(&mClient, &mqttObj.publish);
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
     PRINTF("MQTT Publish: Topic %s, Qos %d, Message %s",
         mqttObj.publish.topic_name, mqttObj.publish.qos, mqttObj.publish.buffer);
-        */
+        
 
     /* Wait for messages */
     while (1) {
@@ -511,9 +550,6 @@ int mqtt_ser(void)
         else if (rc != MQTT_CODE_SUCCESS) {
             break;
         }
-        
-        //if(strncmp("(null)", mClient.read, 6) != 0)
-            //fprintf(stderr, "%s\n", mClient.msg.stat.read);
     }
 
 exit:

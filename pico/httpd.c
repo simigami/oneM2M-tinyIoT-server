@@ -300,8 +300,10 @@ void respond_to_client(int status, oneM2MPrimitive *o2pt) {
 		case 500: HTTP_500; LOG_HTTP_500; break;
 	}
 	printf("%s",o2pt->pc);
+
   fprintf(stderr,"%s\n",o2pt->pc);
   fprintf(stderr,"\n\n\033[34m==========================================================\033[0m\n");
+ 
 }
 
 void normalize_payload() {

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "onem2m.h"
+#include "mqttClient.h"
 
 // Client request
 extern char *method, // "GET" or "POST"
