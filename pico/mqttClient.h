@@ -9,5 +9,8 @@
 #include <string.h>
 
 #include "wolfmqtt/mqtt_client.h"
+#include "config.h"
+#include "onem2m.h"
+#include "cJSON.h"
 
 int mqtt_ser(void);
