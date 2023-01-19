@@ -255,14 +255,14 @@ int send_http_packet(char *target, char *post_data);
 //exception
 void no_mandatory_error();
 void child_type_error();
-int check_privilege(RTNode *node, ACOP acop, Operation op, ObjectType target_ty);
+int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop);
 int check_request_body_empty();
 int check_resource_name_duplicate(RTNode *node);
 int check_same_resource_name_exists(RTNode *pnode);
 int check_resource_aei_duplicate(RTNode *node);
 int check_same_resource_aei_exists(RTNode *node);
 int check_resource_type_equal(ObjectType ty1, ObjectType ty2);
-int result_parse_uri(RTNode *node, oneM2MPrimitive *o2pt);
+int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *node);
 int check_payload_size(oneM2MPrimitive *o2pt);
 int check_json_format();
 int check_resource_name_invalid(ObjectType ty);
@@ -282,7 +282,7 @@ void log_runtime(double start);
 void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc);
 void set_o2pt_rsc(oneM2MPrimitive *o2pt, char *rsc);
 void handle_http_request();
-void respond_to_client(int status, oneM2MPrimitive *o2pt);
+void respond_to_client(oneM2MPrimitive *o2pt, int status);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

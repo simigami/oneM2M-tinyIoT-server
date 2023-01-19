@@ -21,6 +21,7 @@ char *request_header(const char *name);
 void set_response_header(char *key, char *value, char *response_headers);
 void normalize_payload();
 Operation http_parse_operation();
+void http_respond_to_client(oneM2MPrimitive *o2pt, int status);
 
 typedef struct {
   char *name, *value;

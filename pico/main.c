@@ -64,8 +64,7 @@ void handle_http_request() {
 	} 
 
 	o2pt->op = http_parse_operation();
-	o2pt->ty = http_parse_object_type();
-
+	if(o2pt->ty == OP_CREATE) o2pt->ty = http_parse_object_type();
 	o2pt->prot = PROT_HTTP;
 
 	route(o2pt);
@@ -75,9 +74,8 @@ void route(oneM2MPrimitive *o2pt) {
     double start;
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
-
 	RTNode* target_rtnode = parse_uri(o2pt, rt->cb);
-	int e = result_parse_uri(target_rtnode, o2pt);
+	int e = result_parse_uri(o2pt, target_rtnode);
 
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
@@ -91,7 +89,7 @@ void route(oneM2MPrimitive *o2pt) {
 		//create_object(target_rtnode); break;
 	
 	case OP_RETRIEVE:
-		retrieve_object(o2pt, target_rtnode);	break;
+		retrieve_object(o2pt, target_rtnode); break;
 		
 	//case OP_UPDATE: 
 		//update_object(target_rtnode); break;
@@ -109,7 +107,7 @@ void route(oneM2MPrimitive *o2pt) {
 	default:
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"internal server error\"}");
 		set_o2pt_rsc(o2pt, "5000");
-		respond_to_client(500, o2pt);
+		respond_to_client(o2pt, 500);
 	}
 	if(target_rtnode->ty == TY_CIN) free_rtnode(target_rtnode);
 
@@ -118,11 +116,10 @@ void route(oneM2MPrimitive *o2pt) {
 }
 
 void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
-	/*
-	int e = check_privilege(pnode, ACOP_RETRIEVE, OP_RETRIEVE, pnode->ty);
+	int e = check_privilege(o2pt, target_rtnode, ACOP_RETRIEVE);
 
 	if(e == -1) return;
-	
+	/*
 	int fu = get_value_querystring_int("fu");
 
 	if(fu == 1) {
@@ -138,43 +135,32 @@ void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
         fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
         retrieve_cse(o2pt, target_rtnode);
       	break;
-	/*
+	
 	case TY_AE : 
 		fprintf(stderr,"\x1b[43mRetrieve AE\x1b[0m\n");
-		retrieve_ae(pnode);	
+		retrieve_ae(o2pt, target_rtnode);	
 		break;	
 			
 	case TY_CNT :
 		fprintf(stderr,"\x1b[43mRetrieve CNT\x1b[0m\n");
-		retrieve_cnt(pnode);			
+		retrieve_cnt(o2pt, target_rtnode);			
 		break;
 			
 	case TY_CIN :
 		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
-		retrieve_cin(pnode);			
+		retrieve_cin(o2pt, target_rtnode);			
 		break;
 
 	case TY_SUB :
 		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");
-		retrieve_sub(pnode);			
+		retrieve_sub(o2pt, target_rtnode);			
 		break;
 
 	case TY_ACP :
 		fprintf(stderr,"\x1b[43mRetrieve ACP\x1b[0m\n");
-		retrieve_acp(pnode);			
+		retrieve_acp(o2pt, target_rtnode);			
 		break;
-	*/
 	}	
-}
-
-void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
-	CSE* gcse = db_get_cse(target_rtnode->ri);
-	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = cse_to_json(gcse);
-	set_o2pt_rsc(o2pt, "2000");
-	respond_to_client(200, o2pt);
-	mqtt_response_to_client(o2pt);
-	free_cse(gcse); gcse = NULL;
 }
 
 void log_runtime(double start) {
@@ -285,22 +271,60 @@ int check_payload_size(oneM2MPrimitive *o2pt) {
 	if(o2pt->pc && strlen(o2pt->pc) > MAX_PAYLOAD_SIZE) {
 		fprintf(stderr,"Request payload too large\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload is too large\"}");
-		respond_to_client(413, o2pt);
+		respond_to_client(o2pt, 413);
 		return -1;
 	}
 	return 0;
 }
 
-int result_parse_uri(RTNode *node, oneM2MPrimitive *o2pt) {
-	if(!node) {
+int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
+	if(!rtnode) {
 		fprintf(stderr,"Invalid\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"URI is invalid\"}");
-		respond_to_client(404, o2pt);
+		set_o2pt_rsc(o2pt, "4004");
+		respond_to_client(o2pt, 404);
 		return -1;
 	} else {
 		fprintf(stderr,"OK\n");
 		return 0;
 	} 
+}
+
+int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop) {
+	bool deny = false;
+
+	RTNode *parent_rtnode = target_rtnode;
+
+	while(parent_rtnode && parent_rtnode->ty != TY_AE) {
+		parent_rtnode = parent_rtnode->parent;
+	}
+
+	if(!o2pt->fr) {
+		if(!(o2pt->op == OP_CREATE && o2pt->ty == TY_AE)) {
+			deny = true;
+		}
+	} else if(!strcmp(o2pt->fr, "CAdmin")) {
+		deny = false;
+	} else if((parent_rtnode && strcmp(o2pt->fr, parent_rtnode->ri))) {
+		deny = true;
+	}
+	/*
+	if(target_rtnode->ty == TY_CIN) target_rtnode = node->parent;
+
+	if((target_rtnode->ty == TY_CNT || target_rtnode->ty == TY_ACP) && (get_acop(target_rtnode) & acop) != acop) {
+		deny = true;
+	}
+	*/
+
+	if(deny) {
+		fprintf(stderr,"Originator has no privilege\n");
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"originator has no privilege.\"}");
+		set_o2pt_rsc(o2pt, "4103");
+		respond_to_client(o2pt, 403);
+		return -1;
+	}
+
+	return 0;
 }
 
 /*
@@ -529,46 +553,6 @@ void create_acp(RTNode *pnode) {
 	free_acp(acp); acp = NULL;
 }
 
-void retrieve_ae(RTNode *pnode){
-	AE* gae = db_get_ae(pnode->ri);
-	response_payload = ae_to_json(gae);
-	respond_to_client(200, NULL, "2000");
-	free(response_payload); response_payload = NULL;
-	free_ae(gae); gae = NULL;
-}
-
-void retrieve_cnt(RTNode *pnode){
-	CNT* gcnt = db_get_cnt(pnode->ri);
-	response_payload = cnt_to_json(gcnt);
-	respond_to_client(200, NULL, "2000");
-	free(response_payload); response_payload = NULL;
-	free_cnt(gcnt); gcnt = NULL;
-}
-
-void retrieve_cin(RTNode *pnode){
-	CIN* gcin = db_get_cin(pnode->ri);
-	response_payload = cin_to_json(gcin);
-	respond_to_client(200, NULL, "2000");
-	free(response_payload); response_payload = NULL; 
-	free_cin(gcin); gcin = NULL;
-}
-
-void retrieve_sub(RTNode *pnode){
-	Sub* gsub = db_get_sub(pnode->ri);
-	response_payload = sub_to_json(gsub);
-	respond_to_client(200, NULL, "2000");
-	free(response_payload); response_payload = NULL; 
-	free_sub(gsub); gsub = NULL;
-}
-
-void retrieve_acp(RTNode *pnode){
-	ACP* gacp = db_get_acp(pnode->ri);
-	response_payload = acp_to_json(gacp);
-	respond_to_client(200, NULL, "2000");
-	free(response_payload); response_payload = NULL; 
-	free_acp(gacp); gacp = NULL;
-}
-
 void update_ae(RTNode *pnode) {
 	char invalid_key[][16] = {"m2m:ae-ty", "m2m:ae-pi", "m2m:ae-ri"};
 	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
@@ -685,42 +669,6 @@ int check_json_format() {
 		return -1;
 	}
 	cJSON_Delete(json);
-	return 0;
-}
-
-int check_privilege(RTNode *node, ACOP acop, Operation op, ObjectType target_ty) {
-	bool deny = false;
-
-	RTNode *parent_node = node;
-
-	while(parent_node && parent_node->ty != TY_AE) {
-		parent_node = parent_node->parent;
-	}
-
-	char *origin = request_header("X-M2M-Origin");
-
-	if(!origin) {
-		if(!(op == OP_CREATE && target_ty == TY_AE)) {
-			deny = true;
-		}
-	} else if(!strcmp(origin, "CAdmin")) {
-		deny = false;
-	} else if((parent_node && strcmp(origin, parent_node->ri))) {
-		deny = true;
-	}
-
-	if(node->ty == TY_CIN) node = node->parent;
-
-	if((node->ty == TY_CNT || node->ty == TY_ACP) && (get_acop(node) & acop) != acop) {
-		deny = true;
-	}
-
-	if(deny) {
-		fprintf(stderr,"Originator has no privilege\n");
-		respond_to_client(403, "{\"m2m:dbg\": \"originator has no privilege.\"}", "4103");
-		return -1;
-	}
-
 	return 0;
 }
 

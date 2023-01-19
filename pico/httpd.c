@@ -1,5 +1,6 @@
 #include "httpd.h"
 #include "config.h"
+#include "onem2m.h"
 
 #include <arpa/inet.h>
 #include <ctype.h>
@@ -274,38 +275,6 @@ void set_response_header(char *key, char *value, char *response_headers) {
   return;
 }
 
-void respond_to_client(int status, oneM2MPrimitive *o2pt) {
-  if(!o2pt->pc) {
-    fprintf(stderr,"o2pt->pc is NULL\n");
-    return;
-  }
-
-	char content_length[16];
-  char response_headers[1024] = {'\0'};
-
-	sprintf(content_length, "%ld", strlen(o2pt->pc));
-	set_response_header("Content-Length", content_length, response_headers);
-  set_response_header("X-M2M-RSC", o2pt->rsc, response_headers);
-
-  fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
-	switch(status) {
-		case 200: HTTP_200; LOG_HTTP_200; break;
-		case 201: HTTP_201; LOG_HTTP_201; break;
-		case 209: HTTP_209; LOG_HTTP_209; break;
-		case 400: HTTP_400; LOG_HTTP_400; break;
-		case 403: HTTP_403; LOG_HTTP_403; break;
-		case 404: HTTP_404; LOG_HTTP_404; break;
-		case 406: HTTP_406; LOG_HTTP_406; break;
-		case 413: HTTP_413; LOG_HTTP_413; break;
-		case 500: HTTP_500; LOG_HTTP_500; break;
-	}
-	printf("%s",o2pt->pc);
-
-  fprintf(stderr,"%s\n",o2pt->pc);
-  fprintf(stderr,"\n\n\033[34m==========================================================\033[0m\n");
- 
-}
-
 void normalize_payload() {
 	int index = 0;
 
@@ -316,4 +285,29 @@ void normalize_payload() {
 	}
 
 	payload[index] = '\0';
+}
+
+void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
+    char content_length[16];
+    char response_headers[1024] = {'\0'};
+
+    sprintf(content_length, "%ld", strlen(o2pt->pc));
+    set_response_header("Content-Length", content_length, response_headers);
+    set_response_header("X-M2M-RSC", o2pt->rsc, response_headers); 
+
+    fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
+    switch(status) {
+        case 200: HTTP_200; LOG_HTTP_200; break;
+        case 201: HTTP_201; LOG_HTTP_201; break;
+        case 209: HTTP_209; LOG_HTTP_209; break;
+        case 400: HTTP_400; LOG_HTTP_400; break;
+        case 403: HTTP_403; LOG_HTTP_403; break;
+        case 404: HTTP_404; LOG_HTTP_404; break;
+        case 406: HTTP_406; LOG_HTTP_406; break;
+        case 413: HTTP_413; LOG_HTTP_413; break;
+        case 500: HTTP_500; LOG_HTTP_500; break;
+    }
+    printf("%s",o2pt->pc); 
+    fprintf(stderr,"%s\n",o2pt->pc);
+    fprintf(stderr,"\n\n\033[34m==========================================================\033[0m\n");
 }

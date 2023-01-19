@@ -15,7 +15,7 @@
 #include "config.h"
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
-	fprintf(stderr,"parse_uri \x1b[33m%s\x1b[0m...",uri);
+	fprintf(stderr,"parse_uri \x1b[33m%s\x1b[0m...", o2pt->to);
 	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
 	strcpy(uri_array, o2pt->to);
@@ -281,6 +281,65 @@ void free_cse(CSE *cse) {
 	free(cse); cse = NULL;
 }
 
+void free_ae(AE *ae) {
+	if(ae->et) free(ae->et);
+	if(ae->ct) free(ae->ct);
+	if(ae->lt) free(ae->lt);
+	if(ae->rn) free(ae->rn);
+	if(ae->ri) free(ae->ri);
+	if(ae->pi) free(ae->pi);
+	if(ae->api) free(ae->api);
+	if(ae->aei) free(ae->aei);
+	free(ae); ae = NULL;
+}
+
+void free_cnt(CNT *cnt) {
+	if(cnt->et) free(cnt->et);
+	if(cnt->ct) free(cnt->ct);
+	if(cnt->lt) free(cnt->lt);
+	if(cnt->rn) free(cnt->rn);
+	if(cnt->ri) free(cnt->ri);
+	if(cnt->pi) free(cnt->pi);
+	free(cnt); cnt = NULL;
+}
+
+void free_cin(CIN* cin) {
+	if(cin->et) free(cin->et);
+	if(cin->ct) free(cin->ct);
+	if(cin->lt) free(cin->lt);
+	if(cin->rn) free(cin->rn);
+	if(cin->ri) free(cin->ri);
+	if(cin->pi) free(cin->pi);
+	if(cin->con) free(cin->con);
+	free(cin); cin = NULL;
+}
+
+void free_sub(Sub* sub) {
+	if(sub->et) free(sub->et);
+	if(sub->ct) free(sub->ct);
+	if(sub->lt) free(sub->lt);
+	if(sub->rn) free(sub->rn);
+	if(sub->ri) free(sub->ri);
+	if(sub->pi) free(sub->pi);
+	if(sub->nu) free(sub->nu);
+	if(sub->net) free(sub->net);
+	free(sub); sub = NULL;
+}
+
+void free_acp(ACP* acp) {
+	if(acp->et) free(acp->et);
+	if(acp->ct) free(acp->ct);
+	if(acp->lt) free(acp->lt);
+	if(acp->rn) free(acp->rn);
+	if(acp->ri) free(acp->ri);
+	if(acp->pi) free(acp->pi);
+	if(acp->pv_acor) free(acp->pv_acor);
+	if(acp->pv_acop) free(acp->pv_acop);
+	if(acp->pvs_acor) free(acp->pvs_acor);
+	if(acp->pvs_acop) free(acp->pvs_acop);
+	free(acp); acp = NULL;
+}
+
 void free_rtnode(RTNode *rtnode) {
 	free(rtnode->ri);
 	free(rtnode->rn);
@@ -371,6 +430,61 @@ ObjectType http_parse_object_type() {
 	return ty;
 }
 
+void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	CSE* gcse = db_get_cse(target_rtnode->ri);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cse_to_json(gcse);
+	set_o2pt_rsc(o2pt, "2000");
+	respond_to_client(o2pt, 200);
+	free_cse(gcse); gcse = NULL;
+}
+
+
+void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	AE* gae = db_get_ae(target_rtnode->ri);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = ae_to_json(gae);
+	set_o2pt_rsc(o2pt, "2000");
+	respond_to_client(o2pt, 200);
+	free_ae(gae); gae = NULL;
+}
+
+void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	CNT* gcnt = db_get_cnt(target_rtnode->ri);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cnt_to_json(gcnt);
+	set_o2pt_rsc(o2pt, "2000");
+	respond_to_client(o2pt, 200);
+	free_cnt(gcnt); gcnt = NULL;
+}
+
+void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	CIN* gcin = db_get_cin(target_rtnode->ri);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cin_to_json(gcin);
+	set_o2pt_rsc(o2pt, "2000");
+	respond_to_client(o2pt, 200); 
+	free_cin(gcin); gcin = NULL;
+}
+
+void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	Sub* gsub = db_get_sub(target_rtnode->ri);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = sub_to_json(gsub);
+	set_o2pt_rsc(o2pt, "2000");
+	respond_to_client(o2pt, 200); 
+	free_sub(gsub); gsub = NULL;
+}
+
+void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	ACP* gacp = db_get_acp(target_rtnode->ri);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = acp_to_json(gacp);
+	set_o2pt_rsc(o2pt, "2000");
+	respond_to_client(o2pt, 200);
+	free_acp(gacp); gacp = NULL;
+}
+
 char *get_local_time(int diff) {
 	time_t t = time(NULL) - diff;
 	struct tm tm = *localtime(&t);
@@ -414,6 +528,20 @@ void set_o2pt_rsc(oneM2MPrimitive *o2pt, char *rsc){
 
 int is_json_valid_char(char c){
 	return (('!' <= c && c <= '~') || c == ' ');
+}
+
+void respond_to_client(oneM2MPrimitive *o2pt, int status) {
+	if(!o2pt->pc) {
+		fprintf(stderr,"o2pt->pc is NULL\n");
+		return;
+	}
+
+	switch(o2pt->prot) {
+		case PROT_HTTP:
+			http_respond_to_client(o2pt, status); break;
+		case PROT_MQTT:
+			break;
+	}
 }
 
 /*
@@ -976,65 +1104,6 @@ void set_node_update(RTNode *node, void *after) {
 		}
 		break;
 	}
-}
-
-void free_ae(AE *ae) {
-	if(ae->et) free(ae->et);
-	if(ae->ct) free(ae->ct);
-	if(ae->lt) free(ae->lt);
-	if(ae->rn) free(ae->rn);
-	if(ae->ri) free(ae->ri);
-	if(ae->pi) free(ae->pi);
-	if(ae->api) free(ae->api);
-	if(ae->aei) free(ae->aei);
-	free(ae); ae = NULL;
-}
-
-void free_cnt(CNT *cnt) {
-	if(cnt->et) free(cnt->et);
-	if(cnt->ct) free(cnt->ct);
-	if(cnt->lt) free(cnt->lt);
-	if(cnt->rn) free(cnt->rn);
-	if(cnt->ri) free(cnt->ri);
-	if(cnt->pi) free(cnt->pi);
-	free(cnt); cnt = NULL;
-}
-
-void free_cin(CIN* cin) {
-	if(cin->et) free(cin->et);
-	if(cin->ct) free(cin->ct);
-	if(cin->lt) free(cin->lt);
-	if(cin->rn) free(cin->rn);
-	if(cin->ri) free(cin->ri);
-	if(cin->pi) free(cin->pi);
-	if(cin->con) free(cin->con);
-	free(cin); cin = NULL;
-}
-
-void free_sub(Sub* sub) {
-	if(sub->et) free(sub->et);
-	if(sub->ct) free(sub->ct);
-	if(sub->lt) free(sub->lt);
-	if(sub->rn) free(sub->rn);
-	if(sub->ri) free(sub->ri);
-	if(sub->pi) free(sub->pi);
-	if(sub->nu) free(sub->nu);
-	if(sub->net) free(sub->net);
-	free(sub); sub = NULL;
-}
-
-void free_acp(ACP* acp) {
-	if(acp->et) free(acp->et);
-	if(acp->ct) free(acp->ct);
-	if(acp->lt) free(acp->lt);
-	if(acp->rn) free(acp->rn);
-	if(acp->ri) free(acp->ri);
-	if(acp->pi) free(acp->pi);
-	if(acp->pv_acor) free(acp->pv_acor);
-	if(acp->pv_acop) free(acp->pv_acop);
-	if(acp->pvs_acor) free(acp->pvs_acor);
-	if(acp->pvs_acop) free(acp->pvs_acop);
-	free(acp); acp = NULL;
 }
 
 void notify_object(RTNode *node, char *response_payload, NET net) {
