@@ -168,17 +168,17 @@ typedef struct {
 }oneM2MPrimitive;
 
 //http request
-RTNode* parse_uri(RTNode *cb, oneM2MPrimitive *o2pt);
+RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 ObjectType http_parse_object_type();
 ObjectType parse_object_type_in_request_body();
 
 //onem2m resource
-void create_object(RTNode* pnode);
-void retrieve_object(RTNode *pnode);
-void retrieve_object_filtercriteria(RTNode *pnode);
-void update_object(RTNode *pnode);
-void delete_object(RTNode *pnode);
-void notify_object(RTNode *node, char *response_payload, NET net);
+void create_object(oneM2MPrimitive *o2pt, RTNode* pnode);
+void retrieve_object(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_object_filtercriteria(oneM2MPrimitive *o2pt, RTNode *pnode);
+void update_object(oneM2MPrimitive *o2pt, RTNode *pnode);
+void delete_object(oneM2MPrimitive *o2pt, RTNode *pnode);
+void notify_object(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
 
 void create_ae(RTNode *pnode);
 void create_cnt(RTNode *pnode);
@@ -186,14 +186,14 @@ void create_cin(RTNode *pnode);
 void create_sub(RTNode *pnode);
 void create_acp(RTNode *pnode);
 
-void retrieve_cse(RTNode *pnode);
-void retrieve_ae(RTNode *pnode);
-void retrieve_cnt(RTNode *pnode);
-void retrieve_cin(RTNode *pnode);
-void retrieve_cin_latest(RTNode *pnode);
+void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_cin_latest(oneM2MPrimitive *o2pt, RTNode *pnode);
 void retrieve_cin_by_ri(char *ri);
-void retrieve_sub(RTNode *pnode);
-void retrieve_acp(RTNode *pnode);
+void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *pnode);
 
 void update_cse(RTNode *pnode);
 void update_ae(RTNode *pnode);
@@ -280,6 +280,7 @@ int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
 void log_runtime(double start);
 void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc);
+void set_o2pt_rsc(oneM2MPrimitive *o2pt, char *rsc);
 void handle_http_request();
 void respond_to_client(int status, oneM2MPrimitive *o2pt);
 

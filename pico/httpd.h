@@ -17,7 +17,7 @@ extern int payload_size;
 // Server control functions
 void serve_forever(const char *PORT);
 char *request_header(const char *name);
-void set_response_header(char *key, char *value);
+void set_response_header(char *key, char *value, char *response_headers);
 void normalize_payload();
 Operation http_parse_operation();
 

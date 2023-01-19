@@ -14,7 +14,7 @@
 #include "httpd.h"
 #include "config.h"
 
-RTNode* parse_uri(RTNode *cb, oneM2MPrimitive *o2pt) {
+RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	fprintf(stderr,"parse_uri \x1b[33m%s\x1b[0m...",uri);
 	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
@@ -403,8 +403,13 @@ void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc){
 
 	o2pt->pc = (char *)malloc((strlen(pc) + 1) * sizeof(char));
 	strcpy(o2pt->pc, pc);
+}
 
-	fprintf(stderr,"good\n");
+void set_o2pt_rsc(oneM2MPrimitive *o2pt, char *rsc){
+	if(o2pt->rsc) free(o2pt->rsc);
+
+	o2pt->rsc = (char *)malloc((strlen(rsc) + 1) * sizeof(char));
+	strcpy(o2pt->rsc, rsc);
 }
 
 int is_json_valid_char(char c){

@@ -25,8 +25,6 @@ static void start_server(const char *);
 static void respond(int);
 
 static char *buf[MAX_CONNECTIONS];
-extern char *response_payload;
-char *response_headers;
 
 // Client request
 char *method, // "GET" or "POST"
@@ -48,7 +46,7 @@ void *respond_thread(void *ps) {
 void serve_forever(const char *PORT) {
   pthread_mutex_init(&mutex_lock, NULL);
   struct sockaddr_in clientaddr;
-  socklen_t addrlen;
+  socklen_t addrlen = 0;
   
   int slot = 0; 
 
@@ -267,8 +265,8 @@ Operation http_parse_operation(){
 	return op;
 }
 
-void set_response_header(char *key, char *value) {
-  char header[1024];
+void set_response_header(char *key, char *value, char *response_headers) {
+  char header[128];
 
   sprintf(header, "%s: %s\n", key, value);
   strcat(response_headers, header);
@@ -283,10 +281,11 @@ void respond_to_client(int status, oneM2MPrimitive *o2pt) {
   }
 
 	char content_length[16];
+  char response_headers[1024] = {'\0'};
 
 	sprintf(content_length, "%ld", strlen(o2pt->pc));
-	set_response_header("Content-Length", content_length);
-  set_response_header("X-M2M-RSC", o2pt->rsc);
+	set_response_header("Content-Length", content_length, response_headers);
+  set_response_header("X-M2M-RSC", o2pt->rsc, response_headers);
 
   fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
 	switch(status) {

@@ -76,10 +76,8 @@ void route(oneM2MPrimitive *o2pt) {
 
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 
-	RTNode* target_rtnode = parse_uri(rt->cb, o2pt);
+	RTNode* target_rtnode = parse_uri(o2pt, rt->cb);
 	int e = result_parse_uri(target_rtnode, o2pt);
-
-	fprintf(stderr,"target_object_rn : %s\n", target_rtnode->rn);
 
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
@@ -92,8 +90,8 @@ void route(oneM2MPrimitive *o2pt) {
 	//case OP_CREATE:	
 		//create_object(target_rtnode); break;
 	
-	//case OP_RETRIEVE:
-		//retrieve_object(target_rtnode);	break;
+	case OP_RETRIEVE:
+		retrieve_object(o2pt, target_rtnode);	break;
 		
 	//case OP_UPDATE: 
 		//update_object(target_rtnode); break;
@@ -110,11 +108,71 @@ void route(oneM2MPrimitive *o2pt) {
 	
 	default:
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"internal server error\"}");
+		set_o2pt_rsc(o2pt, "5000");
 		respond_to_client(500, o2pt);
 	}
 	if(target_rtnode->ty == TY_CIN) free_rtnode(target_rtnode);
 
 	log_runtime(start);
+}
+
+void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	/*
+	int e = check_privilege(pnode, ACOP_RETRIEVE, OP_RETRIEVE, pnode->ty);
+
+	if(e == -1) return;
+	
+	int fu = get_value_querystring_int("fu");
+
+	if(fu == 1) {
+		fprintf(stderr,"\x1b[43mRetrieve FilterCriteria\x1b[0m\n");
+		retrieve_object_filtercriteria(pnode);
+		return;
+	}
+	*/
+
+	switch(target_rtnode->ty) {
+		
+	case TY_CSE :
+        fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
+        retrieve_cse(o2pt, target_rtnode);
+      	break;
+	/*
+	case TY_AE : 
+		fprintf(stderr,"\x1b[43mRetrieve AE\x1b[0m\n");
+		retrieve_ae(pnode);	
+		break;	
+			
+	case TY_CNT :
+		fprintf(stderr,"\x1b[43mRetrieve CNT\x1b[0m\n");
+		retrieve_cnt(pnode);			
+		break;
+			
+	case TY_CIN :
+		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
+		retrieve_cin(pnode);			
+		break;
+
+	case TY_SUB :
+		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");
+		retrieve_sub(pnode);			
+		break;
+
+	case TY_ACP :
+		fprintf(stderr,"\x1b[43mRetrieve ACP\x1b[0m\n");
+		retrieve_acp(pnode);			
+		break;
+	*/
+	}	
+}
+
+void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	CSE* gcse = db_get_cse(target_rtnode->ri);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cse_to_json(gcse);
+	set_o2pt_rsc(o2pt, "2000");
+	respond_to_client(200, o2pt);
+	free_cse(gcse); gcse = NULL;
 }
 
 void log_runtime(double start) {
@@ -284,52 +342,6 @@ void create_object(RTNode *pnode) {
 	default :
 		fprintf(stderr,"Resource type error (Content-Type Header Invalid)\n");
 		respond_to_client(400, "{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}", "4000");
-	}	
-}
-
-void retrieve_object(RTNode *pnode) {
-	int e = check_privilege(pnode, ACOP_RETRIEVE, OP_RETRIEVE, pnode->ty);
-
-	if(e == -1) return;
-
-	int fu = get_value_querystring_int("fu");
-
-	if(fu == 1) {
-		fprintf(stderr,"\x1b[43mRetrieve FilterCriteria\x1b[0m\n");
-		retrieve_object_filtercriteria(pnode);
-		return;
-	}
-
-	switch(pnode->ty) {
-		
-	case TY_CSE :
-        fprintf(stderr,"\x1b[43mRetrieve CSE\x1b[0m\n");
-        retrieve_cse(pnode);
-      	break;
-	case TY_AE : 
-		fprintf(stderr,"\x1b[43mRetrieve AE\x1b[0m\n");
-		retrieve_ae(pnode);	
-		break;	
-			
-	case TY_CNT :
-		fprintf(stderr,"\x1b[43mRetrieve CNT\x1b[0m\n");
-		retrieve_cnt(pnode);			
-		break;
-			
-	case TY_CIN :
-		fprintf(stderr,"\x1b[43mRetrieve CIN\x1b[0m\n");
-		retrieve_cin(pnode);			
-		break;
-
-	case TY_SUB :
-		fprintf(stderr,"\x1b[43mRetrieve Sub\x1b[0m\n");
-		retrieve_sub(pnode);			
-		break;
-
-	case TY_ACP :
-		fprintf(stderr,"\x1b[43mRetrieve ACP\x1b[0m\n");
-		retrieve_acp(pnode);			
-		break;
 	}	
 }
 
@@ -513,14 +525,6 @@ void create_acp(RTNode *pnode) {
 	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	free(response_payload); response_payload = NULL; 
 	free_acp(acp); acp = NULL;
-}
-
-void retrieve_cse(RTNode *pnode){
-	CSE* gcse = db_get_cse(pnode->ri);
-	response_payload = cse_to_json(gcse);
-	respond_to_client(200, NULL, "2000");
-	free(response_payload); response_payload = NULL; 
-	free_cse(gcse); gcse = NULL;
 }
 
 void retrieve_ae(RTNode *pnode){
