@@ -136,6 +136,9 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         return MQTT_CODE_SUCCESS;
     }
 
+    /* type mqtt */
+    o2pt->prot = PROT_MQTT;
+
     /* fill primitives */
     pjson = cJSON_GetObjectItem(json, "op");
     if(!pjson) return MQTT_CODE_SUCCESS;
@@ -179,7 +182,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     return MQTT_CODE_SUCCESS;
 }
 
-int mqtt_response_to_client(oneM2MPrimitive *o2pt){
+int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     MqttPublish mqttPub;
     char *respTopic;
     cJSON *json;

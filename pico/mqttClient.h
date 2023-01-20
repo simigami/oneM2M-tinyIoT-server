@@ -13,4 +13,5 @@
 #include "onem2m.h"
 #include "cJSON.h"
 
+int mqtt_respond_to_client(oneM2MPrimitive *o2pt);
 int mqtt_ser(void);

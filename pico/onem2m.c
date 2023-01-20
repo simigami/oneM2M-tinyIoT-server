@@ -12,6 +12,7 @@
 #include "berkeleyDB.h"
 #include "jsonparse.h"
 #include "httpd.h"
+#include "mqttClient.h"
 #include "config.h"
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
@@ -540,6 +541,7 @@ void respond_to_client(oneM2MPrimitive *o2pt, int status) {
 		case PROT_HTTP:
 			http_respond_to_client(o2pt, status); break;
 		case PROT_MQTT:
+			mqtt_respond_to_client(o2pt);
 			break;
 	}
 }
