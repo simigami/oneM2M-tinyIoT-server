@@ -26,6 +26,8 @@
     #include <config.h>
 #endif
 
+//#define WOLFMQTT_MULTITHREAD true
+
 #include "mqttClient.h"
 #include <pthread.h>
 
@@ -92,9 +94,11 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     word32 len;
 
     cJSON *json = NULL, *pjson = NULL;
-    oneM2MPrimitive o2pt;
+    char *body;
+    oneM2MPrimitive *o2pt;
     
-    memset(&o2pt, 0, sizeof(oneM2MPrimitive));
+    o2pt = (oneM2MPrimitive *) malloc(sizeof(oneM2MPrimitive));
+    memset(o2pt, 0, sizeof(oneM2MPrimitive));
     
     (void)client;
 
@@ -134,39 +138,43 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* fill primitives */
     pjson = cJSON_GetObjectItem(json, "op");
-    o2pt.op = pjson->valueint;
+    if(!pjson) return MQTT_CODE_SUCCESS;
+    o2pt->op = pjson->valueint;
 
     pjson = cJSON_GetObjectItem(json, "to");
-    o2pt.to = cJSON_Print(pjson);
+    o2pt->to = pjson->valuestring;//(cJSON_Print(pjson));
+    //fprintf(stderr, "%s\n", o2pt->to);
 
     pjson = cJSON_GetObjectItem(json, "fr");
-    o2pt.fr = cJSON_Print(pjson);
+    o2pt->fr = pjson->valuestring;
 
-    o2pt.pc = buf;
+    pjson = cJSON_GetObjectItem(json, "pc");
+    o2pt->pc = pjson->valuestring;
 
-    pjson = cJSON_GetObjectItem(json, "rqi");
-    o2pt.rvi = cJSON_Print(pjson);
+    pjson = cJSON_GetObjectItem(json, "rvi");
+    o2pt->rvi = pjson->valuestring;
 
     pjson = cJSON_GetObjectItem(json, "fr");
-    o2pt.fr = cJSON_Print(pjson);
+    o2pt->fr = pjson->valuestring;
 
     pjson = cJSON_GetObjectItem(json, "ty");
-    o2pt.ty = pjson->valueint;
-    //fprintf(stderr, "%d, %d, %s, %s\n", o2pt.op, o2pt.ty, o2pt.to, o2pt.fr);
+    o2pt->ty = pjson->valueint;
+    //fprintf(stderr, "%d, %d, %s, %s\n", o2pt->op, o2pt->ty, o2pt->fr, o2pt->to);// o2pt.to, o2pt.fr);
 
 
-    if(o2pt.op == NULL || o2pt.to == NULL || o2pt.fr == NULL ||
-        o2pt.ty == NULL || o2pt.rvi == NULL ){
+   /* if(o2pt.op == NULL || o2pt.to == NULL || o2pt.fr == NULL ||
+        o2pt.ty < 0 || o2pt.rvi == NULL ){
             fprintf(stderr, "Invalid request\n");
             fprintf(stderr, "%d, %d, %s, %s\n", o2pt.op, o2pt.ty, o2pt.to, o2pt.fr);
             return MQTT_CODE_SUCCESS;
-    }
+    }*/
     pthread_mutex_trylock(&mutex_lock);
     route(o2pt);
     pthread_mutex_unlock(&mutex_lock);
 
 
-    cJSON_Delete(o2pt.pc);
+    cJSON_Delete(pjson);
+    free(o2pt);
     
     return MQTT_CODE_SUCCESS;
 }
@@ -174,6 +182,8 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 int mqtt_response_to_client(oneM2MPrimitive *o2pt){
     MqttPublish mqttPub;
     char *respTopic;
+    cJSON *json;
+    char *pl;
     int rc = 0;
 
     respTopic =(char *) malloc(256);
@@ -183,14 +193,24 @@ int mqtt_response_to_client(oneM2MPrimitive *o2pt){
     sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, CSE_CSI, o2pt->fr);
     fprintf(stderr, "[*] Topic : %s\n", respTopic);
     //sprintf(payload, o2pt->pc);
+    json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "rsc", o2pt->rsc);
+    cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
+    cJSON_AddStringToObject(json, "to", o2pt->fr);    
+    cJSON_AddStringToObject(json, "fr", o2pt->to);
+    cJSON_AddStringToObject(json, "pc", o2pt->pc);
+    if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 
+    pl = cJSON_Print(json);
     XMEMSET(&mqttPub, 0, sizeof(MqttPublish));
     mqttPub.retain = 0;
     mqttPub.qos = MQTT_QOS;
     mqttPub.topic_name = respTopic;
     mqttPub.packet_id = mqtt_get_packetid();
-    mqttPub.buffer = o2pt->pc;
-    mqttPub.total_len = XSTRLEN(o2pt->pc);
+    mqttPub.buffer = pl;
+    mqttPub.total_len = XSTRLEN(pl);
+
+    fprintf(stderr, "========== MQTT Response ==========\n%s\n==============================\n", pl);
 
     do{
         rc = MqttClient_Publish(&mClient, &mqttPub);
@@ -204,6 +224,9 @@ int mqtt_response_to_client(oneM2MPrimitive *o2pt){
         mqttPub.topic_name, mqttPub.qos, mqttPub.buffer);
 
     fprintf(stderr, "\nrc : %s\n", MqttClient_ReturnCodeToString(rc));
+
+    //free(mqttPub.buffer);
+    cJSON_Delete(json);
 
     free(respTopic);
     
@@ -497,7 +520,7 @@ int mqtt_ser(void)
     respTopic = (char*) malloc(30);
 
     sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_CSI, "/#");
-    //sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp412/", CSE_CSI, "/+/#");
+    sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_CSI, "/+/#");
 
     /* Subscribe and wait for Ack */
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));
