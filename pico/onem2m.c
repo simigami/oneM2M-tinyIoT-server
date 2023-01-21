@@ -436,7 +436,7 @@ void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CSE* gcse = db_get_cse(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cse_to_json(gcse);
-	o2pt->rsc = 2000;
+	set_o2pt_rsc(o2pt, 2000);
 	respond_to_client(o2pt, 200);
 	free_cse(gcse); gcse = NULL;
 }
@@ -446,7 +446,7 @@ void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	AE* gae = db_get_ae(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(gae);
-	o2pt->rsc = 2000;
+	set_o2pt_rsc(o2pt, 2000);
 	respond_to_client(o2pt, 200);
 	free_ae(gae); gae = NULL;
 }
@@ -455,7 +455,7 @@ void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CNT* gcnt = db_get_cnt(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(gcnt);
-	o2pt->rsc = 2000;
+	set_o2pt_rsc(o2pt, 2000);
 	respond_to_client(o2pt, 200);
 	free_cnt(gcnt); gcnt = NULL;
 }
@@ -464,7 +464,7 @@ void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CIN* gcin = db_get_cin(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cin_to_json(gcin);
-	o2pt->rsc = 2000;
+	set_o2pt_rsc(o2pt, 2000);
 	respond_to_client(o2pt, 200); 
 	free_cin(gcin); gcin = NULL;
 }
@@ -473,7 +473,7 @@ void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	Sub* gsub = db_get_sub(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = sub_to_json(gsub);
-	o2pt->rsc = 2000;
+	set_o2pt_rsc(o2pt, 2000);
 	respond_to_client(o2pt, 200); 
 	free_sub(gsub); gsub = NULL;
 }
@@ -482,7 +482,7 @@ void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	ACP* gacp = db_get_acp(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(gacp);
-	o2pt->rsc = 2000;
+	set_o2pt_rsc(o2pt, 2000);
 	respond_to_client(o2pt, 200);
 	free_acp(gacp); gacp = NULL;
 }
@@ -519,6 +519,10 @@ void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc){
 
 	o2pt->pc = (char *)malloc((strlen(pc) + 1) * sizeof(char));
 	strcpy(o2pt->pc, pc);
+}
+
+void set_o2pt_rsc(oneM2MPrimitive *o2pt, int rsc){
+	o2pt->rsc = rsc;
 }
 
 int is_json_valid_char(char c){
@@ -690,7 +694,7 @@ void tree_viewer_api(RTNode *node) {
 	
 	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
 
-	respond_to_client(200, res, "2000");
+	respond_to_client(200, res, 2000);
 }
 
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) {

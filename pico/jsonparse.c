@@ -566,7 +566,7 @@ char* cse_to_json(CSE* cse_object) {
 	cJSON_AddStringToObject(cse, "lt", cse_object->lt);
 	cJSON_AddStringToObject(cse, "csi", cse_object->csi);
 
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 

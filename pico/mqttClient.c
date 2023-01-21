@@ -99,16 +99,19 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     
     o2pt = (oneM2MPrimitive *) malloc(sizeof(oneM2MPrimitive));
     memset(o2pt, 0, sizeof(oneM2MPrimitive));
-    
     (void)client;
 
     if (msg_new) {
         /* check reciever*/
-        strtok(msg->topic_name, "/");
+        puri = (char *) malloc(msg->topic_name_len + 1);
+        memcpy(puri, msg->topic_name, msg->topic_name_len);
+        puri[msg->topic_name_len] = '\0';
+        strtok(puri, "/");
         strtok(NULL, "/");
         originator = strtok(NULL,"/");
         reciever = strtok(NULL,"/");
         contentType = strtok(NULL,"/");
+        
 
         if(strcmp(reciever, CSE_CSI)){
             return MQTT_CODE_SUCCESS;
@@ -139,6 +142,9 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     fprintf(stderr,"\n\033[34m======================Buffer received======================\033[0m\n\n");
     fprintf(stderr,"%s",buf);
     fprintf(stderr,"\n\033[34m==========================================================\033[0m\n");
+
+
+    fprintf(stderr, "originator : %s, reciever : %s, contentType: %s\n", originator, reciever, contentType);
 
     json = cJSON_Parse(buf);
 
@@ -184,7 +190,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     
 
     /* supported content type : json*/
-    if(strcmp(puri, "json")){
+    if(strcmp(contentType, "json")){
         fprintf(stderr, "only json supported\n");
         o2pt->rsc = 4015;
         
@@ -229,7 +235,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
 
     cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
     cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
-    cJSON_AddStringToObject(json, "to", CSE_CSI);    
+    cJSON_AddStringToObject(json, "to", o2pt->fr);    
     cJSON_AddStringToObject(json, "fr", o2pt->to);
     cJSON_AddStringToObject(json, "pc", o2pt->pc);
     if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);

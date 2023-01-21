@@ -281,6 +281,7 @@ int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
 void log_runtime(double start);
 void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc);
+void set_o2pt_rsc(oneM2MPrimitive *o2pt, int rsc);
 void handle_http_request();
 void respond_to_client(oneM2MPrimitive *o2pt, int status);
 
