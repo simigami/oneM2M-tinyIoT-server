@@ -172,7 +172,7 @@ typedef struct {
 //http request
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 ObjectType http_parse_object_type();
-ObjectType parse_boject_type_cjson(cJSON *cjson);
+ObjectType parse_object_type_cjson(cJSON *cjson);
 
 //onem2m resource
 void create_object(oneM2MPrimitive *o2pt, RTNode* target_rtnode);
@@ -204,7 +204,7 @@ void update_sub(RTNode *target_rtnode);
 void update_acp(RTNode *target_rtnode);
 
 void init_cse(CSE* cse);
-void init_ae(AE* ae, char *pi);
+void init_ae(AE* ae, char *pi, char *origin);
 void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
 void init_sub(Sub* sub, char *pi);

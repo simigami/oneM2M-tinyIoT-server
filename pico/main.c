@@ -42,6 +42,7 @@ void handle_http_request() {
 		o2pt->pc = (char *)malloc((strlen(payload) + 1) * sizeof(char));
 		strcpy(o2pt->pc, payload);
 		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
+		cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
 	} 
 
 	if((header = request_header("X-M2M-Origin"))) {
@@ -65,7 +66,7 @@ void handle_http_request() {
 	} 
 
 	o2pt->op = http_parse_operation();
-	if(o2pt->ty == OP_CREATE) o2pt->ty = http_parse_object_type();
+	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
 	o2pt->prot = PROT_HTTP;
 
 	route(o2pt);
@@ -172,7 +173,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		no_mandatory_error(o2pt);
 		return;
 	}
-	init_ae(ae,parent_rtnode->ri);
+	init_ae(ae,parent_rtnode->ri, o2pt->fr);
 	
 	int result = db_store_ae(ae);
 	if(result != 1) { 
@@ -407,7 +408,6 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 
 int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	if(!rtnode) return 0;
-
 	cJSON *root = o2pt->cjson_pc;
 	cJSON *resource, *rn;
 
@@ -417,7 +417,6 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		case TY_CIN: resource = cJSON_GetObjectItem(root, "m2m:cin"); break;
 		case TY_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
 		case TY_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
-		case TY_NONE: 
 	}
 
 	RTNode *child = rtnode->child;

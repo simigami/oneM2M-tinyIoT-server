@@ -540,7 +540,7 @@ void respond_to_client(oneM2MPrimitive *o2pt, int status) {
 	}
 }
 
-ObjectType parse_boject_type_cjson(cJSON *cjson) {
+ObjectType parse_object_type_cjson(cJSON *cjson) {
 	ObjectType ty;
 
 	if(!cjson) return TY_NONE;
@@ -552,16 +552,22 @@ ObjectType parse_boject_type_cjson(cJSON *cjson) {
 	else if(cJSON_GetObjectItem(cjson, "m2m:sub")) ty = TY_SUB;
 	else if(cJSON_GetObjectItem(cjson, "m2m:acp")) ty = TY_ACP;
 	else ty = TY_NONE;
-
-	cJSON_Delete(cjson);
 	
 	return ty;
 }
 
-void init_ae(AE* ae, char *pi) {
+void init_ae(AE* ae, char *pi, char *origin) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_AE, ct);
+	char ri[128] = {'\0'};
+
+	if(origin) {
+		if(origin[0] != 'C') strcpy(ri, "C");
+		strcat(ri, origin);
+	} else {
+		strcpy(ri, "CAE");
+		strcat(ri, ct);
+	}
 
 	if(!ae->rn) {
 		ae->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -585,23 +591,12 @@ void init_ae(AE* ae, char *pi) {
 	
 	free(ct); ct = NULL;
 	free(et); et = NULL;
-	free(ri); ri = NULL;
 }
 
 char *resource_identifier(ObjectType ty, char *ct) {
 	char *ri = (char *)calloc(24, sizeof(char));
 
 	switch(ty) {
-		case TY_AE : 
-			char *origin = request_header("X-M2M-Origin");
-			if(origin) {
-				if(origin[0] != 'C') strcpy(ri, "C");
-				strcat(ri, origin);
-				return ri;
-			} else {
-				strcpy(ri, "CAE");
-				//
-			} break;
 		case TY_CNT : strcpy(ri, "3-"); break;
 		case TY_CIN : strcpy(ri, "4-"); break;
 		case TY_SUB : strcpy(ri, "23-"); break;
