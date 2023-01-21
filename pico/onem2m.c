@@ -600,6 +600,7 @@ char *resource_identifier(ObjectType ty, char *ct) {
 				return ri;
 			} else {
 				strcpy(ri, "CAE");
+				//
 			} break;
 		case TY_CNT : strcpy(ri, "3-"); break;
 		case TY_CIN : strcpy(ri, "4-"); break;
