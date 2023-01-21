@@ -7,3 +7,8 @@ pico/wolfmqtt/mqtt_client.o
 pico/wolfmqtt/mqtt_packet.o
 pico/wolfmqtt/mqtt_socket.o
 .vscode/c_cpp_properties.json
+pico/RESOURCE.db
+.gitignore
+pico/onem2m.o
+pico/main.o
+pico/jsonparse.o

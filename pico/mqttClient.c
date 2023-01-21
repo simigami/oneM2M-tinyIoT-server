@@ -163,14 +163,17 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     o2pt->op = pjson->valueint;
 
     pjson = cJSON_GetObjectItem(json, "to");
-    o2pt->to = pjson->valuestring;//(cJSON_Print(pjson));
+    o2pt->to = cJSON_GetStringValue(pjson);
     //fprintf(stderr, "%s\n", o2pt->to);
 
     pjson = cJSON_GetObjectItem(json, "fr");
-    o2pt->fr = pjson->valuestring;
+    o2pt->fr = cJSON_GetStringValue(pjson);//->valuestring;
 
     pjson = cJSON_GetObjectItem(json, "pc");
-    o2pt->pc = pjson->valuestring;
+    o2pt->pc = cJSON_PrintUnformatted(pjson);
+
+    o2pt->cjson_pc = pjson;
+    //fprintf(stderr, "pc : %s\n", o2pt->pc);
 
     pjson = cJSON_GetObjectItem(json, "rvi");
     o2pt->rvi = pjson->valuestring;
@@ -213,6 +216,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     /* Free allocated memories */
     cJSON_Delete(pjson);
     free(o2pt);
+    free(puri);
     
     return MQTT_CODE_SUCCESS;
 }
@@ -237,7 +241,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
     cJSON_AddStringToObject(json, "to", o2pt->fr);    
     cJSON_AddStringToObject(json, "fr", o2pt->to);
-    cJSON_AddStringToObject(json, "pc", o2pt->pc);
+    if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
     if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 
     pl = cJSON_Print(json);

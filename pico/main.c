@@ -168,7 +168,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		child_type_error(o2pt);
 		return;
 	}
-	AE* ae = json_to_ae(payload);
+	AE* ae = json_to_ae(o2pt->pc);
 	if(!ae) {
 		no_mandatory_error(o2pt);
 		return;
@@ -475,6 +475,7 @@ int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 
 int check_payload_format(oneM2MPrimitive *o2pt) {
 	cJSON *cjson = o2pt->cjson_pc;
+	
 	if(cjson == NULL) {
 		fprintf(stderr,"Body Format Invalid\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"body format invalid\"}");
