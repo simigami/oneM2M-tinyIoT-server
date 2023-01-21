@@ -289,11 +289,13 @@ void normalize_payload() {
 
 void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
     char content_length[16];
+    char rsc[6];
     char response_headers[1024] = {'\0'};
 
     sprintf(content_length, "%ld", strlen(o2pt->pc));
+    sprintf(rsc, "%d", o2pt->rsc);
     set_response_header("Content-Length", content_length, response_headers);
-    set_response_header("X-M2M-RSC", o2pt->rsc, response_headers); 
+    set_response_header("X-M2M-RSC", rsc, response_headers); 
 
     fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
     switch(status) {

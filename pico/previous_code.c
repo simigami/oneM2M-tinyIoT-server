@@ -1,5 +1,5 @@
-// create_node
-RTNode *create_node(char *rn, char *ri, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop) {}
+// create_rtnode
+RTNode *create_rtnode(char *rn, char *ri, char *pi, char *nu, char *sur, char *acpi, char *pv_acor, char *pv_acop, char *pvs_acor, char *pvs_acop) {}
 
 // parse_uri
 RTNode* parse_uri(RTNode *cb, char *uri_array) {

@@ -2,6 +2,7 @@
 #define __ONEM2M_H__
 
 #include <stdbool.h>
+#include "cJSON.h"
 
 //enum
 typedef enum {
@@ -159,50 +160,51 @@ typedef struct {
 	char *to;
 	char *fr;
 	char *rqi;
-	int rsc;
 	char *rvi;
 	char *pc;
 	Operation op;
 	Protocol prot;
+	cJSON *cjson_pc;
+	int rsc;
 	int ty;
 }oneM2MPrimitive;
 
 //http request
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 ObjectType http_parse_object_type();
-ObjectType parse_object_type_in_request_body();
+ObjectType parse_object_type_cjson(cJSON *cjson);
 
 //onem2m resource
-void create_object(oneM2MPrimitive *o2pt, RTNode* pnode);
-void retrieve_object(oneM2MPrimitive *o2pt, RTNode *pnode);
-void retrieve_object_filtercriteria(oneM2MPrimitive *o2pt, RTNode *pnode);
-void update_object(oneM2MPrimitive *o2pt, RTNode *pnode);
-void delete_object(oneM2MPrimitive *o2pt, RTNode *pnode);
+void create_object(oneM2MPrimitive *o2pt, RTNode* target_rtnode);
+void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void retrieve_object_filtercriteria(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void update_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void delete_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void notify_object(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
 
-void create_ae(RTNode *pnode);
-void create_cnt(RTNode *pnode);
-void create_cin(RTNode *pnode);
-void create_sub(RTNode *pnode);
-void create_acp(RTNode *pnode);
+void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 
-void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *pnode);
-void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *pnode);
-void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *pnode);
-void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *pnode);
-void retrieve_cin_latest(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void retrieve_cin_latest(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_cin_by_ri(char *ri);
-void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *pnode);
-void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *pnode);
+void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
-void update_cse(RTNode *pnode);
-void update_ae(RTNode *pnode);
-void update_cnt(RTNode *pnode);
-void update_sub(RTNode *pnode);
-void update_acp(RTNode *pnode);
+void update_cse(RTNode *target_rtnode);
+void update_ae(RTNode *target_rtnode);
+void update_cnt(RTNode *target_rtnode);
+void update_sub(RTNode *target_rtnode);
+void update_acp(RTNode *target_rtnode);
 
 void init_cse(CSE* cse);
-void init_ae(AE* ae, char *pi);
+void init_ae(AE* ae, char *pi, char *origin);
 void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
 void init_sub(Sub* sub, char *pi);
@@ -221,13 +223,13 @@ void free_sub(Sub* sub);
 void free_acp(ACP *acp);
 
 //resource tree
-RTNode* create_node(void *obj, ObjectType ty);
-RTNode* create_cse_node(CSE *cse);
-RTNode* create_ae_node(AE *ae);
-RTNode* create_cnt_node(CNT *cnt);
-RTNode* create_cin_node(CIN *cin);
-RTNode* create_sub_node(Sub *sub);
-RTNode* create_acp_node(ACP *acp);
+RTNode* create_rtnode(void *resource, ObjectType ty);
+RTNode* create_cse_rtnode(CSE *cse);
+RTNode* create_ae_rtnode(AE *ae);
+RTNode* create_cnt_rtnode(CNT *cnt);
+RTNode* create_cin_rtnode(CIN *cin);
+RTNode* create_sub_rtnode(Sub *sub);
+RTNode* create_acp_rtnode(ACP *acp);
 int add_child_resource_tree(RTNode *parent, RTNode *child);
 RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
 void delete_node_and_db_data(RTNode *node, int flag);
@@ -253,19 +255,18 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 int send_http_packet(char *target, char *post_data);
 
 //exception
-void no_mandatory_error();
-void child_type_error();
+void no_mandatory_error(oneM2MPrimitive *o2pt);
+void child_type_error(oneM2MPrimitive *o2pt);
 int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop);
-int check_request_body_empty();
-int check_resource_name_duplicate(RTNode *node);
-int check_same_resource_name_exists(RTNode *pnode);
-int check_resource_aei_duplicate(RTNode *node);
-int check_same_resource_aei_exists(RTNode *node);
-int check_resource_type_equal(ObjectType ty1, ObjectType ty2);
-int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *node);
+int check_payload_empty(oneM2MPrimitive *o2pt);
+int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode);
+int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode);
+int check_resource_type_equal(oneM2MPrimitive *o2pt);
+int check_resource_type_invalid(oneM2MPrimitive *o2pt);
+int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int check_payload_size(oneM2MPrimitive *o2pt);
-int check_json_format();
-int check_resource_name_invalid(ObjectType ty);
+int check_payload_format(oneM2MPrimitive *o2pt);
+int check_rn_invalid(oneM2MPrimitive *o2pt, ObjectType ty);
 
 //etc
 void init_server();
@@ -280,7 +281,6 @@ int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
 void log_runtime(double start);
 void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc);
-void set_o2pt_rsc(oneM2MPrimitive *o2pt, char *rsc);
 void handle_http_request();
 void respond_to_client(oneM2MPrimitive *o2pt, int status);
 
