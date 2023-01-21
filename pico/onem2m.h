@@ -159,7 +159,7 @@ typedef struct {
 	char *to;
 	char *fr;
 	char *rqi;
-	char *rsc;
+	int rsc;
 	char *rvi;
 	char *pc;
 	Operation op;
