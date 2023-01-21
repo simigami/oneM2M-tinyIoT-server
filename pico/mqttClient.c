@@ -94,7 +94,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     word32 len;
 
     cJSON *json = NULL, *pjson = NULL;
-    char *body;
+    char *puri, *originator, *reciever, *contentType;
     oneM2MPrimitive *o2pt;
     
     o2pt = (oneM2MPrimitive *) malloc(sizeof(oneM2MPrimitive));
@@ -103,7 +103,19 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     (void)client;
 
     if (msg_new) {
+        /* check reciever*/
+        strtok(msg->topic_name, "/");
+        strtok(NULL, "/");
+        originator = strtok(NULL,"/");
+        reciever = strtok(NULL,"/");
+        contentType = strtok(NULL,"/");
+
+        if(strcmp(reciever, CSE_CSI)){
+            return MQTT_CODE_SUCCESS;
+        }
+        
         /* Determine min size to dump */
+
         len = msg->topic_name_len;
         if (len > PRINT_BUFFER_SIZE) {
             len = PRINT_BUFFER_SIZE;
@@ -164,6 +176,26 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     o2pt->ty = pjson->valueint;
     //fprintf(stderr, "%d, %d, %s, %s\n", o2pt->op, o2pt->ty, o2pt->fr, o2pt->to);// o2pt.to, o2pt.fr);
 
+    /* check content type*/
+    //puri = (char *) malloc((unsigned int) msg->topic_name_len + 1);
+
+    
+    //strncpy(puri, msg->topic_name, msg->topic_name_len);
+    
+
+    /* supported content type : json*/
+    if(strcmp(puri, "json")){
+        fprintf(stderr, "only json supported\n");
+        o2pt->rsc = 4015;
+        
+        o2pt->pc = "{\"m2m:dbg\": \"Unsupported media type for content-type: 5\"}";
+        mqtt_respond_to_client(o2pt);
+    }else{
+        pthread_mutex_trylock(&mutex_lock);
+        route(o2pt);
+        pthread_mutex_unlock(&mutex_lock);
+    }
+
 
    /* if(o2pt.op == NULL || o2pt.to == NULL || o2pt.fr == NULL ||
         o2pt.ty < 0 || o2pt.rvi == NULL ){
@@ -171,11 +203,8 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
             fprintf(stderr, "%d, %d, %s, %s\n", o2pt.op, o2pt.ty, o2pt.to, o2pt.fr);
             return MQTT_CODE_SUCCESS;
     }*/
-    pthread_mutex_trylock(&mutex_lock);
-    route(o2pt);
-    pthread_mutex_unlock(&mutex_lock);
 
-
+    /* Free allocated memories */
     cJSON_Delete(pjson);
     free(o2pt);
     
@@ -197,9 +226,10 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     fprintf(stderr, "[*] Topic : %s\n", respTopic);
     //sprintf(payload, o2pt->pc);
     json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "rsc", o2pt->rsc);
+
+    cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
     cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
-    cJSON_AddStringToObject(json, "to", o2pt->fr);    
+    cJSON_AddStringToObject(json, "to", CSE_CSI);    
     cJSON_AddStringToObject(json, "fr", o2pt->to);
     cJSON_AddStringToObject(json, "pc", o2pt->pc);
     if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
@@ -213,7 +243,6 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     mqttPub.buffer = pl;
     mqttPub.total_len = XSTRLEN(pl);
 
-    fprintf(stderr, "========== MQTT Response ==========\n%s\n==============================\n", pl);
 
     do{
         rc = MqttClient_Publish(&mClient, &mqttPub);
