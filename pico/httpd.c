@@ -267,6 +267,7 @@ Operation http_parse_operation(){
 }
 
 void set_response_header(char *key, char *value, char *response_headers) {
+  if(!value) return;
   char header[128];
 
   sprintf(header, "%s: %s\n", key, value);
@@ -295,7 +296,9 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
     sprintf(content_length, "%ld", strlen(o2pt->pc));
     sprintf(rsc, "%d", o2pt->rsc);
     set_response_header("Content-Length", content_length, response_headers);
-    set_response_header("X-M2M-RSC", rsc, response_headers); 
+    set_response_header("X-M2M-RSC", rsc, response_headers);
+    set_response_header("X-M2M-RVI", o2pt->rvi, response_headers);
+    set_response_header("X-M2M-RI", o2pt->rqi, response_headers);
 
     fprintf(stderr,"\n\033[34m========================Buffer sent========================\033[0m\n\n");
     switch(status) {

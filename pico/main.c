@@ -131,31 +131,32 @@ void create_object(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		fprintf(stderr,"\x1b[42mCreate AE\x1b[0m\n");
 		create_ae(o2pt, parent_rtnode);
 		break;	
-	/*
+
 	case TY_CNT :
 		fprintf(stderr,"\x1b[42mCreate CNT\x1b[0m\n");
-		create_cnt(pnode);
+		create_cnt(o2pt, parent_rtnode);
 		break;
-			
+		
 	case TY_CIN :
 		fprintf(stderr,"\x1b[42mCreate CIN\x1b[0m\n");
-		create_cin(pnode);
+		create_cin(o2pt, parent_rtnode);
 		break;
 
 	case TY_SUB :
 		fprintf(stderr,"\x1b[42mCreate Sub\x1b[0m\n");
-		create_sub(pnode);
+		create_sub(o2pt, parent_rtnode);
 		break;
 	
 	case TY_ACP :
 		fprintf(stderr,"\x1b[42mCreate ACP\x1b[0m\n");
-		create_acp(pnode);
+		create_acp(o2pt, parent_rtnode);
 		break;
 
 	case TY_NONE :
 		fprintf(stderr,"Resource type error (Content-Type Header Invalid)\n");
-		respond_to_client(400, "{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}", "4000");
-	*/
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}");
+		o2pt->rsc = 4000;
+		respond_to_client(o2pt, 400);
 	}	
 }
 
@@ -168,7 +169,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		child_type_error(o2pt);
 		return;
 	}
-	AE* ae = json_to_ae(o2pt->pc);
+	AE* ae = cjson_to_ae(o2pt->cjson_pc);
 	if(!ae) {
 		no_mandatory_error(o2pt);
 		return;
@@ -186,11 +187,138 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	RTNode* child_rtnode = create_rtnode(ae, TY_AE);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
+	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
 	o2pt->rsc = 2001;
 	respond_to_client(o2pt, 201);
 	// notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	free_ae(ae); ae = NULL;
+}
+
+void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty != TY_CNT && parent_rtnode->ty != TY_AE && parent_rtnode->ty != TY_CSE) {
+		child_type_error(o2pt);
+		return;
+	}
+	CNT* cnt = cjson_to_cnt(o2pt->cjson_pc);
+	if(!cnt) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_cnt(cnt,parent_rtnode->ri);
+
+	int result = db_store_cnt(cnt);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_cnt(cnt); cnt = NULL;
+		return;
+	}
+	
+	RTNode* child_rtnode = create_rtnode(cnt, TY_CNT);
+	add_child_resource_tree(parent_rtnode,child_rtnode);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cnt_to_json(cnt);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_cnt(cnt); cnt = NULL;
+}
+
+
+void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty != TY_CNT) {
+		child_type_error(o2pt);
+		return;
+	}
+	CIN* cin = cjson_to_cin(o2pt->cjson_pc);
+	if(!cin) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_cin(cin,parent_rtnode->ri);
+
+	int result = db_store_cin(cin);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_cin(cin);
+		cin = NULL;
+		return;
+	}
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cin_to_json(cin);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_cin(cin); cin = NULL;
+}
+
+void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty == TY_CIN || parent_rtnode->ty == TY_SUB) {
+		child_type_error(o2pt);
+		return;
+	}
+	Sub* sub = cjson_to_sub(o2pt->cjson_pc);
+	if(!sub) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_sub(sub, parent_rtnode->ri);
+	
+	int result = db_store_sub(sub);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_sub(sub); sub = NULL;
+		return;
+	}
+	
+	RTNode* child_rtnode = create_rtnode(sub, TY_SUB);
+	add_child_resource_tree(parent_rtnode,child_rtnode);
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = sub_to_json(sub);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_sub(sub); sub = NULL;
+}
+
+void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty != TY_CSE && parent_rtnode->ty != TY_AE) {
+		child_type_error(o2pt);
+		return;
+	}
+	ACP* acp = cjson_to_acp(o2pt->cjson_pc);
+	if(!acp) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_acp(acp, parent_rtnode->ri);
+	
+	int result = db_store_acp(acp);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_acp(acp); acp = NULL;
+		return;
+	}
+	
+	RTNode* child_rtnode = create_rtnode(acp, TY_ACP);
+	add_child_resource_tree(parent_rtnode, child_rtnode);
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = acp_to_json(acp);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_acp(acp); acp = NULL;
 }
 
 void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
@@ -603,120 +731,6 @@ void update_object(RTNode *pnode) {
 		fprintf(stderr,"Resource type do not support PUT method\n");
 		respond_to_client(400, "{\"m2m:dbg\": \"`PUT` method unsupported\"}","4005");
 	}
-}
-
-void create_cnt(RTNode *pnode) {
-	if(pnode->ty != TY_CNT && pnode->ty != TY_AE && pnode->ty != TY_CSE) {
-		child_type_error();
-		return;
-	}
-	CNT* cnt = json_to_cnt(payload);
-	if(!cnt) {
-		no_mandatory_error();
-		return;
-	}
-	init_cnt(cnt,pnode->ri);
-
-	int result = db_store_cnt(cnt);
-	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
-		free_cnt(cnt); cnt = NULL;
-		return;
-	}
-	
-	RTNode* node = create_rtnode(cnt, TY_CNT);
-	add_child_resource_tree(pnode,node);
-
-	response_payload = cnt_to_json(cnt);
-	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free(response_payload); response_payload = NULL; 
-	free_cnt(cnt); cnt = NULL;
-}
-
-void create_cin(RTNode *pnode) {
-	if(pnode->ty != TY_CNT) {
-		child_type_error();
-		return;
-	}
-	CIN* cin = json_to_cin(payload);
-	if(!cin) {
-		no_mandatory_error();
-		return;
-	}
-	init_cin(cin,pnode->ri);
-
-	int result = db_store_cin(cin);
-	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
-		free_cin(cin);
-		cin = NULL;
-		return;
-	}
-	
-	response_payload = cin_to_json(cin);
-	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free(response_payload); response_payload = NULL; 
-	free_cin(cin); cin = NULL;
-}
-
-void create_sub(RTNode *pnode) {
-	if(pnode->ty == TY_CIN || pnode->ty == TY_SUB) {
-		child_type_error();
-		return;
-	}
-	Sub* sub = json_to_sub(payload);
-	if(!sub) {
-		no_mandatory_error();
-		return;
-	}
-	init_sub(sub, pnode->ri);
-	
-	int result = db_store_sub(sub);
-	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
-		free_sub(sub); sub = NULL;
-		return;
-	}
-	
-	RTNode* node = create_rtnode(sub, TY_SUB);
-	add_child_resource_tree(pnode,node);
-	
-	response_payload = sub_to_json(sub);
-	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free(response_payload); response_payload = NULL;
-	free_sub(sub); sub = NULL;
-}
-
-void create_acp(RTNode *pnode) {
-	if(pnode->ty != TY_CSE && pnode->ty != TY_AE) {
-		child_type_error();
-		return;
-	}
-	ACP* acp = json_to_acp(payload);
-	if(!acp) {
-		no_mandatory_error();
-		return;
-	}
-	init_acp(acp, pnode->ri);
-	
-	int result = db_store_acp(acp);
-	if(result != 1) { 
-		respond_to_client(500, "{\"m2m:dbg\": \"DB store fail\"}", "5000");
-		free_acp(acp); acp = NULL;
-		return;
-	}
-	
-	RTNode* node = create_rtnode(acp, TY_ACP);
-	add_child_resource_tree(pnode,node);
-	
-	response_payload = acp_to_json(acp);
-	respond_to_client(201, NULL, "2001");
-	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free(response_payload); response_payload = NULL; 
-	free_acp(acp); acp = NULL;
 }
 
 void update_ae(RTNode *pnode) {

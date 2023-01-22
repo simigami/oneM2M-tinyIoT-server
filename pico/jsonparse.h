@@ -3,12 +3,12 @@
 
 #include "cJSON.h"
 
-CSE* json_to_cse(char *json_payload);
-AE* json_to_ae(char *json_payload);
-CNT* json_to_cnt(char *json_payload);
-CIN* json_to_cin(char *json_payload);
-Sub* json_to_sub(char *json_payload);
-ACP* json_to_acp(char *json_payload);
+CSE* cjson_to_cse(cJSON *cjson);
+AE* cjson_to_ae(cJSON *cjson);
+CNT* cjson_to_cnt(cJSON *cjson);
+CIN* cjson_to_cin(cJSON *cjson);
+Sub* cjson_to_sub(cJSON *cjson);
+ACP* cjson_to_acp(cJSON *cjson);
 
 char* cse_to_json(CSE* cse_object);
 char* ae_to_json(AE* ae_object);

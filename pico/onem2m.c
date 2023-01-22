@@ -436,7 +436,7 @@ void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CSE* gcse = db_get_cse(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cse_to_json(gcse);
-	set_o2pt_rsc(o2pt, 2000);
+	o2pt->rsc = 2000;
 	respond_to_client(o2pt, 200);
 	free_cse(gcse); gcse = NULL;
 }
@@ -446,7 +446,7 @@ void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	AE* gae = db_get_ae(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(gae);
-	set_o2pt_rsc(o2pt, 2000);
+	o2pt->rsc = 2000;
 	respond_to_client(o2pt, 200);
 	free_ae(gae); gae = NULL;
 }
@@ -455,7 +455,7 @@ void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CNT* gcnt = db_get_cnt(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(gcnt);
-	set_o2pt_rsc(o2pt, 2000);
+	o2pt->rsc = 2000;
 	respond_to_client(o2pt, 200);
 	free_cnt(gcnt); gcnt = NULL;
 }
@@ -464,7 +464,7 @@ void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CIN* gcin = db_get_cin(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cin_to_json(gcin);
-	set_o2pt_rsc(o2pt, 2000);
+	o2pt->rsc = 2000;
 	respond_to_client(o2pt, 200); 
 	free_cin(gcin); gcin = NULL;
 }
@@ -473,7 +473,7 @@ void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	Sub* gsub = db_get_sub(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = sub_to_json(gsub);
-	set_o2pt_rsc(o2pt, 2000);
+	o2pt->rsc = 2000;
 	respond_to_client(o2pt, 200); 
 	free_sub(gsub); gsub = NULL;
 }
@@ -482,7 +482,7 @@ void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	ACP* gacp = db_get_acp(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(gacp);
-	set_o2pt_rsc(o2pt, 2000);
+	o2pt->rsc = 2000;
 	respond_to_client(o2pt, 200);
 	free_acp(gacp); gacp = NULL;
 }
@@ -595,6 +595,130 @@ void init_ae(AE* ae, char *pi, char *origin) {
 	
 	free(ct); ct = NULL;
 	free(et); et = NULL;
+}
+
+void init_cnt(CNT* cnt, char *pi) {
+	char *ct = get_local_time(0);
+	char *et = get_local_time(EXPIRE_TIME);
+	char *ri = resource_identifier(TY_CNT, ct);
+	
+	if(!cnt->rn) {
+		cnt->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(cnt->rn, ri);
+	}
+	
+	cnt->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	cnt->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	cnt->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
+	cnt->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	cnt->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	strcpy(cnt->ri, ri);
+	strcpy(cnt->pi, pi);
+	strcpy(cnt->et, et);
+	strcpy(cnt->ct, ct);
+	strcpy(cnt->lt, ct);
+	
+	cnt->ty = TY_CNT;
+	cnt->st = 0;
+	cnt->cni = 0;
+	cnt->cbs = 0;
+	
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
+}
+
+void init_cin(CIN* cin, char *pi) {
+	char *ct = get_local_time(0);
+	char *et = get_local_time(EXPIRE_TIME);
+	char *ri = resource_identifier(TY_CIN, ct);
+	
+	cin->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	cin->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	cin->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	cin->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
+	cin->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	cin->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	strcpy(cin->rn, ri);
+	strcpy(cin->ri, ri);
+	strcpy(cin->pi, pi);
+	strcpy(cin->et, et);
+	strcpy(cin->ct, ct);
+	strcpy(cin->lt, ct);
+	
+	cin->ty = TY_CIN;
+	cin->st = 0;
+	cin->cs = strlen(cin->con);
+	
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
+}
+
+void init_sub(Sub* sub, char *pi) {
+	char *ct = get_local_time(0);
+	char *et = get_local_time(EXPIRE_TIME);
+	char *ri = resource_identifier(TY_SUB, ct);
+
+	if(!sub->rn) {
+		sub->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(sub->rn, ri);
+	}
+
+	if(!sub->net) {
+		sub->net = (char*)malloc(2*sizeof(char));
+		strcpy(sub->net,"1");
+	}
+
+	sub->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	sub->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	sub->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
+	sub->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	sub->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	sub->sur = (char *)malloc((strlen(uri) + strlen(sub->rn) + 2) * sizeof(char));
+
+	strcpy(sub->sur, uri);
+	strcat(sub->sur, "/");
+	strcat(sub->sur, sub->rn);
+	strcpy(sub->ri, ri);
+	strcpy(sub->pi, pi);
+	strcpy(sub->et, et);
+	strcpy(sub->ct, ct);
+	strcpy(sub->lt, ct);
+	sub->ty = TY_SUB;
+	sub->nct = 0;
+
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
+}
+
+void init_acp(ACP* acp, char *pi) {
+	char *ct = get_local_time(0);
+	char *et = get_local_time(EXPIRE_TIME);
+	char *ri = resource_identifier(TY_ACP, ct);
+
+	if(!acp->rn) {
+		acp->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(acp->rn, ri);
+	}
+	
+	acp->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
+	acp->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
+	acp->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
+	acp->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	acp->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
+	strcpy(acp->ri, ri);
+	strcpy(acp->pi, pi);
+	strcpy(acp->et, et);
+	strcpy(acp->ct, ct);
+	strcpy(acp->lt, ct);
+	
+	acp->ty = TY_ACP;
+	
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
 }
 
 char *resource_identifier(ObjectType ty, char *ct) {
@@ -782,130 +906,6 @@ void delete_node_and_db_data(RTNode *node, int flag) {
 	fprintf(stderr,"[free_rtnode] %s...",node->rn);
 	free_rtnode(node); node = NULL;
 	fprintf(stderr,"OK\n");
-}
-
-void init_cnt(CNT* cnt, char *pi) {
-	char *ct = get_local_time(0);
-	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_CNT, ct);
-	
-	if(!cnt->rn) {
-		cnt->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-		strcpy(cnt->rn, ri);
-	}
-	
-	cnt->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	cnt->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	cnt->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	cnt->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	cnt->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	strcpy(cnt->ri, ri);
-	strcpy(cnt->pi, pi);
-	strcpy(cnt->et, et);
-	strcpy(cnt->ct, ct);
-	strcpy(cnt->lt, ct);
-	
-	cnt->ty = TY_CNT;
-	cnt->st = 0;
-	cnt->cni = 0;
-	cnt->cbs = 0;
-	
-	free(ct); ct = NULL;
-	free(et); et = NULL;
-	free(ri); ri = NULL;
-}
-
-void init_cin(CIN* cin, char *pi) {
-	char *ct = get_local_time(0);
-	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_CIN, ct);
-	
-	cin->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	cin->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	cin->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	cin->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	cin->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	cin->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	strcpy(cin->rn, ri);
-	strcpy(cin->ri, ri);
-	strcpy(cin->pi, pi);
-	strcpy(cin->et, et);
-	strcpy(cin->ct, ct);
-	strcpy(cin->lt, ct);
-	
-	cin->ty = TY_CIN;
-	cin->st = 0;
-	cin->cs = strlen(cin->con);
-	
-	free(ct); ct = NULL;
-	free(et); et = NULL;
-	free(ri); ri = NULL;
-}
-
-void init_sub(Sub* sub, char *pi) {
-	char *ct = get_local_time(0);
-	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_SUB, ct);
-
-	if(!sub->rn) {
-		sub->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-		strcpy(sub->rn, ri);
-	}
-
-	if(!sub->net) {
-		sub->net = (char*)malloc(2*sizeof(char));
-		strcpy(sub->net,"1");
-	}
-
-	sub->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	sub->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	sub->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	sub->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	sub->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	sub->sur = (char *)malloc((strlen(uri) + strlen(sub->rn) + 2) * sizeof(char));
-
-	strcpy(sub->sur, uri);
-	strcat(sub->sur, "/");
-	strcat(sub->sur, sub->rn);
-	strcpy(sub->ri, ri);
-	strcpy(sub->pi, pi);
-	strcpy(sub->et, et);
-	strcpy(sub->ct, ct);
-	strcpy(sub->lt, ct);
-	sub->ty = TY_SUB;
-	sub->nct = 0;
-
-	free(ct); ct = NULL;
-	free(et); et = NULL;
-	free(ri); ri = NULL;
-}
-
-void init_acp(ACP* acp, char *pi) {
-	char *ct = get_local_time(0);
-	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_ACP, ct);
-
-	if(!acp->rn) {
-		acp->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-		strcpy(acp->rn, ri);
-	}
-	
-	acp->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	acp->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	acp->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	acp->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	acp->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	strcpy(acp->ri, ri);
-	strcpy(acp->pi, pi);
-	strcpy(acp->et, et);
-	strcpy(acp->ct, ct);
-	strcpy(acp->lt, ct);
-	
-	acp->ty = TY_ACP;
-	
-	free(ct); ct = NULL;
-	free(et); et = NULL;
-	free(ri); ri = NULL;
 }
 
 void set_ae_update(AE* after) {
