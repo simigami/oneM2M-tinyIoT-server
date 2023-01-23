@@ -108,6 +108,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         puri[msg->topic_name_len] = '\0';
         strtok(puri, "/");
         strtok(NULL, "/");
+        
         originator = strtok(NULL,"/");
         reciever = strtok(NULL,"/");
         contentType = strtok(NULL,"/");
@@ -164,10 +165,12 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     pjson = cJSON_GetObjectItem(json, "to");
     o2pt->to = cJSON_GetStringValue(pjson);
+    MqttClientIdToId(o2pt->to);
     //fprintf(stderr, "%s\n", o2pt->to);
 
     pjson = cJSON_GetObjectItem(json, "fr");
     o2pt->fr = cJSON_GetStringValue(pjson);//->valuestring;
+    MqttClientIdToId(o2pt->fr);
 
     pjson = cJSON_GetObjectItem(json, "pc");
     o2pt->pc = cJSON_PrintUnformatted(pjson);
@@ -236,6 +239,9 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     fprintf(stderr, "[*] Topic : %s\n", respTopic);
     //sprintf(payload, o2pt->pc);
     json = cJSON_CreateObject();
+
+    idToMqttClientId(o2pt->fr);
+    idToMqttClientId(o2pt->to);
 
     cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
     cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
@@ -624,3 +630,23 @@ exit:
     return rc;
 }
 //#endif /* HAVE_SOCKET */
+
+
+void idToMqttClientId(char *cseid){
+    int len = strlen(cseid);
+    if(cseid[0] == '/') {
+        for(int i = 0 ; i < len ; i++) cseid[i] = cseid[i+1];
+        len--;
+    }
+
+    for(int i = 0 ; i < len ; i++){
+        if(cseid[i] == '/') cseid[i] = ':';
+    }
+}
+
+void MqttClientIdToId(char *cseid){
+    int len = strlen(cseid);
+    for(int i = 0 ; i < len ; i++){
+        if(cseid[i] == ':') cseid[i] = '/';
+    }
+}

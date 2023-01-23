@@ -14,4 +14,6 @@
 #include "cJSON.h"
 
 int mqtt_respond_to_client(oneM2MPrimitive *o2pt);
+void MqttClientIdToId(char *id);
+void MqttClientIdToId(char *id);
 int mqtt_ser(void);
