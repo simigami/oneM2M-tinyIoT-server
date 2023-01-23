@@ -432,6 +432,167 @@ ObjectType http_parse_object_type() {
 	return ty;
 }
 
+void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	int e = check_aei_duplicate(o2pt, parent_rtnode);
+	if(e != -1) e = check_rn_invalid(o2pt, TY_AE);
+	if(e == -1) return;
+
+	if(parent_rtnode->ty != TY_CSE) {
+		child_type_error(o2pt);
+		return;
+	}
+	AE* ae = cjson_to_ae(o2pt->cjson_pc);
+	if(!ae) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_ae(ae,parent_rtnode->ri, o2pt->fr);
+	
+	int result = db_store_ae(ae);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_ae(ae); ae = NULL;
+		return;
+	}
+	
+	RTNode* child_rtnode = create_rtnode(ae, TY_AE);
+	add_child_resource_tree(parent_rtnode, child_rtnode);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = ae_to_json(ae);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	// notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_ae(ae); ae = NULL;
+}
+
+void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty != TY_CNT && parent_rtnode->ty != TY_AE && parent_rtnode->ty != TY_CSE) {
+		child_type_error(o2pt);
+		return;
+	}
+	CNT* cnt = cjson_to_cnt(o2pt->cjson_pc);
+	if(!cnt) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_cnt(cnt,parent_rtnode->ri);
+
+	int result = db_store_cnt(cnt);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_cnt(cnt); cnt = NULL;
+		return;
+	}
+	
+	RTNode* child_rtnode = create_rtnode(cnt, TY_CNT);
+	add_child_resource_tree(parent_rtnode,child_rtnode);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cnt_to_json(cnt);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_cnt(cnt); cnt = NULL;
+}
+
+
+void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty != TY_CNT) {
+		child_type_error(o2pt);
+		return;
+	}
+	CIN* cin = cjson_to_cin(o2pt->cjson_pc);
+	if(!cin) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_cin(cin,parent_rtnode->ri);
+
+	int result = db_store_cin(cin);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_cin(cin);
+		cin = NULL;
+		return;
+	}
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cin_to_json(cin);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_cin(cin); cin = NULL;
+}
+
+void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty == TY_CIN || parent_rtnode->ty == TY_SUB) {
+		child_type_error(o2pt);
+		return;
+	}
+	Sub* sub = cjson_to_sub(o2pt->cjson_pc);
+	if(!sub) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_sub(sub, parent_rtnode->ri);
+	
+	int result = db_store_sub(sub);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_sub(sub); sub = NULL;
+		return;
+	}
+	
+	RTNode* child_rtnode = create_rtnode(sub, TY_SUB);
+	add_child_resource_tree(parent_rtnode,child_rtnode);
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = sub_to_json(sub);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_sub(sub); sub = NULL;
+}
+
+void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	if(parent_rtnode->ty != TY_CSE && parent_rtnode->ty != TY_AE) {
+		child_type_error(o2pt);
+		return;
+	}
+	ACP* acp = cjson_to_acp(o2pt->cjson_pc);
+	if(!acp) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+	init_acp(acp, parent_rtnode->ri);
+	
+	int result = db_store_acp(acp);
+	if(result != 1) { 
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+		o2pt->rsc = 5000;
+		respond_to_client(o2pt, 500);
+		free_acp(acp); acp = NULL;
+		return;
+	}
+	
+	RTNode* child_rtnode = create_rtnode(acp, TY_ACP);
+	add_child_resource_tree(parent_rtnode, child_rtnode);
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = acp_to_json(acp);
+	o2pt->rsc = 2001;
+	respond_to_client(o2pt, 201);
+	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	free_acp(acp); acp = NULL;
+}
+
 void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CSE* gcse = db_get_cse(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
@@ -485,6 +646,44 @@ void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	o2pt->rsc = 2000;
 	respond_to_client(o2pt, 200);
 	free_acp(gacp); gacp = NULL;
+}
+
+void delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
+	switch(rtnode->ty) {
+	case TY_AE : 
+		db_delete_object(rtnode->ri); 
+		break;
+	case TY_CNT : 
+		db_delete_object(rtnode->ri); 
+		//char *noti_json = (char*)malloc(sizeof("resource is deleted successfully") + 1);
+		//strcpy(noti_json, "resource is deleted successfully");
+		//notify_onem2m_resource(node->child,noti_json,NOTIFICATION_EVENT_2); 
+		//free(noti_json); noti_json = NULL;
+		break;
+	case TY_SUB :
+		db_delete_sub(rtnode->ri);
+		break;
+	case TY_ACP :
+		db_delete_acp(rtnode->ri);
+		break;
+	}
+
+	RTNode *left = rtnode->sibling_left;
+	RTNode *right = rtnode->sibling_right;
+	
+	if(flag == 1) {
+		if(left) left->sibling_right = right;
+		else rtnode->parent->child = right;
+		if(right) right->sibling_left = left;
+	} else {
+		if(right) delete_rtnode_and_db_data(right, 0);
+	}
+	
+	if(rtnode->child) delete_rtnode_and_db_data(rtnode->child, 0);
+	
+	fprintf(stderr,"[free_rtnode] %s...",rtnode->rn);
+	free_rtnode(rtnode); rtnode = NULL;
+	fprintf(stderr,"OK\n");
 }
 
 char *get_local_time(int diff) {
@@ -870,44 +1069,6 @@ RTNode *latest_cin_list(RTNode* cinList, int num) {
 	return head;
 }
 
-void delete_node_and_db_data(RTNode *node, int flag) {
-	switch(node->ty) {
-	case TY_AE : 
-		db_delete_object(node->ri); 
-		break;
-	case TY_CNT : 
-		db_delete_object(node->ri); 
-		char *noti_json = (char*)malloc(sizeof("resource is deleted successfully") + 1);
-		strcpy(noti_json, "resource is deleted successfully");
-		notify_object(node->child,noti_json,NOTIFICATION_EVENT_2); 
-		free(noti_json); noti_json = NULL;
-		break;
-	case TY_SUB :
-		db_delete_sub(node->ri);
-		break;
-	case TY_ACP :
-		db_delete_acp(node->ri);
-		break;
-	}
-
-	RTNode *left = node->sibling_left;
-	RTNode *right = node->sibling_right;
-	
-	if(flag == 1) {
-		if(left) left->sibling_right = right;
-		else node->parent->child = right;
-		if(right) right->sibling_left = left;
-	} else {
-		if(right) delete_node_and_db_data(right, 0);
-	}
-	
-	if(node->child) delete_node_and_db_data(node->child, 0);
-	
-	fprintf(stderr,"[free_rtnode] %s...",node->rn);
-	free_rtnode(node); node = NULL;
-	fprintf(stderr,"OK\n");
-}
-
 void set_ae_update(AE* after) {
 	char *rn = get_json_value_char("rn", payload);
 	int rr = get_json_value_bool("rr", payload);
@@ -1131,7 +1292,7 @@ void set_node_update(RTNode *node, void *after) {
 	}
 }
 
-void notify_object(RTNode *node, char *response_payload, NET net) {
+void notify_onem2m_resource(RTNode *node, char *response_payload, NET net) {
 	remove_invalid_char_json(response_payload);
 	while(node) {
 		if(node->ty == TY_SUB && (net & node->net) == net) {

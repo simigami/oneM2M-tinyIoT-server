@@ -16,7 +16,8 @@
         "curl.h": "c",
         "jsonparse.h": "c",
         "berkeleydb.h": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "config.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

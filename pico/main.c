@@ -88,16 +88,16 @@ void route(oneM2MPrimitive *o2pt) {
 	switch(o2pt->op) {
 	
 	case OP_CREATE:	
-		create_object(o2pt, target_rtnode); break;
+		create_onem2m_resource(o2pt, target_rtnode); break;
 	
 	case OP_RETRIEVE:
-		retrieve_object(o2pt, target_rtnode); break;
+		retrieve_onem2m_resource(o2pt, target_rtnode); break;
 		
 	//case OP_UPDATE: 
-		//update_object(target_rtnode); break;
+		//update_onem2m_resource(target_rtnode); break;
 		
-	//case OP_DELETE:
-		//delete_object(target_rtnode); break;
+	case OP_DELETE:
+		delete_onem2m_resource(o2pt, target_rtnode); break;
 
 	//case OP_VIEWER:
 		//tree_viewer_api(target_rtnode); break;
@@ -117,7 +117,7 @@ void route(oneM2MPrimitive *o2pt) {
 
 }
 
-void create_object(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int e = check_resource_type_invalid(o2pt);
 	if(e != -1) check_payload_empty(o2pt);
 	if(e != -1) e = check_payload_format(o2pt);
@@ -160,168 +160,7 @@ void create_object(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	}	
 }
 
-void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	int e = check_aei_duplicate(o2pt, parent_rtnode);
-	if(e != -1) e = check_rn_invalid(o2pt, TY_AE);
-	if(e == -1) return;
-
-	if(parent_rtnode->ty != TY_CSE) {
-		child_type_error(o2pt);
-		return;
-	}
-	AE* ae = cjson_to_ae(o2pt->cjson_pc);
-	if(!ae) {
-		no_mandatory_error(o2pt);
-		return;
-	}
-	init_ae(ae,parent_rtnode->ri, o2pt->fr);
-	
-	int result = db_store_ae(ae);
-	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
-		respond_to_client(o2pt, 500);
-		free_ae(ae); ae = NULL;
-		return;
-	}
-	
-	RTNode* child_rtnode = create_rtnode(ae, TY_AE);
-	add_child_resource_tree(parent_rtnode, child_rtnode);
-	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = ae_to_json(ae);
-	o2pt->rsc = 2001;
-	respond_to_client(o2pt, 201);
-	// notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free_ae(ae); ae = NULL;
-}
-
-void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty != TY_CNT && parent_rtnode->ty != TY_AE && parent_rtnode->ty != TY_CSE) {
-		child_type_error(o2pt);
-		return;
-	}
-	CNT* cnt = cjson_to_cnt(o2pt->cjson_pc);
-	if(!cnt) {
-		no_mandatory_error(o2pt);
-		return;
-	}
-	init_cnt(cnt,parent_rtnode->ri);
-
-	int result = db_store_cnt(cnt);
-	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
-		respond_to_client(o2pt, 500);
-		free_cnt(cnt); cnt = NULL;
-		return;
-	}
-	
-	RTNode* child_rtnode = create_rtnode(cnt, TY_CNT);
-	add_child_resource_tree(parent_rtnode,child_rtnode);
-	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = cnt_to_json(cnt);
-	o2pt->rsc = 2001;
-	respond_to_client(o2pt, 201);
-	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free_cnt(cnt); cnt = NULL;
-}
-
-
-void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty != TY_CNT) {
-		child_type_error(o2pt);
-		return;
-	}
-	CIN* cin = cjson_to_cin(o2pt->cjson_pc);
-	if(!cin) {
-		no_mandatory_error(o2pt);
-		return;
-	}
-	init_cin(cin,parent_rtnode->ri);
-
-	int result = db_store_cin(cin);
-	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
-		respond_to_client(o2pt, 500);
-		free_cin(cin);
-		cin = NULL;
-		return;
-	}
-	
-	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = cin_to_json(cin);
-	o2pt->rsc = 2001;
-	respond_to_client(o2pt, 201);
-	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free_cin(cin); cin = NULL;
-}
-
-void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty == TY_CIN || parent_rtnode->ty == TY_SUB) {
-		child_type_error(o2pt);
-		return;
-	}
-	Sub* sub = cjson_to_sub(o2pt->cjson_pc);
-	if(!sub) {
-		no_mandatory_error(o2pt);
-		return;
-	}
-	init_sub(sub, parent_rtnode->ri);
-	
-	int result = db_store_sub(sub);
-	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
-		respond_to_client(o2pt, 500);
-		free_sub(sub); sub = NULL;
-		return;
-	}
-	
-	RTNode* child_rtnode = create_rtnode(sub, TY_SUB);
-	add_child_resource_tree(parent_rtnode,child_rtnode);
-	
-	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = sub_to_json(sub);
-	o2pt->rsc = 2001;
-	respond_to_client(o2pt, 201);
-	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free_sub(sub); sub = NULL;
-}
-
-void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty != TY_CSE && parent_rtnode->ty != TY_AE) {
-		child_type_error(o2pt);
-		return;
-	}
-	ACP* acp = cjson_to_acp(o2pt->cjson_pc);
-	if(!acp) {
-		no_mandatory_error(o2pt);
-		return;
-	}
-	init_acp(acp, parent_rtnode->ri);
-	
-	int result = db_store_acp(acp);
-	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
-		respond_to_client(o2pt, 500);
-		free_acp(acp); acp = NULL;
-		return;
-	}
-	
-	RTNode* child_rtnode = create_rtnode(acp, TY_ACP);
-	add_child_resource_tree(parent_rtnode, child_rtnode);
-	
-	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = acp_to_json(acp);
-	o2pt->rsc = 2001;
-	respond_to_client(o2pt, 201);
-	//notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free_acp(acp); acp = NULL;
-}
-
-void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+void retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int e = check_privilege(o2pt, target_rtnode, ACOP_RETRIEVE);
 
 	if(e == -1) return;
@@ -694,9 +533,29 @@ void no_mandatory_error(oneM2MPrimitive *o2pt){
 	respond_to_client(o2pt, 400);
 }
 
+void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
+	fprintf(stderr,"\x1b[41mDelete oneM2M resource\x1b[0m\n");
+	if(target_rtnode->ty == TY_AE || target_rtnode->ty == TY_CNT) {
+		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
+			return;
+		}
+	}
+	if(target_rtnode->ty == TY_CSE) {
+		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"CSE can not be deleted\"}");
+		o2pt->rsc = 4005;
+		respond_to_client(o2pt, 403);
+		return;
+	}
+	delete_rtnode_and_db_data(target_rtnode,1);
+	target_rtnode = NULL;
+	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"resource is deleted successfully\"}");
+	o2pt->rsc = 2002;
+	respond_to_client(o2pt, 200);
+}
+
 /*
 
-void update_object(RTNode *pnode) {
+void update_onem2m_resource(RTNode *pnode) {
 	ObjectType ty = parse_object_type_in_request_body();
 
 	int e = check_request_body_empty();
@@ -753,7 +612,7 @@ void update_ae(RTNode *pnode) {
 	
 	response_payload = ae_to_json(after);
 	respond_to_client(200, NULL, "2004");
-	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	free(response_payload); response_payload = NULL; 
 	free_ae(after); after = NULL;
 }
@@ -778,7 +637,7 @@ void update_cnt(RTNode *pnode) {
 	
 	response_payload = cnt_to_json(after);
 	respond_to_client(200, NULL, "2004");
-	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	free(response_payload); response_payload = NULL;
 	free_cnt(after); after = NULL;
 }
@@ -809,25 +668,9 @@ void update_acp(RTNode *pnode) {
 	
 	response_payload = acp_to_json(after);
 	respond_to_client(200, NULL, "2004");
-	notify_object(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	free(response_payload); response_payload = NULL;
 	free_acp(after); after = NULL;
-}
-
-void delete_object(RTNode* pnode) {
-	fprintf(stderr,"\x1b[41mDelete Object\x1b[0m\n");
-	if(pnode->ty == TY_AE || pnode->ty == TY_CNT) {
-		if(check_privilege(pnode, ACOP_DELETE, OP_DELETE, pnode->ty) == -1) {
-			return;
-		}
-	}
-	if(pnode->ty == TY_CSE) {
-		respond_to_client(403, "{\"m2m:dbg\": \"CSE can not be deleted\"}", "4005");
-		return;
-	}
-	delete_node_and_db_data(pnode,1);
-	pnode = NULL;
-	respond_to_client(200, "{\"m2m:dbg\": \"resource is deleted successfully\"}", "2002");
 }
 
 void retrieve_filtercriteria_data(RTNode *node, ObjectType ty, char **discovery_list, int *size, int level, int curr, int flag) {

@@ -175,12 +175,12 @@ ObjectType http_parse_object_type();
 ObjectType parse_object_type_cjson(cJSON *cjson);
 
 //onem2m resource
-void create_object(oneM2MPrimitive *o2pt, RTNode* target_rtnode);
-void retrieve_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode);
+void retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_object_filtercriteria(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void update_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void delete_object(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void notify_object(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
+void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
 
 void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
@@ -232,7 +232,7 @@ RTNode* create_sub_rtnode(Sub *sub);
 RTNode* create_acp_rtnode(ACP *acp);
 int add_child_resource_tree(RTNode *parent, RTNode *child);
 RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
-void delete_node_and_db_data(RTNode *node, int flag);
+void delete_rtnode_and_db_data(RTNode *node, int flag);
 void free_rtnode(RTNode *node);
 void free_rtnode_list(RTNode *node);
 
