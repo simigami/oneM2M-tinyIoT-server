@@ -11,4 +11,35 @@
 #define MAX_URI_SIZE 1024
 #define MAX_PROPERTY_SIZE 16384
 
+#define ENABLE_MQTT
+
+
+// MQTT Settings
+#ifdef ENABLE_MQTT
+#define MQTT_HOST            "127.0.0.1"
+#define MQTT_QOS             MQTT_QOS_0
+#define MQTT_KEEP_ALIVE_SEC  60
+#define MQTT_CMD_TIMEOUT_MS  30000
+#define MQTT_CON_TIMEOUT_MS  5000
+#define MQTT_CLIENT_ID       "TinyIoT"
+#define MQTT_USERNAME        NULL
+#define MQTT_PASSWORD        NULL
+
+#define topicPrefix ""
+
+// MQTT TLS Setting
+#ifdef ENABLE_MQTT_TLS
+    #define MQTT_USE_TLS     1
+    #define MQTT_PORT        8883
+#else
+    #define MQTT_USE_TLS     0
+    #define MQTT_PORT        1883
+#endif
+
+#define MQTT_MAX_PACKET_SZ   16384
+#define INVALID_SOCKET_FD    -1
+#define PRINT_BUFFER_SIZE    256
+
+#endif
+
 #endif

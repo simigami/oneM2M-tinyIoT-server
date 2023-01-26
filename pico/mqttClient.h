@@ -12,8 +12,11 @@
 #include "config.h"
 #include "onem2m.h"
 #include "cJSON.h"
+#include "config.h"
 
 int mqtt_respond_to_client(oneM2MPrimitive *o2pt);
-void MqttClientIdToId(char *id);
+void idToMqttClientId(char *id);
 void MqttClientIdToId(char *id);
 int mqtt_ser(void);
+
+void route();

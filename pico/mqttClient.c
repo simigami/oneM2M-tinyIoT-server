@@ -21,11 +21,6 @@
 
 /* Standalone Example */
 
-/* Include the autoconf generated config.h */
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
 //#define WOLFMQTT_MULTITHREAD true
 
 #include "mqttClient.h"
@@ -41,30 +36,6 @@
 #include <netdb.h>
 #include <unistd.h>
 #endif
-
-/* Configuration */
-#define MQTT_HOST            "127.0.0.1" /* broker.hivemq.com */
-#define MQTT_QOS             MQTT_QOS_0
-#define MQTT_KEEP_ALIVE_SEC  60
-#define MQTT_CMD_TIMEOUT_MS  30000
-#define MQTT_CON_TIMEOUT_MS  5000
-#define MQTT_CLIENT_ID       "TinyIoT"
-#define MQTT_USERNAME        NULL
-#define MQTT_PASSWORD        NULL
-#ifdef ENABLE_MQTT_TLS
-    #define MQTT_USE_TLS     1
-    #define MQTT_PORT        8883
-#else
-    #define MQTT_USE_TLS     0
-    #define MQTT_PORT        1883
-#endif
-#define MQTT_MAX_PACKET_SZ   16384
-#define INVALID_SOCKET_FD    -1
-#define PRINT_BUFFER_SIZE    256
-
-/* temporary config*/
-#define CSE_CSI "TinyIoT"
-#define topicPrefix ""
 
 /* Local Variables */
 static MqttClient mClient;
@@ -114,7 +85,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         contentType = strtok(NULL,"/");
         
 
-        if(strcmp(reciever, CSE_CSI)){
+        if(strcmp(reciever, CSE_BASE_NAME)){
             return MQTT_CODE_SUCCESS;
         }
         
@@ -235,7 +206,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
 
     fprintf(stderr, "publishing mqtt response \n");
 
-    sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, CSE_CSI, o2pt->fr);
+    sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, CSE_BASE_NAME, o2pt->fr);
     fprintf(stderr, "[*] Topic : %s\n", respTopic);
     //sprintf(payload, o2pt->pc);
     json = cJSON_CreateObject();
@@ -567,8 +538,8 @@ int mqtt_ser(void)
     reqTopic = (char*) malloc(30);
     respTopic = (char*) malloc(30);
 
-    sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_CSI, "/#");
-    sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_CSI, "/+/#");
+    sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_BASE_NAME, "/#");
+    sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_BASE_NAME, "/+/#");
 
     /* Subscribe and wait for Ack */
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));
