@@ -69,6 +69,7 @@ typedef struct {
 	char *api;
 	char *aei;
 	char *lbl;
+	char *srv;
 	int ty;
 	bool rr;
 } AE;
@@ -197,11 +198,11 @@ void retrieve_cin_by_ri(char *ri);
 void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
-void update_cse(RTNode *target_rtnode);
-void update_ae(RTNode *target_rtnode);
-void update_cnt(RTNode *target_rtnode);
-void update_sub(RTNode *target_rtnode);
-void update_acp(RTNode *target_rtnode);
+void update_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 void init_cse(CSE* cse);
 void init_ae(AE* ae, char *pi, char *origin);
@@ -209,11 +210,11 @@ void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
 void init_sub(Sub* sub, char *pi);
 void init_acp(ACP* acp, char *pi);
-void set_ae_update(AE* after);
-void set_cnt_update(CNT* after);
-void set_sub_update(Sub* after);
-void set_acp_update(ACP* after);
-void set_node_update(RTNode* node, void *after);
+void set_ae_update(cJSON *m2m_ae, AE* after);
+void set_cnt_update(cJSON *m2m_cnt, CNT* after);
+void set_sub_update(cJSON *m2m_sub, Sub* after);
+void set_acp_update(cJSON *m2m_acp, ACP* after);
+void set_rtnode_update(RTNode* rtnode, void *after);
 
 void free_cse(CSE* cse);
 void free_ae(AE* ae);
