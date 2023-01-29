@@ -22,8 +22,8 @@
 #define MQTT_CMD_TIMEOUT_MS  30000
 #define MQTT_CON_TIMEOUT_MS  5000
 #define MQTT_CLIENT_ID       "TinyIoT"
-#define MQTT_USERNAME        NULL
-#define MQTT_PASSWORD        NULL
+#define MQTT_USERNAME        "test"
+#define MQTT_PASSWORD        "mqtt"
 
 #define topicPrefix ""
 
@@ -38,7 +38,7 @@
 
 #define MQTT_MAX_PACKET_SZ   16384
 #define INVALID_SOCKET_FD    -1
-#define PRINT_BUFFER_SIZE    256
+#define PRINT_BUFFER_SIZE    16384
 
 #endif
 

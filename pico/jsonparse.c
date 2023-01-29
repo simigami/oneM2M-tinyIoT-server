@@ -50,7 +50,7 @@ AE* cjson_to_ae(cJSON *cjson) {
 		return NULL;
 	}
 	else {
-		ae->api = cJSON_Print(api);
+		ae->api = cJSON_PrintUnformatted(api);
 		remove_quotation_mark(ae->api);
 	}
 
@@ -77,7 +77,7 @@ AE* cjson_to_ae(cJSON *cjson) {
 		ae->rn = NULL;
 	}
 	else {
-		ae->rn = cJSON_Print(rn);
+		ae->rn = cJSON_PrintUnformatted(rn);
 		remove_quotation_mark(ae->rn);
 	}
 
@@ -110,7 +110,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 		cnt->rn = NULL;
 	}
 	else {
-		cnt->rn = cJSON_Print(rn);
+		cnt->rn = cJSON_PrintUnformatted(rn);
 		remove_quotation_mark(cnt->rn);
 	}
 
@@ -212,7 +212,7 @@ CIN* cjson_to_cin(cJSON *cjson) {
 		fprintf(stderr, "Invalid con\n");
 		return NULL;
 	}
-	cin->con = cJSON_Print(con);
+	cin->con = cJSON_PrintUnformatted(con);
 	remove_quotation_mark(cin->con);
 
 	return cin;
@@ -270,7 +270,7 @@ Sub* cjson_to_sub(cJSON *cjson) {
 		sub->rn = NULL;
 	}
 	else {
-		sub->rn = cJSON_Print(rn);
+		sub->rn = cJSON_PrintUnformatted(rn);
 		remove_quotation_mark(sub->rn);
 	}
 
@@ -468,7 +468,7 @@ ACP* cjson_to_acp(cJSON *cjson) {
 		acp->rn = NULL;
 	}
 	else {
-		acp->rn = cJSON_Print(rn);
+		acp->rn = cJSON_PrintUnformatted(rn);
 		remove_quotation_mark(acp->rn);
 	}
 
@@ -491,7 +491,7 @@ char* node_to_json(RTNode *node) {
 	child = cJSON_CreateArray();
 	cJSON_AddItemToObject(obj, "children", child);
 
-	json = cJSON_Print(obj);
+	json = cJSON_PrintUnformatted(obj);
 
 	cJSON_Delete(obj);
 
@@ -542,7 +542,7 @@ char* ae_to_json(AE *ae_object) {
 	cJSON_AddBoolToObject(ae, "rr", ae_object->rr);
 	cJSON_AddStringToObject(ae, "aei", ae_object->aei);
 
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 
@@ -595,7 +595,7 @@ char* cnt_to_json(CNT* cnt_object) {
 		} while(lbl_str != NULL);
 		cJSON_AddItemToObject(cnt, "lbl", lbl);
 	}
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 
@@ -622,7 +622,7 @@ char* cin_to_json(CIN* cin_object) {
 	cJSON_AddNumberToObject(cin, "cs", cin_object->cs);
 	cJSON_AddStringToObject(cin, "con", cin_object->con);
 
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 
@@ -676,7 +676,7 @@ char* sub_to_json(Sub *sub_object) {
 	// nct
 	cJSON_AddNumberToObject(sub, "nct", sub_object->nct);
 
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 
@@ -698,7 +698,7 @@ char* notification_to_json(char *sur, int net, char *rep) {
 	cJSON_AddNumberToObject(nev, "net", net);
 	cJSON_AddStringToObject(nev, "rep", rep);
 
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 
@@ -813,7 +813,7 @@ char* acp_to_json(ACP *acp_object) {
 		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
 	}
 
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 
@@ -837,7 +837,7 @@ char* discovery_to_json(char **result, int size) {
 	}
 	cJSON_AddItemToObject(root, "m2m:uril", uril);
 
-	json = cJSON_Print(root);
+	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
 
@@ -877,7 +877,7 @@ char* get_json_value_char(char *key, char *json) {
 	if (!cJSON_IsString(ckey) && ckey->valuestring == NULL) {
 		goto end;
 	}
-	value = cJSON_Print(ckey);
+	value = cJSON_PrintUnformatted(ckey);
 	remove_quotation_mark(value);
 
 end:
@@ -914,7 +914,7 @@ char* get_json_value_string(char *json, char *key) {
 		parent = json_key;
 	}
 
-	char *value_string = cJSON_Print(json_key);
+	char *value_string = cJSON_PrintUnformatted(json_key);
 	remove_quotation_mark(value_string);
 	cJSON_Delete(root);
 	return value_string;
@@ -1112,7 +1112,7 @@ char *get_json_value_list(char *key_str, char *json) {
 					strcat(acorp_str, cJSON_GetArrayItem(acor, j)->valuestring);
 				}
 				else {	// acop
-					strcat(acorp_str, cJSON_Print(acop));
+					strcat(acorp_str, cJSON_PrintUnformatted(acop));
 				}
 
 				if (j < acor_size - 1) {

@@ -65,7 +65,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     word32 len;
 
     cJSON *json = NULL, *pjson = NULL;
-    char *puri, *originator, *reciever, *contentType;
+    char *puri, *req_type, *originator, *reciever, *contentType;
     oneM2MPrimitive *o2pt;
     
     o2pt = (oneM2MPrimitive *) malloc(sizeof(oneM2MPrimitive));
@@ -78,14 +78,18 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         memcpy(puri, msg->topic_name, msg->topic_name_len);
         puri[msg->topic_name_len] = '\0';
         strtok(puri, "/");
-        strtok(NULL, "/");
+        req_type = strtok(NULL, "/");
         
         originator = strtok(NULL,"/");
         reciever = strtok(NULL,"/");
         contentType = strtok(NULL,"/");
         
+        if(!strcmp(req_type, "resp") || !strcmp(req_type, "reg_resp")){
+            return MQTT_CODE_SUCCESS;
+        }
 
         if(strcmp(reciever, CSE_BASE_NAME)){
+            fprintf(stderr, "msg not for %s\n", CSE_BASE_NAME);
             return MQTT_CODE_SUCCESS;
         }
         
@@ -116,7 +120,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     fprintf(stderr,"\n\033[34m==========================================================\033[0m\n");
 
 
-    fprintf(stderr, "originator : %s, reciever : %s, contentType: %s\n", originator, reciever, contentType);
+    fprintf(stderr, "request type: %s, originator : %s, reciever : %s, contentType: %s\n", req_type, originator, reciever, contentType);
 
     json = cJSON_Parse(buf);
 
@@ -128,6 +132,10 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* type mqtt */
     o2pt->prot = PROT_MQTT;
+    o2pt->origin = originator;
+    MqttClientIdToId(o2pt->origin);
+
+    o2pt->req_type = req_type;
 
     /* fill primitives */
     pjson = cJSON_GetObjectItem(json, "op");
@@ -135,28 +143,33 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     o2pt->op = pjson->valueint;
 
     pjson = cJSON_GetObjectItem(json, "to");
+    if(!pjson) return MQTT_CODE_SUCCESS;
+
     o2pt->to = cJSON_GetStringValue(pjson);
-    MqttClientIdToId(o2pt->to);
+    
     //fprintf(stderr, "%s\n", o2pt->to);
 
     pjson = cJSON_GetObjectItem(json, "fr");
+    if(!pjson) return MQTT_CODE_SUCCESS;
+
     o2pt->fr = cJSON_GetStringValue(pjson);//->valuestring;
-    MqttClientIdToId(o2pt->fr);
+
 
     pjson = cJSON_GetObjectItem(json, "pc");
-    o2pt->pc = cJSON_PrintUnformatted(pjson);
-
-    o2pt->cjson_pc = pjson;
-    //fprintf(stderr, "pc : %s\n", o2pt->pc);
+    if(pjson){
+        o2pt->pc = cJSON_PrintUnformatted(pjson);
+        o2pt->cjson_pc = pjson;
+        fprintf(stderr, "pc : %s\n", o2pt->pc);
+    }
 
     pjson = cJSON_GetObjectItem(json, "rvi");
     o2pt->rvi = pjson->valuestring;
 
-    pjson = cJSON_GetObjectItem(json, "fr");
-    o2pt->fr = pjson->valuestring;
+    pjson = cJSON_GetObjectItem(json, "rqi");
+    o2pt->rqi = pjson->valuestring;
 
     pjson = cJSON_GetObjectItem(json, "ty");
-    o2pt->ty = pjson->valueint;
+    if(pjson) o2pt->ty = pjson->valueint;
     //fprintf(stderr, "%d, %d, %s, %s\n", o2pt->op, o2pt->ty, o2pt->fr, o2pt->to);// o2pt.to, o2pt.fr);
 
     /* check content type*/
@@ -206,18 +219,22 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
 
     fprintf(stderr, "publishing mqtt response \n");
 
-    sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, CSE_BASE_NAME, o2pt->fr);
+    idToMqttClientId(o2pt->origin);
+
+    if( !strcmp(o2pt->req_type, "req") ){
+        sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
+    }else{
+        sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
+    }
     fprintf(stderr, "[*] Topic : %s\n", respTopic);
+    //fprintf(stderr, "rqi %s\n", o2pt->rqi);
     //sprintf(payload, o2pt->pc);
     json = cJSON_CreateObject();
 
-    idToMqttClientId(o2pt->fr);
-    idToMqttClientId(o2pt->to);
-
     cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
     cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
-    cJSON_AddStringToObject(json, "to", o2pt->fr);    
-    cJSON_AddStringToObject(json, "fr", o2pt->to);
+    cJSON_AddStringToObject(json, "to", o2pt->to);    
+    cJSON_AddStringToObject(json, "fr", o2pt->origin);
     if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
     if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 
@@ -242,7 +259,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     fprintf(stderr, "MQTT Publish: Topic %s, Qos %d, Message %s",
         mqttPub.topic_name, mqttPub.qos, mqttPub.buffer);
 
-    fprintf(stderr, "\nrc : %s\n", MqttClient_ReturnCodeToString(rc));
+    //fprintf(stderr, "\nrc : %s\n", MqttClient_ReturnCodeToString(rc));
 
     //free(mqttPub.buffer);
     cJSON_Delete(json);
@@ -492,8 +509,8 @@ int mqtt_ser(void)
 {
     int rc = 0;
     MqttObject mqttObj;
-    MqttTopic topics[2];
-    char *reqTopic, *respTopic, *reg_reqTopic;
+    MqttTopic topics[4];
+    char *reqTopic, *respTopic, *reg_reqTopic, *reg_respTopic;
 
     /* Initialize MQTT client */
     XMEMSET(&mNetwork, 0, sizeof(mNetwork));
@@ -535,11 +552,15 @@ int mqtt_ser(void)
         (MQTT_PASSWORD == NULL) ? "Null" : MQTT_PASSWORD);
 
 
-    reqTopic = (char*) malloc(30);
-    respTopic = (char*) malloc(30);
+    reqTopic = (char *) malloc(128);
+    respTopic = (char *) malloc(128);
+    reg_reqTopic = (char *) malloc(128);
+    reg_respTopic = (char *) malloc(128);
 
     sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_BASE_NAME, "/#");
     sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_BASE_NAME, "/+/#");
+    sprintf(reg_reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/reg_req/+/", CSE_BASE_NAME, "/#");
+    sprintf(reg_respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req_resp/", CSE_BASE_NAME, "/+/#");
 
     /* Subscribe and wait for Ack */
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));
@@ -547,6 +568,11 @@ int mqtt_ser(void)
     topics[0].qos = MQTT_QOS;
     topics[1].topic_filter = respTopic;
     topics[1].qos = MQTT_QOS;
+    topics[2].topic_filter = reg_reqTopic;
+    topics[2].qos = MQTT_QOS;
+    topics[3].topic_filter = reg_respTopic;
+    topics[3].qos = MQTT_QOS;
+
     mqttObj.subscribe.packet_id = mqtt_get_packetid();
     mqttObj.subscribe.topic_count = sizeof(topics) / sizeof(MqttTopic);
     mqttObj.subscribe.topics = topics;
@@ -558,6 +584,10 @@ int mqtt_ser(void)
         reqTopic, MQTT_QOS);
     PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
         respTopic, MQTT_QOS);
+     PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
+        reg_reqTopic, MQTT_QOS);
+    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
+        reg_respTopic, MQTT_QOS);
 
 
 
@@ -598,6 +628,11 @@ exit:
     if (rc != MQTT_CODE_SUCCESS) {
         PRINTF("MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
     }
+
+    free(reqTopic);
+    free(respTopic);
+    free(reg_reqTopic);
+    free(reg_respTopic);
     return rc;
 }
 //#endif /* HAVE_SOCKET */

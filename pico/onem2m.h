@@ -167,6 +167,8 @@ typedef struct {
 	cJSON *cjson_pc;
 	int rsc;
 	int ty;
+	char *origin;
+	char *req_type;
 }oneM2MPrimitive;
 
 //http request
