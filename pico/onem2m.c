@@ -463,7 +463,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	RTNode* child_rtnode = create_rtnode(ae, TY_AE);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
-	//o2pt->pc = ae_to_json(ae);
+	o2pt->pc = ae_to_json(ae);
 	o2pt->rsc = 2001;
 	respond_to_client(o2pt, 201);
 	// notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);

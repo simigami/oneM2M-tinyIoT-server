@@ -499,32 +499,26 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	if(!rtnode) return 0;
 
-	cJSON *root = o2pt->cjson_pc;
-	cJSON *resource, *aei;
-
-	switch(o2pt->ty) {
-		case TY_AE: resource = cJSON_GetObjectItem(root, "m2m:ae"); break;
-		case TY_CNT: resource = cJSON_GetObjectItem(root, "m2m:cnt"); break;
-		case TY_CIN: resource = cJSON_GetObjectItem(root, "m2m:cin"); break;
-		case TY_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
-		case TY_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
+	char aei[1024] = {'\0', };
+	if(!o2pt->fr) {
+		return 0;
+	} else if(o2pt->fr[0] != 'C'){
+		aei[0] = 'C';
 	}
+
+	strcat(aei, o2pt->fr);
 
 	RTNode *child = rtnode->child;
 
-	aei = cJSON_GetObjectItem(resource, "aei");
-	if(aei) {
-		char *ae_id = aei->valuestring;
-		while(child) {
-			if(!strcmp(child->ri, ae_id)) {
-				fprintf(stderr,"AE-ID is duplicate error\n");
-				set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `aei` is duplicated\"}");
-				o2pt->rsc = 4105;
-				respond_to_client(o2pt, 209);
-				return -1;
-			}
-			child = child->sibling_right;
+	while(child) {
+		if(!strcmp(child->ri, aei)) {
+			fprintf(stderr,"AE-ID is duplicate error\n");
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `aei` is duplicated\"}");
+			o2pt->rsc = 4117;
+			respond_to_client(o2pt, 209);
+			return -1;
 		}
+		child = child->sibling_right;
 	}
 
 	return 0;
