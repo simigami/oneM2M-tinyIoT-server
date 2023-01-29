@@ -13,6 +13,7 @@
 #include "jsonparse.h"
 #include "httpd.h"
 #include "mqttClient.h"
+#include "onem2mTypes.h"
 #include "config.h"
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
@@ -451,7 +452,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int result = db_store_ae(ae);
 	if(result != 1) { 
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
+		o2pt->rsc = internalServerError;
 		respond_to_client(o2pt, 500);
 		free_ae(ae); ae = NULL;
 		return;
@@ -459,8 +460,8 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	RTNode* child_rtnode = create_rtnode(ae, TY_AE);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
-	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = ae_to_json(ae);
+	//if(o2pt->pc) free(o2pt->pc);
+	//o2pt->pc = ae_to_json(ae);
 	o2pt->rsc = 2001;
 	respond_to_client(o2pt, 201);
 	// notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
@@ -482,7 +483,7 @@ void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int result = db_store_cnt(cnt);
 	if(result != 1) { 
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
+		o2pt->rsc = internalServerError;
 		respond_to_client(o2pt, 500);
 		free_cnt(cnt); cnt = NULL;
 		return;
@@ -492,7 +493,7 @@ void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	add_child_resource_tree(parent_rtnode,child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(cnt);
-	o2pt->rsc = 2001;
+	o2pt->rsc = created;
 	respond_to_client(o2pt, 201);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	free_cnt(cnt); cnt = NULL;
@@ -514,7 +515,7 @@ void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int result = db_store_cin(cin);
 	if(result != 1) { 
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
+		o2pt->rsc = internalServerError;
 		respond_to_client(o2pt, 500);
 		free_cin(cin);
 		cin = NULL;
@@ -523,7 +524,7 @@ void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cin_to_json(cin);
-	o2pt->rsc = 2001;
+	o2pt->rsc = created;
 	respond_to_client(o2pt, 201);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	free_cin(cin); cin = NULL;
@@ -544,7 +545,7 @@ void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int result = db_store_sub(sub);
 	if(result != 1) { 
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
+		o2pt->rsc = internalServerError;
 		respond_to_client(o2pt, 500);
 		free_sub(sub); sub = NULL;
 		return;
@@ -555,7 +556,7 @@ void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = sub_to_json(sub);
-	o2pt->rsc = 2001;
+	o2pt->rsc = created;
 	respond_to_client(o2pt, 201);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	free_sub(sub); sub = NULL;
@@ -576,7 +577,7 @@ void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int result = db_store_acp(acp);
 	if(result != 1) { 
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = 5000;
+		o2pt->rsc = internalServerError;
 		respond_to_client(o2pt, 500);
 		free_acp(acp); acp = NULL;
 		return;
@@ -587,7 +588,7 @@ void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(acp);
-	o2pt->rsc = 2001;
+	o2pt->rsc = created;
 	respond_to_client(o2pt, 201);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	free_acp(acp); acp = NULL;
@@ -597,7 +598,7 @@ void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CSE* gcse = db_get_cse(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cse_to_json(gcse);
-	o2pt->rsc = 2000;
+	o2pt->rsc = OK;
 	respond_to_client(o2pt, 200);
 	free_cse(gcse); gcse = NULL;
 }
@@ -607,7 +608,7 @@ void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	AE* gae = db_get_ae(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(gae);
-	o2pt->rsc = 2000;
+	o2pt->rsc = OK;
 	respond_to_client(o2pt, 200);
 	free_ae(gae); gae = NULL;
 }
@@ -616,7 +617,7 @@ void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CNT* gcnt = db_get_cnt(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(gcnt);
-	o2pt->rsc = 2000;
+	o2pt->rsc = OK;
 	respond_to_client(o2pt, 200);
 	free_cnt(gcnt); gcnt = NULL;
 }
@@ -625,7 +626,7 @@ void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	CIN* gcin = db_get_cin(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cin_to_json(gcin);
-	o2pt->rsc = 2000;
+	o2pt->rsc = OK;
 	respond_to_client(o2pt, 200); 
 	free_cin(gcin); gcin = NULL;
 }
@@ -634,7 +635,7 @@ void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	Sub* gsub = db_get_sub(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = sub_to_json(gsub);
-	o2pt->rsc = 2000;
+	o2pt->rsc = OK;
 	respond_to_client(o2pt, 200); 
 	free_sub(gsub); gsub = NULL;
 }
@@ -643,7 +644,7 @@ void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	ACP* gacp = db_get_acp(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(gacp);
-	o2pt->rsc = 2000;
+	o2pt->rsc = OK;
 	respond_to_client(o2pt, 200);
 	free_acp(gacp); gacp = NULL;
 }
