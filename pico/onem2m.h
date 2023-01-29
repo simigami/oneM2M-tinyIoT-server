@@ -268,6 +268,7 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int check_payload_size(oneM2MPrimitive *o2pt);
 int check_payload_format(oneM2MPrimitive *o2pt);
 int check_rn_invalid(oneM2MPrimitive *o2pt, ObjectType ty);
+void api_prefix_invalid(oneM2MPrimitive *o2pt);
 
 //etc
 void init_server();

@@ -568,8 +568,8 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 
 int check_payload_empty(oneM2MPrimitive *o2pt) {
 	if(!o2pt->pc) {
-		fprintf(stderr,"Request body empty error\n");
-		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"request body is empty\"}");
+		fprintf(stderr,"Payload empty error\n");
+		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"payload is empty\"}");
 		o2pt->rsc = internalServerError;
 		respond_to_client(o2pt, 400);
 		return -1;
@@ -643,6 +643,13 @@ void no_mandatory_error(oneM2MPrimitive *o2pt){
 	fprintf(stderr,"No Mandatory Error\n");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"insufficient mandatory attribute\"}");
 	o2pt->rsc = contentsUnacceptable;
+	respond_to_client(o2pt, 400);
+}
+
+void api_prefix_invalid(oneM2MPrimitive *o2pt) {
+		fprintf(stderr,"API Prefix Invalid\n");
+	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `api` prefix is invalid\"}");
+	o2pt->rsc = badRequest;
 	respond_to_client(o2pt, 400);
 }
 

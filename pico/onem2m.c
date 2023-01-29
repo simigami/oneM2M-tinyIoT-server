@@ -468,6 +468,11 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		no_mandatory_error(o2pt);
 		return;
 	}
+	if(ae->api[0] != 'R' && ae->api[0] != 'N') {
+		free_ae(ae);
+		api_prefix_invalid(o2pt);
+		return;
+	}
 	init_ae(ae,parent_rtnode->ri, o2pt->fr);
 	
 	int result = db_store_ae(ae);
