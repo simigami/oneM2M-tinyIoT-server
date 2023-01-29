@@ -95,8 +95,8 @@ void route(oneM2MPrimitive *o2pt) {
 	case OP_RETRIEVE:
 		retrieve_onem2m_resource(o2pt, target_rtnode); break;
 		
-	//case OP_UPDATE: 
-		//update_onem2m_resource(target_rtnode); break;
+	case OP_UPDATE: 
+		update_onem2m_resource(o2pt, target_rtnode); break;
 		
 	case OP_DELETE:
 		delete_onem2m_resource(o2pt, target_rtnode); break;
@@ -208,6 +208,94 @@ void retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 		retrieve_acp(o2pt, target_rtnode);			
 		break;
 	}	
+}
+
+void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	o2pt->ty = target_rtnode->ty;
+	int e = check_payload_empty(o2pt);
+	if(e != -1) e = check_payload_format(o2pt);
+	ObjectType ty = parse_object_type_cjson(o2pt->cjson_pc);
+	if(e != -1) e = check_resource_type_equal(o2pt);
+	if(e != -1) e = check_privilege(o2pt, target_rtnode, ACOP_UPDATE);
+	if(e != -1) e = check_rn_duplicate(o2pt, target_rtnode->parent);
+	if(e == -1) return;
+	
+	switch(ty) {
+	case TY_AE :
+		fprintf(stderr,"\x1b[45mUpdate AE\x1b[0m\n");
+		update_ae(o2pt, target_rtnode);
+		break;
+
+	// case TY_CNT :
+	// 	fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
+	// 	update_cnt(pnode);
+	// 	break;
+
+	// case TY_SUB :
+	// 	fprintf(stderr,"\x1b[45mUpdate Sub\x1b[0m\n");
+	// 	update_sub(pnode);
+	// 	break;
+	
+	// case TY_ACP :
+	// 	fprintf(stderr,"\x1b[45mUpdate ACP\x1b[0m\n");
+	// 	update_acp(pnode);
+	// 	break;
+
+	default :
+		fprintf(stderr,"Resource type does not support PUT method\n");
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"`PUT` method unsupported\"}");
+		o2pt->rsc = 4005;
+		respond_to_client(o2pt, 400);
+	}
+}
+
+void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
+	fprintf(stderr,"\x1b[41mDelete oneM2M resource\x1b[0m\n");
+	if(target_rtnode->ty == TY_AE || target_rtnode->ty == TY_CNT) {
+		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
+			return;
+		}
+	}
+	if(target_rtnode->ty == TY_CSE) {
+		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"CSE can not be deleted\"}");
+		o2pt->rsc = 4005;
+		respond_to_client(o2pt, 403);
+		return;
+	}
+	delete_rtnode_and_db_data(target_rtnode,1);
+	target_rtnode = NULL;
+	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"resource is deleted successfully\"}");
+	o2pt->rsc = 2002;
+	respond_to_client(o2pt, 200);
+}
+
+void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	char invalid_key[][4] = {"ty", "pi", "ri"};
+	cJSON *m2m_ae = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
+	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(cJSON_GetObjectItem(m2m_ae, invalid_key[i])) {
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"unsupported attribute on update\"}");
+			o2pt->rsc = 4000;
+			respond_to_client(o2pt, 200);
+			return;
+		}
+	}
+
+	AE* after = db_get_ae(target_rtnode->ri);
+	int result;
+
+	set_ae_update(m2m_ae, after);
+	set_rtnode_update(target_rtnode, after);
+	result = db_delete_object(after->ri);
+	result = db_store_ae(after);
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = ae_to_json(after);
+	o2pt->rsc = 2004;
+	respond_to_client(o2pt,200);
+	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	free_ae(after); after = NULL;
 }
 
 void log_runtime(double start) {
@@ -535,89 +623,7 @@ void no_mandatory_error(oneM2MPrimitive *o2pt){
 	respond_to_client(o2pt, 400);
 }
 
-void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
-	fprintf(stderr,"\x1b[41mDelete oneM2M resource\x1b[0m\n");
-	if(target_rtnode->ty == TY_AE || target_rtnode->ty == TY_CNT) {
-		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
-			return;
-		}
-	}
-	if(target_rtnode->ty == TY_CSE) {
-		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"CSE can not be deleted\"}");
-		o2pt->rsc = 4005;
-		respond_to_client(o2pt, 403);
-		return;
-	}
-	delete_rtnode_and_db_data(target_rtnode,1);
-	target_rtnode = NULL;
-	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"resource is deleted successfully\"}");
-	o2pt->rsc = 2002;
-	respond_to_client(o2pt, 200);
-}
-
 /*
-
-void update_onem2m_resource(RTNode *pnode) {
-	ObjectType ty = parse_object_type_in_request_body();
-
-	int e = check_request_body_empty();
-	if(e != -1) e = check_privilege(pnode, ACOP_UPDATE, OP_UPDATE, ty);
-	if(e != -1) e = check_json_format();
-	if(e != -1) e = check_rn_duplicate(pnode->parent);
-	if(e != -1) e = check_resource_type_equal(ty, pnode->ty);
-	if(e == -1) return;
-	
-	switch(ty) {
-	case TY_AE :
-		fprintf(stderr,"\x1b[45mUpdate AE\x1b[0m\n");
-		update_ae(pnode);
-		break;
-
-	case TY_CNT :
-		fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
-		update_cnt(pnode);
-		break;
-
-	case TY_SUB :
-		fprintf(stderr,"\x1b[45mUpdate Sub\x1b[0m\n");
-		update_sub(pnode);
-		break;
-	
-	case TY_ACP :
-		fprintf(stderr,"\x1b[45mUpdate ACP\x1b[0m\n");
-		update_acp(pnode);
-		break;
-
-	default :
-		fprintf(stderr,"Resource type do not support PUT method\n");
-		respond_to_client(400, "{\"m2m:dbg\": \"`PUT` method unsupported\"}","4005");
-	}
-}
-
-void update_ae(RTNode *pnode) {
-	char invalid_key[][16] = {"m2m:ae-ty", "m2m:ae-pi", "m2m:ae-ri"};
-	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
-	for(int i=0; i<invalid_key_size; i++) {
-		if(json_key_exist(payload, invalid_key[i])) {
-			respond_to_client(200, "{\"m2m:dbg\": \"unsupported attribute on update\"}", "4000");
-			return;
-		}
-	}
-
-	AE* after = db_get_ae(pnode->ri);
-	int result;
-
-	set_ae_update(after);
-	set_node_update(pnode, after);
-	result = db_delete_object(after->ri);
-	result = db_store_ae(after);
-	
-	response_payload = ae_to_json(after);
-	respond_to_client(200, NULL, "2004");
-	notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
-	free(response_payload); response_payload = NULL; 
-	free_ae(after); after = NULL;
-}
 
 void update_cnt(RTNode *pnode) {
 	char invalid_key[][16] = {"m2m:cnt-ty", "m2m:cnt-pi", "m2m:cnt-ri"};
@@ -633,7 +639,7 @@ void update_cnt(RTNode *pnode) {
 	int result;
 
 	set_cnt_update(after);
-	set_node_update(pnode, after);
+	set_rtnode_update(pnode, after);
 	result = db_delete_object(after->ri);
 	result = db_store_cnt(after);
 	
@@ -649,7 +655,7 @@ void update_sub(RTNode *pnode) {
 	int result;
 	
 	set_sub_update(after);
-	set_node_update(pnode, after);
+	set_rtnode_update(pnode, after);
 	result = db_delete_sub(after->ri);
 	result = db_store_sub(after);
 	
@@ -664,7 +670,7 @@ void update_acp(RTNode *pnode) {
 	int result;
 	
 	set_acp_update(after);
-	set_node_update(pnode, after);
+	set_rtnode_update(pnode, after);
 	result = db_delete_acp(after->ri);
 	result = db_store_acp(after);
 	

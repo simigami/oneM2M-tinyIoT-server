@@ -183,6 +183,7 @@ int db_store_cse(CSE *cse_object) {
 int db_store_ae(AE *ae_object) {
     fprintf(stderr,"[Store AE] %s...",ae_object->ri);
     char* DATABASE = "RESOURCE.db";
+    char* blankspace = " ";
 
     DB* dbp;    // db handle
     DBC* dbcp;
@@ -197,18 +198,18 @@ int db_store_ae(AE *ae_object) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
-    if (ae_object->rn == NULL) ae_object->rn = " ";
-    if (ae_object->pi == NULL) ae_object->pi = " ";
+    if (ae_object->rn == NULL) ae_object->rn = blankspace;
+    if (ae_object->pi == NULL) ae_object->pi = blankspace;
     if (ae_object->ty == '\0') ae_object->ty = 0;
-    if (ae_object->ct == NULL) ae_object->ct = " ";
-    if (ae_object->lt == NULL) ae_object->lt = " ";
-    if (ae_object->et == NULL) ae_object->et = " ";
-
+    if (ae_object->ct == NULL) ae_object->ct = blankspace;
+    if (ae_object->lt == NULL) ae_object->lt = blankspace;
+    if (ae_object->et == NULL) ae_object->et = blankspace;
+    if (ae_object->api == NULL) ae_object->api = blankspace;
+    if (ae_object->aei == NULL) ae_object->aei = blankspace;
+    if (ae_object->lbl == NULL) ae_object->lbl = blankspace;
+    if (ae_object->srv == NULL) ae_object->srv = blankspace;
     if(ae_object->rr == false) strcpy(rr,"false");
     else strcpy(rr,"true");
-
-    if (ae_object->api == NULL) ae_object->api = " ";
-    if (ae_object->aei == NULL) ae_object->aei = " ";
 
     dbp = DB_CREATE_(dbp);
     dbp = DB_OPEN_(dbp,DATABASE);
@@ -224,9 +225,9 @@ int db_store_ae(AE *ae_object) {
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s",
             ae_object->rn,ae_object->pi,ae_object->ty,ae_object->ct,ae_object->lt,
-            ae_object->et,ae_object->api,rr,ae_object->aei);
+            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -237,7 +238,19 @@ int db_store_ae(AE *ae_object) {
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
+    dbp->close(dbp, 0);
+
+    if (ae_object->rn == blankspace) ae_object->rn = NULL;
+    if (ae_object->pi == blankspace) ae_object->pi = NULL;
+    if (ae_object->ty == '\0') ae_object->ty = 0;
+    if (ae_object->ct == blankspace) ae_object->ct = NULL;
+    if (ae_object->lt == blankspace) ae_object->lt = NULL;
+    if (ae_object->et == blankspace) ae_object->et = NULL;
+    if (ae_object->api == blankspace) ae_object->api = NULL;
+    if (ae_object->aei == blankspace) ae_object->aei = NULL;
+    if (ae_object->lbl == blankspace) ae_object->lbl = NULL;
+    if (ae_object->srv == blankspace) ae_object->srv = NULL;
+
     fprintf(stderr,"OK\n");
     return 1;
 }
@@ -735,7 +748,7 @@ AE* db_get_ae(char* ri) {
         if (strncmp(key.data, ri, key.size) == 0) {
             flag=1;
             // ri = key
-            new_ae->ri = calloc(key.size,sizeof(char));
+            new_ae->ri = malloc((key.size+1)*sizeof(char));
             strcpy(new_ae->ri, key.data);
 
             char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
@@ -744,7 +757,7 @@ AE* db_get_ae(char* ri) {
                 case 0:
                 if(strcmp(ptr," ")==0) new_ae->rn=NULL; //data is NULL
                 else{
-                    new_ae->rn = calloc(strlen(ptr),sizeof(char));
+                    new_ae->rn = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->rn, ptr);
                 }
                     idx++;
@@ -752,7 +765,7 @@ AE* db_get_ae(char* ri) {
                 case 1:
                 if(strcmp(ptr," ")==0) new_ae->pi=NULL; //data is NULL
                     else{
-                    new_ae->pi = calloc(strlen(ptr),sizeof(char));
+                    new_ae->pi = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->pi, ptr);
                     }
                     idx++;
@@ -766,7 +779,7 @@ AE* db_get_ae(char* ri) {
                 case 3:
                 if(strcmp(ptr," ")==0) new_ae->ct=NULL; //data is NULL
                 else{
-                    new_ae->ct = calloc(strlen(ptr),sizeof(char));
+                    new_ae->ct = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->ct, ptr);
                 }
                     idx++;
@@ -774,7 +787,7 @@ AE* db_get_ae(char* ri) {
                 case 4:
                 if(strcmp(ptr," ")==0) new_ae->lt=NULL; //data is NULL
                 else{                
-                    new_ae->lt = calloc(strlen(ptr),sizeof(char));
+                    new_ae->lt = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->lt, ptr);
                 }
                     idx++;
@@ -782,7 +795,7 @@ AE* db_get_ae(char* ri) {
                 case 5:
                 if(strcmp(ptr," ")==0) new_ae->et=NULL; //data is NULL
                 else{                
-                    new_ae->et = calloc(strlen(ptr),sizeof(char));
+                    new_ae->et = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->et, ptr);
                 }
                     idx++;
@@ -790,7 +803,7 @@ AE* db_get_ae(char* ri) {
                 case 6:
                 if(strcmp(ptr," ")==0) new_ae->api=NULL; //data is NULL
                 else{                
-                    new_ae->api = calloc(strlen(ptr),sizeof(char));
+                    new_ae->api = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->api, ptr);
                 }
                     idx++;
@@ -806,11 +819,27 @@ AE* db_get_ae(char* ri) {
                 case 8:
                 if(strcmp(ptr," ")==0) new_ae->aei=NULL; //data is NULL
                 else{                
-                    new_ae->aei = calloc(strlen(ptr),sizeof(char));
+                    new_ae->aei = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->aei, ptr);
                 }
                     idx++;
-                    break;                                                                     
+                    break; 
+                case 9:
+                if(strcmp(ptr," ")==0) new_ae->lbl=NULL; //data is NULL
+                else{                
+                    new_ae->lbl = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->lbl, ptr);
+                }
+                    idx++;
+                    break;
+                case 10:
+                if(strcmp(ptr," ")==0) new_ae->srv=NULL; //data is NULL
+                else{                
+                    new_ae->srv = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->srv, ptr);
+                }            
+                    idx++;
+                    break;                                    
                 default:
                     idx=-1;
                 }
