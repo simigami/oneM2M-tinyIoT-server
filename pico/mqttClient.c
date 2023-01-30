@@ -144,7 +144,6 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     pjson = cJSON_GetObjectItem(json, "to");
     if(!pjson) return MQTT_CODE_SUCCESS;
-
     o2pt->to = cJSON_GetStringValue(pjson);
     
     //fprintf(stderr, "%s\n", o2pt->to);
@@ -234,7 +233,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
     cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
     cJSON_AddStringToObject(json, "to", o2pt->to);    
-    cJSON_AddStringToObject(json, "fr", o2pt->origin);
+    cJSON_AddStringToObject(json, "fr", o2pt->fr);
     if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
     if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 
