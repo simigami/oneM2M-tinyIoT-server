@@ -586,11 +586,7 @@ char* ae_to_json(AE *ae_object) {
 		cJSON_AddItemToObject(ae, "srv", srv);
 	}
 
-<<<<<<< HEAD
 	json = cJSON_PrintUnformatted(root);
-=======
-	json = cJSON_Print(root);
->>>>>>> 234806daecdb79b304236c50a883791b00ef0ea1
 
 	cJSON_Delete(root);
 
