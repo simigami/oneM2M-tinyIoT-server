@@ -23,9 +23,9 @@
 
 //#define WOLFMQTT_MULTITHREAD true
 
-#include "mqttClient.h"
 #include <pthread.h>
 
+#include "mqttClient.h"
 #include "onem2mTypes.h"
 
 /* Local Variables */
@@ -97,10 +97,9 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         buf[len] = '\0'; /* Make sure its null terminated */
 
         /* Print incoming message */
-        #ifdef DEBUG
-        PRINTF("MQTT Message: Topic %s, Qos %d, Len %u",
-            buf, msg->qos, msg->total_len);
-        #endif
+        PRINTF("%s, Len %u",
+            buf, msg->total_len);
+        
     }
 
     /* Print message payload */

@@ -1,5 +1,6 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
+#include "logger.h"
 
 #define SERVER_PORT "3000"
 #define CSE_BASE_NAME "TinyIoT"
@@ -42,6 +43,6 @@
 
 #endif
 
-//#define DEBUG
+#define LOG_LEVEL DEBUG
 
 #endif

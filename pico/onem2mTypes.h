@@ -1,5 +1,5 @@
-#ifndef __ONEM2M_H__
-#define __ONEM2M_H__
+#ifndef __ONEM2M_TYPES_H__
+#define __ONEM2M_TYPES_H__
 #endif
 #include <stdbool.h>
 
