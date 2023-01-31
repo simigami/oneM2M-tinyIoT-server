@@ -957,6 +957,31 @@ void set_ae_update(cJSON *m2m_ae, AE* after) {
 	after->lt = get_local_time(0);
 }
 
+void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
+	cJSON *rn = cJSON_GetObjectItem(m2m_cnt, "rn");
+	cJSON *lbl = cJSON_GetObjectItem(m2m_cnt, "lbl");
+	cJSON *acpi = cJSON_GetObjectItem(m2m_cnt, "acpi");
+
+	if(acpi) {
+		if(after->acpi) free(after->acpi);
+		after->acpi = cjson_list_item_to_string(acpi);
+	}
+	
+	if(lbl) {
+		if(after->lbl) free(after->lbl);
+		after->lbl = cjson_list_item_to_string(lbl);
+	}
+
+	if(rn) {
+		free(after->rn);
+		after->rn = (char*)malloc((strlen(rn->valuestring) + 1) * sizeof(char));
+		strcpy(after->rn, rn->valuestring);
+	}
+
+	if(after->lt) free(after->lt);
+	after->lt = get_local_time(0);
+}
+
 char *resource_identifier(ObjectType ty, char *ct) {
 	char *ri = (char *)calloc(24, sizeof(char));
 
@@ -1167,42 +1192,6 @@ RTNode *latest_cin_list(RTNode* cinList, int num) {
 	}
 	
 	return head;
-}
-
-
-void set_cnt_update(CNT* after) {
-	char *rn = get_json_value_char("rn", payload);
-	char *acpi = NULL;
-	char *lbl = NULL;
-
-	if(json_key_exist(payload, "m2m:cnt-acpi")) {
-		acpi = get_json_value_list(payload, "m2m:cnt-acpi");
-	}
-	
-	if(json_key_exist(payload, "m2m:cnt-lbl")) {
-		lbl = get_json_value_list_v2(payload, "m2m:cnt-lbl");
-	}
-
-	if(rn) {
-		free(after->rn);
-		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
-		strcpy(after->rn, rn);
-	}
-
-	if(acpi) {
-		if(after->acpi) free(after->acpi);
-		after->acpi = (char*)malloc((strlen(acpi) + 1) * sizeof(char)); 
-		strcpy(after->acpi, acpi);
-	}
-
-	if(lbl) {
-		if(after->lbl) free(after->lbl);
-		after->lbl = (char*)malloc((strlen(lbl) + 1) * sizeof(char)); 
-		strcpy(after->lbl, lbl);
-	}
-
-	if(after->lt) free(after->lt);
-	after->lt = get_local_time(0);
 }
 
 void set_sub_update(Sub* after) {
