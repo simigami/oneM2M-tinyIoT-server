@@ -271,7 +271,7 @@ void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 }
 
 void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
-	char invalid_key[][4] = {"ty", "pi", "ri"};
+	char invalid_key[][4] = {"ty", "pi", "ri", "rn"};
 	cJSON *m2m_ae = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
 	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
@@ -300,7 +300,7 @@ void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 }
 
 void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
-	char invalid_key[][4] = {"ty", "pi", "ri"};
+	char invalid_key[][4] = {"ty", "pi", "ri", "rn"};
 	cJSON *m2m_cnt = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:cnt");
 	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
@@ -316,7 +316,6 @@ void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int result;
 
 	set_cnt_update(m2m_cnt, after);
-	set_rtnode_update(target_rtnode, after);
 	result = db_delete_object(after->ri);
 	result = db_store_cnt(after);
 	
@@ -648,9 +647,6 @@ void no_mandatory_error(oneM2MPrimitive *o2pt){
 }
 
 /*
-
-
-
 void update_sub(RTNode *pnode) {
 	Sub* after = db_get_sub(pnode->ri);
 	int result;
