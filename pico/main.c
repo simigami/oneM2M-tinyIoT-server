@@ -557,8 +557,8 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 	cJSON *cjson = o2pt->cjson_pc;
 	
 	if(cjson == NULL) {
-		fprintf(stderr,"Body Format Invalid\n");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"body format invalid\"}");
+		fprintf(stderr,"Payload format invalid\n");
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload format is invalid\"}");
 		o2pt->rsc = badRequest;
 		respond_to_client(o2pt, 400);
 		return -1;
