@@ -1017,7 +1017,7 @@ CIN* db_get_cin(char* ri) {
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
-    CIN* new_cin = calloc(1,sizeof(CIN));
+    CIN* new_cin = NULL;
 
     DB* dbp;
     DBC* dbcp;
@@ -1025,7 +1025,6 @@ CIN* db_get_cin(char* ri) {
     int ret;
 
     int cin = 0;
-    int flag = 0;
     int idx = 0;
     
     dbp = DB_CREATE_(dbp);
@@ -1039,7 +1038,7 @@ CIN* db_get_cin(char* ri) {
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         cin++;
         if (strncmp(key.data, ri, key.size) == 0) {
-            flag=1;
+            new_cin = calloc(1,sizeof(CIN));
             // ri = key
             new_cin->ri = calloc(key.size,sizeof(char));
             strcpy(new_cin->ri, key.data);
@@ -1127,7 +1126,7 @@ CIN* db_get_cin(char* ri) {
         fprintf(stderr, "Cursor ERROR\n");
         exit(0);
     }
-    if (cin == 0 || flag==0) {
+    if (cin == 0) {
         fprintf(stderr, "Data not exist\n");
         return NULL;
     }
