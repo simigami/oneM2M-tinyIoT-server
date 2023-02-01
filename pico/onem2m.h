@@ -17,9 +17,7 @@ typedef enum {
 	OP_UPDATE,
 	OP_DELETE,
 	OP_VIEWER = 1000,
-	OP_OPTIONS,
-	OP_LATEST,
-	OP_OLDEST
+	OP_OPTIONS
 }Operation;
 
 typedef enum {
@@ -244,7 +242,7 @@ void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size);
 void restruct_resource_tree();
 RTNode* restruct_resource_tree_child(RTNode *node, RTNode *list);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
-RTNode* find_latest_oldest(RTNode* node, Operation *op);
+RTNode* find_latest_oldest(RTNode* node, int flag);
 void set_node_uri(RTNode* node);
 
 //json
@@ -270,6 +268,7 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int check_payload_size(oneM2MPrimitive *o2pt);
 int check_payload_format(oneM2MPrimitive *o2pt);
 int check_rn_invalid(oneM2MPrimitive *o2pt, ObjectType ty);
+void api_prefix_invalid(oneM2MPrimitive *o2pt);
 
 //etc
 void init_server();
