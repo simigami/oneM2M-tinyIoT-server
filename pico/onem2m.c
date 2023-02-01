@@ -32,28 +32,30 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 		uri_parse = strtok(NULL, "/");
 	}
 
+	int latest_oldest_flag = -1;
+
 	if(!strcmp(uri_strtok[0], "viewer")) index_start++;
 	if(!strcmp(uri_strtok[index_end], "la") || !strcmp(uri_strtok[index_end], "latest")) {
-		o2pt->op = OP_LATEST; index_end--;
+		latest_oldest_flag = 0; index_end--;
 	} else if(!strcmp(uri_strtok[index_end], "ol") || !strcmp(uri_strtok[index_end], "oldest")) {
-		o2pt->op = OP_OLDEST; index_end--;
+		latest_oldest_flag = 1; index_end--;
 	}
 
 	strcpy(uri_array, "\0");
 	for(int i=index_start; i<=index_end; i++) {
 		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
 	}
-	RTNode* node = find_rtnode_by_uri(cb, uri_array);
+	RTNode* rtnode = find_rtnode_by_uri(cb, uri_array);
 	
-	//if(node && (*op == OP_LATEST || *op == OP_OLDEST)) node = find_latest_oldest(node, op);
+	if(rtnode && latest_oldest_flag != -1) rtnode = find_latest_oldest(rtnode, latest_oldest_flag);
 
 	if(index_start == 1) o2pt->op = OP_VIEWER;
 
-	return node;
+	return rtnode;
 }
 
 RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
-	RTNode *rtnode = cb, *prtnode = NULL;
+	RTNode *rtnode = cb, *parent_rtnode = NULL;
 	target_uri = strtok(target_uri, "/");
 
 	if(!target_uri) return NULL;
@@ -71,33 +73,50 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 			if(!strcmp(rtnode->rn, uri_array[i])) break;
 			rtnode = rtnode->sibling_right;
 		}
-		if(i == index-1) prtnode = rtnode;
+		if(i == index-1) parent_rtnode = rtnode;
 		if(!rtnode) break;
 		if(i != index) rtnode = rtnode->child;
 	}
 
 	if(rtnode) return rtnode;
 
-	RTNode *head;
-
-	if(prtnode) {
-		head = db_get_cin_list_by_pi(prtnode->ri);
-		rtnode = head;
-		while(rtnode) {
-			if(!strcmp(rtnode->rn, uri_array[index])) break;
-			rtnode = rtnode->sibling_right;
+	if(parent_rtnode) {
+		CIN *cin = db_get_cin(uri_array[index]);
+		if(cin) {
+			if(!strcmp(cin->pi, parent_rtnode->ri)) {
+				rtnode = create_rtnode(cin, TY_CIN);
+				rtnode->parent = parent_rtnode;
+			}
+			free_cin(cin);
 		}
 	}
 
-	if(rtnode) {
-		if(rtnode->sibling_left) rtnode->sibling_left->sibling_right = rtnode->sibling_right;
-		if(rtnode->sibling_right) rtnode->sibling_right->sibling_left = rtnode->sibling_left;
-		rtnode->parent = prtnode;
-	}
-
-	if(head) free_rtnode_list(head);
-
 	return rtnode;
+}
+
+RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
+	if(rtnode->ty == TY_CNT) {
+		RTNode *head = db_get_cin_list_by_pi(rtnode->ri);
+		RTNode *cin = head;
+
+		if(cin) {
+			if(flag == 1) {
+				head = head->sibling_right;
+				cin->sibling_right = NULL;			
+			} else {
+				while(cin->sibling_right) cin = cin->sibling_right;
+				if(cin->sibling_left) cin->sibling_left->sibling_right = NULL;				cin->sibling_left = NULL;
+			}
+			if(head != cin) free_rtnode_list(head);
+			if(cin) {
+				cin->parent = rtnode;
+				return cin;
+			} else {
+				return NULL;
+			}
+		}
+		return NULL;
+	}
 }
 
 void init_cse(CSE* cse) {
@@ -447,6 +466,11 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	AE* ae = cjson_to_ae(o2pt->cjson_pc);
 	if(!ae) {
 		no_mandatory_error(o2pt);
+		return;
+	}
+	if(ae->api[0] != 'R' && ae->api[0] != 'N') {
+		free_ae(ae);
+		api_prefix_invalid(o2pt);
 		return;
 	}
 	init_ae(ae,parent_rtnode->ri, o2pt->fr);
@@ -924,16 +948,9 @@ void init_acp(ACP* acp, char *pi) {
 }
 
 void set_ae_update(cJSON *m2m_ae, AE* after) {
-	cJSON *rn = cJSON_GetObjectItem(m2m_ae, "rn");
 	cJSON *rr = cJSON_GetObjectItemCaseSensitive(m2m_ae, "rr");
 	cJSON *lbl = cJSON_GetObjectItem(m2m_ae, "lbl");
 	cJSON *srv = cJSON_GetObjectItem(m2m_ae, "srv");
-
-	if(rn) {
-		free(after->rn);
-		after->rn = (char*)malloc((strlen(rn->valuestring) + 1) * sizeof(char));
-		strcpy(after->rn, rn->valuestring);
-	}
 
 	if(rr) {
 		if(cJSON_IsTrue(rr)) {
@@ -958,7 +975,6 @@ void set_ae_update(cJSON *m2m_ae, AE* after) {
 }
 
 void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
-	cJSON *rn = cJSON_GetObjectItem(m2m_cnt, "rn");
 	cJSON *lbl = cJSON_GetObjectItem(m2m_cnt, "lbl");
 	cJSON *acpi = cJSON_GetObjectItem(m2m_cnt, "acpi");
 
@@ -970,12 +986,6 @@ void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
 	if(lbl) {
 		if(after->lbl) free(after->lbl);
 		after->lbl = cjson_list_item_to_string(lbl);
-	}
-
-	if(rn) {
-		free(after->rn);
-		after->rn = (char*)malloc((strlen(rn->valuestring) + 1) * sizeof(char));
-		strcpy(after->rn, rn->valuestring);
 	}
 
 	if(after->lt) free(after->lt);
@@ -1009,8 +1019,6 @@ char *resource_identifier(ObjectType ty, char *ct) {
 
 void set_rtnode_update(RTNode *rtnode, void *after) {
 	ObjectType ty = rtnode->ty;
-	if(rtnode->rn) {free(rtnode->rn); rtnode->rn = NULL;}
-	if(rtnode->uri) {free(rtnode->uri); rtnode->uri = NULL;}
 	if(rtnode->acpi) {free(rtnode->acpi); rtnode->acpi = NULL;}
 	if(rtnode->nu) {free(rtnode->nu); rtnode->nu = NULL;}
 	if(rtnode->pv_acor && rtnode->pv_acop) {
@@ -1023,16 +1031,8 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 	}
 	
 	switch(ty) {
-	case TY_AE:
-		AE *ae = (AE*)after;
-		rtnode->rn = (char*)malloc((strlen(ae->rn) + 1)*sizeof(char));
-		strcpy(rtnode->rn, ae->rn);
-		break;
-
 	case TY_CNT:
 		CNT *cnt = (CNT*)after;
-		rtnode->rn = (char*)malloc((strlen(cnt->rn) + 1)*sizeof(char));
-		strcpy(rtnode->rn, cnt->rn);
 		if(cnt->acpi) {
 			rtnode->acpi = (char*)malloc((strlen(cnt->acpi) + 1)*sizeof(char));
 			strcpy(rtnode->acpi, cnt->acpi);
@@ -1041,8 +1041,6 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 
 	case TY_SUB:
 		Sub *sub = (Sub*)after;
-		rtnode->rn = (char*)malloc((strlen(sub->rn) + 1)*sizeof(char));
-		strcpy(rtnode->rn, sub->rn);
 		rtnode->net = net_to_bit(sub->net);
 		if(sub->nu) {
 			rtnode->nu = (char*)malloc((strlen(sub->nu) + 1)*sizeof(char));
@@ -1052,8 +1050,6 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 
 	case TY_ACP:
 		ACP *acp = (ACP*)after;
-		rtnode->rn = (char*)malloc((strlen(acp->rn) + 1)*sizeof(char));
-		strcpy(rtnode->rn, acp->rn);
 		if(acp->pv_acor && acp->pv_acop) {
 			rtnode->pv_acor = (char*)malloc((strlen(acp->pv_acor) + 1)*sizeof(char));
 			rtnode->pv_acop = (char*)malloc((strlen(acp->pv_acop) + 1)*sizeof(char));
@@ -1071,42 +1067,6 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 }
 
 /*
-
-RTNode *find_latest_oldest(RTNode* node, Operation *op) {
-	if(node->ty == TY_CNT) {
-		RTNode *head = db_get_cin_list_by_pi(node->ri);
-		RTNode *cin = head;
-
-		if(cin) {
-			if(*op == OP_OLDEST) {
-				head = head->sibling_right;
-				cin->sibling_right = NULL;
-			} else {
-				while(cin->sibling_right) cin = cin->sibling_right;
-				if(cin->sibling_left) cin->sibling_left->sibling_right = NULL;
-				cin->sibling_left = NULL;
-			}
-			if(head != cin) free_rtnode_list(head);
-			*op = OP_NONE;
-			if(cin) cin->parent = node;
-			return cin;
-		}
-	} else if(node->ty == TY_AE){
-		node = node->child;
-		while(node) {
-			if(node->ty == TY_CNT) break;
-			node = node->sibling_right;
-		}
-		if(node && *op == OP_LATEST) {
-			while(node->sibling_right && node->sibling_right->ty == TY_CNT) {
-				node = node->sibling_right;
-			}
-		}
-		*op = OP_NONE;
-		return node;
-	}
-	return NULL;
-}
 
 void tree_viewer_api(RTNode *node) {
 	fprintf(stderr,"\x1b[43mTree Viewer API\x1b[0m\n");
