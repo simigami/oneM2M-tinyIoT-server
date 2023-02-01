@@ -111,7 +111,7 @@ void route(oneM2MPrimitive *o2pt) {
 	
 	default:
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"internal server error\"}");
-		o2pt->rsc = internalServerError;
+		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
 		respond_to_client(o2pt, 500);
 	}
 	if(target_rtnode->ty == TY_CIN) free_rtnode(target_rtnode);
@@ -158,7 +158,7 @@ void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	case TY_NONE :
 		fprintf(stderr,"Resource type error (Content-Type Header Invalid)\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type error (Content-Type header invalid)\"}");
-		o2pt->rsc = badRequest;
+		o2pt->rsc = RSC_BAD_REQUEST;
 		respond_to_client(o2pt, 400);
 	}	
 }
@@ -245,7 +245,7 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	default :
 		fprintf(stderr,"Resource type does not support PUT method\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"`PUT` method unsupported\"}");
-		o2pt->rsc = operationNotAllowed;
+		o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
 		respond_to_client(o2pt, 400);
 	}
 }
@@ -259,14 +259,14 @@ void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	}
 	if(target_rtnode->ty == TY_CSE) {
 		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"CSE can not be deleted\"}");
-		o2pt->rsc = operationNotAllowed;
+		o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
 		respond_to_client(o2pt, 403);
 		return;
 	}
 	delete_rtnode_and_db_data(target_rtnode,1);
 	target_rtnode = NULL;
 	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"resource is deleted successfully\"}");
-	o2pt->rsc = deleted;
+	o2pt->rsc = RSC_DELETED;
 	respond_to_client(o2pt, 200);
 }
 
@@ -277,7 +277,7 @@ void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	for(int i=0; i<invalid_key_size; i++) {
 		if(cJSON_GetObjectItem(m2m_ae, invalid_key[i])) {
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"unsupported attribute on update\"}");
-			o2pt->rsc = badRequest;
+			o2pt->rsc = RSC_BAD_REQUEST;
 			respond_to_client(o2pt, 200);
 			return;
 		}
@@ -293,7 +293,7 @@ void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(after);
-	o2pt->rsc = updated;
+	o2pt->rsc = RSC_UPDATED;
 	respond_to_client(o2pt,200);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	free_ae(after); after = NULL;
@@ -435,7 +435,7 @@ int check_payload_size(oneM2MPrimitive *o2pt) {
 	if(o2pt->pc && strlen(o2pt->pc) > MAX_PAYLOAD_SIZE) {
 		fprintf(stderr,"Request payload too large\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload is too large\"}");
-		o2pt->rsc = badRequest;
+		o2pt->rsc = RSC_BAD_REQUEST;
 		respond_to_client(o2pt, 413);
 		return -1;
 	}
@@ -446,7 +446,7 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	if(!rtnode) {
 		fprintf(stderr,"Invalid\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"URI is invalid\"}");
-		o2pt->rsc = notFound;
+		o2pt->rsc = RSC_NOT_FOUND;
 		respond_to_client(o2pt, 404);
 		return -1;
 	} else {
@@ -484,7 +484,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 	if(deny) {
 		fprintf(stderr,"Originator has no privilege\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"originator has no privilege.\"}");
-		o2pt->rsc = originatorHasNoPrivilege;
+		o2pt->rsc = RSC_ORIGINATOR_HAS_NO_PRIVILEGE;
 		respond_to_client(o2pt, 403);
 		return -1;
 	}
@@ -514,7 +514,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 			if(!strcmp(child->rn, resource_name)) {
 				fprintf(stderr,"Resource name duplicate error\n");
 				set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
-				o2pt->rsc = conflict;
+				o2pt->rsc = RSC_CONFLICT;
 				respond_to_client(o2pt, 209);
 				return -1;
 			}
@@ -543,7 +543,7 @@ int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		if(!strcmp(child->ri, aei)) {
 			fprintf(stderr,"AE-ID is duplicate error\n");
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `aei` is duplicated\"}");
-			o2pt->rsc = originatorHasAlreadyRegistered;
+			o2pt->rsc = RSC_ORIGINATOR_HAS_ALREADY_REGISTERD;
 			respond_to_client(o2pt, 209);
 			return -1;
 		}
@@ -559,7 +559,7 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 	if(cjson == NULL) {
 		fprintf(stderr,"Body Format Invalid\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"body format invalid\"}");
-		o2pt->rsc = badRequest;
+		o2pt->rsc = RSC_BAD_REQUEST;
 		respond_to_client(o2pt, 400);
 		return -1;
 	}
@@ -568,9 +568,9 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 
 int check_payload_empty(oneM2MPrimitive *o2pt) {
 	if(!o2pt->pc) {
-		fprintf(stderr,"Payload empty error\n");
-		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"payload is empty\"}");
-		o2pt->rsc = internalServerError;
+		fprintf(stderr,"Request body empty error\n");
+		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"request body is empty\"}");
+		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
 		respond_to_client(o2pt, 400);
 		return -1;
 	}
@@ -597,7 +597,7 @@ int check_rn_invalid(oneM2MPrimitive *o2pt, ObjectType ty) {
 		if(!is_rn_valid_char(resource_name[i])) {
 			fprintf(stderr,"Resource name is invalid");
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}");
-			o2pt->rsc = badRequest;
+			o2pt->rsc = RSC_BAD_REQUEST;
 			respond_to_client(o2pt, 406);
 			return -1;
 		}
@@ -614,7 +614,7 @@ int check_resource_type_equal(oneM2MPrimitive *o2pt) {
 	if(o2pt->ty != parse_object_type_cjson(o2pt->cjson_pc)) {
 		fprintf(stderr,"Resource type error\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type error\"}");
-		o2pt->rsc = badRequest;
+		o2pt->rsc = RSC_BAD_REQUEST;
 		respond_to_client(o2pt, 400);
 		return -1;
 	}
@@ -625,7 +625,7 @@ int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 	if(o2pt->ty == TY_NONE) {
 		fprintf(stderr,"Resource type error\n");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type error\"}");
-		o2pt->rsc = badRequest;
+		o2pt->rsc = RSC_BAD_REQUEST;
 		respond_to_client(o2pt, 400);
 		return -1;
 	}
@@ -635,14 +635,14 @@ int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 void child_type_error(oneM2MPrimitive *o2pt){
 	fprintf(stderr,"Child Type Error\n");
 	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"child can not be created under the type of parent\"}");
-	o2pt->rsc = invalidChildResourceType;
+	o2pt->rsc = RSC_INVALID_CHILD_RESOURCETYPE;
 	respond_to_client(o2pt, 403);
 }
 
 void no_mandatory_error(oneM2MPrimitive *o2pt){
 	fprintf(stderr,"No Mandatory Error\n");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"insufficient mandatory attribute\"}");
-	o2pt->rsc = contentsUnacceptable;
+	o2pt->rsc = RSC_CONTENTS_UNACCEPTABLE;
 	respond_to_client(o2pt, 400);
 }
 
