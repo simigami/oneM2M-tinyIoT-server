@@ -52,7 +52,7 @@ int logger(const char* tag,  LOGLEVEL level, const char *msg, ...){
         time(&now);
         t = ctime(&now);
         t[24] = '\0';
-        fprintf(stderr, "%s \033[0;%dm%s\033[0m [%s]: ", t, level, llChar, tag);
+        fprintf(stderr, "%s \033[0;%dm%-5s\033[0m [%s]: ", t, level, llChar, tag);
 
         t = malloc(sizeof(char) * LOG_BUFFER_SIZE);
 
