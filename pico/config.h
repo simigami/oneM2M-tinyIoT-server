@@ -44,5 +44,6 @@
 
 #include "logger.h"
 #define LOG_LEVEL LOG_LEVEL_DEBUG
+#define LOG_BUFFER_SIZE 1024
 
 #endif
