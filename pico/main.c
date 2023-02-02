@@ -227,10 +227,10 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 		update_ae(o2pt, target_rtnode);
 		break;
 
-	// case TY_CNT :
-	// 	fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
-	// 	update_cnt(pnode);
-	// 	break;
+	case TY_CNT :
+		fprintf(stderr,"\x1b[45mUpdate CNT\x1b[0m\n");
+		update_cnt(o2pt, target_rtnode);
+		break;
 
 	// case TY_SUB :
 	// 	fprintf(stderr,"\x1b[45mUpdate Sub\x1b[0m\n");
@@ -271,7 +271,7 @@ void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 }
 
 void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
-	char invalid_key[][4] = {"ty", "pi", "ri"};
+	char invalid_key[][4] = {"ty", "pi", "ri", "rn"};
 	cJSON *m2m_ae = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
 	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
@@ -297,6 +297,34 @@ void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	respond_to_client(o2pt,200);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	free_ae(after); after = NULL;
+}
+
+void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	char invalid_key[][4] = {"ty", "pi", "ri", "rn"};
+	cJSON *m2m_cnt = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:cnt");
+	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(cJSON_GetObjectItem(m2m_cnt, invalid_key[i])) {
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"unsupported attribute on update\"}");
+			o2pt->rsc = 4000;
+			respond_to_client(o2pt, 200);
+			return;
+		}
+	}
+
+	CNT* after = db_get_cnt(target_rtnode->ri);
+	int result;
+
+	set_cnt_update(m2m_cnt, after);
+	result = db_delete_object(after->ri);
+	result = db_store_cnt(after);
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = cnt_to_json(after);
+	o2pt->rsc = 2004;
+	respond_to_client(o2pt, 200);
+	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	free_cnt(after); after = NULL;
 }
 
 void log_runtime(double start) {
@@ -618,33 +646,14 @@ void no_mandatory_error(oneM2MPrimitive *o2pt){
 	respond_to_client(o2pt, 400);
 }
 
-/*
-
-void update_cnt(RTNode *pnode) {
-	char invalid_key[][16] = {"m2m:cnt-ty", "m2m:cnt-pi", "m2m:cnt-ri"};
-	int invalid_key_size = sizeof(invalid_key)/(16*sizeof(char));
-	for(int i=0; i<invalid_key_size; i++) {
-		if(json_key_exist(payload, invalid_key[i])) {
-			respond_to_client(200, "{\"m2m:dbg\": \"unsupported attribute on update\"}", "4000");
-			return;
-		}
-	}
-
-	CNT* after = db_get_cnt(pnode->ri);
-	int result;
-
-	set_cnt_update(after);
-	set_rtnode_update(pnode, after);
-	result = db_delete_object(after->ri);
-	result = db_store_cnt(after);
-	
-	response_payload = cnt_to_json(after);
-	respond_to_client(200, NULL, "2004");
-	notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
-	free(response_payload); response_payload = NULL;
-	free_cnt(after); after = NULL;
+void api_prefix_invalid(oneM2MPrimitive *o2pt) {
+		fprintf(stderr,"API Prefix Invalid\n");
+	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `api` prefix is invalid\"}");
+	o2pt->rsc = badRequest;
+	respond_to_client(o2pt, 400);
 }
 
+/*
 void update_sub(RTNode *pnode) {
 	Sub* after = db_get_sub(pnode->ri);
 	int result;
