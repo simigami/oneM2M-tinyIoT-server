@@ -1,14 +1,14 @@
-#ifndef __LOGGER__
-#define __LOGGER__
-#endif
-
+#ifndef __LOGGER_H__
+#define __LOGGER_H__
 
 typedef enum{
-    DEBUG = 0,
-    INFO = 1,
-    WARN = 2,
-    ERROR = 3,
-    FATAL = 4
+    LOG_LEVEL_DEBUG = 0,
+    LOG_LEVEL_INFO = 1,
+    LOG_LEVEL_WARN = 2,
+    LOG_LEVEL_ERROR = 3,
+    LOG_LEVEL_FATAL = 4
 }LOGLEVEL;
 
-void logger(char *msg, LOGLEVEL level);
+int logger(const char* tag,  LOGLEVEL level, const char *msg, ...);
+
+#endif

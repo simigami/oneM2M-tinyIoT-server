@@ -12,10 +12,9 @@
 #define MAX_URI_SIZE 1024
 #define MAX_PROPERTY_SIZE 16384
 
+// MQTT Settings
 #define ENABLE_MQTT
 
-
-// MQTT Settings
 #ifdef ENABLE_MQTT
 #define MQTT_HOST            "127.0.0.1"
 #define MQTT_QOS             MQTT_QOS_0
@@ -43,6 +42,7 @@
 
 #endif
 
-#define LOG_LEVEL DEBUG
+#include "logger.h"
+#define LOG_LEVEL LOG_LEVEL_DEBUG
 
 #endif

@@ -28,6 +28,8 @@
 #include "mqttClient.h"
 #include "onem2mTypes.h"
 
+#define LOG_TAG "MQTT"
+
 /* Local Variables */
 static MqttClient mClient;
 static MqttNet mNetwork;
@@ -200,9 +202,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
 
     respTopic =(char *) malloc(256);
 
-    #ifdef DEBUG
-    fprintf(stderr, "publishing mqtt response \n");
-    #endif
+    logger(LOG_TAG, "publish mqtt response ", LOG_LEVEL_DEBUG);
 
     idToMqttClientId(o2pt->origin);
 
@@ -211,9 +211,10 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     }else{
         sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
     }
-    #ifdef DEBUG
+
+    logger(LOG_TAG, "")
     fprintf(stderr, "[*] Topic : %s\n", respTopic);
-    #endif
+
     
     json = cJSON_CreateObject();
 
