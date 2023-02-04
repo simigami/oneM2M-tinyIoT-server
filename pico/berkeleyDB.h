@@ -17,7 +17,7 @@ CIN* db_get_cin(char *ri);
 Sub* db_get_sub(char* ri);
 ACP* db_get_acp(char* ri);
 
-int db_delete_object(char *ri);
+int db_delete_onem2m_resource(char *ri);
 int db_delete_sub(char* ri);
 int db_delete_acp(char* ri);
 

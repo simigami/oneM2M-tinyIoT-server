@@ -47,7 +47,6 @@ int logger(const char* tag,  LOGLEVEL level, const char *msg, ...){
     }
 
     if(LOG_LEVEL){
-        
         time_t now;
         time(&now);
         t = ctime(&now);
