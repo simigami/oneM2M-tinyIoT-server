@@ -175,7 +175,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         fprintf(stderr, "only json supported\n");
         #endif
 
-        o2pt->rsc = unsupportedMediaType;
+        o2pt->rsc = RSC_UNSUPPORTED_MEDIATYPE;
         
         o2pt->pc = "{\"m2m:dbg\": \"Unsupported media type for content-type: 5\"}";
         mqtt_respond_to_client(o2pt);
@@ -202,7 +202,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
 
     respTopic =(char *) malloc(256);
 
-    logger(LOG_TAG, "publish mqtt response ", LOG_LEVEL_DEBUG);
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "publish mqtt response ");
 
     idToMqttClientId(o2pt->origin);
 
@@ -212,10 +212,9 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
         sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
     }
 
-    logger(LOG_TAG, "")
+    //logger(LOG_TAG, "")
     fprintf(stderr, "[*] Topic : %s\n", respTopic);
 
-    
     json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
