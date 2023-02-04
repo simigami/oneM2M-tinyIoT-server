@@ -27,6 +27,7 @@
 
 #include "mqttClient.h"
 #include "onem2mTypes.h"
+#include "logger.h"
 
 #define LOG_TAG "MQTT"
 
@@ -82,10 +83,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         }
 
         if(strcmp(reciever, CSE_BASE_NAME)){
-            #ifdef DEBUG
-            fprintf(stderr, "msg not for %s\n", CSE_BASE_NAME);
-            #endif
-
+            logger(LOG_TAG, LOG_LEVEL_DEBUG, "recieved msg not for %s\n", CSE_BASE_NAME);
             return MQTT_CODE_SUCCESS;
         }
         
@@ -111,21 +109,16 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     }
     XMEMCPY(buf, msg->buffer, len);
     buf[len] = '\0'; /* Make sure its null terminated */
-    #ifdef DEBUG
-    fprintf(stderr,"\n\033[34m======================Buffer received======================\033[0m\n\n");
-    fprintf(stderr,"%s",buf);
-    fprintf(stderr,"\n\033[34m==========================================================\033[0m\n");
 
-    fprintf(stderr, "request type: %s, originator : %s, reciever : %s, contentType: %s\n", req_type, originator, reciever, contentType);
-    #endif
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "%s",buf);
+
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "request type: %s, originator : %s, reciever : %s, contentType: %s\n", req_type, originator, reciever, contentType);
 
     json = cJSON_Parse(buf);
 
     if(!json){
-        #ifdef DEBUG
-        fprintf(stderr, "Invalid request\n");
-        fprintf(stderr, "ERROR before %10s\n", cJSON_GetErrorPtr());
-        #endif
+        logger(LOG_TAG, LOG_LEVEL_WARN, "Invalid request\n");
+        logger(LOG_TAG, LOG_LEVEL_DEBUG, "ERROR before %10s\n", cJSON_GetErrorPtr());
         return MQTT_CODE_SUCCESS;
     }
 
@@ -144,8 +137,6 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     pjson = cJSON_GetObjectItem(json, "to");
     if(!pjson) return MQTT_CODE_SUCCESS;
     o2pt->to = cJSON_GetStringValue(pjson);
-    
-    //fprintf(stderr, "%s\n", o2pt->to);
 
     pjson = cJSON_GetObjectItem(json, "fr");
     if(!pjson) return MQTT_CODE_SUCCESS;
@@ -157,7 +148,6 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     if(pjson){
         o2pt->pc = cJSON_PrintUnformatted(pjson);
         o2pt->cjson_pc = pjson;
-        //fprintf(stderr, "pc : %s\n", o2pt->pc);
     }
 
     pjson = cJSON_GetObjectItem(json, "rvi");
@@ -171,11 +161,9 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* supported content type : json*/
     if(strcmp(contentType, "json")){
-        #ifdef DEBUG
-        fprintf(stderr, "only json supported\n");
-        #endif
+        logger(LOG_TAG, LOG_LEVEL_DEBUG, "only json supported\n");
 
-        o2pt->rsc = unsupportedMediaType;
+        o2pt->rsc = RSC_UNSUPPORTED_MEDIATYPE;
         
         o2pt->pc = "{\"m2m:dbg\": \"Unsupported media type for content-type: 5\"}";
         mqtt_respond_to_client(o2pt);
@@ -202,7 +190,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
 
     respTopic =(char *) malloc(256);
 
-    logger(LOG_TAG, "publish mqtt response ", LOG_LEVEL_DEBUG);
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "publish mqtt response");
 
     idToMqttClientId(o2pt->origin);
 
@@ -212,9 +200,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
         sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
     }
 
-    logger(LOG_TAG, "")
-    fprintf(stderr, "[*] Topic : %s\n", respTopic);
-
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MSG from %s", respTopic);
     
     json = cJSON_CreateObject();
 
@@ -243,10 +229,8 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
         return rc;
     }
 
-    #ifdef DEBUG
-    fprintf(stderr, "MQTT Publish: Topic %s, Qos %d, Message %s",
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "MQTT Publish: Topic %s, Qos %d\n%s\n",
         mqttPub.topic_name, mqttPub.qos, mqttPub.buffer);
-    #endif
 
     cJSON_Delete(json);
 
@@ -511,7 +495,7 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    PRINTF("MQTT Init Success");
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Init Success");
 
     /* Connect to broker */
     rc = MqttClient_NetConnect(&mClient, MQTT_HOST, MQTT_PORT,
@@ -519,7 +503,7 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    PRINTF("MQTT Network Connect Success: Host %s, Port %d, UseTLS %d",
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Network Connect Success: Host %s, Port %d, UseTLS %d",
         MQTT_HOST, MQTT_PORT, MQTT_USE_TLS);
 
     /* Send Connect and wait for Ack */
@@ -532,7 +516,7 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    PRINTF("MQTT Broker Connect Success: ClientID %s, Username %s, Password %s",
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Broker Connect Success: ClientID %s, Username %s, Password %s",
         MQTT_CLIENT_ID,
         (MQTT_USERNAME == NULL) ? "Null" : MQTT_USERNAME,
         (MQTT_PASSWORD == NULL) ? "Null" : MQTT_PASSWORD);
@@ -566,33 +550,11 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    #ifdef DEBUG
-    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        reqTopic, MQTT_QOS);
-    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        respTopic, MQTT_QOS);
-     PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        reg_reqTopic, MQTT_QOS);
-    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        reg_respTopic, MQTT_QOS);
-    #endif
 
-
-    /* Publish */
-    
-    XMEMSET(&mqttObj, 0, sizeof(mqttObj));
-    mqttObj.publish.qos = MQTT_QOS;
-    mqttObj.publish.topic_name = "test";
-    mqttObj.publish.packet_id = mqtt_get_packetid();
-    mqttObj.publish.buffer = "12312";
-    mqttObj.publish.total_len = 6;
-    rc = MqttClient_Publish(&mClient, &mqttObj.publish);
-    if (rc != MQTT_CODE_SUCCESS) {
-        goto exit;
-    }
-    PRINTF("MQTT Publish: Topic %s, Qos %d, Message %s",
-        mqttObj.publish.topic_name, mqttObj.publish.qos, mqttObj.publish.buffer);
-        
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Subscribe Success: Topic %s, QoS %d", reqTopic, MQTT_QOS);
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Subscribe Success: Topic %s, QoS %d", respTopic, MQTT_QOS);
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Subscribe Success: Topic %s, QoS %d", reg_reqTopic, MQTT_QOS);
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Subscribe Success: Topic %s, QoS %d", reg_respTopic, MQTT_QOS);
 
     /* Wait for messages */
     while (1) {
@@ -604,7 +566,7 @@ int mqtt_ser(void)
             if (rc != MQTT_CODE_SUCCESS) {
                 break;
             }
-            PRINTF("MQTT Keep-Alive Ping");
+            logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Keep-Alive Ping");
         }
         else if (rc != MQTT_CODE_SUCCESS) {
             break;
@@ -613,7 +575,7 @@ int mqtt_ser(void)
 
 exit:
     if (rc != MQTT_CODE_SUCCESS) {
-        PRINTF("MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
+        logger(LOG_TAG, LOG_LEVEL_ERROR, "MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
     }
 
     free(reqTopic);
