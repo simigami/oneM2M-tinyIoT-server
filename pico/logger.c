@@ -46,7 +46,7 @@ int logger(const char* tag,  LOGLEVEL level, const char *msg, ...){
             return 0;
     }
 
-    if(LOG_LEVEL){
+    if(level >= LOG_LEVEL){
         time_t now;
         time(&now);
         t = ctime(&now);
@@ -56,10 +56,9 @@ int logger(const char* tag,  LOGLEVEL level, const char *msg, ...){
         t = malloc(sizeof(char) * LOG_BUFFER_SIZE);
 
         va_start(ap, msg);
-        vsnprintf(t, LOG_BUFFER_SIZE, msg, ap);
+        charsCnt = vsnprintf(t, LOG_BUFFER_SIZE, msg, ap);
         va_end(ap);
         fprintf(stderr, "%s\n", t);
-        free(t);
     }
 
     return charsCnt;
