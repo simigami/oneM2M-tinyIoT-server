@@ -510,7 +510,7 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    PRINTF("MQTT Init Success");
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Init Success");
 
     /* Connect to broker */
     rc = MqttClient_NetConnect(&mClient, MQTT_HOST, MQTT_PORT,
@@ -518,7 +518,7 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    PRINTF("MQTT Network Connect Success: Host %s, Port %d, UseTLS %d",
+   logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Network Connect Success: Host %s, Port %d, UseTLS %d",
         MQTT_HOST, MQTT_PORT, MQTT_USE_TLS);
 
     /* Send Connect and wait for Ack */
@@ -531,7 +531,7 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    PRINTF("MQTT Broker Connect Success: ClientID %s, Username %s, Password %s",
+    logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Broker Connect Success: ClientID %s, Username %s, Password %s",
         MQTT_CLIENT_ID,
         (MQTT_USERNAME == NULL) ? "Null" : MQTT_USERNAME,
         (MQTT_PASSWORD == NULL) ? "Null" : MQTT_PASSWORD);
@@ -565,33 +565,6 @@ int mqtt_ser(void)
     if (rc != MQTT_CODE_SUCCESS) {
         goto exit;
     }
-    #ifdef DEBUG
-    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        reqTopic, MQTT_QOS);
-    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        respTopic, MQTT_QOS);
-     PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        reg_reqTopic, MQTT_QOS);
-    PRINTF("MQTT Subscribe Success: Topic %s, QoS %d",
-        reg_respTopic, MQTT_QOS);
-    #endif
-
-
-    /* Publish */
-    
-    XMEMSET(&mqttObj, 0, sizeof(mqttObj));
-    mqttObj.publish.qos = MQTT_QOS;
-    mqttObj.publish.topic_name = "test";
-    mqttObj.publish.packet_id = mqtt_get_packetid();
-    mqttObj.publish.buffer = "12312";
-    mqttObj.publish.total_len = 6;
-    rc = MqttClient_Publish(&mClient, &mqttObj.publish);
-    if (rc != MQTT_CODE_SUCCESS) {
-        goto exit;
-    }
-    PRINTF("MQTT Publish: Topic %s, Qos %d, Message %s",
-        mqttObj.publish.topic_name, mqttObj.publish.qos, mqttObj.publish.buffer);
-        
 
     /* Wait for messages */
     while (1) {
@@ -612,7 +585,7 @@ int mqtt_ser(void)
 
 exit:
     if (rc != MQTT_CODE_SUCCESS) {
-        PRINTF("MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
+        logger(LOG_TAG, LOG_LEVEL_ERROR, "MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
     }
 
     free(reqTopic);
