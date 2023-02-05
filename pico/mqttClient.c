@@ -200,8 +200,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
         sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
     }
 
-    logger(LOG_TAG, LOG_LEVEL_INFO, "MSG from %s", respTopic);
-    
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "Topic : %s", respTopic);
     json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);

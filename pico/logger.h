@@ -2,11 +2,11 @@
 #define __LOGGER_H__
 
 typedef enum{
-    LOG_LEVEL_DEBUG = 94,
-    LOG_LEVEL_INFO = 32,
-    LOG_LEVEL_WARN = 93,
-    LOG_LEVEL_ERROR = 91,
-    LOG_LEVEL_FATAL = 31
+    LOG_LEVEL_DEBUG = 0,
+    LOG_LEVEL_INFO = 1,
+    LOG_LEVEL_WARN = 2,
+    LOG_LEVEL_ERROR = 3,
+    LOG_LEVEL_FATAL = 4
 }LOGLEVEL;
 
 typedef enum{
