@@ -102,12 +102,11 @@ AE* cjson_to_ae(cJSON *cjson) {
 }
 
 CNT* cjson_to_cnt(cJSON *cjson) {
-	CNT *cnt = (CNT *)calloc(1,sizeof(CNT));
-
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
 	cJSON *acpi = NULL;
 	cJSON *lbl = NULL;
+	cJSON *mni = NULL;
 
 	if (cjson == NULL) {
 		// const char *error_ptr = cJSON_GetErrorPtr();
@@ -120,6 +119,8 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 
 	root = cJSON_GetObjectItem(cjson, "m2m:cnt");
 	if(!root) return NULL;
+
+	CNT *cnt = (CNT *)calloc(1,sizeof(CNT));
 
 	// rn (optional)
 	rn = cJSON_GetObjectItem(root, "rn");
@@ -196,6 +197,12 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 				strcpy(cnt->lbl, lbl_str);
 			}
 		}
+	}
+
+	//mni (Optional)
+	mni = cJSON_GetObjectItem(root, "mni");
+	if(mni) {
+		cnt->mni = mni->valueint;
 	}
 
 	return cnt;
@@ -615,6 +622,7 @@ char* cnt_to_json(CNT* cnt_object) {
 	cJSON_AddStringToObject(cnt, "et", cnt_object->et);
 	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
+	cJSON_AddNumberToObject(cnt, "mni", cnt_object->mni);
 
 	// acpi
 	if(cnt_object->acpi) {

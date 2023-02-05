@@ -85,6 +85,7 @@ typedef struct {
 	int st;
 	int cni;
 	int cbs;
+	int mni;
 } CNT;
 
 typedef struct {
@@ -149,6 +150,7 @@ typedef struct RTNode {
 	ObjectType ty;
 
 	int net;
+	int cni;
 }RTNode;
 
 typedef struct {  
@@ -208,7 +210,7 @@ void init_cse(CSE* cse);
 void init_ae(AE* ae, char *pi, char *origin);
 void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
-void init_sub(Sub* sub, char *pi);
+void init_sub(Sub* sub, char *pi, char *uri);
 void init_acp(ACP* acp, char *pi);
 void set_ae_update(cJSON *m2m_ae, AE* after);
 void set_cnt_update(cJSON *m2m_cnt, CNT* after);
@@ -286,6 +288,8 @@ void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc);
 void set_o2pt_rsc(oneM2MPrimitive *o2pt, int rsc);
 void handle_http_request();
 void respond_to_client(oneM2MPrimitive *o2pt, int status);
+void increase_cnt_cni(RTNode *rtnode);
+void delete_cin_under_cnt_mni(CNT *cnt);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2
