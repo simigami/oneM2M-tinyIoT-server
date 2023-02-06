@@ -319,7 +319,9 @@ void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int result;
 
 	set_cnt_update(m2m_cnt, after);
-	delete_cin_under_cnt_mni(after);
+	target_rtnode->mbs = after->mbs;
+	target_rtnode->mni = after->mni;
+	delete_cin_under_cnt_mni_mbs(after);
 	result = db_delete_onem2m_resource(after->ri);
 	result = db_store_cnt(after);
 	
@@ -721,7 +723,7 @@ void retrieve_filtercriteria_data(RTNode *node, ObjectType ty, char **discovery_
 
 	if((ty == -1 || ty == TY_CIN) && curr < level) {
 		for(int i= 0; i <= index; i++) {
-			RTNode *cin_list_head = db_get_cin_list_by_pi(sibling[i]->ri);
+			RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(sibling[i]->ri);
 			RTNode *p = cin_list_head;
 
 			while(p) {

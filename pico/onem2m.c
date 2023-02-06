@@ -96,7 +96,7 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 	if(rtnode->ty == TY_CNT) {
-		RTNode *head = db_get_cin_list_by_pi(rtnode->ri);
+		RTNode *head = db_get_cin_rtnode_list_by_pi(rtnode->ri);
 		RTNode *cin = head;
 
 		if(cin) {
@@ -214,6 +214,9 @@ RTNode* create_cnt_rtnode(CNT *cnt) {
 
 	rtnode->ty = TY_CNT;
 	rtnode->cni = cnt->cni;
+	rtnode->cbs = cnt->cbs;
+	rtnode->mni = cnt->mni;
+	rtnode->mbs = cnt->mbs;
 
 	return rtnode;
 }
@@ -230,6 +233,7 @@ RTNode* create_cin_rtnode(CIN *cin) {
 	strcpy(rtnode->pi, cin->pi);
 
 	rtnode->ty = TY_CIN;
+	rtnode->cs = cin->cs;
 
 	return rtnode;
 }
@@ -522,6 +526,9 @@ void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(!cin) {
 		no_mandatory_error(o2pt);
 		return;
+	} else if(parent_rtnode->mbs >= 0 && cin->cs > parent_rtnode->mbs) {
+		too_large_content_size_error(o2pt);
+		return;
 	}
 	init_cin(cin,parent_rtnode->ri);
 
@@ -535,7 +542,9 @@ void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return;
 	}
 
-	increase_cnt_cni(parent_rtnode);
+	RTNode *cin_rtnode = create_rtnode(cin, TY_CIN);
+	update_cnt_cin(parent_rtnode, cin_rtnode, 1);
+	free_rtnode(cin_rtnode);
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cin_to_json(cin);
@@ -676,6 +685,10 @@ void delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 		//notify_onem2m_resource(node->child,noti_json,NOTIFICATION_EVENT_2); 
 		//free(noti_json); noti_json = NULL;
 		break;
+	case TY_CIN :
+		db_delete_onem2m_resource(rtnode->ri);
+		update_cnt_cin(rtnode->parent, rtnode,-1);
+		return;
 	case TY_SUB :
 		db_delete_sub(rtnode->ri);
 		break;
@@ -687,17 +700,18 @@ void delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	RTNode *left = rtnode->sibling_left;
 	RTNode *right = rtnode->sibling_right;
 	
-	if(flag == 1) {
-		if(left) left->sibling_right = right;
-		else rtnode->parent->child = right;
-		if(right) right->sibling_left = left;
-	} else {
-		if(right) delete_rtnode_and_db_data(right, 0);
+	if(rtnode->ty != TY_CIN) {
+		if(flag == 1) {
+			if(left) left->sibling_right = right;
+			else rtnode->parent->child = right;
+			if(right) right->sibling_left = left;
+		} else {
+			if(right) delete_rtnode_and_db_data(right, 0);
+		}
 	}
 	
 	if(rtnode->child) delete_rtnode_and_db_data(rtnode->child, 0);
 	
-	logger("O2M", LOG_LEVEL_DEBUG, "Call free_rtnode");
 	free_rtnode(rtnode); rtnode = NULL;
 	
 }
@@ -746,13 +760,14 @@ int is_json_valid_char(char c){
 
 void respond_to_client(oneM2MPrimitive *o2pt, int status) {
 	if(!o2pt->pc) {
-		fprintf(stderr,"o2pt->pc is NULL\n");
+		logger("O2M", LOG_LEVEL_ERROR, "Response payload is NULL");
 		return;
 	}
 
 	switch(o2pt->prot) {
 		case PROT_HTTP:
-			http_respond_to_client(o2pt, status); break;
+			http_respond_to_client(o2pt, status); 
+			break;
 		case PROT_MQTT:
 			mqtt_respond_to_client(o2pt);
 			break;
@@ -965,6 +980,7 @@ void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
 	cJSON *lbl = cJSON_GetObjectItem(m2m_cnt, "lbl");
 	cJSON *acpi = cJSON_GetObjectItem(m2m_cnt, "acpi");
 	cJSON *mni = cJSON_GetObjectItem(m2m_cnt, "mni");
+	cJSON *mbs = cJSON_GetObjectItem(m2m_cnt, "mbs");
 
 	if(acpi) {
 		if(after->acpi) free(after->acpi);
@@ -978,6 +994,10 @@ void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
 
 	if(mni) {
 		after->mni = mni->valueint;
+	}
+
+	if(mbs) {
+		after->mbs = mbs->valueint;
 	}
 
 	if(after->lt) free(after->lt);
@@ -1058,38 +1078,45 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 	}
 }
 
-void increase_cnt_cni(RTNode *rtnode) {
-	CNT *cnt = db_get_cnt(rtnode->ri);
-	cnt->cni++;
-	if(cnt->cni > cnt->mni) {
-		delete_cin_under_cnt_mni(cnt);	
-	}
-	rtnode->cni = cnt->cni;
-	db_delete_onem2m_resource(rtnode->ri);
+void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
+	CNT *cnt = db_get_cnt(cnt_rtnode->ri);
+	cnt->cni += sign;
+	cnt->cbs += sign*(cin_rtnode->cs);
+	delete_cin_under_cnt_mni_mbs(cnt);	
+	cnt_rtnode->cni = cnt->cni;
+	cnt_rtnode->cbs = cnt->cbs;
+	db_delete_onem2m_resource(cnt_rtnode->ri);
 	db_store_cnt(cnt);
 	free_cnt(cnt);
 }
 
-void delete_cin_under_cnt_mni(CNT *cnt) {
-	int cni = cnt->cni;
-	int mni = cnt->mni;
+void delete_cin_under_cnt_mni_mbs(CNT *cnt) {
+	if(cnt->cni <= cnt->mni && cnt->cbs <= cnt->mbs) return;
 
-	if(cni <= mni) return;
-
-	RTNode *head = db_get_cin_list_by_pi(cnt->ri);
+	RTNode *head = db_get_cin_rtnode_list_by_pi(cnt->ri);
 	RTNode *right;
 
-	for(int i=mni; i<cni; i++) {
+	while((cnt->mni >= 0 && cnt->cni > cnt->mni) || (cnt->mbs >= 0 && cnt->cbs > cnt->mbs)) {
 		if(head) {
 			right = head->sibling_right;
 			db_delete_onem2m_resource(head->ri);
+			cnt->cbs -= head->cs;
+			cnt->cni--;
 			free_rtnode(head);
 			head = right;
+		} else {
+			break;
 		}
 	}
-	cnt->cni = mni;
 
 	if(head) free_rtnode_list(head);
+}
+
+void too_large_content_size_error(oneM2MPrimitive *o2pt) {
+	logger("O2M", LOG_LEVEL_ERROR, "Too large content size");
+	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"too large content size\"}");
+	o2pt->rsc = RSC_NOT_ACCEPTABLE;
+	respond_to_client(o2pt, 400);
 }
 
 /*
@@ -1145,7 +1172,7 @@ void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) {
 	}
 
 	if(node->ty != TY_SUB && node->ty != TY_ACP) {
-		RTNode *cin_list_head = db_get_cin_list_by_pi(node->ri);
+		RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(node->ri);
 
 		if(cin_list_head) cin_list_head = latest_cin_list(cin_list_head, cin_size);
 

@@ -296,9 +296,9 @@ int db_store_cnt(CNT *cnt_object) {
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d;%d",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d;%d;%d",
             cnt_object->rn,cnt_object->pi,cnt_object->ty,cnt_object->ct,cnt_object->lt,cnt_object->et,
-            cnt_object->lbl,cnt_object->acpi,cnt_object->cbs,cnt_object->cni,cnt_object->st,cnt_object->mni);
+            cnt_object->lbl,cnt_object->acpi,cnt_object->cbs,cnt_object->cni,cnt_object->st,cnt_object->mni,cnt_object->mbs);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -318,7 +318,7 @@ int db_store_cnt(CNT *cnt_object) {
     if (cnt_object->et == blankspace) cnt_object->et = NULL;
     if (cnt_object->acpi == blankspace) cnt_object->acpi = NULL;
     if (cnt_object->lbl == blankspace) cnt_object->lbl = NULL;
- 
+    
     return 1;
 }
 
@@ -970,7 +970,13 @@ CNT* db_get_cnt(char* ri) {
                     idx++;
                     break;
                 case 11:
-                    new_cnt->mni = atoi(ptr);                                                                    
+                    new_cnt->mni = atoi(ptr);  
+                    idx++;
+                    break;
+                case 12:
+                    new_cnt->mbs = atoi(ptr);
+                    idx++;
+                    break;                                                                  
                 default:
                     idx=-1;
                 }
@@ -994,9 +1000,6 @@ CNT* db_get_cnt(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-    
-
-    
 
     return new_cnt;
 }
@@ -1419,7 +1422,7 @@ ACP* db_get_acp(char* ri) {
 }
 
 int db_delete_onem2m_resource(char* ri) {
-    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_onem2m_resource");
+    logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",ri);
     char* DATABASE = "RESOURCE.db";
     DB* dbp;
     DBC* dbcp;
@@ -1978,7 +1981,7 @@ RTNode* db_get_all_acp() {
     return head;
 }
 
-RTNode* db_get_cin_list_by_pi(char* pi) {
+RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "4-";
 

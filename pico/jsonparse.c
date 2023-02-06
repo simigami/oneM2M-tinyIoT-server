@@ -107,6 +107,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 	cJSON *acpi = NULL;
 	cJSON *lbl = NULL;
 	cJSON *mni = NULL;
+	cJSON *mbs = NULL;
 
 	if (cjson == NULL) {
 		// const char *error_ptr = cJSON_GetErrorPtr();
@@ -203,6 +204,16 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 	mni = cJSON_GetObjectItem(root, "mni");
 	if(mni) {
 		cnt->mni = mni->valueint;
+	} else {
+		cnt->mni = -1;
+	}
+
+	//mbs (Optional)
+	mbs = cJSON_GetObjectItem(root, "mbs");
+	if(mbs) {
+		cnt->mbs = mbs->valueint;
+	} else {
+		cnt->mbs = -1;
 	}
 
 	return cnt;
@@ -238,6 +249,7 @@ CIN* cjson_to_cin(cJSON *cjson) {
 	}
 	cin->con = cJSON_PrintUnformatted(con);
 	remove_quotation_mark(cin->con);
+	cin->cs = strlen(cin->con);
 
 	return cin;
 }
@@ -601,6 +613,7 @@ char* ae_to_json(AE *ae_object) {
 }
 
 char* cnt_to_json(CNT* cnt_object) {
+	logger("cJSON", LOG_LEVEL_DEBUG, "Call cnt_to_json");
 	char *json = NULL;
 	char str_array[MAX_PROPERTY_SIZE];
 
@@ -622,7 +635,8 @@ char* cnt_to_json(CNT* cnt_object) {
 	cJSON_AddStringToObject(cnt, "et", cnt_object->et);
 	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
-	cJSON_AddNumberToObject(cnt, "mni", cnt_object->mni);
+	if(cnt_object->mni != -1) cJSON_AddNumberToObject(cnt, "mni", cnt_object->mni);
+	if(cnt_object->mbs != -1) cJSON_AddNumberToObject(cnt, "mbs", cnt_object->mbs);
 
 	// acpi
 	if(cnt_object->acpi) {
