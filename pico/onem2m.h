@@ -277,6 +277,8 @@ int check_payload_format(oneM2MPrimitive *o2pt);
 int check_rn_invalid(oneM2MPrimitive *o2pt, ObjectType ty);
 void api_prefix_invalid(oneM2MPrimitive *o2pt);
 void too_large_content_size_error(oneM2MPrimitive *o2pt);
+void mni_mbs_invalid(oneM2MPrimitive *o2pt, char *attribute);
+void db_store_fail(oneM2MPrimitive *o2pt);
 
 //etc
 void init_server();
@@ -290,7 +292,7 @@ int get_acop(RTNode *node);
 int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
 void log_runtime(double start);
-void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc);
+void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc, ...);
 void set_o2pt_rsc(oneM2MPrimitive *o2pt, int rsc);
 void handle_http_request();
 void respond_to_client(oneM2MPrimitive *o2pt, int status);

@@ -468,10 +468,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	int result = db_store_ae(ae);
 	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-		respond_to_client(o2pt, 500);
-		free_ae(ae); ae = NULL;
+		db_store_fail(o2pt); free_ae(ae); ae = NULL;
 		return;
 	}
 	
@@ -495,14 +492,19 @@ void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		no_mandatory_error(o2pt);
 		return;
 	}
+	if(cnt->mbs != INT_MIN && cnt->mbs < 0) {
+		mni_mbs_invalid(o2pt, "mbs"); free(cnt); cnt = NULL;
+		return;
+	}
+	if(cnt->mni != INT_MIN && cnt->mni < 0) {
+		mni_mbs_invalid(o2pt, "mni"); free(cnt); cnt = NULL;
+		return;
+	}
 	init_cnt(cnt,parent_rtnode->ri);
 
 	int result = db_store_cnt(cnt);
 	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-		respond_to_client(o2pt, 500);
-		free_cnt(cnt); cnt = NULL;
+		db_store_fail(o2pt); free_cnt(cnt); cnt = NULL;
 		return;
 	}
 	
@@ -527,18 +529,14 @@ void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		no_mandatory_error(o2pt);
 		return;
 	} else if(parent_rtnode->mbs >= 0 && cin->cs > parent_rtnode->mbs) {
-		too_large_content_size_error(o2pt);
+		too_large_content_size_error(o2pt); free(cin); cin = NULL;
 		return;
 	}
 	init_cin(cin,parent_rtnode->ri);
 
 	int result = db_store_cin(cin);
 	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-		respond_to_client(o2pt, 500);
-		free_cin(cin);
-		cin = NULL;
+		db_store_fail(o2pt); free_cin(cin); cin = NULL;
 		return;
 	}
 
@@ -568,10 +566,7 @@ void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	int result = db_store_sub(sub);
 	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-		respond_to_client(o2pt, 500);
-		free_sub(sub); sub = NULL;
+		db_store_fail(o2pt); free_sub(sub); sub = NULL;
 		return;
 	}
 	
@@ -600,10 +595,7 @@ void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	int result = db_store_acp(acp);
 	if(result != 1) { 
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-		respond_to_client(o2pt, 500);
-		free_acp(acp); acp = NULL;
+		db_store_fail(o2pt); free_acp(acp); acp = NULL;
 		return;
 	}
 	
@@ -743,7 +735,7 @@ char *get_local_time(int diff) {
 	return local_time;
 }
 
-void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc){
+void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc, ...){
 	if(o2pt->pc) free(o2pt->pc);
 
 	o2pt->pc = (char *)malloc((strlen(pc) + 1) * sizeof(char));
@@ -1085,6 +1077,7 @@ void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 	delete_cin_under_cnt_mni_mbs(cnt);	
 	cnt_rtnode->cni = cnt->cni;
 	cnt_rtnode->cbs = cnt->cbs;
+	cnt->st++;
 	db_delete_onem2m_resource(cnt_rtnode->ri);
 	db_store_cnt(cnt);
 	free_cnt(cnt);

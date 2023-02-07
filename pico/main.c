@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <limits.h>
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "berkeleyDB.h"
@@ -319,9 +320,18 @@ void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int result;
 
 	set_cnt_update(m2m_cnt, after);
+	if(after->mbs != INT_MIN && after->mbs < 0) {
+		mni_mbs_invalid(o2pt, "mbs"); free(after); after = NULL;
+		return;
+	}
+	if(after->mni != INT_MIN && after->mni < 0) {
+		mni_mbs_invalid(o2pt, "mni"); free(after); after = NULL;
+		return;
+	}
 	target_rtnode->mbs = after->mbs;
 	target_rtnode->mni = after->mni;
 	delete_cin_under_cnt_mni_mbs(after);
+	after->st++;
 	result = db_delete_onem2m_resource(after->ri);
 	result = db_store_cnt(after);
 	
@@ -657,6 +667,20 @@ void api_prefix_invalid(oneM2MPrimitive *o2pt) {
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `api` prefix is invalid\"}");
 	o2pt->rsc = RSC_BAD_REQUEST;
 	respond_to_client(o2pt, 400);
+}
+
+void mni_mbs_invalid(oneM2MPrimitive *o2pt, char *attribute) {
+	logger("MAIN", LOG_LEVEL_ERROR, "attribute `%s` is invalid", attribute);
+	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `%s` is invalid\"}", attribute);
+	o2pt->rsc = RSC_BAD_REQUEST;
+	respond_to_client(o2pt, 400);
+}
+
+void db_store_fail(oneM2MPrimitive *o2pt) {
+	logger("MAIN", LOG_LEVEL_ERROR, "DB store fail");
+	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
+	o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
+	respond_to_client(o2pt, 500);
 }
 
 /*

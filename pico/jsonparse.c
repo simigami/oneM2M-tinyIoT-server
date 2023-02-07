@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <limits.h>
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "cJSON.h"
@@ -205,7 +206,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 	if(mni) {
 		cnt->mni = mni->valueint;
 	} else {
-		cnt->mni = -1;
+		cnt->mni = INT_MIN;
 	}
 
 	//mbs (Optional)
@@ -213,7 +214,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 	if(mbs) {
 		cnt->mbs = mbs->valueint;
 	} else {
-		cnt->mbs = -1;
+		cnt->mbs = INT_MIN;
 	}
 
 	return cnt;
@@ -635,8 +636,8 @@ char* cnt_to_json(CNT* cnt_object) {
 	cJSON_AddStringToObject(cnt, "et", cnt_object->et);
 	cJSON_AddNumberToObject(cnt, "cni", cnt_object->cni);
 	cJSON_AddNumberToObject(cnt, "cbs", cnt_object->cbs);
-	if(cnt_object->mni != -1) cJSON_AddNumberToObject(cnt, "mni", cnt_object->mni);
-	if(cnt_object->mbs != -1) cJSON_AddNumberToObject(cnt, "mbs", cnt_object->mbs);
+	if(cnt_object->mni != INT_MIN) cJSON_AddNumberToObject(cnt, "mni", cnt_object->mni);
+	if(cnt_object->mbs != INT_MIN) cJSON_AddNumberToObject(cnt, "mbs", cnt_object->mbs);
 
 	// acpi
 	if(cnt_object->acpi) {
