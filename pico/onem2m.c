@@ -237,7 +237,7 @@ RTNode* create_cin_rtnode(CIN *cin) {
 
 RTNode* create_sub_rtnode(Sub *sub) {
 	RTNode* node = calloc(1, sizeof(RTNode));
-	logger("o2m", LOG_LEVEL_DEBUG, "%s", sub);
+
 	node->rn = (char*)malloc((strlen(sub->rn) + 1) * sizeof(char));
 	node->ri = (char*)malloc((strlen(sub->ri) + 1) * sizeof(char));
 	node->pi = (char*)malloc((strlen(sub->pi) + 1) * sizeof(char));
@@ -566,7 +566,7 @@ void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	}
 	
 	free_sub(sub); sub = NULL;
-	logger("o2m", LOG_LEVEL_DEBUG, "dbg");
+
 	RTNode* child_rtnode = create_rtnode(sub, TY_SUB);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
@@ -888,7 +888,6 @@ void init_sub(Sub* sub, char *pi, char *uri) {
 	sub->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
 	sub->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	sub->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	logger("OM2M", LOG_LEVEL_DEBUG, "%s, %s", uri, sub->rn);
 	sub->sur = (char *)malloc((strlen(uri) + strlen(sub->rn) + 2) * sizeof(char));
 
 	strcpy(sub->sur, uri);
@@ -1081,7 +1080,7 @@ void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	char *res;
 	res = calloc(0, MAX_TREE_VIEWER_SIZE);
 	int index = 0;
-	logger("O2M", LOG_LEVEL_DEBUG,"dbg");
+
 	for(int i=0; i<MAX_TREE_VIEWER_SIZE; i++) {
 		if(i == 1) continue;
 		if(is_json_valid_char(viewer_data[i])) {
