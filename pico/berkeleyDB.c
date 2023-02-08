@@ -1627,6 +1627,7 @@ RTNode* db_get_all_cse() {
                 rtnode = head;
             } else {
                 rtnode->sibling_right = create_rtnode(cse,TY_CSE);
+                rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }   
             free(cse);
@@ -1689,6 +1690,7 @@ RTNode* db_get_all_ae() {
                 rtnode = head;
             } else {
                 rtnode->sibling_right = create_rtnode(ae,TY_AE);
+                rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }      
             free(ae);
@@ -1750,6 +1752,7 @@ RTNode* db_get_all_cnt() {
                 rtnode = head;
             } else {
                 rtnode->sibling_right = create_rtnode(cnt_,TY_CNT);
+                rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
             free(cnt_);
@@ -2021,9 +2024,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
         //logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
-    RTNode* head = calloc(1,sizeof(RTNode));
-    RTNode* node;
-    node = head;
+    RTNode* head = NULL, *rtnode;
     
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         //find CIN
@@ -2031,18 +2032,15 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
             CIN *cin = db_get_cin((char*)key.data);
             //find pi
             if(strncmp(pi, cin->pi, strlen(pi)) == 0){
-                node->ri = malloc((strlen(cin->ri)+1)*sizeof(char));
-                node->rn = malloc((strlen(cin->rn)+1)*sizeof(char));
-                node->pi = malloc((strlen(cin->pi)+1)*sizeof(char));
+                if(!head) {
+                    head = create_rtnode(cin, TY_CIN);
+                    rtnode = head;
+                } else {
+                    rtnode->sibling_right = create_rtnode(cin,TY_CIN);
+                    rtnode->sibling_right->sibling_left = rtnode;
+                    rtnode = rtnode->sibling_right;
 
-                strcpy(node->ri,cin->ri);
-                strcpy(node->rn,cin->rn);
-                strcpy(node->pi,cin->pi);
-                node->ty = cin->ty;
-
-                node->sibling_right=calloc(1,sizeof(RTNode));            
-                node->sibling_right->sibling_left = node;
-                node = node->sibling_right;
+                }
             }
             free(cin);
         }
@@ -2052,10 +2050,6 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }    
-
-    if(node->sibling_left) node->sibling_left->sibling_right = NULL;
-    free_rtnode(node); 
-    node = NULL;
 
     /* Cursors must be closed */
     if (dbcp != NULL)

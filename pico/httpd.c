@@ -17,11 +17,11 @@
 
 #define MAX_CONNECTIONS 1024
 #define BUF_SIZE 65535
-#define QUEUE_SIZE 1000000
+#define QUEUE_SIZE 64
 
 pthread_mutex_t mutex_lock;
 int listenfd;
-int *clients;
+int clients[MAX_CONNECTIONS];
 static void start_server(const char *);
 static void respond(int);
 
@@ -54,8 +54,8 @@ void serve_forever(const char *PORT) {
   logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s\n", "\033[92m", PORT, "\033[0m");
 
   // create shared memory for client slot array
-  clients = mmap(NULL, sizeof(*clients) * MAX_CONNECTIONS,
-                 PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+  //clients = mmap(NULL, sizeof(*clients) * MAX_CONNECTIONS,
+                 //PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
 
   // Setting all elements to -1: signifies there is no client connected
   int i;
