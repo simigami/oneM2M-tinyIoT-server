@@ -1081,7 +1081,7 @@ void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	char *res;
 	res = calloc(0, MAX_TREE_VIEWER_SIZE);
 	int index = 0;
-	logger("O2M", LOG_LEVEL_DEBUG,"dbg");
+
 	for(int i=0; i<MAX_TREE_VIEWER_SIZE; i++) {
 		if(i == 1) continue;
 		if(is_json_valid_char(viewer_data[i])) {

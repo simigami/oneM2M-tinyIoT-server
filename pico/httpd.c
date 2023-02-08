@@ -237,7 +237,7 @@ void respond(int slot) {
     int clientfd = clients[slot];
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
-    logger("HTTP", LOG_LEVEL_DEBUG, "payload size : %d", payload_size);
+
     // call router
     handle_http_request();
 
