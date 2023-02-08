@@ -40,11 +40,12 @@ int main(int c, char **v) {
 void handle_http_request() {
 	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
 	char *header;
+	logger("main", LOG_LEVEL_DEBUG, "%20s", payload);
 	if(payload) {
 		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
 		strcpy(o2pt->pc, payload);
 		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
-		if(!o2pt->cjson_pc) logger("main", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
+		logger("main", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
 		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
 	} 
 
