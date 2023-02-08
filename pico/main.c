@@ -124,7 +124,7 @@ void route(oneM2MPrimitive *o2pt) {
 
 void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int e = check_resource_type_invalid(o2pt);
-	if(e != -1) check_payload_empty(o2pt);
+	if(e != -1) e = check_payload_empty(o2pt);
 	if(e != -1) e = check_payload_format(o2pt);
 	if(e != -1) e = check_resource_type_equal(o2pt);
 	if(e != -1) e = check_privilege(o2pt, parent_rtnode, ACOP_CREATE);

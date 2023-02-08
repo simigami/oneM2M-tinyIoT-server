@@ -105,7 +105,10 @@ RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 				cin->sibling_right = NULL;			
 			} else {
 				while(cin->sibling_right) cin = cin->sibling_right;
-				if(cin->sibling_left) cin->sibling_left->sibling_right = NULL;				cin->sibling_left = NULL;
+				if(cin->sibling_left) {
+					cin->sibling_left->sibling_right = NULL;
+					cin->sibling_left = NULL;
+				}
 			}
 			if(head != cin) free_rtnode_list(head);
 			if(cin) {
@@ -372,7 +375,6 @@ void free_rtnode(RTNode *rtnode) {
 void free_rtnode_list(RTNode *rtnode) {
 	while(rtnode) {
 		RTNode *right = rtnode->sibling_right;
-
 		free_rtnode(rtnode);
 		rtnode = right;
 	}
