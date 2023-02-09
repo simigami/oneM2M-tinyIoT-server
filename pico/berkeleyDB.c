@@ -357,19 +357,21 @@ int db_store_cin(CIN *cin_object) {
     memset(&key_ri, 0, sizeof(DBT));
     memset(&data, 0, sizeof(DBT));
 
+    
     /* initialize the data to be the first of two duplicate records. */
     key_ri.data = cin_object->ri;
     key_ri.size = strlen(cin_object->ri) + 1;
 
+    
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
     sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%d;%d",
             cin_object->rn,cin_object->pi,cin_object->ty,cin_object->ct,cin_object->lt,cin_object->et,
             cin_object->con,cin_object->cs,cin_object->st);
 
+    logger("db", LOG_LEVEL_DEBUG, "dbg");
     data.data = str;
     data.size = strlen(str) + 1;
-
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
         dbp->err(dbp, ret, "db->cursor");
@@ -465,7 +467,7 @@ int db_store_sub(Sub *sub_object) {
     memset(&data_ty, 0, sizeof(DBT));
     memset(&data_nct, 0, sizeof(DBT));
     memset(&data_sur, 0, sizeof(DBT));
-
+    
     /* initialize the data to be the first of two duplicate records. */
     key_pi.data = sub_object->pi;
     key_pi.size = strlen(sub_object->pi) + 1;
@@ -499,7 +501,6 @@ int db_store_sub(Sub *sub_object) {
 
     data_sur.data = sub_object->sur;
     data_sur.size = strlen(sub_object->sur) + 1;
-
 
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_pi, &data_ri, DB_KEYLAST)) != 0)

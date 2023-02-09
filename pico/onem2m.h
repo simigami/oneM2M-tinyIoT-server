@@ -244,7 +244,7 @@ void delete_rtnode_and_db_data(RTNode *node, int flag);
 void free_rtnode(RTNode *node);
 void free_rtnode_list(RTNode *node);
 
-void tree_viewer_api(RTNode *node);
+void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size);
 void restruct_resource_tree();
 RTNode* restruct_resource_tree_child(RTNode *node, RTNode *list);
