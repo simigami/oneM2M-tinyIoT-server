@@ -128,7 +128,7 @@ return -1;
 
 
 int db_store_cse(CSE *cse_object) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_store_cse");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cse");
     char* DATABASE = "RESOURCE.db";
 
     DB* dbp;    // db handle
@@ -183,7 +183,7 @@ int db_store_cse(CSE *cse_object) {
 }
 
 int db_store_ae(AE *ae_object) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_store_ae");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_ae");
     char* DATABASE = "RESOURCE.db";
     char* blankspace = " ";
 
@@ -258,7 +258,7 @@ int db_store_ae(AE *ae_object) {
 }
 
 int db_store_cnt(CNT *cnt_object) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_store_cnt");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cnt");
     char* DATABASE = "RESOURCE.db";
     char* blankspace = " ";
 
@@ -276,16 +276,11 @@ int db_store_cnt(CNT *cnt_object) {
     }
     if (cnt_object->rn == NULL) cnt_object->rn = blankspace;
     if (cnt_object->pi == NULL) cnt_object->pi = blankspace;
-    if (cnt_object->ty == '\0') cnt_object->ty = 0;
     if (cnt_object->ct == NULL) cnt_object->ct = blankspace;
     if (cnt_object->lt == NULL) cnt_object->lt = blankspace;
     if (cnt_object->et == NULL) cnt_object->et = blankspace;
-    
     if (cnt_object->acpi == NULL) cnt_object->acpi = blankspace;
     if (cnt_object->lbl == NULL) cnt_object->lbl = blankspace;
-    if (cnt_object->cni == '\0') cnt_object->cni = 0;
-    if (cnt_object->cbs == '\0') cnt_object->cbs = 0;
-    if (cnt_object->st == '\0') cnt_object->st = 0;
 
     dbp = DB_CREATE_(dbp);
     dbp = DB_OPEN_(dbp,DATABASE);
@@ -301,9 +296,9 @@ int db_store_cnt(CNT *cnt_object) {
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d;%d;%d",
             cnt_object->rn,cnt_object->pi,cnt_object->ty,cnt_object->ct,cnt_object->lt,cnt_object->et,
-            cnt_object->lbl,cnt_object->acpi,cnt_object->cbs,cnt_object->cni,cnt_object->st);
+            cnt_object->lbl,cnt_object->acpi,cnt_object->cbs,cnt_object->cni,cnt_object->st,cnt_object->mni,cnt_object->mbs);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -318,23 +313,17 @@ int db_store_cnt(CNT *cnt_object) {
 
     if (cnt_object->rn == blankspace) cnt_object->rn = NULL;
     if (cnt_object->pi == blankspace) cnt_object->pi = NULL;
-    if (cnt_object->ty == 0) cnt_object->ty = '\0';
     if (cnt_object->ct == blankspace) cnt_object->ct = NULL;
     if (cnt_object->lt == blankspace) cnt_object->lt = NULL;
     if (cnt_object->et == blankspace) cnt_object->et = NULL;
-    
     if (cnt_object->acpi == blankspace) cnt_object->acpi = NULL;
     if (cnt_object->lbl == blankspace) cnt_object->lbl = NULL;
-    if (cnt_object->cni == 0) cnt_object->cni = '\0';
-    if (cnt_object->cbs == 0) cnt_object->cbs = '\0';
-    if (cnt_object->st == 0) cnt_object->st = '\0';
-
     
     return 1;
 }
 
 int db_store_cin(CIN *cin_object) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_store_cin");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cin");
     char* DATABASE = "RESOURCE.db";
 
     DB* dbp;    // db handle
@@ -396,7 +385,7 @@ int db_store_cin(CIN *cin_object) {
 
 
 int db_store_sub(Sub *sub_object) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_store_sub");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
     char* DATABASE = "SUB.db";
 
     DB* dbp;    // db handle
@@ -550,7 +539,7 @@ int db_store_sub(Sub *sub_object) {
 }
 
 int db_store_acp(ACP *acp_object) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_store_acp");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_acp");
     char* DATABASE = "ACP.db";
 
     DB* dbp;    // db handle
@@ -613,7 +602,7 @@ int db_store_acp(ACP *acp_object) {
 }
 
 CSE* db_get_cse(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_get_cse");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_cse");
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -709,7 +698,7 @@ CSE* db_get_cse(char* ri) {
         return NULL;
     }
     if (cnt == 0 || flag==0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
 
@@ -723,7 +712,7 @@ CSE* db_get_cse(char* ri) {
 }
 
 AE* db_get_ae(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_get_ae");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_ae");
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -857,7 +846,7 @@ AE* db_get_ae(char* ri) {
         return NULL;
     }
     if (cnt == 0 || flag==0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
 
@@ -871,7 +860,7 @@ AE* db_get_ae(char* ri) {
 }
 
 CNT* db_get_cnt(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_get_cnt");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_cnt");
     char* DATABASE = "RESOURCE.db";
 
     //struct to return
@@ -922,8 +911,7 @@ CNT* db_get_cnt(char* ri) {
                     idx++;
                     break;
                 case 2:
-                if(strcmp(ptr,"0")==0) new_cnt->ty=0;
-                else new_cnt->ty = atoi(ptr);
+                    new_cnt->ty = atoi(ptr);
 
                     idx++;
                     break;
@@ -968,23 +956,28 @@ CNT* db_get_cnt(char* ri) {
                     idx++;
                     break;                                           
                 case 8:
-                if(strcmp(ptr,"0")==0) new_cnt->cbs=0;
-                else new_cnt->cbs = atoi(ptr);
+                    new_cnt->cbs = atoi(ptr);
 
                     idx++;
                     break;     
                 case 9:
-                if(strcmp(ptr,"0")==0) new_cnt->cni=0;
-                else new_cnt->cni = atoi(ptr);
+                    new_cnt->cni = atoi(ptr);
 
                     idx++;
                     break;    
                 case 10:
-                if(strcmp(ptr,"0")==0) new_cnt->st=0;
-                else new_cnt->st = atoi(ptr);
+                    new_cnt->st = atoi(ptr);
 
                     idx++;
-                    break;                                                                    
+                    break;
+                case 11:
+                    new_cnt->mni = atoi(ptr);  
+                    idx++;
+                    break;
+                case 12:
+                    new_cnt->mbs = atoi(ptr);
+                    idx++;
+                    break;                                                                  
                 default:
                     idx=-1;
                 }
@@ -999,7 +992,7 @@ CNT* db_get_cnt(char* ri) {
         return NULL;
     }
     if (cnt == 0 || flag==0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
 
@@ -1008,9 +1001,6 @@ CNT* db_get_cnt(char* ri) {
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);
-    
-
-    
 
     return new_cnt;
 }
@@ -1130,7 +1120,7 @@ CIN* db_get_cin(char* ri) {
         exit(0);
     }
     if (cin == 0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
 
@@ -1144,7 +1134,7 @@ CIN* db_get_cin(char* ri) {
 }
 
 Sub* db_get_sub(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_get_sub");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_sub");
     char* database = "SUB.db";
 
     //store AE
@@ -1195,7 +1185,7 @@ Sub* db_get_sub(char* ri) {
         }
     }
     if (cnt == 0 || flag==0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
         //exit(1);
     }
@@ -1293,7 +1283,7 @@ Sub* db_get_sub(char* ri) {
 }
 
 ACP* db_get_acp(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_get_acp");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_acp");
     char* DATABASE = "ACP.db";
 
     //struct to return
@@ -1418,7 +1408,7 @@ ACP* db_get_acp(char* ri) {
         return NULL;
     }
     if (cnt == 0 || flag==0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
 
@@ -1433,7 +1423,7 @@ ACP* db_get_acp(char* ri) {
 }
 
 int db_delete_onem2m_resource(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_delete_onem2m_resource");
+    logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",ri);
     char* DATABASE = "RESOURCE.db";
     DB* dbp;
     DBC* dbcp;
@@ -1473,7 +1463,7 @@ int db_delete_onem2m_resource(char* ri) {
 }
 
 int db_delete_sub(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_delete_sub");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_sub");
     char* database = "SUB.db";
 
     DB* dbp;
@@ -1523,7 +1513,7 @@ int db_delete_sub(char* ri) {
         }
     }
     if (cnt == 0 || flag==0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return 0;
     }
 
@@ -1557,7 +1547,7 @@ int db_delete_sub(char* ri) {
 }
 
 int db_delete_acp(char* ri) {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_delete_acp");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_acp");
     char* DATABASE = "ACP.db";
     DB* dbp;
     DBC* dbcp;
@@ -1624,7 +1614,7 @@ RTNode* db_get_all_cse() {
     //fprintf(stderr, "<%d>\n",cse);
 
     if (cse == 0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "CSE does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "CSE does not exist");
         return NULL;
     }
 
@@ -1638,6 +1628,7 @@ RTNode* db_get_all_cse() {
                 rtnode = head;
             } else {
                 rtnode->sibling_right = create_rtnode(cse,TY_CSE);
+                rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }   
             free(cse);
@@ -1658,7 +1649,7 @@ RTNode* db_get_all_cse() {
 }
 
 RTNode* db_get_all_ae() {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_get_all_ae");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_ae");
     char* DATABASE = "RESOURCE.db";
     const const char* TYPE = "C";
 
@@ -1685,7 +1676,7 @@ RTNode* db_get_all_ae() {
     //fprintf(stderr, "<%d>\n",cnt);
 
     if (cnt == 0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "AE does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "AE does not exist");
         return NULL;
     }
 
@@ -1700,6 +1691,7 @@ RTNode* db_get_all_ae() {
                 rtnode = head;
             } else {
                 rtnode->sibling_right = create_rtnode(ae,TY_AE);
+                rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }      
             free(ae);
@@ -1720,7 +1712,7 @@ RTNode* db_get_all_ae() {
 }
 
 RTNode* db_get_all_cnt() {
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call db_get_all_cnt");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_cnt");
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "3-";
 
@@ -1747,7 +1739,7 @@ RTNode* db_get_all_cnt() {
     //fprintf(stderr, "<%d>\n",cnt);
 
     if (cnt == 0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "CNT does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "CNT does not exist");
         return NULL;
     }
 
@@ -1761,6 +1753,7 @@ RTNode* db_get_all_cnt() {
                 rtnode = head;
             } else {
                 rtnode->sibling_right = create_rtnode(cnt_,TY_CNT);
+                rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
             free(cnt_);
@@ -1781,7 +1774,7 @@ RTNode* db_get_all_cnt() {
 }
 
 RTNode* db_get_all_sub(){
-    logger("ONEM2M", LOG_LEVEL_DEBUG, "Call get_all_sub");
+    logger("DB", LOG_LEVEL_DEBUG, "Call get_all_sub");
     char* database = "SUB.db";
 
     DB* dbp;
@@ -1825,7 +1818,7 @@ RTNode* db_get_all_sub(){
         cnt++;
     }
     if (cnt == 0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "SUB does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "SUB does not exist");
         return NULL;
     }
 
@@ -1932,7 +1925,7 @@ RTNode* db_get_all_acp() {
     //fprintf(stderr, "<%d>\n",acp);
 
     if (acp == 0) {
-        logger("ONEM2M", LOG_LEVEL_DEBUG, "ACP does not exist");
+        logger("DB", LOG_LEVEL_DEBUG, "ACP does not exist");
         return NULL;
     }
 
@@ -1992,7 +1985,7 @@ RTNode* db_get_all_acp() {
     return head;
 }
 
-RTNode* db_get_cin_list_by_pi(char* pi) {
+RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "4-";
 
@@ -2029,12 +2022,10 @@ RTNode* db_get_cin_list_by_pi(char* pi) {
     //fprintf(stderr, "<%d>\n",cnt);
 
     if (cnt == 0) {
-        //logger("ONEM2M", LOG_LEVEL_DEBUG, "Data does not exist");
+        //logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
-    RTNode* head = calloc(1,sizeof(RTNode));
-    RTNode* node;
-    node = head;
+    RTNode* head = NULL, *rtnode;
     
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         //find CIN
@@ -2042,18 +2033,15 @@ RTNode* db_get_cin_list_by_pi(char* pi) {
             CIN *cin = db_get_cin((char*)key.data);
             //find pi
             if(strncmp(pi, cin->pi, strlen(pi)) == 0){
-                node->ri = malloc((strlen(cin->ri)+1)*sizeof(char));
-                node->rn = malloc((strlen(cin->rn)+1)*sizeof(char));
-                node->pi = malloc((strlen(cin->pi)+1)*sizeof(char));
+                if(!head) {
+                    head = create_rtnode(cin, TY_CIN);
+                    rtnode = head;
+                } else {
+                    rtnode->sibling_right = create_rtnode(cin,TY_CIN);
+                    rtnode->sibling_right->sibling_left = rtnode;
+                    rtnode = rtnode->sibling_right;
 
-                strcpy(node->ri,cin->ri);
-                strcpy(node->rn,cin->rn);
-                strcpy(node->pi,cin->pi);
-                node->ty = cin->ty;
-
-                node->sibling_right=calloc(1,sizeof(RTNode));            
-                node->sibling_right->sibling_left = node;
-                node = node->sibling_right;
+                }
             }
             free(cin);
         }
@@ -2063,10 +2051,6 @@ RTNode* db_get_cin_list_by_pi(char* pi) {
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }    
-
-    if(node->sibling_left) node->sibling_left->sibling_right = NULL;
-    free_rtnode(node); 
-    node = NULL;
 
     /* Cursors must be closed */
     if (dbcp != NULL)

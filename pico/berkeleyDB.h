@@ -28,7 +28,7 @@ RTNode* db_get_all_cin();
 RTNode* db_get_all_sub();
 RTNode* db_get_all_acp();
 
-RTNode* db_get_cin_list_by_pi(char* pi);
+RTNode* db_get_cin_rtnode_list_by_pi(char* pi);
 
 #define DB_STR_MAX 65565
 #define DB_SEP ";"

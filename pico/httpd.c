@@ -17,11 +17,11 @@
 
 #define MAX_CONNECTIONS 1024
 #define BUF_SIZE 65535
-#define QUEUE_SIZE 1000000
+#define QUEUE_SIZE 64
 
 pthread_mutex_t mutex_lock;
 int listenfd;
-int *clients;
+int clients[MAX_CONNECTIONS];
 static void start_server(const char *);
 static void respond(int);
 
@@ -51,11 +51,11 @@ void serve_forever(const char *PORT) {
   
   int slot = 0; 
 
-  logger("ONEM2M", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s\n", "\033[92m", PORT, "\033[0m");
+  logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s\n", "\033[92m", PORT, "\033[0m");
 
   // create shared memory for client slot array
-  clients = mmap(NULL, sizeof(*clients) * MAX_CONNECTIONS,
-                 PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+  //clients = mmap(NULL, sizeof(*clients) * MAX_CONNECTIONS,
+                 //PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
 
   // Setting all elements to -1: signifies there is no client connected
   int i;
@@ -168,15 +168,15 @@ static void uri_unescape(char *uri) {
 void respond(int slot) {
   int rcvd;
   
-  buf[slot] = malloc(BUF_SIZE);
+  buf[slot] = malloc(BUF_SIZE*sizeof(char));
   rcvd = recv(clients[slot], buf[slot], BUF_SIZE, 0);
 
   if (rcvd < 0){ // receive error
-    fprintf(stderr, ("recv() error\n"));
+    logger("HTTP", LOG_LEVEL_ERROR, "recv() error");
     return;
   }
   else if (rcvd == 0) { // receive socket closed
-    fprintf(stderr, "Client disconnected upexpectedly.\n");
+    logger("HTTP", LOG_LEVEL_ERROR, "Client disconnected upexpectedly");
     return;
   }
   else // message received
@@ -191,7 +191,7 @@ void respond(int slot) {
     prot = strtok(NULL, " \t\r\n");
 
     if(!uri) {
-      fprintf(stderr,"uri is NULL\n");
+      logger("HTTP", LOG_LEVEL_ERROR, "URI is NULL");
       return;
     }
 
@@ -240,14 +240,13 @@ void respond(int slot) {
     // call router
     handle_http_request();
 
-    pthread_mutex_unlock(&mutex_lock);
-
     // tidy up
     fflush(stdout);
     shutdown(STDOUT_FILENO, SHUT_WR);
     //close(STDOUT_FILENO);
   }
   free(buf[slot]);
+  pthread_mutex_unlock(&mutex_lock);
 }
 
 Operation http_parse_operation(){
@@ -284,9 +283,9 @@ void normalize_payload() {
 }
 
 void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
-    char content_length[16];
-    char rsc[6];
-    char response_headers[1024] = {'\0'};
+    char content_length[64];
+    char rsc[64];
+    char response_headers[2048] = {'\0'};
 
     sprintf(content_length, "%ld", strlen(o2pt->pc));
     sprintf(rsc, "%d", o2pt->rsc);
