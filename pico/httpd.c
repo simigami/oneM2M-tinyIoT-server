@@ -237,7 +237,6 @@ void respond(int slot) {
     int clientfd = clients[slot];
     dup2(clientfd, STDOUT_FILENO);
     close(clientfd);
-
     // call router
     handle_http_request();
 

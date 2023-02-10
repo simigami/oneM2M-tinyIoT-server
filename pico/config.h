@@ -8,9 +8,9 @@
 
 #define MONO_THREAD 1 // 0 → multithread, 1 → monothread
 
-#define MAX_PAYLOAD_SIZE 16384
+#define MAX_PAYLOAD_SIZE 65536 
 #define MAX_URI_SIZE 1024
-#define MAX_PROPERTY_SIZE 16384
+#define MAX_PROPERTY_SIZE 65536
 
 // MQTT Settings
 #define ENABLE_MQTT

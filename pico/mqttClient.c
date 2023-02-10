@@ -51,6 +51,7 @@ extern pthread_mutex_t mutex_lock;
 /* msg->buffer_pos: Payload buffer position */
 
 static word16 mqtt_get_packetid(void);
+int invalidRequest();
 
 static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     byte msg_new, byte msg_done)
@@ -97,7 +98,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         buf[len] = '\0'; /* Make sure its null terminated */
 
         /* Print incoming message */
-        PRINTF("%s, Len %u",
+        logger(LOG_TAG, LOG_LEVEL_DEBUG, "%s, Len %u",
             buf, msg->total_len);
         
     }
@@ -131,16 +132,17 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* fill primitives */
     pjson = cJSON_GetObjectItem(json, "op");
-    if(!pjson) return MQTT_CODE_SUCCESS;
-    o2pt->op = pjson->valueint;
+    if(!pjson) return invalidRequest();
+
+    if(pjson->valueint) o2pt->op = pjson->valueint;
+    else o2pt->op = atoi(pjson->valuestring);
 
     pjson = cJSON_GetObjectItem(json, "to");
-    if(!pjson) return MQTT_CODE_SUCCESS;
+    if(!pjson) return invalidRequest();
     o2pt->to = cJSON_GetStringValue(pjson);
 
     pjson = cJSON_GetObjectItem(json, "fr");
-    if(!pjson) return MQTT_CODE_SUCCESS;
-
+    if(!pjson) return invalidRequest();
     o2pt->fr = cJSON_GetStringValue(pjson);//->valuestring;
 
 
@@ -151,20 +153,23 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     }
 
     pjson = cJSON_GetObjectItem(json, "rvi");
-    o2pt->rvi = pjson->valuestring;
+    if(pjson) o2pt->rvi = pjson->valuestring;
 
     pjson = cJSON_GetObjectItem(json, "rqi");
-    o2pt->rqi = pjson->valuestring;
+    if(pjson) o2pt->rqi = pjson->valuestring;
 
     pjson = cJSON_GetObjectItem(json, "ty");
-    if(pjson) o2pt->ty = pjson->valueint;    
+    if(pjson){
+        if(pjson->valueint) o2pt->ty = pjson->valueint;
+        else o2pt->ty = atoi(pjson->valuestring);
+    }
 
     /* supported content type : json*/
     if(strcmp(contentType, "json")){
         logger(LOG_TAG, LOG_LEVEL_DEBUG, "only json supported\n");
 
         o2pt->rsc = RSC_UNSUPPORTED_MEDIATYPE;
-        
+    
         o2pt->pc = "{\"m2m:dbg\": \"Unsupported media type for content-type: 5\"}";
         mqtt_respond_to_client(o2pt);
     }else{
@@ -236,6 +241,11 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     free(respTopic);
     
     return rc;
+}
+
+int invalidRequest(){
+    logger(LOG_TAG, LOG_LEVEL_WARN, "Invalid Request");
+    return MQTT_CODE_SUCCESS;
 }
 
 static void setup_timeout(struct timeval* tv, int timeout_ms)
