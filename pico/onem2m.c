@@ -77,7 +77,7 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 		if(!rtnode) break;
 		if(i != index) rtnode = rtnode->child;
 	}
-
+	if(rtnode)
 	if(rtnode) return rtnode;
 
 	if(parent_rtnode) {
@@ -155,6 +155,7 @@ RTNode* create_rtnode(void *resource, ObjectType ty){
 	case TY_AE: rtnode = create_ae_rtnode((AE*)resource); break;
 	case TY_CNT: rtnode = create_cnt_rtnode((CNT*)resource); break;
 	case TY_CIN: rtnode = create_cin_rtnode((CIN*)resource); break;
+	case TY_GRP: rtnode = create_grp_rtnode( (GROUP *) resource); break;
 	case TY_SUB: rtnode = create_sub_rtnode((Sub*)resource); break;
 	case TY_ACP: rtnode = create_acp_rtnode((ACP*)resource); break;
 	}
@@ -286,6 +287,32 @@ RTNode* create_acp_rtnode(ACP *acp) {
 	return rtnode;
 }
 
+
+RTNode *create_grp_rtnode(GROUP *grp){
+	RTNode *rtnode = calloc(1, sizeof(RTNode));
+
+	rtnode->rn = (char *) malloc(((strlen(grp->rn) + 1) * sizeof(char)));	
+	strcpy(rtnode->rn, grp->rn);
+	rtnode->mt = grp->mt;
+	rtnode->mnm = grp->mnm;
+
+	rtnode->mid = (char **) malloc(sizeof(char *) * grp->mnm + 1);
+
+	for(int i = 0 ; i < grp->mnm ; i++){
+		if(grp->mid[i]){
+			size_t len =  strlen(grp->mid[i]);
+			rtnode->mid[i] = (char *) malloc(sizeof(char) * len + 1);
+			strncpy(rtnode->mid[i], grp->mid[i], len);
+		}else break;
+	}
+
+	rtnode->ty = TY_GRP;
+
+	return rtnode;
+	
+}
+
+
 void free_cse(CSE *cse) {
 	if(cse->ct) free(cse->ct);
 	if(cse->lt) free(cse->lt);
@@ -355,6 +382,24 @@ void free_acp(ACP* acp) {
 	if(acp->pvs_acor) free(acp->pvs_acor);
 	if(acp->pvs_acop) free(acp->pvs_acop);
 	free(acp); acp = NULL;
+	
+}
+
+void free_grp(GROUP *grp) {
+	if(grp->rn) free(grp->rn);
+	grp->rn = NULL;
+	if(grp->mnm > 0){
+		for(int i = 0 ; i < grp->mnm ; i++){
+			if(grp->mid[i])
+				free(grp->mid[i]);
+			else
+				break;
+
+			grp->mid[i] = NULL;
+		}
+	}
+	free(grp->mid); grp->mid = NULL;
+	free(grp); grp = NULL;
 }
 
 void free_rtnode(RTNode *rtnode) {
@@ -649,6 +694,15 @@ void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	free_cin(gcin); gcin = NULL;
 }
 
+void retrieve_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	GROUP *grp = db_get_grp(target_rtnode->rn);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = grp_to_json(grp);
+	o2pt->rsc = RSC_OK;
+	respond_to_client(o2pt, 200);
+	free_grp(grp);
+}
+
 void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	Sub* gsub = db_get_sub(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
@@ -777,6 +831,7 @@ ObjectType parse_object_type_cjson(cJSON *cjson) {
 	else if(cJSON_GetObjectItem(cjson, "m2m:ae")) ty = TY_AE;
 	else if(cJSON_GetObjectItem(cjson, "m2m:cnt")) ty = TY_CNT;
 	else if(cJSON_GetObjectItem(cjson, "m2m:cin")) ty = TY_CIN;
+	else if(cJSON_GetObjectItem(cjson, "m2m:grp")) ty = TY_GRP;
 	else if(cJSON_GetObjectItem(cjson, "m2m:sub")) ty = TY_SUB;
 	else if(cJSON_GetObjectItem(cjson, "m2m:acp")) ty = TY_ACP;
 	else ty = TY_NONE;
@@ -1005,6 +1060,7 @@ char *resource_identifier(ObjectType ty, char *ct) {
 		case TY_CIN : strcpy(ri, "4-"); break;
 		case TY_SUB : strcpy(ri, "23-"); break;
 		case TY_ACP : strcpy(ri, "1-"); break;
+		case TY_GRP : strcpy(ri, "9-"); break;
 	}
 
 	struct timespec specific_time;
@@ -1529,3 +1585,53 @@ int check_origin() {
 	}
 }
 */
+
+
+/* GROUP IMPLEMENTATION */
+
+void init_grp(GROUP *grp, char *pi){
+	char *ct = get_local_time(0);
+	char *et = get_local_time(EXPIRE_TIME);
+	char *ri = resource_identifier(TY_GRP, ct);
+
+	if(!grp->rn) {
+		grp->rn = (char *) malloc((strlen(ri) + 1) * sizeof(char));
+		strcpy(grp->rn, ri);
+	} 
+
+	free(ct); ct = NULL;
+	free(et); et = NULL;
+	free(ri); ri = NULL;
+}
+
+void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
+	int e = 1;
+	if(parent_rtnode->ty != TY_CNT && parent_rtnode->ty != TY_AE && parent_rtnode->ty != TY_CSE) {
+		child_type_error(o2pt);
+		return;
+	}
+
+	GROUP *grp = cjson_to_grp(o2pt->cjson_pc);
+
+	if(!grp) {
+		no_mandatory_error(o2pt);
+		return;
+	}
+
+	init_grp(grp, parent_rtnode->ri);
+
+	int result = db_store_grp(grp);
+	if(result != 1){
+		db_store_fail(o2pt); free_grp(grp); grp = NULL;
+		return;
+	}
+
+	RTNode *child_rtnode = create_rtnode(grp, TY_GRP);
+	add_child_resource_tree(parent_rtnode, child_rtnode);
+	/*if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = grp_to_json(grp);*/
+	o2pt->rsc = RSC_CREATED;
+	respond_to_client(o2pt, 201);
+
+	free_grp(grp); grp = NULL;
+}

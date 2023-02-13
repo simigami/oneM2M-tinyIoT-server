@@ -22,13 +22,18 @@ typedef enum {
 
 typedef enum {
 	TY_NONE = 0,
-	TY_ACP,
-	TY_AE,
-	TY_CNT,
-	TY_CIN,
-	TY_CSE,
+	TY_ACP = 1,
+	TY_AE = 2,
+	TY_CNT = 3,
+	TY_CIN = 4,
+	TY_CSE = 5,
+	TY_GRP = 9,
 	TY_SUB = 23
 }ObjectType;
+
+typedef enum {
+	TY_MIXED = 0
+}MemberType;
 
 typedef enum {
 	NOTIFICATION_EVENT_1 = 1,
@@ -130,6 +135,13 @@ typedef struct {
 	int ty;
 } ACP;
 
+typedef struct {
+	char *rn;
+	MemberType mt;
+	unsigned int mnm;
+	char **mid;
+} GROUP;
+
 //Resource Tree
 typedef struct RTNode {
 	struct RTNode *parent;
@@ -150,12 +162,16 @@ typedef struct RTNode {
 	char *uri;
 	ObjectType ty;
 
+	char **mid;
+
 	int net;
 	int cni;
 	int cbs;
 	int mni;
 	int mbs;
 	int cs;
+	int mt;
+	int mnm;
 }RTNode;
 
 typedef struct {  
@@ -195,6 +211,7 @@ void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 
 void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
@@ -217,6 +234,7 @@ void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
 void init_sub(Sub* sub, char *pi, char *uri);
 void init_acp(ACP* acp, char *pi);
+void init_grp(GROUP *grp, char *pi);
 void set_ae_update(cJSON *m2m_ae, AE* after);
 void set_cnt_update(cJSON *m2m_cnt, CNT* after);
 void set_sub_update(cJSON *m2m_sub, Sub* after);
@@ -238,6 +256,7 @@ RTNode* create_cnt_rtnode(CNT *cnt);
 RTNode* create_cin_rtnode(CIN *cin);
 RTNode* create_sub_rtnode(Sub *sub);
 RTNode* create_acp_rtnode(ACP *acp);
+RTNode *create_grp_rtnode(GROUP *grp);
 int add_child_resource_tree(RTNode *parent, RTNode *child);
 RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
 void delete_rtnode_and_db_data(RTNode *node, int flag);

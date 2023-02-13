@@ -129,6 +129,7 @@ void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e != -1) e = check_resource_type_equal(o2pt);
 	if(e != -1) e = check_privilege(o2pt, parent_rtnode, ACOP_CREATE);
 	if(e != -1) e = check_rn_duplicate(o2pt, parent_rtnode);
+	logger("main", LOG_LEVEL_DEBUG, "dbg %d", parent_rtnode->ty);
 	if(e == -1) return;
 
 	switch(o2pt->ty) {	
@@ -155,6 +156,11 @@ void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	case TY_ACP :
 		logger("MAIN", LOG_LEVEL_INFO, "Create ACP");
 		create_acp(o2pt, parent_rtnode);
+		break;
+
+	case TY_GRP:
+		logger("MAIN", LOG_LEVEL_INFO, "Create GRP");
+		create_grp(o2pt, parent_rtnode);
 		break;
 
 	case TY_NONE :
@@ -199,6 +205,11 @@ void retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	case TY_CIN :
 		logger("MAIN", LOG_LEVEL_INFO, "Retrieve CIN");
 		retrieve_cin(o2pt, target_rtnode);			
+		break;
+
+	case TY_GRP :
+		logger("MAIN", LOG_LEVEL_INFO, "Retrieve GRP");
+		retrieve_grp(o2pt, target_rtnode);	
 		break;
 
 	case TY_SUB :
@@ -520,6 +531,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		case TY_CIN: resource = cJSON_GetObjectItem(root, "m2m:cin"); break;
 		case TY_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
 		case TY_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
+		case TY_GRP: resource = cJSON_GetObjectItem(root, "m2m:grp"); break;
 	}
 
 	RTNode *child = rtnode->child;

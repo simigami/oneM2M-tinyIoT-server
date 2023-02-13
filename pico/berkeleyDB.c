@@ -369,7 +369,6 @@ int db_store_cin(CIN *cin_object) {
             cin_object->rn,cin_object->pi,cin_object->ty,cin_object->ct,cin_object->lt,cin_object->et,
             cin_object->con,cin_object->cs,cin_object->st);
 
-    logger("db", LOG_LEVEL_DEBUG, "dbg");
     data.data = str;
     data.size = strlen(str) + 1;
     /* input DB */
@@ -383,6 +382,66 @@ int db_store_cin(CIN *cin_object) {
     return 1;
 }
 
+int db_store_grp(GROUP *grp_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_grp");
+    char* DATABASE = "GROUP.db";
+
+    DB* dbp;    // db handle
+    DBC* dbcp;
+    int ret;        // template value
+
+    DBT key_rn;
+    DBT data;  // storving key and real data
+    
+    // if input == NULL
+    
+    if(grp_object->rn == NULL) grp_object->rn = " ";
+    if(grp_object->mid == NULL) grp_object->mid = "NULL";
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp,DATABASE);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    
+    /* key and data must initialize */
+    memset(&key_rn, 0, sizeof(DBT));
+    memset(&data, 0, sizeof(DBT));
+
+    
+    /* initialize the data to be the first of two duplicate records. */
+    key_rn.data = grp_object->rn;
+    key_rn.size = strlen(grp_object->rn) + 1;
+
+    
+    /* List data excluding 'ri' as strings using delimiters. */
+    char str[DB_STR_MAX]= "\0";
+    char *strbuf;
+
+    /* mnm , mt, min*/
+
+    strbuf = (char *) malloc(sizeof(char) * 128);
+    sprintf(strbuf, "%d;%d", grp_object->mnm, grp_object->mt);
+    strcat(str, strbuf);
+    for(int i = 0 ; i < grp_object->mnm; i++){
+        if(grp_object->mid[i]){
+            sprintf(strbuf, ";%s", grp_object->mid[i]);
+            strcat(str, strbuf);
+        }else
+            break;
+    }
+
+    logger("db", LOG_LEVEL_DEBUG, "saving %s", str);
+    data.data = str;
+    data.size = strlen(str) + 1;
+    /* input DB */
+    if ((ret = dbcp->put(dbcp, &key_rn, &data, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+
+    /* DB close */
+    dbcp->close(dbcp);
+    dbp->close(dbp, 0); 
+    
+    return 1;
+}
 
 int db_store_sub(Sub *sub_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
@@ -1421,6 +1480,79 @@ ACP* db_get_acp(char* ri) {
 
     return new_acp;
 }
+
+GROUP *db_get_grp(char* rn){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_grp");
+    char* DATABASE = "GROUP.db";
+
+    GROUP *new_grp = calloc(1, sizeof(GROUP));
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    int cnt = 0;
+    int flag = 0;
+    int idx = 0;
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp,DATABASE);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        cnt++;
+        if (strncmp(key.data, rn, key.size) == 0) {
+            flag=1;
+            new_grp->rn = strdup(key.data);
+            //(char *) malloc( (key.size+1) *sizeof(char));
+            //strcpy(new_grp->rn, key.data);
+
+            char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
+            new_grp->mnm = atoi(ptr);
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            new_grp->mt = atoi(ptr);
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            new_grp->mid = (char **) malloc(sizeof(char *) * new_grp->mnm);
+            if(strcmp(ptr, "NULL") != 0){
+                for(int i = 0 ; i < new_grp->mnm ; i++){
+                    if(ptr){
+                        new_grp->mid[i] = strdup(ptr);
+                    }else  
+                        break;
+                    ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+                }
+            }
+        }
+    }
+
+
+    if(ret != DB_NOTFOUND){
+        dbp->err(dbp, ret, "DBcursor->get");
+        logger("DB", LOG_LEVEL_DEBUG, "Cursor ERROR");
+        return NULL;
+    }
+    if (cnt == 0 || flag==0) {
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
+        return NULL;
+    }
+
+
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+    
+
+    return new_grp;
+}
+
+
 
 int db_delete_onem2m_resource(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",ri);

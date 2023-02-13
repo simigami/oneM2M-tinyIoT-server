@@ -512,6 +512,67 @@ ACP* cjson_to_acp(cJSON *cjson) {
 	return acp;
 }
 
+GROUP *cjson_to_grp(cJSON *cjson){
+	GROUP *grp = (GROUP *)calloc(1, sizeof(GROUP));
+
+	cJSON *root = NULL;
+	cJSON *rn = NULL;
+	cJSON *mt = NULL;
+	cJSON *mnm = NULL;
+	cJSON *mid = NULL;
+	cJSON *pmid = NULL;
+
+	if(cjson == NULL){
+		return NULL;
+	}
+
+	root = cJSON_GetObjectItem(cjson, "m2m:grp");
+
+	rn = cJSON_GetObjectItem(root, "rn");
+	mt = cJSON_GetObjectItem(root, "mt");
+	mnm = cJSON_GetObjectItem(root, "mnm");
+	mid = cJSON_GetObjectItem(root, "mid");
+
+	// mnm & mid mandatory
+	if(mnm == NULL || mid == NULL){
+		logger("JSON", LOG_LEVEL_DEBUG, "Invalid request");
+		return NULL;
+	}
+
+	// validate mnm >= 0
+	if(mnm->valueint < 0){
+		logger("JSON", LOG_LEVEL_DEBUG, "Invalid Maximum Member");
+		return NULL;
+	} 
+
+	// set rn(optional);
+	if(rn){
+		grp->rn = (char*) malloc( sizeof(char) * strlen(rn->valuestring) + 1 );
+		strncpy(grp->rn, rn->valuestring, strlen(rn->valuestring));
+	}
+
+	if(mt){
+		grp->mt = (unsigned) mt->valueint;
+	}
+	grp->mnm = mnm->valueint;
+
+	grp->mid = (char **) malloc(sizeof(char *) * grp->mnm);
+
+	int mid_size = cJSON_GetArraySize(mid);
+
+	for(int i = 0 ; i < grp->mnm ; i++){
+		if(i < mid_size){
+			pmid = cJSON_GetArrayItem(mid, i);
+			size_t len = strlen(pmid->valuestring);
+			grp->mid[i] = (char *) calloc(sizeof(char), len);
+			strncpy(grp->mid[i], pmid->valuestring, len);
+		}else{
+			grp->mid[i] = NULL;
+		}
+	}
+	return grp;
+}
+
 char* node_to_json(RTNode *node) {
 	char *json = NULL;
 
@@ -903,6 +964,38 @@ char* discovery_to_json(char **result, int size) {
 		cJSON_AddItemToArray(uril, cJSON_CreateString(result[i]));
 	}
 	cJSON_AddItemToObject(root, "m2m:uril", uril);
+
+	json = cJSON_PrintUnformatted(root);
+
+	cJSON_Delete(root);
+
+	return json;
+}
+
+char *grp_to_json(GROUP *grp_object){
+
+	char *json = NULL;
+
+	cJSON *root;
+	cJSON *grp;
+	cJSON *mid;
+
+	root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "m2m:grp", grp = cJSON_CreateObject());
+	
+	cJSON_AddStringToObject(grp, "rn", grp_object->rn);
+	cJSON_AddNumberToObject(grp, "mnm", grp_object->mnm);
+	cJSON_AddNumberToObject(grp, "mt", grp_object->mt);
+	
+	mid = cJSON_CreateArray();
+	for(int i = 0 ; i < grp_object->mnm ; i++){
+		if(grp_object->mid[i]){
+			cJSON_AddItemToArray(mid, cJSON_CreateString(grp_object->mid[i]));
+		}else{
+			break;
+		}
+	}
+	cJSON_AddItemToObject(grp, "mid", mid);
 
 	json = cJSON_PrintUnformatted(root);
 

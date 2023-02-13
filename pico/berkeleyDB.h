@@ -7,6 +7,7 @@ int db_store_cse(CSE* cse_object);
 int db_store_ae(AE* ae_object);
 int db_store_cnt(CNT* cnt_object);
 int db_store_cin(CIN* cin_object);
+int db_store_grp(GROUP* grp_object);
 int db_store_sub(Sub *sub_object);
 int db_store_acp(ACP *acp_object);
 
@@ -15,6 +16,7 @@ AE* db_get_ae(char *ri);
 CNT* db_get_cnt(char *ri);
 CIN* db_get_cin(char *ri);
 Sub* db_get_sub(char* ri);
+GROUP* db_get_grp(char* rn);
 ACP* db_get_acp(char* ri);
 
 int db_delete_onem2m_resource(char *ri);
