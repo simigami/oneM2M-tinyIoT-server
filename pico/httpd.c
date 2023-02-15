@@ -19,22 +19,22 @@
 #define BUF_SIZE 32768
 #define QUEUE_SIZE 64
 
+// Client request
+char *method, // "GET" or "POST"
+    *uri,            // "/index.html" things before '?'
+    *qs,             // "a=1&b=2" things after  '?'
+    *prot,           // "HTTP/1.1"
+    *payload;        // for POST
+
+int payload_size;
+
 pthread_mutex_t mutex_lock;
 int listenfd;
-int *clients;
+int clients[MAX_CONNECTIONS];
 static void start_server(const char *);
 static void respond(int);
 
 static char *buf[MAX_CONNECTIONS];
-
-// Client request
-char *method, // "GET" or "POST"
-    *uri,     // "/index.html" things before '?'
-    *qs,      // "a=1&b=2" things after  '?'
-    *prot,    // "HTTP/1.1"
-    *payload; // for POST
-
-int payload_size;
 
 void *respond_thread(void *ps) {
     int slot = *((int*)ps);
