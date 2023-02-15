@@ -77,7 +77,6 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 		if(!rtnode) break;
 		if(i != index) rtnode = rtnode->child;
 	}
-	if(rtnode)
 	if(rtnode) return rtnode;
 
 	if(parent_rtnode) {
@@ -120,6 +119,16 @@ RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 		}
 		return NULL;
 	}
+}
+
+RTNode *find_node_by_id(RTNode *rtnode, char *ids){
+
+	while(rtnode) {
+		if( !strcmp(rtnode->rn, ids) ) break;
+		rtnode = rtnode->sibling_right;
+	}
+	
+	if(rtnode) return rtnode;
 }
 
 void init_cse(CSE* cse) {
@@ -1611,14 +1620,18 @@ void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		return;
 	}
 
-	GROUP *grp = cjson_to_grp(o2pt->cjson_pc);
+	GROUP *grp = (GROUP *)calloc(1, sizeof(GROUP));
+	o2pt->rsc = cjson_to_grp(o2pt->cjson_pc, grp); // TODO Validation(mid dup chk etc.)
+	init_grp(grp, parent_rtnode->ri);
+	validate_grp(parent_rtnode, grp);
 
-	if(!grp) {
-		no_mandatory_error(o2pt);
+
+	if(o2pt->rsc >= 5000 && o2pt->rsc <= 7000){
+		handle_error(o2pt);
 		return;
 	}
+	
 
-	init_grp(grp, parent_rtnode->ri);
 
 	int result = db_store_grp(grp);
 	if(result != 1){
@@ -1634,4 +1647,59 @@ void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	respond_to_client(o2pt, 201);
 
 	free_grp(grp); grp = NULL;
+}
+
+
+int validate_grp(RTNode* cb,  GROUP *grp){
+	bool hasFopt = false;
+	bool isLocalResource = true;
+	char *mid = NULL;
+	char *p = NULL;
+	char *tStr = NULL;
+
+	RTNode *rt_node;
+
+	for(int i = 0 ; i < grp->mnm; i++){
+		mid = grp->mid[i];
+		if(!mid) break;
+
+		// Check is local resource
+		isLocalResource = true;
+		if(strlen(mid) >= 2 && mid[0] == '/' && mid[1] != '/'){
+			tStr = strdup(mid);
+			strtok(tStr, '/');
+			p = strtok(NULL, '/');
+			if( strcmp(p, CSE_BASE_NAME) != 0){
+				isLocalResource = false;
+			}
+
+			free(tStr); tStr = NULL;
+			p = NULL;
+		}
+
+		// resource check
+		if(isLocalResource) {
+			hasFopt = endswith(mid, "/fopt");
+			tStr = mid;
+			if(hasFopt && strlen(mid) > 5)  // remove fopt 
+				tStr[strlen(mid) - 5] = '\0';
+
+			if(! (rt_node = find_rtnode_by_uri(cb, mid)))
+				return RSC_NOT_FOUND;
+		}else {
+			// Todo - remote resource
+		}
+
+	}
+}
+
+bool endswith(char *str, char *match){
+	size_t str_len = 0;
+	size_t match_len = 0;
+	if(!str || !match) return;
+
+	str_len = strlen(str);
+	match_len = strlen(match);
+
+	return strncmp(str + str_len - match_len, match, match_len);
 }

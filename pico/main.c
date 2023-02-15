@@ -696,6 +696,31 @@ void db_store_fail(oneM2MPrimitive *o2pt) {
 	respond_to_client(o2pt, 500);
 }
 
+void mnm_exceeded(oneM2MPrimitive *o2pt) {
+	
+	o2pt->rsc = RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+	respond_to_client(o2pt, 400);
+}
+
+void handle_error(oneM2MPrimitive *o2pt) {
+	int rcode = 400;
+	switch(o2pt->rsc){
+		case RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED:
+			logger("MAIN", LOG_LEVEL_DEBUG, "Max Number of member exceeded");
+			break;
+		
+		case RSC_INVALID_ARGUMENTS:
+			logger("MAIN", LOG_LEVEL_DEBUG, "Invalid Arguments");
+			break;
+
+		default:
+			logger("MAIN", LOG_LEVEL_DEBUG, "Internal Server Error");
+			break;
+	}
+
+	respond_to_client(o2pt, rcode);
+}
+
 /*
 void update_sub(RTNode *pnode) {
 	Sub* after = db_get_sub(pnode->ri);

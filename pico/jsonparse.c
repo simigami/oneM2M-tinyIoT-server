@@ -7,6 +7,7 @@
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "cJSON.h"
+#include "onem2mTypes.h"
 #include "config.h"
 
 void remove_quotation_mark(char *s){
@@ -512,8 +513,8 @@ ACP* cjson_to_acp(cJSON *cjson) {
 	return acp;
 }
 
-GROUP *cjson_to_grp(cJSON *cjson){
-	GROUP *grp = (GROUP *)calloc(1, sizeof(GROUP));
+int cjson_to_grp(cJSON *cjson, GROUP *grp){
+	
 
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
@@ -521,6 +522,8 @@ GROUP *cjson_to_grp(cJSON *cjson){
 	cJSON *mnm = NULL;
 	cJSON *mid = NULL;
 	cJSON *pmid = NULL;
+
+	cJSON *pjson = NULL;
 
 	if(cjson == NULL){
 		return NULL;
@@ -533,16 +536,19 @@ GROUP *cjson_to_grp(cJSON *cjson){
 	mnm = cJSON_GetObjectItem(root, "mnm");
 	mid = cJSON_GetObjectItem(root, "mid");
 
+	if(pjson = cJSON_GetObjectItem(root, ""))
+
+
 	// mnm & mid mandatory
 	if(mnm == NULL || mid == NULL){
 		logger("JSON", LOG_LEVEL_DEBUG, "Invalid request");
-		return NULL;
+		return RSC_INVALID_ARGUMENTS;
 	}
 
 	// validate mnm >= 0
 	if(mnm->valueint < 0){
 		logger("JSON", LOG_LEVEL_DEBUG, "Invalid Maximum Member");
-		return NULL;
+		return RSC_INVALID_ARGUMENTS;
 	} 
 
 	// set rn(optional);
@@ -559,6 +565,9 @@ GROUP *cjson_to_grp(cJSON *cjson){
 	grp->mid = (char **) malloc(sizeof(char *) * grp->mnm);
 
 	int mid_size = cJSON_GetArraySize(mid);
+	if(mid_size > grp->mnm){
+		return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+	}
 
 	for(int i = 0 ; i < grp->mnm ; i++){
 		if(i < mid_size){
@@ -570,7 +579,7 @@ GROUP *cjson_to_grp(cJSON *cjson){
 			grp->mid[i] = NULL;
 		}
 	}
-	return grp;
+	return RSC_CREATED;
 }
 
 char* node_to_json(RTNode *node) {

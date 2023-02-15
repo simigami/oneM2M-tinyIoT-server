@@ -9,7 +9,7 @@ CNT* cjson_to_cnt(cJSON *cjson);
 CIN* cjson_to_cin(cJSON *cjson);
 Sub* cjson_to_sub(cJSON *cjson);
 ACP* cjson_to_acp(cJSON *cjson);
-GROUP *cjson_to_grp(cJSON *cjson);
+int cjson_to_grp(cJSON *cjson, GROUP *grp);
 
 char* cse_to_json(CSE* cse_object);
 char* ae_to_json(AE* ae_object);

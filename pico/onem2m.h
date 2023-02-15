@@ -317,6 +317,7 @@ void handle_http_request();
 void respond_to_client(oneM2MPrimitive *o2pt, int status);
 void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
 void delete_cin_under_cnt_mni_mbs(CNT *cnt);
+int validate_grp(RTNode* cb,  GROUP *grp);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2
