@@ -13,7 +13,7 @@
 #define MAX_PROPERTY_SIZE 65536
 
 // MQTT Settings
-#define ENABLE_MQTT
+//#define ENABLE_MQTT
 
 #ifdef ENABLE_MQTT
 #define MQTT_HOST            "127.0.0.1"
@@ -42,7 +42,6 @@
 
 #endif
 
-#include "logger.h"
 #define LOG_LEVEL LOG_LEVEL_DEBUG
 #define LOG_BUFFER_SIZE 1024
 

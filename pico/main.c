@@ -18,7 +18,6 @@
 #include "mqttClient.h"
 
 ResourceTree *rt;
-void *mqtt_serve();
 
 int main(int c, char **v) {
 	pthread_t mqtt;
@@ -26,7 +25,7 @@ int main(int c, char **v) {
 	
 	#ifdef ENABLE_MQTT
 	int mqtt_thread_id;
-	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
+	mqtt_thread_id = pthread_create(&mqtt, NULL, (void*) &mqtt_serve, "mqtt Client");
 	if(mqtt_thread_id < 0){
 		fprintf(stderr, "MQTT thread create error\n");
 		return 0;
@@ -440,11 +439,6 @@ RTNode* restruct_resource_tree_child(RTNode *parent_rtnode, RTNode *list) {
 	}
 	
 	return list;
-}
-
-void *mqtt_serve(){
-	int result = 0;
-	result = mqtt_ser();
 }
 
 int check_payload_size(oneM2MPrimitive *o2pt) {

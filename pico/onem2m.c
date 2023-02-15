@@ -762,9 +762,11 @@ void respond_to_client(oneM2MPrimitive *o2pt, int status) {
 		case PROT_HTTP:
 			http_respond_to_client(o2pt, status); 
 			break;
+		#ifdef ENABLE_MQTT
 		case PROT_MQTT:
 			mqtt_respond_to_client(o2pt);
 			break;
+		#endif
 	}
 }
 
