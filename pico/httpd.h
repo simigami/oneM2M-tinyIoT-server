@@ -26,7 +26,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int status);
 typedef struct {
   char *name, *value;
 } header_t;
-static header_t reqhdr[17] = {{"\0", "\0"}};
+header_t reqhdr[17] = {{"\0", "\0"}};
 header_t *request_headers(void);
 
 // user shall implement this function

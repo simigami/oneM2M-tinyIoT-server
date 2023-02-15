@@ -6,7 +6,7 @@
 #define CSE_BASE_NAME "TinyIoT"
 #define CSE_BASE_RI "tinyiot"
 
-#define MONO_THREAD 1 // 0 → multithread, 1 → monothread
+#define MONO_THREAD 0 // 0 → multi-thread, 1 → mono-thread
 
 #define MAX_PAYLOAD_SIZE 65536 
 #define MAX_URI_SIZE 1024
