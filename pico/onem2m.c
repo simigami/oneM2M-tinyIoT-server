@@ -572,15 +572,15 @@ void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return;
 	}
 	
+	free_sub(sub); sub = NULL;
+
 	RTNode* child_rtnode = create_rtnode(sub, TY_SUB);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
-	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = sub_to_json(sub);
 	o2pt->rsc = RSC_CREATED;
 	respond_to_client(o2pt, 201);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	free_sub(sub); sub = NULL;
 }
 
 void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -883,7 +883,6 @@ void init_sub(Sub* sub, char *pi, char *uri) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *ri = resource_identifier(TY_SUB, ct);
-
 	if(!sub->rn) {
 		sub->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 		strcpy(sub->rn, ri);
@@ -1114,10 +1113,8 @@ void too_large_content_size_error(oneM2MPrimitive *o2pt) {
 	respond_to_client(o2pt, 400);
 }
 
-/*
-
-void tree_viewer_api(RTNode *node) {
-	fprintf(stderr,"\x1b[43mTree Viewer API\x1b[0m\n");
+void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
+	logger("O2M", LOG_LEVEL_DEBUG, "\x1b[43mTree Viewer API\x1b[0m\n");
 	char arr_viewer_data[MAX_TREE_VIEWER_SIZE] = "[";
 	char *viewer_data = arr_viewer_data;
 	
@@ -1134,13 +1131,14 @@ void tree_viewer_api(RTNode *node) {
 	char *la = strstr(qs,"la=");
 	if(la) cinSize = atoi(la+3);
 	
-	fprintf(stderr,"Latest CIN Size : %d\n", cinSize);
+	logger("O2M", LOG_LEVEL_DEBUG,"Latest CIN Size : %d\n", cinSize);
 	
 	tree_viewer_data(node, &viewer_data, cinSize);
 	strcat(viewer_data,"]\0");
-	char res[MAX_TREE_VIEWER_SIZE] = "";
+	char *res;
+	res = calloc(0, MAX_TREE_VIEWER_SIZE);
 	int index = 0;
-	
+
 	for(int i=0; i<MAX_TREE_VIEWER_SIZE; i++) {
 		if(i == 1) continue;
 		if(is_json_valid_char(viewer_data[i])) {
@@ -1149,8 +1147,9 @@ void tree_viewer_api(RTNode *node) {
 	}
 	
 	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
-
-	respond_to_client(200, res, 2000);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = res;
+	respond_to_client(o2pt, 200);
 }
 
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) {
@@ -1201,7 +1200,7 @@ RTNode *latest_cin_list(RTNode* cinList, int num) {
 	
 	return head;
 }
-
+/*
 void set_sub_update(Sub* after) {
 	char *rn = get_json_value_char("rn", payload);
 	char *nu = NULL;

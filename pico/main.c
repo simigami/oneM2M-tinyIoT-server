@@ -41,12 +41,12 @@ int main(int c, char **v) {
 void handle_http_request() {
 	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
 	char *header;
-
 	if(payload) {
-		o2pt->pc = (char *)malloc((strlen(payload) + 1) * sizeof(char));
+		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
 		strcpy(o2pt->pc, payload);
 		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
-		cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
+		logger("main", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
+		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
 	} 
 
 	if((header = request_header("X-M2M-Origin"))) {
@@ -103,8 +103,8 @@ void route(oneM2MPrimitive *o2pt) {
 	case OP_DELETE:
 		delete_onem2m_resource(o2pt, target_rtnode); break;
 
-	//case OP_VIEWER:
-		//tree_viewer_api(target_rtnode); break;
+	case OP_VIEWER:
+		tree_viewer_api(o2pt, target_rtnode); break;
 	
 	//case OP_OPTIONS:
 		//respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}", "2000");
@@ -448,6 +448,7 @@ void *mqtt_serve(){
 }
 
 int check_payload_size(oneM2MPrimitive *o2pt) {
+
 	if(o2pt->pc && strlen(o2pt->pc) > MAX_PAYLOAD_SIZE) {
 		logger("MAIN", LOG_LEVEL_ERROR, "Request payload too large");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload is too large\"}");
