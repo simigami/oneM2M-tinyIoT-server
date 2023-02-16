@@ -137,10 +137,15 @@ typedef struct {
 
 typedef struct {
 	char *rn;
+	char *pi;
+	char *ri;
+	char *ct;
+	char *lt;
+	char *et;
 	MemberType mt;
 	unsigned int mnm;
 	char **mid;
-} GROUP;
+} GRP;
 
 //Resource Tree
 typedef struct RTNode {
@@ -221,7 +226,7 @@ void retrieve_cin_latest(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_cin_by_ri(char *ri);
 void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-
+void retrieve_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void update_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
@@ -234,7 +239,7 @@ void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
 void init_sub(Sub* sub, char *pi, char *uri);
 void init_acp(ACP* acp, char *pi);
-void init_grp(GROUP *grp, char *pi);
+void init_grp(GRP *grp, char *pi);
 void set_ae_update(cJSON *m2m_ae, AE* after);
 void set_cnt_update(cJSON *m2m_cnt, CNT* after);
 void set_sub_update(cJSON *m2m_sub, Sub* after);
@@ -247,6 +252,7 @@ void free_cnt(CNT* cnt);
 void free_cin(CIN* cin);
 void free_sub(Sub* sub);
 void free_acp(ACP *acp);
+void free_grp(GRP *grp);
 
 //resource tree
 RTNode* create_rtnode(void *resource, ObjectType ty);
@@ -256,7 +262,7 @@ RTNode* create_cnt_rtnode(CNT *cnt);
 RTNode* create_cin_rtnode(CIN *cin);
 RTNode* create_sub_rtnode(Sub *sub);
 RTNode* create_acp_rtnode(ACP *acp);
-RTNode *create_grp_rtnode(GROUP *grp);
+RTNode *create_grp_rtnode(GRP *grp);
 int add_child_resource_tree(RTNode *parent, RTNode *child);
 RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
 void delete_rtnode_and_db_data(RTNode *node, int flag);
@@ -317,7 +323,8 @@ void handle_http_request();
 void respond_to_client(oneM2MPrimitive *o2pt, int status);
 void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
 void delete_cin_under_cnt_mni_mbs(CNT *cnt);
-int validate_grp(RTNode* cb,  GROUP *grp);
+int validate_grp(RTNode* cb,  GRP *grp);
+bool endswith(char *str, char *match);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

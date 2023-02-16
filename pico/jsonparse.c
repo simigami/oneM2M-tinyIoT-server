@@ -513,7 +513,7 @@ ACP* cjson_to_acp(cJSON *cjson) {
 	return acp;
 }
 
-int cjson_to_grp(cJSON *cjson, GROUP *grp){
+int cjson_to_grp(cJSON *cjson, GRP *grp){
 	
 
 	cJSON *root = NULL;
@@ -981,7 +981,7 @@ char* discovery_to_json(char **result, int size) {
 	return json;
 }
 
-char *grp_to_json(GROUP *grp_object){
+char *grp_to_json(GRP *grp_object){
 
 	char *json = NULL;
 
@@ -991,10 +991,15 @@ char *grp_to_json(GROUP *grp_object){
 
 	root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "m2m:grp", grp = cJSON_CreateObject());
-	
+	cJSON_AddStringToObject(grp, "ri", grp_object->ri);
+	cJSON_AddStringToObject(grp, "pi", grp_object->pi);
 	cJSON_AddStringToObject(grp, "rn", grp_object->rn);
+	cJSON_AddStringToObject(grp, "ct", grp_object->ct);
+	cJSON_AddStringToObject(grp, "et", grp_object->et);
+
 	cJSON_AddNumberToObject(grp, "mnm", grp_object->mnm);
 	cJSON_AddNumberToObject(grp, "mt", grp_object->mt);
+	cJSON_AddNumberToObject(grp, "ty", 9);
 	
 	mid = cJSON_CreateArray();
 	for(int i = 0 ; i < grp_object->mnm ; i++){

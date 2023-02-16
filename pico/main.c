@@ -413,6 +413,16 @@ void restruct_resource_tree(){
 	} else {
 		logger("MAIN", LOG_LEVEL_DEBUG, "ACP.db does not exist");
 	}
+
+	if(access("./GROUP.db", 0) != -1) {
+		RTNode* grp_list = db_get_all_grp();
+		logger("MAIN", LOG_LEVEL_DEBUG, "%p", grp_list);
+		tail->sibling_right = grp_list;
+		if(grp_list) grp_list->sibling_left = tail;
+		while(tail->sibling_right) tail = tail->sibling_right;
+	} else {
+		logger("MAIN", LOG_LEVEL_DEBUG, "GROUP.db does not exist");
+	}
 	
 	RTNode *prtnode = rtnode_list;
 	rtnode_list = rtnode_list->sibling_right;

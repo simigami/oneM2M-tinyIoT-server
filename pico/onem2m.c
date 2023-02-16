@@ -70,6 +70,7 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 	for(int i=0; i<=index; i++) {
 		while(rtnode) {
+			logger("o2m-t", LOG_LEVEL_DEBUG, "rn : %s // %s", rtnode->rn, uri_array[i]);
 			if(!strcmp(rtnode->rn, uri_array[i])) break;
 			rtnode = rtnode->sibling_right;
 		}
@@ -164,7 +165,7 @@ RTNode* create_rtnode(void *resource, ObjectType ty){
 	case TY_AE: rtnode = create_ae_rtnode((AE*)resource); break;
 	case TY_CNT: rtnode = create_cnt_rtnode((CNT*)resource); break;
 	case TY_CIN: rtnode = create_cin_rtnode((CIN*)resource); break;
-	case TY_GRP: rtnode = create_grp_rtnode( (GROUP *) resource); break;
+	case TY_GRP: rtnode = create_grp_rtnode( (GRP *) resource); break;
 	case TY_SUB: rtnode = create_sub_rtnode((Sub*)resource); break;
 	case TY_ACP: rtnode = create_acp_rtnode((ACP*)resource); break;
 	}
@@ -297,11 +298,17 @@ RTNode* create_acp_rtnode(ACP *acp) {
 }
 
 
-RTNode *create_grp_rtnode(GROUP *grp){
+RTNode *create_grp_rtnode(GRP *grp){
 	RTNode *rtnode = calloc(1, sizeof(RTNode));
 
-	rtnode->rn = (char *) malloc(((strlen(grp->rn) + 1) * sizeof(char)));	
+	rtnode->rn = (char *) malloc(((strlen(grp->rn) + 1) * sizeof(char)));
+	rtnode->ri = (char*)malloc((strlen(grp->ri) + 1) * sizeof(char));
+	rtnode->pi = (char*)malloc((strlen(grp->pi) + 1) * sizeof(char));
+
 	strcpy(rtnode->rn, grp->rn);
+	strcpy(rtnode->ri, grp->ri);
+	strcpy(rtnode->pi, grp->pi);
+
 	rtnode->mt = grp->mt;
 	rtnode->mnm = grp->mnm;
 
@@ -394,7 +401,7 @@ void free_acp(ACP* acp) {
 	
 }
 
-void free_grp(GROUP *grp) {
+void free_grp(GRP *grp) {
 	if(grp->rn) free(grp->rn);
 	grp->rn = NULL;
 	if(grp->mnm > 0){
@@ -494,6 +501,7 @@ ObjectType http_parse_object_type() {
 	case 3 : ty = TY_CNT; break;
 	case 4 : ty = TY_CIN; break;
 	case 5 : ty = TY_CSE; break;
+	case 9 : ty = TY_GRP; break;
 	case 23 : ty = TY_SUB; break;
 	default : ty = TY_NONE; break;
 	}
@@ -704,7 +712,7 @@ void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 }
 
 void retrieve_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
-	GROUP *grp = db_get_grp(target_rtnode->rn);
+	GRP *grp = db_get_grp(target_rtnode->ri);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = grp_to_json(grp);
 	o2pt->rsc = RSC_OK;
@@ -1201,7 +1209,7 @@ void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	tree_viewer_data(node, &viewer_data, cinSize);
 	strcat(viewer_data,"]\0");
 	char *res;
-	res = calloc(0, MAX_TREE_VIEWER_SIZE);
+	res = calloc(1, MAX_TREE_VIEWER_SIZE);
 	int index = 0;
 
 	for(int i=0; i<MAX_TREE_VIEWER_SIZE; i++) {
@@ -1212,7 +1220,9 @@ void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	}
 	
 	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
-	if(o2pt->pc) free(o2pt->pc);
+	if(o2pt->pc) 
+		free(o2pt->pc);
+
 	o2pt->pc = res;
 	respond_to_client(o2pt, 200);
 }
@@ -1598,10 +1608,21 @@ int check_origin() {
 
 /* GROUP IMPLEMENTATION */
 
-void init_grp(GROUP *grp, char *pi){
+void init_grp(GRP *grp, char *pi){
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *ri = resource_identifier(TY_GRP, ct);
+
+	grp->ct = (char *) malloc((strlen(ct) + 1) * sizeof(char));
+	grp->et = (char *) malloc((strlen(et) + 1) * sizeof(char));
+	grp->ri = (char *) malloc((strlen(ri) + 1) * sizeof(char));
+	grp->pi = (char *) malloc((strlen(pi) + 1) * sizeof(char));
+
+	strcpy(grp->ct, ct);
+	strcpy(grp->et, et);
+	strcpy(grp->ri, ri);
+	strcpy(grp->pi, pi);
+
 
 	if(!grp->rn) {
 		grp->rn = (char *) malloc((strlen(ri) + 1) * sizeof(char));
@@ -1620,10 +1641,10 @@ void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		return;
 	}
 
-	GROUP *grp = (GROUP *)calloc(1, sizeof(GROUP));
+	GRP *grp = (GRP *)calloc(1, sizeof(GRP));
 	o2pt->rsc = cjson_to_grp(o2pt->cjson_pc, grp); // TODO Validation(mid dup chk etc.)
 	init_grp(grp, parent_rtnode->ri);
-	validate_grp(parent_rtnode, grp);
+	//validate_grp(parent_rtnode, grp);
 
 
 	if(o2pt->rsc >= 5000 && o2pt->rsc <= 7000){
@@ -1650,7 +1671,7 @@ void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 }
 
 
-int validate_grp(RTNode* cb,  GROUP *grp){
+int validate_grp(RTNode* cb,  GRP *grp){
 	bool hasFopt = false;
 	bool isLocalResource = true;
 	char *mid = NULL;

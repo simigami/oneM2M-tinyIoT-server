@@ -382,7 +382,7 @@ int db_store_cin(CIN *cin_object) {
     return 1;
 }
 
-int db_store_grp(GROUP *grp_object){
+int db_store_grp(GRP *grp_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_grp");
     char* DATABASE = "GROUP.db";
 
@@ -408,8 +408,8 @@ int db_store_grp(GROUP *grp_object){
 
     
     /* initialize the data to be the first of two duplicate records. */
-    key_rn.data = grp_object->rn;
-    key_rn.size = strlen(grp_object->rn) + 1;
+    key_rn.data = grp_object->ri;
+    key_rn.size = strlen(grp_object->ri) + 1;
 
     
     /* List data excluding 'ri' as strings using delimiters. */
@@ -419,7 +419,7 @@ int db_store_grp(GROUP *grp_object){
     /* mnm , mt, min*/
 
     strbuf = (char *) malloc(sizeof(char) * 128);
-    sprintf(strbuf, "%d;%d", grp_object->mnm, grp_object->mt);
+    sprintf(strbuf, "%s;%s;%d;%d", grp_object->pi, grp_object->rn, grp_object->mnm, grp_object->mt);
     strcat(str, strbuf);
     for(int i = 0 ; i < grp_object->mnm; i++){
         if(grp_object->mid[i]){
@@ -440,6 +440,8 @@ int db_store_grp(GROUP *grp_object){
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
     
+    if(strcmp(grp_object->rn, " ") == 0) grp_object->rn = NULL;
+
     return 1;
 }
 
@@ -1481,11 +1483,11 @@ ACP* db_get_acp(char* ri) {
     return new_acp;
 }
 
-GROUP *db_get_grp(char* rn){
+GRP *db_get_grp(char* ri){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_grp");
     char* DATABASE = "GROUP.db";
 
-    GROUP *new_grp = calloc(1, sizeof(GROUP));
+    GRP *new_grp = calloc(1, sizeof(GRP));
 
     DB* dbp;
     DBC* dbcp;
@@ -1506,14 +1508,22 @@ GROUP *db_get_grp(char* rn){
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         cnt++;
-        if (strncmp(key.data, rn, key.size) == 0) {
+        if (strncmp(key.data, ri, key.size) == 0) {
             flag=1;
-            new_grp->rn = strdup(key.data);
+            new_grp->ri = strdup(key.data);
+            
             //(char *) malloc( (key.size+1) *sizeof(char));
             //strcpy(new_grp->rn, key.data);
 
-            char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
+            char *ptr = strtok((char*)data.data, DB_SEP);  //split first string
+            new_grp->pi = strdup(ptr); //rn
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->rn = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
             new_grp->mnm = atoi(ptr);
+            
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
             new_grp->mt = atoi(ptr);
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
@@ -2117,6 +2127,71 @@ RTNode* db_get_all_acp() {
     return head;
 }
 
+
+RTNode* db_get_all_grp(){
+    logger("DB", LOG_LEVEL_DEBUG,"Call db_get_all_grp");
+    char* DATABASE = "GROUP.db";
+    const char* TYPE = "9-";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp,DATABASE);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int grp = 0;
+    DBC* dbcp0;
+    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, TYPE , 2) == 0) 
+            grp++;
+    }
+    //fprintf(stderr, "<%d>\n",acp);
+
+    if (grp == 0) {
+        logger("DB", LOG_LEVEL_DEBUG, "GROUP does not exist");
+        return NULL;
+    }
+
+    RTNode* head = NULL;
+    RTNode* rtnode = NULL;
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, TYPE , 2) == 0){
+            GRP *grp = db_get_grp((char *) key.data);
+
+            if(!head){
+                head = create_rtnode(grp, TY_GRP);
+                rtnode = head;
+            }else{
+                rtnode->sibling_right = create_rtnode(grp, TY_GRP);
+                rtnode->sibling_right->sibling_left = rtnode;
+                rtnode = rtnode->sibling_right;
+            }            
+            free_grp(grp);
+        }
+    }
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        fprintf(stderr, "Cursor ERROR\n");
+        return NULL;
+    }
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);    
+
+    return head;
+}
+
 RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "4-";
@@ -2164,7 +2239,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
         if (strncmp(key.data, TYPE , 2) == 0){
             CIN *cin = db_get_cin((char*)key.data);
             //find pi
-            if(strncmp(pi, cin->pi, strlen(pi)) == 0){
+            if(pi && strncmp(pi, cin->pi, strlen(pi)) == 0){
                 if(!head) {
                     head = create_rtnode(cin, TY_CIN);
                     rtnode = head;
