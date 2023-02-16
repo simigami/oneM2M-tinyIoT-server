@@ -1138,7 +1138,7 @@ void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	tree_viewer_data(node, &viewer_data, cinSize);
 	strcat(viewer_data,"]\0");
 	char *res;
-	res = calloc(0, MAX_TREE_VIEWER_SIZE);
+	res = calloc(1, MAX_TREE_VIEWER_SIZE);
 	int index = 0;
 
 	for(int i=0; i<MAX_TREE_VIEWER_SIZE; i++) {
