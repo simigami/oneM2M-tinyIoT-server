@@ -272,7 +272,7 @@ void normalize_payload() {
 	payload[index] = '\0';
 }
 
-void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
+void http_respond_to_client(oneM2MPrimitive *o2pt, int status_code) {
     char content_length[64];
     char rsc[64];
     char response_headers[2048] = {'\0'};
@@ -285,19 +285,21 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
     set_response_header("X-M2M-RI", o2pt->rqi, response_headers);
 
     char buf[BUF_SIZE] = {'\0'};
+    char *status;
 
-    switch(status) {
-        case 200: sprintf(buf, "%s 200 OK\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 201: sprintf(buf, "%s 201 Created\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 209: sprintf(buf, "%s 209 Conflict\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 400: sprintf(buf, "%s 400 Bad Request\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 403: sprintf(buf, "%s 403 Forbidden\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 404: sprintf(buf, "%s 404 Not found\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 406: sprintf(buf, "%s 406 Not Acceptable\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 413: sprintf(buf, "%s 413 Payload Too Large\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 500: sprintf(buf, "%s 500 Internal Server Error\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
+    switch(status_code) {
+        case 200: status = "200 OK";
+        case 201: status = "201 Created";
+        case 209: status = "209 Conflict";
+        case 400: status = "400 Bad Request";
+        case 403: status = "403 Forbidden";
+        case 404: status = "404 Not found";
+        case 406: status = "406 Not Acceptable";
+        case 413: status = "413 Payload Too Large";
+        case 500: status = "500 Internal Server Error";
     }
+    sprintf(buf, "%s %s\n%s%s\n", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers);
     strcat(buf, o2pt->pc);
-    printf("%s",buf); 
+    printf("%s",buf);
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
 }
