@@ -1,6 +1,7 @@
 #include "httpd.h"
 #include "config.h"
 #include "onem2m.h"
+#include "util.h"
 
 #include <arpa/inet.h>
 #include <ctype.h>
@@ -237,6 +238,44 @@ void respond(int slot) {
     free(buf[slot]);
     if(flag == 1) free(payload);
     pthread_mutex_unlock(&mutex_lock);
+}
+
+void handle_http_request() {
+	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+	char *header;
+	if(payload) {
+		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
+		strcpy(o2pt->pc, payload);
+		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
+		logger("HTTP", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
+		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
+	} 
+
+	if((header = request_header("X-M2M-Origin"))) {
+		o2pt->fr = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->fr, header);
+	} 
+
+	if((header = request_header("X-M2M-RI"))) {
+		o2pt->rqi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rqi, header);
+	} 
+
+	if((header = request_header("X-M2M-RVI"))) {
+		o2pt->rvi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rvi, header);
+	} 
+
+	if(uri) {
+		o2pt->to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
+		strcpy(o2pt->to, uri+1);
+	} 
+
+	o2pt->op = http_parse_operation();
+	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
+	o2pt->prot = PROT_HTTP;
+
+	route(o2pt);
 }
 
 Operation http_parse_operation(){

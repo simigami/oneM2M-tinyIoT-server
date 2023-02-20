@@ -7,6 +7,7 @@
 #include "onem2m.h"
 #include "berkeleyDB.h"
 #include "logger.h"
+#include "util.h"
 
 
 /*DB CREATE*/
