@@ -81,7 +81,6 @@ void route(oneM2MPrimitive *o2pt) {
 	if(target_rtnode->ty == TY_CIN) free_rtnode(target_rtnode);
 
 	log_runtime(start);
-
 }
 
 void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -201,10 +200,10 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	// 	update_sub(pnode);
 	// 	break;
 	
-	// case TY_ACP :
-	// 	logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
-	// 	update_acp(pnode);
-	// 	break;
+	case TY_ACP :
+		logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
+		update_acp(o2pt, target_rtnode);
+		break;
 
 	default :
 		logger("MAIN", LOG_LEVEL_ERROR, "Resource type does not support Update");
@@ -227,22 +226,6 @@ void update_sub(RTNode *pnode) {
 	respond_to_client(200, NULL, "2004");
 	free(response_payload); response_payload = NULL;
 	free_sub(after); after = NULL;
-}
-
-void update_acp(RTNode *pnode) {
-	ACP* after = db_get_acp(pnode->ri);
-	int result;
-	
-	set_acp_update(after);
-	set_rtnode_update(pnode, after);
-	result = db_delete_acp(after->ri);
-	result = db_store_acp(after);
-	
-	response_payload = acp_to_json(after);
-	respond_to_client(200, NULL, "2004");
-	notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
-	free(response_payload); response_payload = NULL;
-	free_acp(after); after = NULL;
 }
 
 void retrieve_filtercriteria_data(RTNode *node, ResourceType ty, char **discovery_list, int *size, int level, int curr, int flag) {

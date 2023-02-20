@@ -803,41 +803,43 @@ char* acp_to_json(ACP *acp_object) {
 	cJSON_AddStringToObject(acp, "et", acp_object->et);
 
 	// pv
-	cJSON_AddItemToObject(acp, "pv", pv = cJSON_CreateObject());
+	if(acp_object->pv_acor && acp_object->pv_acop) {
+		cJSON_AddItemToObject(acp, "pv", pv = cJSON_CreateObject());
 
-	// acr
-	acrs = cJSON_CreateArray();
-	cJSON_AddItemToObject(pv, "acr", acrs);
+		// acr
+		acrs = cJSON_CreateArray();
+		cJSON_AddItemToObject(pv, "acr", acrs);
 
-	// acor
-	acor_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acor) + 1);
-	acor_copy = strcpy(acor_copy, acp_object->pv_acor);
-	acor_str = strtok_r(acor_copy, ",", &acor_remainder);
+		// acor
+		acor_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acor) + 1);
+		acor_copy = strcpy(acor_copy, acp_object->pv_acor);
+		acor_str = strtok_r(acor_copy, ",", &acor_remainder);
 
-	// acop
-	acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acop) + 1);
-	acop_copy = strcpy(acop_copy, acp_object->pv_acop);
-	acop_str = strtok_r(acop_copy, ",", &acop_remainder);
+		// acop
+		acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acop) + 1);
+		acop_copy = strcpy(acop_copy, acp_object->pv_acop);
+		acop_str = strtok_r(acop_copy, ",", &acop_remainder);
 
-	while (1) {
-		if (acop_str == NULL) {
-			break;
+		while (1) {
+			if (acop_str == NULL) {
+				break;
+			}
+
+			char *acop = acop_str;
+
+			cJSON_AddItemToArray(acrs, acr = cJSON_CreateObject());
+
+			acor = cJSON_CreateArray();
+
+			do {
+				cJSON_AddItemToArray(acor, cJSON_CreateString(acor_str));
+				acor_str = strtok_r(NULL, ",", &acor_remainder);
+
+				acop_str = strtok_r(NULL, ",", &acop_remainder);
+			} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
+			cJSON_AddItemToObject(acr, "acor", acor);
+			cJSON_AddItemToObject(acr, "acop", cJSON_CreateNumber(atoi(acop)));
 		}
-
-		char *acop = acop_str;
-
-		cJSON_AddItemToArray(acrs, acr = cJSON_CreateObject());
-
-		acor = cJSON_CreateArray();
-
-		do {
-			cJSON_AddItemToArray(acor, cJSON_CreateString(acor_str));
-			acor_str = strtok_r(NULL, ",", &acor_remainder);
-
-			acop_str = strtok_r(NULL, ",", &acop_remainder);
-		} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
-		cJSON_AddItemToObject(acr, "acor", acor);
-		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
 	}
 
 	// pvs
@@ -877,7 +879,7 @@ char* acp_to_json(ACP *acp_object) {
 			acop_str = strtok_r(NULL, ",", &acop_remainder);
 		} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
 		cJSON_AddItemToObject(acr, "acor", acor);
-		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
+		cJSON_AddItemToObject(acr, "acop", cJSON_CreateNumber(atoi(acop)));
 	}
 
 	json = cJSON_PrintUnformatted(root);

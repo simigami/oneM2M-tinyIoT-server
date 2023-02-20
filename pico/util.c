@@ -531,9 +531,98 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		respond_to_client(o2pt, 404);
 		return -1;
 	} else {
-		
 		return 0;
 	} 
+}
+
+int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
+    if(!rtnode->acpi) return ALL_ACOP;
+
+    fprintf(stderr,"acpi : %s\n", rtnode->acpi);
+
+	char origin[64];
+	int acop = 0;
+	
+	if(o2pt->fr) {
+		strcpy(origin, o2pt->fr);
+	} else {
+		strcpy(origin, "all");
+	}
+
+    if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
+
+	if(rtnode->ty == TY_ACP) {
+		acop = (acop | get_acop_origin(origin, rtnode, 1));
+		acop = (acop | get_acop_origin("all", rtnode, 1));
+		return acop;
+	}
+
+	RTNode *cb = rtnode;
+	while(cb->parent) cb = cb->parent;
+	
+	int uri_cnt = 0;
+	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERTY_SIZE] = "\0";
+	char *acp_uri = NULL;
+
+	if(rtnode->acpi)  {
+		strcpy(arr_acpi, rtnode->acpi);
+
+		acp_uri = strtok(arr_acpi, ",");
+
+		while(acp_uri) { 
+			strcpy(arr_acp_uri[uri_cnt++],acp_uri);
+			acp_uri = strtok(NULL, ",");
+		}
+	}
+
+	for(int i=0; i<uri_cnt; i++) {
+		RTNode *acp = find_rtnode_by_uri(cb, arr_acp_uri[i]);
+
+        fprintf(stderr,"acor : %s acop : %s\n",acp->pv_acor, acp->pv_acop);
+
+		if(acp) {
+			acop = (acop | get_acop_origin(origin, acp, 0));
+			acop = (acop | get_acop_origin("all", acp, 0));
+		}
+	}
+
+	return acop;
+}
+
+int get_acop_origin(char *origin, RTNode *acp, int flag) {
+	if(!origin) return 0;
+
+	int ret_acop = 0, cnt = 0;
+	char *acor, *acop, arr_acor[1024], arr_acop[1024];
+
+	if(flag) {
+		if(!acp->pvs_acor) {
+			return 0;
+		}
+		strcpy(arr_acor, acp->pvs_acor);
+		strcpy(arr_acop, acp->pvs_acop);
+	} else {
+		if(!acp->pv_acor) {
+			return 0;
+		}
+		strcpy(arr_acor, acp->pv_acor);
+		strcpy(arr_acop, acp->pv_acop);
+	}
+
+	acor = strtok(arr_acor, ",");
+    acop = strtok(arr_acop, ",");
+
+	while(acor && acop) {
+		if(!strcmp(acor, origin)) break;
+		acor = strtok(NULL, ",");
+        acop = strtok(NULL, ",");
+	}
+
+    fprintf(stderr, "acop : %s\n", acop);
+
+	if(acop) ret_acop = (ret_acop | atoi(acop));
+
+	return ret_acop;
 }
 
 int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
@@ -554,13 +643,18 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 	} else if((parent_rtnode && strcmp(o2pt->fr, parent_rtnode->ri))) {
 		deny = true;
 	}
-	/*
-	if(target_rtnode->ty == TY_CIN) target_rtnode = node->parent;
+	
+	if(rtnode->ty == TY_CIN) rtnode = rtnode->parent;
 
-	if((target_rtnode->ty == TY_CNT || target_rtnode->ty == TY_ACP) && (get_acop(target_rtnode) & acop) != acop) {
-		deny = true;
+    ResourceType ty = rtnode->ty;
+
+	if(deny == true) {
+        if(ty == TY_CNT || ty == TY_ACP) {
+            if((get_acop(o2pt, rtnode) & acop) == acop) {
+                deny = false;
+            }
+        }
 	}
-	*/
 
 	if(deny) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Originator has no privilege");
@@ -587,21 +681,36 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	}
 
 	RTNode *child = rtnode->child;
+    bool flag = false;
 
 	rn = cJSON_GetObjectItem(resource, "rn");
 	if(rn) {
 		char *resource_name = rn->valuestring;
 		while(child) {
 			if(!strcmp(child->rn, resource_name)) {
-				logger("UTIL", LOG_LEVEL_ERROR, "Attribute `rn` is duplicated");
-				set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
-				o2pt->rsc = RSC_CONFLICT;
-				respond_to_client(o2pt, 209);
-				return -1;
+                flag = true; 
+                break;
 			}
 			child = child->sibling_right;
 		}
+        if(rtnode->ty == TY_CNT) {
+            char invalid_rn[][8] = {"la", "latest", "ol", "oldest"};
+            int invalid_rn_size = sizeof(invalid_rn)/(8*sizeof(char));
+            for(int i=0; i<invalid_rn_size; i++) {
+                if(!strcmp(resource_name, invalid_rn[i])) {
+                    flag = true;
+                }
+            }
+        }
 	}
+
+    if(flag) {
+        logger("UTIL", LOG_LEVEL_ERROR, "Attribute `rn` is duplicated");
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
+		o2pt->rsc = RSC_CONFLICT;
+		respond_to_client(o2pt, 209);
+		return -1;
+    }
 
 	return 0;
 }

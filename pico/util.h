@@ -41,7 +41,7 @@ void cin_in_period(RTNode *pnode);
 void object_test_api(RTNode *node);
 char* json_label_value(char *json_payload);
 int net_to_bit(char *net);
-int get_acop(RTNode *node);
+int get_acop(oneM2MPrimitive *o2pt, RTNode *node);
 int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
 void remove_invalid_char_json(char* json);

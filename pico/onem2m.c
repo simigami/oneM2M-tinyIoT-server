@@ -47,7 +47,7 @@ void init_ae(AE* ae, char *pi, char *origin) {
 	char *et = get_local_time(EXPIRE_TIME);
 	char ri[128] = {'\0'};
 
-	if(origin) {
+	if(origin && strlen(origin) > 0) {
 		if(origin[0] != 'C') strcpy(ri, "C");
 		strcat(ri, origin);
 	} else {
@@ -321,16 +321,19 @@ RTNode* create_acp_rtnode(ACP *acp) {
 	rtnode->rn = (char*)malloc((strlen(acp->rn) + 1) * sizeof(char));
 	rtnode->ri = (char*)malloc((strlen(acp->ri) + 1) * sizeof(char));
 	rtnode->pi = (char*)malloc((strlen(acp->pi) + 1) * sizeof(char));
-	rtnode->pv_acor = (char*)malloc((strlen(acp->pv_acor) + 1) * sizeof(char));
-	rtnode->pv_acop = (char*)malloc((strlen(acp->pv_acop) + 1) * sizeof(char));
 	rtnode->pvs_acor = (char*)malloc((strlen(acp->pvs_acor) + 1) * sizeof(char));
 	rtnode->pvs_acop = (char*)malloc((strlen(acp->pvs_acop) + 1) * sizeof(char));
+
+	if(acp->pv_acor && acp->pv_acop) {
+		rtnode->pv_acor = (char*)malloc((strlen(acp->pv_acor) + 1) * sizeof(char));
+		rtnode->pv_acop = (char*)malloc((strlen(acp->pv_acop) + 1) * sizeof(char));
+		strcpy(rtnode->pv_acor, acp->pv_acor);
+		strcpy(rtnode->pv_acop, acp->pv_acop);
+	}
 
 	strcpy(rtnode->rn, acp->rn);
 	strcpy(rtnode->ri, acp->ri);
 	strcpy(rtnode->pi, acp->pi);
-	strcpy(rtnode->pv_acor, acp->pv_acor);
-	strcpy(rtnode->pv_acop, acp->pv_acop);
 	strcpy(rtnode->pvs_acor, acp->pvs_acor);
 	strcpy(rtnode->pvs_acop, acp->pvs_acop);
 
@@ -558,9 +561,9 @@ void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 }
 
 void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
-	char invalid_key[][4] = {"ty", "pi", "ri", "rn"};
+	char invalid_key[][8] = {"ty", "pi", "ri", "rn", "ct"};
 	cJSON *m2m_ae = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
-	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
+	int invalid_key_size = sizeof(invalid_key)/(8*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
 		if(cJSON_GetObjectItem(m2m_ae, invalid_key[i])) {
 			logger("MAIN", LOG_LEVEL_ERROR, "Unsupported attribute on update");
@@ -588,9 +591,9 @@ void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 }
 
 void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
-	char invalid_key[][4] = {"ty", "pi", "ri", "rn"};
+	char invalid_key[][8] = {"ty", "pi", "ri", "rn", "ct"};
 	cJSON *m2m_cnt = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:cnt");
-	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
+	int invalid_key_size = sizeof(invalid_key)/(8*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
 		if(cJSON_GetObjectItem(m2m_cnt, invalid_key[i])) {
 			logger("MAIN", LOG_LEVEL_ERROR, "Unsupported attribute on update");
@@ -613,8 +616,7 @@ void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 		mni_mbs_invalid(o2pt, "mni"); free(after); after = NULL;
 		return;
 	}
-	target_rtnode->mbs = after->mbs;
-	target_rtnode->mni = after->mni;
+	set_rtnode_update(target_rtnode, after);
 	delete_cin_under_cnt_mni_mbs(after);
 	after->st++;
 	result = db_delete_onem2m_resource(after->ri);
@@ -628,10 +630,39 @@ void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	free_cnt(after); after = NULL;
 }
 
+void update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	char invalid_key[][8] = {"ty", "pi", "ri", "rn", "ct"};
+	cJSON *m2m_acp = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:acp");
+	int invalid_key_size = sizeof(invalid_key)/(8*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(cJSON_GetObjectItem(m2m_acp, invalid_key[i])) {
+			logger("O2M", LOG_LEVEL_ERROR, "Unsupported attribute on update");
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"unsupported attribute on update\"}");
+			o2pt->rsc = 4000;
+			respond_to_client(o2pt, 200);
+			return;
+		}
+	}
+	ACP* after = db_get_acp(target_rtnode->ri);
+	int result;
+	
+	set_acp_update(m2m_acp, after);
+	set_rtnode_update(target_rtnode, after);
+	result = db_delete_acp(after->ri);
+	result = db_store_acp(after);
+	
+	o2pt->pc = acp_to_json(after);
+	o2pt->rsc = 2004;
+	respond_to_client(o2pt, 200);
+	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
+	free_acp(after); after = NULL;
+}
+
 void set_ae_update(cJSON *m2m_ae, AE* after) {
 	cJSON *rr = cJSON_GetObjectItemCaseSensitive(m2m_ae, "rr");
 	cJSON *lbl = cJSON_GetObjectItem(m2m_ae, "lbl");
 	cJSON *srv = cJSON_GetObjectItem(m2m_ae, "srv");
+	cJSON *et = cJSON_GetObjectItem(m2m_ae, "et");
 
 	if(rr) {
 		if(cJSON_IsTrue(rr)) {
@@ -639,6 +670,12 @@ void set_ae_update(cJSON *m2m_ae, AE* after) {
 		} else {
 			after->rr = false;
 		}
+	}
+
+	if(et) {
+		if(after->et) free(after->et);
+		after->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
+		strcpy(after->et, et->valuestring);
 	}
 
 	if(lbl) {
@@ -660,6 +697,13 @@ void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
 	cJSON *acpi = cJSON_GetObjectItem(m2m_cnt, "acpi");
 	cJSON *mni = cJSON_GetObjectItem(m2m_cnt, "mni");
 	cJSON *mbs = cJSON_GetObjectItem(m2m_cnt, "mbs");
+	cJSON *et = cJSON_GetObjectItem(m2m_cnt, "et");
+
+	if(et) {
+		if(after->et) free(after->et);
+		after->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
+		strcpy(after->et, et->valuestring);
+	}
 
 	if(acpi) {
 		if(after->acpi) free(after->acpi);
@@ -677,6 +721,107 @@ void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
 
 	if(mbs) {
 		after->mbs = mbs->valueint;
+	}
+
+	if(after->lt) free(after->lt);
+	after->lt = get_local_time(0);
+}
+
+void set_acp_update(cJSON *m2m_acp, ACP* after) {
+	cJSON *pv_acr = cJSON_GetObjectItem(m2m_acp, "pv");
+	cJSON *pvs_acr = cJSON_GetObjectItem(m2m_acp, "pvs");
+	cJSON *et = cJSON_GetObjectItem(m2m_acp, "et");
+	cJSON *pv_acor = NULL;
+	cJSON *pv_acop = NULL;
+	cJSON *pvs_acor = NULL;
+	cJSON *pvs_acop = NULL;
+	char pv_acor_str[256] = {'\0'};
+	char pv_acop_str[256] = {'\0'};
+	char pvs_acor_str[256] =  {'\0'};
+	char pvs_acop_str[256] =  {'\0'};
+
+	if(et) {
+		if(after->et) free(after->et);
+		after->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
+		strcpy(after->et, et->valuestring);
+	}
+
+	if(pv_acr) {
+		pv_acr = cJSON_GetObjectItem(pv_acr, "acr");
+
+		if(pv_acr) {
+			int acr_size = cJSON_GetArraySize(pv_acr);
+
+			for(int i=0; i<acr_size; i++) {
+				cJSON *arr_item = cJSON_GetArrayItem(pv_acr, i);
+				pv_acor = cJSON_GetObjectItem(arr_item, "acor");
+				pv_acop = cJSON_GetObjectItem(arr_item, "acop");
+
+				if(pv_acor && pv_acop) {
+					char acop[3];
+					sprintf(acop, "%d", pv_acop->valueint);
+					int acor_size = cJSON_GetArraySize(pv_acor);
+
+					for(int j=0; j<acor_size; j++) {
+						char *acor = cJSON_GetArrayItem(pv_acor, j)->valuestring;
+						strcat(pv_acor_str, acor);
+						strcat(pv_acop_str, acop);
+						if(j != acor_size - 1) {
+							strcat(pv_acor_str, ",");
+							strcat(pv_acop_str, ",");
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if(pv_acor_str[0] != '\0' && pv_acop_str[0] != '\0') {
+		if(after->pv_acor) free(after->pv_acor);
+		if(after->pv_acop) free(after->pv_acop);
+		after->pv_acor = strdup(pv_acor_str);
+		after->pv_acop = strdup(pv_acop_str);
+	} else {
+		after->pv_acor = after->pv_acop = NULL;
+	}
+
+	if(pvs_acr) {
+		pvs_acr = cJSON_GetObjectItem(pvs_acr, "acr");
+
+		if(pvs_acr) {
+			int acr_size = cJSON_GetArraySize(pvs_acr);
+
+			for(int i=0; i<acr_size; i++) {
+				cJSON *arr_item = cJSON_GetArrayItem(pvs_acr, i);
+				pvs_acor = cJSON_GetObjectItem(arr_item, "acor");
+				pvs_acop = cJSON_GetObjectItem(arr_item, "acop");
+
+				if(pvs_acor && pvs_acop) {
+					char acop[3];
+					sprintf(acop, "%d", pvs_acop->valueint);
+					int acor_size = cJSON_GetArraySize(pvs_acor);
+
+					for(int j=0; j<acor_size; j++) {
+						char *acor = cJSON_GetArrayItem(pvs_acor, j)->valuestring;
+						strcat(pvs_acor_str, acor);
+						strcat(pvs_acop_str, acop);
+						if(j != acor_size - 1) {
+							strcat(pvs_acor_str, ",");
+							strcat(pvs_acop_str, ",");
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if(pvs_acor_str[0] != '\0' && pvs_acop_str[0] != '\0') {
+		if(after->pvs_acor) free(after->pvs_acor);
+		if(after->pvs_acop) free(after->pvs_acop);
+		after->pvs_acor = strdup(pvs_acor_str);
+		after->pvs_acop = strdup(pvs_acop_str);
+	} else {
+		after->pvs_acor = after->pvs_acop = NULL;
 	}
 
 	if(after->lt) free(after->lt);
@@ -703,6 +848,8 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 			rtnode->acpi = (char*)malloc((strlen(cnt->acpi) + 1)*sizeof(char));
 			strcpy(rtnode->acpi, cnt->acpi);
 		}
+		rtnode->mbs = cnt->mbs;
+		rtnode->mni = cnt->mni;
 		break;
 
 	case TY_SUB:
@@ -944,67 +1091,6 @@ void set_sub_update(Sub* after) {
 	after->lt = get_local_time(0);
 }
 
-void set_acp_update(ACP* after) {
-	char *rn = get_json_value_char("rn", payload);
-	char *pv_acor = NULL;
-	char *pv_acop = NULL;
-	char *pvs_acor = NULL;
-	char *pvs_acop = NULL;
-
-	if(strstr(payload, "\"pv\"")) {
-		if(strstr(payload, "\"acr\"")) {
-			if(strstr(payload, "\"acor\"") && strstr(payload, "acop")) {
-				pv_acor = get_json_value_list("pv-acr-acor", payload); 
-				pv_acop = get_json_value_list("pv-acr-acop", payload);
-				if(!strcmp(pv_acor, "\0") || !strcmp(pv_acop, "\0")) {
-					free(pv_acor); pv_acor = after->pv_acor = NULL;
-					free(pv_acop); pv_acop = after->pv_acop = NULL;
-				}
-			}
-		}
-	}
-
-	if(strstr(payload, "\"pvs\"")) {
-		if(strstr(payload, "\"acr\"")) {
-			if(strstr(payload, "\"acor\"") && strstr(payload, "\"acop\"")) {
-				pvs_acor = get_json_value_list("pvs-acr-acor", payload);
-				pvs_acop = get_json_value_list("pvs-acr-acop", payload);
-				if(!strcmp(pvs_acor, "\0") || !strcmp(pvs_acop, "\0")) {
-					free(pvs_acor); pvs_acor = after->pvs_acor = NULL;
-					free(pvs_acop); pvs_acop = after->pvs_acop = NULL;
-				}
-			}
-		}
-	}
-
-	if(rn) {
-		free(after->rn);
-		after->rn = (char*)malloc((strlen(rn) + 1) * sizeof(char));
-		strcpy(after->rn, rn);
-	}
-
-	if(pv_acor && pv_acop) {
-		if(after->pv_acor) free(after->pv_acor);
-		if(after->pv_acop) free(after->pv_acop);
-		after->pv_acor = (char*)malloc((strlen(pv_acor) + 1) * sizeof(char));
-		after->pv_acop = (char*)malloc((strlen(pv_acop) + 1) * sizeof(char));
-		strcpy(after->pv_acor, pv_acor);
-		strcpy(after->pv_acop, pv_acop);
-	}
-
-	if(pvs_acor && pvs_acop) {
-		if(after->pvs_acor) free(after->pvs_acor);
-		if(after->pvs_acop) free(after->pvs_acop);
-		after->pvs_acor = (char*)malloc((strlen(pvs_acor) + 1) * sizeof(char));
-		after->pvs_acop = (char*)malloc((strlen(pvs_acop) + 1) * sizeof(char));
-		strcpy(after->pvs_acor, pvs_acor);
-		strcpy(after->pvs_acop, pvs_acop);
-	}
-
-	if(after->lt) free(after->lt);
-	after->lt = get_local_time(0);
-}
-
 void notify_onem2m_resource(RTNode *node, char *response_payload, NET net) {
 	remove_invalid_char_json(response_payload);
 	while(node) {
@@ -1101,94 +1187,6 @@ int send_http_packet(char* target, char *post_data) {
 	if(data.data) free(data.data);
 
     return EXIT_SUCCESS;
-}
-
-int get_acop(RTNode *node) {
-	char *request_header_origin = request_header("X-M2M-Origin");
-	char origin[128];
-	int acop = 0;
-	
-	if(request_header_origin) {
-		strcpy(origin, request_header_origin);
-	} else {
-		strcpy(origin, "all");
-	}
-
-	if(node->ty == TY_ACP) {
-		acop = (acop | get_acop_origin(origin, node, 1));
-		acop = (acop | get_acop_origin("all", node, 1));
-		return acop;
-	}
-
-	if(!node->acpi) return ALL_ACOP;
-
-	RTNode *cb = node;
-	while(cb->parent) cb = cb->parent;
-	
-	int uri_cnt = 0;
-	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERTY_SIZE] = "\0";
-	char *acp_uri = NULL;
-
-	if(node->acpi)  {
-		strcpy(arr_acpi, node->acpi);
-
-		acp_uri = strtok(arr_acpi, ",");
-
-		while(acp_uri) { 
-			strcpy(arr_acp_uri[uri_cnt++],acp_uri);
-			acp_uri = strtok(NULL, ",");
-		}
-	}
-
-	for(int i=0; i<uri_cnt; i++) {
-		RTNode *acp = find_rtnode_by_uri(cb, arr_acp_uri[i]);
-
-		if(acp) {
-			acop = (acop | get_acop_origin(origin, acp, 0));
-			acop = (acop | get_acop_origin("all", acp, 0));
-		}
-	}
-
-	return acop;
-}
-
-int get_acop_origin(char *origin, RTNode *acp, int flag) {
-	if(!origin) return 0;
-
-	int ret_acop = 0, cnt = 0;
-	char *acor, *acop, arr_acor[1024], arr_acop[1024];
-
-	if(flag) {
-		if(!acp->pvs_acor) {
-			fprintf(stderr,"pvs_acor is NULL\n"); 
-			return 0;
-		}
-		strcpy(arr_acor, acp->pvs_acor);
-		strcpy(arr_acop, acp->pvs_acop);
-	} else {
-		if(!acp->pv_acor) {
-			fprintf(stderr,"pv_acor is NULL\n"); 
-			return 0;
-		}
-		strcpy(arr_acor, acp->pv_acor);
-		strcpy(arr_acop, acp->pv_acop);
-	}
-
-	acor = strtok(arr_acor, ",");
-
-	while(acor) {
-		if(!strcmp(acor, origin)) break;
-		acor = strtok(NULL, ",");
-		cnt++;
-	}
-
-	acop = strtok(arr_acop, ",");
-
-	for(int i=0; i<cnt; i++) acop = strtok(NULL,",");
-
-	if(acop) ret_acop = (ret_acop | atoi(acop));
-
-	return ret_acop;
 }
 
 int get_value_querystring_int(char *key) {
