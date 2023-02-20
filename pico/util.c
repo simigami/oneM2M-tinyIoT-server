@@ -538,8 +538,6 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
     if(!rtnode->acpi) return ALL_ACOP;
 
-    fprintf(stderr,"acpi : %s\n", rtnode->acpi);
-
 	char origin[64];
 	int acop = 0;
 	
@@ -578,8 +576,6 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	for(int i=0; i<uri_cnt; i++) {
 		RTNode *acp = find_rtnode_by_uri(cb, arr_acp_uri[i]);
 
-        fprintf(stderr,"acor : %s acop : %s\n",acp->pv_acor, acp->pv_acop);
-
 		if(acp) {
 			acop = (acop | get_acop_origin(origin, acp, 0));
 			acop = (acop | get_acop_origin("all", acp, 0));
@@ -617,8 +613,6 @@ int get_acop_origin(char *origin, RTNode *acp, int flag) {
 		acor = strtok(NULL, ",");
         acop = strtok(NULL, ",");
 	}
-
-    fprintf(stderr, "acop : %s\n", acop);
 
 	if(acop) ret_acop = (ret_acop | atoi(acop));
 

@@ -774,15 +774,14 @@ void set_acp_update(cJSON *m2m_acp, ACP* after) {
 				}
 			}
 		}
-	}
-
-	if(pv_acor_str[0] != '\0' && pv_acop_str[0] != '\0') {
-		if(after->pv_acor) free(after->pv_acor);
-		if(after->pv_acop) free(after->pv_acop);
-		after->pv_acor = strdup(pv_acor_str);
-		after->pv_acop = strdup(pv_acop_str);
-	} else {
-		after->pv_acor = after->pv_acop = NULL;
+		if(pv_acor_str[0] != '\0' && pv_acop_str[0] != '\0') {
+			if(after->pv_acor) free(after->pv_acor);
+			if(after->pv_acop) free(after->pv_acop);
+			after->pv_acor = strdup(pv_acor_str);
+			after->pv_acop = strdup(pv_acop_str);
+		} else {
+			after->pv_acor = after->pv_acop = NULL;
+		}
 	}
 
 	if(pvs_acr) {
@@ -813,15 +812,14 @@ void set_acp_update(cJSON *m2m_acp, ACP* after) {
 				}
 			}
 		}
-	}
-
-	if(pvs_acor_str[0] != '\0' && pvs_acop_str[0] != '\0') {
-		if(after->pvs_acor) free(after->pvs_acor);
-		if(after->pvs_acop) free(after->pvs_acop);
-		after->pvs_acor = strdup(pvs_acor_str);
-		after->pvs_acop = strdup(pvs_acop_str);
-	} else {
-		after->pvs_acor = after->pvs_acop = NULL;
+		if(pvs_acor_str[0] != '\0' && pvs_acop_str[0] != '\0') {
+			if(after->pvs_acor) free(after->pvs_acor);
+			if(after->pvs_acop) free(after->pvs_acop);
+			after->pvs_acor = strdup(pvs_acor_str);
+			after->pvs_acop = strdup(pvs_acop_str);
+		} else {
+			after->pvs_acor = after->pvs_acop = NULL;
+		}	
 	}
 
 	if(after->lt) free(after->lt);

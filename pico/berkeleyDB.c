@@ -607,7 +607,6 @@ int db_store_acp(ACP *acp_object) {
     if (acp_object->pv_acop == blankspace) acp_object->pv_acop = NULL; 
     if (acp_object->pvs_acop == blankspace) acp_object->pvs_acor = NULL; 
     if (acp_object->pvs_acop == blankspace) acp_object->pvs_acop = NULL; 
-    
     return 1;
 }
 

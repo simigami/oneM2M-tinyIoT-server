@@ -21,6 +21,7 @@
 ResourceTree *rt;
 
 int main(int c, char **v) {
+	db_display("ACP.db");
 	pthread_t mqtt;
 	init_server();
 	
