@@ -660,7 +660,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
     ResourceType ty = rtnode->ty;
 
 	if(deny == true) {
-        if(ty == RT_CNT || ty == RT_ACP) {
+        if(ty == RT_CNT || ty == RT_ACP || ty == RT_GRP) {
             if((get_acop(o2pt, rtnode) & acop) == acop) {
                 deny = false;
             }

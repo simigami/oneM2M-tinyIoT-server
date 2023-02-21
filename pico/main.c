@@ -19,7 +19,7 @@
 #include "mqttClient.h"
 
 ResourceTree *rt;
-void *mqtt_serve();
+extern void *mqtt_serve();
 
 int main(int c, char **v) {
 	db_display("ACP.db");

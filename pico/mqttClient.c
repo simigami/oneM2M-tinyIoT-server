@@ -484,7 +484,7 @@ static word16 mqtt_get_packetid(void)
 }
 
 /* Public Function */
-int mqtt_ser(void)
+void *mqtt_serve(void)
 {
     int rc = 0;
     MqttObject mqttObj;
@@ -591,7 +591,7 @@ exit:
     free(respTopic);
     free(reg_reqTopic);
     free(reg_respTopic);
-    return rc;
+    return NULL;
 }
 //#endif /* HAVE_SOCKET */
 
