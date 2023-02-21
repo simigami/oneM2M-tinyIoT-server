@@ -2,8 +2,8 @@
 #define __ONEM2M_H__
 
 #include <stdbool.h>
-#include "onem2mTypes.h"
 #include "cJSON.h"
+#include "onem2mTypes.h"
 
 //enum
 typedef enum {
@@ -20,23 +20,6 @@ typedef enum {
 	OP_VIEWER = 1000,
 	OP_OPTIONS
 }Operation;
-
-typedef enum {
-	TY_NONE = 0,
-	TY_ACP = 1,
-	TY_AE = 2,
-	TY_CNT = 3,
-	TY_CIN = 4,
-	TY_CSE = 5,
-	TY_GRP = 9,
-	TY_SUB = 23
-}ObjectType;
-
-typedef enum {
-	ABANDON_GROUP  = 0,
-	ABANDON_MEMBER = 1,
-	SET_MIXED = 2
-} ConsistencyPolicy;
 
 typedef enum {
 	NOTIFICATION_EVENT_1 = 1,
@@ -62,7 +45,7 @@ typedef struct {
 	char *ri;
 	char *pi;
 	char *csi;
-	int ty;
+	ResourceType ty;
 } CSE;
 
 typedef struct {
@@ -76,7 +59,7 @@ typedef struct {
 	char *aei;
 	char *lbl;
 	char *srv;
-	int ty;
+	ResourceType ty;
 	bool rr;
 } AE;
 
@@ -89,7 +72,7 @@ typedef struct {
 	char *pi;
 	char *lbl;
 	char *acpi;
-	int ty;
+	ResourceType ty;
 	int st;
 	int cni;
 	int cbs;
@@ -105,7 +88,7 @@ typedef struct {
 	char *ri;
 	char *pi;
 	char *con;	
-	int ty;
+	ResourceType ty;
 	int st;
 	int cs;
 } CIN;
@@ -120,7 +103,7 @@ typedef struct {
 	char *nu;
 	char *net;
 	char *sur;
-	int ty;
+	ResourceType ty;
 	int nct;
 } Sub;
 
@@ -135,7 +118,7 @@ typedef struct {
 	char *pv_acop;
 	char *pvs_acor;
 	char *pvs_acop;
-	int ty;
+	ResourceType ty;
 } ACP;
 
 typedef struct {
@@ -173,15 +156,14 @@ typedef struct RTNode {
 	char *pvs_acor;
 	char *pvs_acop;
 	char *uri;
-	ObjectType ty;
+	ResourceType ty;
+
 	int net;
 	int cni;
 	int cbs;
 	int mni;
 	int mbs;
 	int cs;
-	int mt;
-	int mnm;
 }RTNode;
 
 typedef struct {  
@@ -202,11 +184,6 @@ typedef struct {
 	char *origin;
 	char *req_type;
 }oneM2MPrimitive;
-
-//http request
-RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
-ObjectType http_parse_object_type();
-ObjectType parse_object_type_cjson(cJSON *cjson);
 
 //onem2m resource
 void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode);
@@ -232,11 +209,14 @@ void retrieve_cin_by_ri(char *ri);
 void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void retrieve_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+
 void update_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+void update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+
 
 void init_cse(CSE* cse);
 void init_ae(AE* ae, char *pi, char *origin);
@@ -244,15 +224,13 @@ void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
 void init_sub(Sub* sub, char *pi, char *uri);
 void init_acp(ACP* acp, char *pi);
-void init_grp(GRP *grp, char *pi);
+void init_grp(GRP* grp, char *pi);
 void set_ae_update(cJSON *m2m_ae, AE* after);
 void set_cnt_update(cJSON *m2m_cnt, CNT* after);
 void set_sub_update(cJSON *m2m_sub, Sub* after);
 void set_acp_update(cJSON *m2m_acp, ACP* after);
 int set_grp_update(cJSON *m2m_grp, GRP* after);
 void set_rtnode_update(RTNode* rtnode, void *after);
-
-void update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 void free_cse(CSE* cse);
 void free_ae(AE* ae);
@@ -263,77 +241,27 @@ void free_acp(ACP *acp);
 void free_grp(GRP *grp);
 
 //resource tree
-RTNode* create_rtnode(void *resource, ObjectType ty);
+RTNode* create_rtnode(void *resource, ResourceType ty);
 RTNode* create_cse_rtnode(CSE *cse);
 RTNode* create_ae_rtnode(AE *ae);
 RTNode* create_cnt_rtnode(CNT *cnt);
 RTNode* create_cin_rtnode(CIN *cin);
 RTNode* create_sub_rtnode(Sub *sub);
 RTNode* create_acp_rtnode(ACP *acp);
-RTNode *create_grp_rtnode(GRP *grp);
-int add_child_resource_tree(RTNode *parent, RTNode *child);
-RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
+RTNode* create_grp_rtnode(GRP *grp);
 void delete_rtnode_and_db_data(RTNode *node, int flag);
 void free_rtnode(RTNode *node);
 void free_rtnode_list(RTNode *node);
 
 void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size);
-void restruct_resource_tree();
 RTNode* restruct_resource_tree_child(RTNode *node, RTNode *list);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 RTNode* find_latest_oldest(RTNode* node, int flag);
 void set_node_uri(RTNode* node);
 
-//json
-void remove_invalid_char_json(char* json);
-int is_json_valid_char(char c);
-bool is_rn_valid_char(char c);
-
-//http etc
-struct url_data { size_t size; char* data;};
-size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
-int send_http_packet(char *target, char *post_data);
-
-//exception
-void no_mandatory_error(oneM2MPrimitive *o2pt);
-void child_type_error(oneM2MPrimitive *o2pt);
-int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop);
-int check_payload_empty(oneM2MPrimitive *o2pt);
-int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode);
-int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode);
-int check_resource_type_equal(oneM2MPrimitive *o2pt);
-int check_resource_type_invalid(oneM2MPrimitive *o2pt);
-int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-int check_payload_size(oneM2MPrimitive *o2pt);
-int check_payload_format(oneM2MPrimitive *o2pt);
-int check_rn_invalid(oneM2MPrimitive *o2pt, ObjectType ty);
-void api_prefix_invalid(oneM2MPrimitive *o2pt);
-void too_large_content_size_error(oneM2MPrimitive *o2pt);
-void mni_mbs_invalid(oneM2MPrimitive *o2pt, char *attribute);
-void db_store_fail(oneM2MPrimitive *o2pt);
-
 //etc
-void init_server();
-char* get_local_time(int diff);
-char* resource_identifier(ObjectType ty, char *ct);
-void cin_in_period(RTNode *pnode);
-void object_test_api(RTNode *node);
-char* json_label_value(char *json_payload);
-int net_to_bit(char *net);
-int get_acop(RTNode *node);
-int get_acop_origin(char *origin, RTNode *acp, int flag);
-int get_value_querystring_int(char *key);
-void log_runtime(double start);
-void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc, ...);
-void set_o2pt_rsc(oneM2MPrimitive *o2pt, int rsc);
-void handle_http_request();
-void respond_to_client(oneM2MPrimitive *o2pt, int status);
 void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
-void delete_cin_under_cnt_mni_mbs(CNT *cnt);
-int validate_grp(RTNode* cb,  GRP *grp);
-bool endswith(char *str, char *match);
-bool isFopt(char *str);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

@@ -1832,10 +1832,10 @@ RTNode* db_get_all_cse() {
         if (strncmp(key.data, TYPE , 2) == 0){
             CSE* cse = db_get_cse((char*)key.data);
             if(!head) {
-                head = create_rtnode(cse,TY_CSE);
+                head = create_rtnode(cse,RT_CSE);
                 rtnode = head;
             } else {
-                rtnode->sibling_right = create_rtnode(cse,TY_CSE);
+                rtnode->sibling_right = create_rtnode(cse,RT_CSE);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }   
@@ -1895,10 +1895,10 @@ RTNode* db_get_all_ae() {
             AE* ae = db_get_ae((char*)key.data);
 
             if(!head) {
-                head = create_rtnode(ae,TY_AE);
+                head = create_rtnode(ae,RT_AE);
                 rtnode = head;
             } else {
-                rtnode->sibling_right = create_rtnode(ae,TY_AE);
+                rtnode->sibling_right = create_rtnode(ae,RT_AE);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }      
@@ -1957,10 +1957,10 @@ RTNode* db_get_all_cnt() {
         if (strncmp(key.data, TYPE , 2) == 0){
             CNT* cnt_ = db_get_cnt((char*)key.data);
             if(!head) {
-                head = create_rtnode(cnt_,TY_CNT);
+                head = create_rtnode(cnt_,RT_CNT);
                 rtnode = head;
             } else {
-                rtnode->sibling_right = create_rtnode(cnt_,TY_CNT);
+                rtnode->sibling_right = create_rtnode(cnt_,RT_CNT);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
@@ -2043,7 +2043,7 @@ RTNode* db_get_all_sub(){
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         switch (idx) {
             case 0:
-                node->ty = TY_SUB;
+                node->ty = RT_SUB;
                 node->ri = malloc(data.size);
                 strcpy(node->ri, data.data);
 
@@ -2234,10 +2234,10 @@ RTNode* db_get_all_grp(){
             GRP *grp = db_get_grp((char *) key.data);
 
             if(!head){
-                head = create_rtnode(grp, TY_GRP);
+                head = create_rtnode(grp, RT_GRP);
                 rtnode = head;
             }else{
-                rtnode->sibling_right = create_rtnode(grp, TY_GRP);
+                rtnode->sibling_right = create_rtnode(grp, RT_GRP);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }            
@@ -2307,10 +2307,10 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
             //find pi
             if(pi && strncmp(pi, cin->pi, strlen(pi)) == 0){
                 if(!head) {
-                    head = create_rtnode(cin, TY_CIN);
+                    head = create_rtnode(cin, RT_CIN);
                     rtnode = head;
                 } else {
-                    rtnode->sibling_right = create_rtnode(cin,TY_CIN);
+                    rtnode->sibling_right = create_rtnode(cin,RT_CIN);
                     rtnode->sibling_right->sibling_left = rtnode;
                     rtnode = rtnode->sibling_right;
 

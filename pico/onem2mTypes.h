@@ -53,7 +53,7 @@ typedef enum {
 	RT_AE = 2,
 	RT_CNT = 3,
 	RT_CIN = 4,
-	RT_CSE_BASE = 5,
+	RT_CSE = 5,
 	RT_GRP = 9,
 	RT_MGMTOBJ = 13,
 	RT_NOD = 14,

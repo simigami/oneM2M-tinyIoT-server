@@ -4,7 +4,7 @@ clean:
 	@rm -rf *.o
 	@rm -rf server
 
-server: main.o httpd.o onem2m.o cJSON.o berkeleyDB.o jsonparse.o mqttClient.o wolfmqtt/mqtt_client.o wolfmqtt/mqtt_packet.o wolfmqtt/mqtt_socket.o logger.o
+server: main.o httpd.o onem2m.o cJSON.o berkeleyDB.o jsonparse.o mqttClient.o wolfmqtt/mqtt_client.o wolfmqtt/mqtt_packet.o wolfmqtt/mqtt_socket.o logger.o util.o
 	gcc -o server $^ -ldb -lpthread -lcurl -lm
 
 main.o: main.c
@@ -31,3 +31,5 @@ mqttClient.o: mqttClient.c
 logger.o: logger.c
 	gcc -c -o logger.o logger.c
 
+util.o: util.c
+	gcc -c -o util.o util.c
