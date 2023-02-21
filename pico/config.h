@@ -12,6 +12,11 @@
 #define MAX_URI_SIZE 1024
 #define MAX_PROPERTY_SIZE 65536
 
+
+// Group Settings
+#define CONSISTENCY_POLICY SET_MIXED
+
+
 // MQTT Settings
 #define ENABLE_MQTT
 

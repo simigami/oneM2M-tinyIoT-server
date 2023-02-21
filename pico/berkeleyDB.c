@@ -210,8 +210,8 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->aei == NULL) ae_object->aei = blankspace;
     if (ae_object->lbl == NULL) ae_object->lbl = blankspace;
     if (ae_object->srv == NULL) ae_object->srv = blankspace;
-    if(ae_object->rr == false) strcpy(rr,"false");
-    else strcpy(rr,"true");
+    if(ae_object->rr == false) strcpy(rr, "false");
+    else strcpy(rr, "true");
 
     dbp = DB_CREATE_(dbp);
     dbp = DB_OPEN_(dbp,DATABASE);
@@ -384,6 +384,7 @@ int db_store_cin(CIN *cin_object) {
 
 int db_store_grp(GRP *grp_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_grp");
+    char *bs = " ";
     char* DATABASE = "GROUP.db";
 
     DB* dbp;    // db handle
@@ -395,8 +396,8 @@ int db_store_grp(GRP *grp_object){
     
     // if input == NULL
     
-    if(grp_object->rn == NULL) grp_object->rn = " ";
-    if(grp_object->mid == NULL) grp_object->mid = "NULL";
+    if(grp_object->rn == NULL) grp_object->rn = bs;
+    if(grp_object->acpi == NULL) grp_object->acpi = bs;
 
     dbp = DB_CREATE_(dbp);
     dbp = DB_OPEN_(dbp,DATABASE);
@@ -418,16 +419,20 @@ int db_store_grp(GRP *grp_object){
 
     /* mnm , mt, min*/
 
-    strbuf = (char *) malloc(sizeof(char) * 128);
-    sprintf(strbuf, "%s;%s;%d;%d", grp_object->pi, grp_object->rn, grp_object->mnm, grp_object->mt);
+    strbuf = (char *) malloc(sizeof(char) * 512);
+
+    sprintf(strbuf, "%s;%s;%s;%s;%s;%s;%d;%d;%d;", 
+        grp_object->pi, grp_object->rn, grp_object->ct, grp_object->et, grp_object->lt, grp_object->acpi, grp_object->mnm, grp_object->cnm, grp_object->mt);
     strcat(str, strbuf);
-    for(int i = 0 ; i < grp_object->mnm; i++){
-        if(grp_object->mid[i]){
-            sprintf(strbuf, ";%s", grp_object->mid[i]);
-            strcat(str, strbuf);
-        }else
-            break;
-    }
+    strcat(str, grp_object->mtv ? "1" : "0");
+    if(grp_object->mid)
+        for(int i = 0 ; i < grp_object->cnm; i++){
+            if(grp_object->mid[i]){
+                sprintf(strbuf, ";%s", grp_object->mid[i]);
+                strcat(str, strbuf);
+            }else
+                break;
+        }
 
     logger("db", LOG_LEVEL_DEBUG, "saving %s", str);
     data.data = str;
@@ -440,7 +445,8 @@ int db_store_grp(GRP *grp_object){
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
     
-    if(strcmp(grp_object->rn, " ") == 0) grp_object->rn = NULL;
+    if(grp_object->rn == bs) grp_object->rn = NULL;
+    if(grp_object->acpi == bs) grp_object->acpi = NULL;
 
     return 1;
 }
@@ -1483,7 +1489,7 @@ ACP* db_get_acp(char* ri) {
     return new_acp;
 }
 
-GRP *db_get_grp(char* ri){
+GRP *db_get_grp(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_grp");
     char* DATABASE = "GROUP.db";
 
@@ -1522,18 +1528,38 @@ GRP *db_get_grp(char* ri){
             new_grp->rn = strdup(ptr);
 
             ptr = strtok(NULL, DB_SEP);
+            new_grp->ct = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->et = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->lt = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            if(!strcmp(ptr, " "))
+                new_grp->acpi = NULL;
+            else   
+		        new_grp->acpi = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
             new_grp->mnm = atoi(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->cnm = atoi(ptr);
             
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
             new_grp->mt = atoi(ptr);
+
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-            new_grp->mid = (char **) malloc(sizeof(char *) * new_grp->mnm);
-            if(strcmp(ptr, "NULL") != 0){
-                for(int i = 0 ; i < new_grp->mnm ; i++){
-                    if(ptr){
+            new_grp->mtv = atoi(ptr) ? true : false;
+
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            if(ptr){
+                new_grp->mid = (char **) malloc(sizeof(char *) * new_grp->mnm);
+                for(int i = 0 ; i < new_grp->cnm ; i++){
+                    if(ptr)
                         new_grp->mid[i] = strdup(ptr);
-                    }else  
-                        break;
                     ptr = strtok(NULL, DB_SEP); //The delimiter is ;
                 }
             }
@@ -1725,6 +1751,46 @@ int db_delete_acp(char* ri) {
     
     /* Delete Success */
     
+    return 1;
+}
+
+int db_delete_grp(char *ri){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_grp");
+    char *database = "GROUP.db";
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+    int flag = 0;
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp, database);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, ri, key.size) == 0) {
+            flag = 1;
+            dbcp->del(dbcp, 0);
+            break;
+        }
+    }
+    if (flag == 0) {
+        fprintf(stderr, "Not Found\n");
+        return -1;
+    }
+
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+    
+    
+    /* Delete Success */
     return 1;
 }
 

@@ -2,6 +2,7 @@
 #define __ONEM2M_H__
 
 #include <stdbool.h>
+#include "onem2mTypes.h"
 #include "cJSON.h"
 
 //enum
@@ -32,8 +33,10 @@ typedef enum {
 }ObjectType;
 
 typedef enum {
-	TY_MIXED = 0
-}MemberType;
+	ABANDON_GROUP  = 0,
+	ABANDON_MEMBER = 1,
+	SET_MIXED = 2
+} ConsistencyPolicy;
 
 typedef enum {
 	NOTIFICATION_EVENT_1 = 1,
@@ -142,9 +145,14 @@ typedef struct {
 	char *ct;
 	char *lt;
 	char *et;
-	MemberType mt;
-	unsigned int mnm;
+	char *acpi;
+	
+	ResourceType mt;
+	int mnm;
+	int cnm;
+
 	char **mid;
+	bool mtv;
 } GRP;
 
 //Resource Tree
@@ -166,9 +174,6 @@ typedef struct RTNode {
 	char *pvs_acop;
 	char *uri;
 	ObjectType ty;
-
-	char **mid;
-
 	int net;
 	int cni;
 	int cbs;
@@ -244,7 +249,10 @@ void set_ae_update(cJSON *m2m_ae, AE* after);
 void set_cnt_update(cJSON *m2m_cnt, CNT* after);
 void set_sub_update(cJSON *m2m_sub, Sub* after);
 void set_acp_update(cJSON *m2m_acp, ACP* after);
+int set_grp_update(cJSON *m2m_grp, GRP* after);
 void set_rtnode_update(RTNode* rtnode, void *after);
+
+void update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 void free_cse(CSE* cse);
 void free_ae(AE* ae);
@@ -325,6 +333,7 @@ void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
 void delete_cin_under_cnt_mni_mbs(CNT *cnt);
 int validate_grp(RTNode* cb,  GRP *grp);
 bool endswith(char *str, char *match);
+bool isFopt(char *str);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

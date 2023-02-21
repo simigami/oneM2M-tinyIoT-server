@@ -41,6 +41,12 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 		latest_oldest_flag = 1; index_end--;
 	}
 
+	int fopt_flag = -1;
+	if(!strcmp(uri_strtok[index_end], "fopt")){
+		index_end--;
+		fopt_flag = 1;
+	}
+
 	strcpy(uri_array, "\0");
 	for(int i=index_start; i<=index_end; i++) {
 		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
@@ -70,7 +76,6 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 	for(int i=0; i<=index; i++) {
 		while(rtnode) {
-			logger("o2m-t", LOG_LEVEL_DEBUG, "rn : %s // %s", rtnode->rn, uri_array[i]);
 			if(!strcmp(rtnode->rn, uri_array[i])) break;
 			rtnode = rtnode->sibling_right;
 		}
@@ -301,27 +306,16 @@ RTNode* create_acp_rtnode(ACP *acp) {
 RTNode *create_grp_rtnode(GRP *grp){
 	RTNode *rtnode = calloc(1, sizeof(RTNode));
 
-	rtnode->rn = (char *) malloc(((strlen(grp->rn) + 1) * sizeof(char)));
-	rtnode->ri = (char*)malloc((strlen(grp->ri) + 1) * sizeof(char));
-	rtnode->pi = (char*)malloc((strlen(grp->pi) + 1) * sizeof(char));
+	rtnode->rn = strdup(grp->rn);
+	rtnode->ri = strdup(grp->ri);
+	rtnode->pi = strdup(grp->pi);
 
-	strcpy(rtnode->rn, grp->rn);
-	strcpy(rtnode->ri, grp->ri);
-	strcpy(rtnode->pi, grp->pi);
+	if(grp->acpi){
+		rtnode->acpi = strdup(grp->acpi);
+	}
 
 	rtnode->mt = grp->mt;
 	rtnode->mnm = grp->mnm;
-
-	rtnode->mid = (char **) malloc(sizeof(char *) * grp->mnm + 1);
-
-	for(int i = 0 ; i < grp->mnm ; i++){
-		if(grp->mid[i]){
-			size_t len =  strlen(grp->mid[i]);
-			rtnode->mid[i] = (char *) malloc(sizeof(char) * len + 1);
-			strncpy(rtnode->mid[i], grp->mid[i], len);
-		}else break;
-	}
-
 	rtnode->ty = TY_GRP;
 
 	return rtnode;
@@ -403,18 +397,22 @@ void free_acp(ACP* acp) {
 
 void free_grp(GRP *grp) {
 	if(grp->rn) free(grp->rn);
-	grp->rn = NULL;
-	if(grp->mnm > 0){
-		for(int i = 0 ; i < grp->mnm ; i++){
+	if(grp->ri) free(grp->ri);
+	if(grp->ct) free(grp->ct);
+	if(grp->et) free(grp->et);
+	if(grp->lt) free(grp->lt);
+	if(grp->pi) free(grp->pi);
+	if(grp->acpi) free(grp->acpi);
+
+	
+	if(grp->mid){
+		for(int i = 0 ; i < grp->cnm ; i++){
 			if(grp->mid[i])
 				free(grp->mid[i]);
-			else
-				break;
-
 			grp->mid[i] = NULL;
 		}
+		free(grp->mid); grp->mid = NULL;
 	}
-	free(grp->mid); grp->mid = NULL;
 	free(grp); grp = NULL;
 }
 
@@ -760,6 +758,9 @@ void delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	case TY_ACP :
 		db_delete_acp(rtnode->ri);
 		break;
+	case TY_GRP :
+		db_delete_grp(rtnode->ri);
+		break;
 	}
 
 	RTNode *left = rtnode->sibling_left;
@@ -1053,7 +1054,8 @@ void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
 	}
 	
 	if(lbl) {
-		if(after->lbl) free(after->lbl);
+		if(after->lbl) 
+			free(after->lbl);
 		after->lbl = cjson_list_item_to_string(lbl);
 	}
 
@@ -1065,7 +1067,9 @@ void set_cnt_update(cJSON *m2m_cnt, CNT* after) {
 		after->mbs = mbs->valueint;
 	}
 
-	if(after->lt) free(after->lt);
+	if(after->lt) 
+		free(after->lt);
+
 	after->lt = get_local_time(0);
 }
 
@@ -1141,6 +1145,14 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 			strcpy(rtnode->pvs_acop, acp->pvs_acop);
 		}
 		break;
+
+	case TY_GRP:
+		GRP *grp = (GRP*) after;
+		if(grp->acpi) {
+			rtnode->acpi = strdup(grp->acpi);
+		}
+		break;
+
 	}
 }
 
@@ -1616,10 +1628,12 @@ void init_grp(GRP *grp, char *pi){
 	grp->ct = (char *) malloc((strlen(ct) + 1) * sizeof(char));
 	grp->et = (char *) malloc((strlen(et) + 1) * sizeof(char));
 	grp->ri = (char *) malloc((strlen(ri) + 1) * sizeof(char));
+	grp->lt = (char *) malloc((strlen(ri) + 1) * sizeof(char));
 	grp->pi = (char *) malloc((strlen(pi) + 1) * sizeof(char));
 
 	strcpy(grp->ct, ct);
 	strcpy(grp->et, et);
+	strcpy(grp->lt, ct);
 	strcpy(grp->ri, ri);
 	strcpy(grp->pi, pi);
 
@@ -1634,6 +1648,98 @@ void init_grp(GRP *grp, char *pi){
 	free(ri); ri = NULL;
 }
 
+int set_grp_update(cJSON *m2m_grp, GRP* after){
+	cJSON *acpi = cJSON_GetObjectItem(m2m_grp, "acpi");
+	cJSON *et = cJSON_GetObjectItem(m2m_grp, "et");
+	cJSON *mt = cJSON_GetObjectItem(m2m_grp, "mt");
+	cJSON *mnm = cJSON_GetObjectItem(m2m_grp, "mnm");
+	cJSON *mid = cJSON_GetObjectItem(m2m_grp, "mid");
+	cJSON *mc = NULL;
+
+	after->mtv = false;
+
+	if(acpi){
+		if(after->acpi) 
+			free(after->acpi);
+		after->acpi = cjson_list_item_to_string(acpi);
+	}
+
+	if(et) {
+		if(after->et)
+			free(after->et);
+		after->et = strdup(et->valuestring);
+	}
+
+	if(mt)
+		after->mt = mt->valueint;
+	
+	if(mnm)
+		after->mnm = mnm->valueint;
+
+	int new_cnm = 0;
+
+	if(mid){
+		size_t mid_size = cJSON_GetArraySize(mid);
+		if(mid_size > after->mnm) return -1;
+		new_cnm = mid_size;
+		for(int i = 0 ; i < after->mnm; i++){
+			if(i < after->cnm) 
+				free(after->mid[i]);
+			if(i < mid_size){
+				mc = cJSON_GetArrayItem(mid, i);
+				if(validate_mid_dup(after->mid, i, mc->valuestring))
+					after->mid[i] = strdup(mc->valuestring);
+				else
+					new_cnm--;
+				
+			}else{
+				after->mid[i] = NULL;
+			}
+		}
+		after->cnm = new_cnm;
+	}
+
+	if(after->lt) free(after->lt);
+	after->lt = get_local_time(0);
+}
+
+void update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	char invalid_key[][4] = {"ty", "pi", "ri", "rn", "ct"};
+	cJSON *m2m_grp = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:grp");
+	int invalid_key_size = sizeof(invalid_key)/(4*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(cJSON_GetObjectItem(m2m_grp, invalid_key[i])) {
+			logger("MAIN", LOG_LEVEL_ERROR, "Unsupported attribute on update");
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"unsupported attribute on update\"}");
+			o2pt->rsc = RSC_BAD_REQUEST;
+			respond_to_client(o2pt, 200);
+			return;
+		}
+	}
+
+	GRP *after = db_get_grp(target_rtnode->ri);
+	int result;
+	if( set_grp_update(m2m_grp, after) == -1){
+		o2pt->rsc = RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+		respond_to_client(o2pt, 400);
+
+		free_grp(after);
+		after = NULL;
+		return;
+	}
+	set_rtnode_update(target_rtnode, after);
+
+	result = db_delete_grp(after->ri);
+	result = db_store_grp(after);
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = grp_to_json(after);
+	o2pt->rsc = RSC_UPDATED;
+	respond_to_client(o2pt, 200);
+
+	free_grp(after); after = NULL;
+
+}
+
 void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	int e = 1;
 	if(parent_rtnode->ty != TY_CNT && parent_rtnode->ty != TY_AE && parent_rtnode->ty != TY_CSE) {
@@ -1644,15 +1750,15 @@ void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	GRP *grp = (GRP *)calloc(1, sizeof(GRP));
 	o2pt->rsc = cjson_to_grp(o2pt->cjson_pc, grp); // TODO Validation(mid dup chk etc.)
 	init_grp(grp, parent_rtnode->ri);
-	//validate_grp(parent_rtnode, grp);
+	validate_grp(parent_rtnode, grp);
 
 
 	if(o2pt->rsc >= 5000 && o2pt->rsc <= 7000){
 		handle_error(o2pt);
+		free_grp(grp);
+		grp = NULL;
 		return;
 	}
-	
-
 
 	int result = db_store_grp(grp);
 	if(result != 1){
@@ -1662,9 +1768,8 @@ void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 
 	RTNode *child_rtnode = create_rtnode(grp, TY_GRP);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
-	/*if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = grp_to_json(grp);*/
-	o2pt->rsc = RSC_CREATED;
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = grp_to_json(grp);
 	respond_to_client(o2pt, 201);
 
 	free_grp(grp); grp = NULL;
@@ -1680,6 +1785,13 @@ int validate_grp(RTNode* cb,  GRP *grp){
 
 	RTNode *rt_node;
 
+	if(grp->mtv) return 1;
+	if(grp->mt == RT_MIXED) {
+		grp->mtv = true;
+		return 1;
+	}
+
+
 	for(int i = 0 ; i < grp->mnm; i++){
 		mid = grp->mid[i];
 		if(!mid) break;
@@ -1688,8 +1800,8 @@ int validate_grp(RTNode* cb,  GRP *grp){
 		isLocalResource = true;
 		if(strlen(mid) >= 2 && mid[0] == '/' && mid[1] != '/'){
 			tStr = strdup(mid);
-			strtok(tStr, '/');
-			p = strtok(NULL, '/');
+			strtok(tStr, "/");
+			p = strtok(NULL, "/");
 			if( strcmp(p, CSE_BASE_NAME) != 0){
 				isLocalResource = false;
 			}
@@ -1700,8 +1812,8 @@ int validate_grp(RTNode* cb,  GRP *grp){
 
 		// resource check
 		if(isLocalResource) {
-			hasFopt = endswith(mid, "/fopt");
-			tStr = mid;
+			hasFopt = isFopt(mid);
+			tStr = strdup(mid);
 			if(hasFopt && strlen(mid) > 5)  // remove fopt 
 				tStr[strlen(mid) - 5] = '\0';
 
@@ -1714,13 +1826,23 @@ int validate_grp(RTNode* cb,  GRP *grp){
 	}
 }
 
+bool isFopt(char *str){
+	char *s;
+	s = strrchr(str, '/');
+	return strcmp(s, "/fopt");
+}
+
 bool endswith(char *str, char *match){
 	size_t str_len = 0;
 	size_t match_len = 0;
-	if(!str || !match) return;
+	if(!str || !match) 
+		return;
 
 	str_len = strlen(str);
 	match_len = strlen(match);
+
+	if(!str_len || !match_len)
+		return false;
 
 	return strncmp(str + str_len - match_len, match, match_len);
 }

@@ -45,7 +45,7 @@ void handle_http_request() {
 		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
 		strcpy(o2pt->pc, payload);
 		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
-		logger("main", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
+		logger("MAIN", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
 		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
 	} 
 
@@ -129,7 +129,6 @@ void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e != -1) e = check_resource_type_equal(o2pt);
 	if(e != -1) e = check_privilege(o2pt, parent_rtnode, ACOP_CREATE);
 	if(e != -1) e = check_rn_duplicate(o2pt, parent_rtnode);
-	logger("main", LOG_LEVEL_DEBUG, "dbg %d", parent_rtnode->ty);
 	if(e == -1) return;
 
 	switch(o2pt->ty) {	
@@ -250,6 +249,11 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	// 	update_sub(pnode);
 	// 	break;
 	
+	case TY_GRP:
+		logger("MAIN", LOG_LEVEL_INFO, "Update GRP");
+		update_grp(o2pt, target_rtnode);
+		break;
+
 	// case TY_ACP :
 	// 	logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
 	// 	update_acp(pnode);
@@ -265,7 +269,7 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 
 void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	logger("MAIN", LOG_LEVEL_INFO, "Delete oneM2M resource");
-	if(target_rtnode->ty == TY_AE || target_rtnode->ty == TY_CNT) {
+	if(target_rtnode->ty == TY_AE || target_rtnode->ty == TY_CNT || target_rtnode->ty == TY_GRP) {
 		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
 			return;
 		}
@@ -416,7 +420,6 @@ void restruct_resource_tree(){
 
 	if(access("./GROUP.db", 0) != -1) {
 		RTNode* grp_list = db_get_all_grp();
-		logger("MAIN", LOG_LEVEL_DEBUG, "%p", grp_list);
 		tail->sibling_right = grp_list;
 		if(grp_list) grp_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;

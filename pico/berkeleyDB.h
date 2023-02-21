@@ -22,6 +22,7 @@ ACP* db_get_acp(char* ri);
 int db_delete_onem2m_resource(char *ri);
 int db_delete_sub(char* ri);
 int db_delete_acp(char* ri);
+int db_delete_grp(char* ri);
 
 RTNode* db_get_all_cse();
 RTNode* db_get_all_ae();
