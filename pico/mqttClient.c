@@ -21,9 +21,8 @@
 
 /* Standalone Example */
 
-#include "config.h"
+//#define WOLFMQTT_MULTITHREAD true
 
-#ifdef ENABLE_MQTT
 #include <pthread.h>
 
 #include "mqttClient.h"
@@ -485,7 +484,7 @@ static word16 mqtt_get_packetid(void)
 }
 
 /* Public Function */
-void *mqtt_serve()
+int mqtt_ser(void)
 {
     int rc = 0;
     MqttObject mqttObj;
@@ -592,7 +591,7 @@ exit:
     free(respTopic);
     free(reg_reqTopic);
     free(reg_respTopic);
-    return NULL;
+    return rc;
 }
 //#endif /* HAVE_SOCKET */
 
@@ -615,5 +614,3 @@ void MqttClientIdToId(char *cseid){
         if(cseid[i] == ':') cseid[i] = '/';
     }
 }
-
-#endif

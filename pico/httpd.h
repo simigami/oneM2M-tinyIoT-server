@@ -22,12 +22,11 @@ void set_response_header(char *key, char *value, char *response_headers);
 void normalize_payload();
 Operation http_parse_operation();
 void http_respond_to_client(oneM2MPrimitive *o2pt, int status);
-void handle_http_request();
 
 typedef struct {
   char *name, *value;
 } header_t;
-static header_t reqhdr[17] = {"\0", "\0"};
+static header_t reqhdr[17] = {{"\0", "\0"}};
 header_t *request_headers(void);
 
 // user shall implement this function

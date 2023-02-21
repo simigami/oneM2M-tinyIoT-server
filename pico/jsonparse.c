@@ -7,6 +7,7 @@
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "cJSON.h"
+#include "onem2mTypes.h"
 #include "config.h"
 
 void remove_quotation_mark(char *s){
@@ -512,6 +513,95 @@ ACP* cjson_to_acp(cJSON *cjson) {
 	return acp;
 }
 
+int cjson_to_grp(cJSON *cjson, GRP *grp){
+	cJSON *root = NULL;
+	cJSON *rn = NULL;
+	cJSON *mt = NULL;
+	cJSON *mnm = NULL;
+	cJSON *acpi = NULL;
+	cJSON *mid = NULL;
+	cJSON *pmid = NULL;
+
+	cJSON *pjson = NULL;
+
+	if(cjson == NULL){
+		return 0;
+	}
+
+	root = cJSON_GetObjectItem(cjson, "m2m:grp");
+
+	rn = cJSON_GetObjectItem(root, "rn");
+	mt = cJSON_GetObjectItem(root, "mt");
+	mnm = cJSON_GetObjectItem(root, "mnm");
+	mid = cJSON_GetObjectItem(root, "mid");
+	acpi = cJSON_GetObjectItem(root, "acpi");
+
+	if(pjson = cJSON_GetObjectItem(root, ""))
+
+
+	// mnm & mid mandatory
+	if(mnm == NULL || mid == NULL){
+		logger("JSON", LOG_LEVEL_DEBUG, "Invalid request");
+		return RSC_INVALID_ARGUMENTS;
+	}
+
+	// validate mnm >= 0
+	if(mnm->valueint < 0){
+		logger("JSON", LOG_LEVEL_DEBUG, "Invalid Maximum Member");
+		return RSC_INVALID_ARGUMENTS;
+	} 
+
+	// set rn(optional);
+	if(rn){
+		grp->rn = (char*) malloc( sizeof(char) * strlen(rn->valuestring) + 1 );
+		strcpy(grp->rn, rn->valuestring);
+	}
+
+	if(mt){
+		grp->mt = (unsigned) mt->valueint;
+	}
+
+	if(acpi){
+		grp->acpi = cjson_list_item_to_string(acpi);
+	}
+	grp->mnm = mnm->valueint;
+
+	grp->mid = (char **) malloc(sizeof(char *) * grp->mnm);
+
+	int mid_size = cJSON_GetArraySize(mid);
+	if(mid_size > grp->mnm){
+		return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+	}
+	
+	grp->cnm = mid_size;
+	for(int i = 0 ; i < grp->mnm; i++){
+		if(i < mid_size){
+			pmid = cJSON_GetArrayItem(mid, i);
+			if(validate_mid_dup(grp->mid, i, pmid->valuestring))
+				grp->mid[i] = strdup(pmid->valuestring);
+			else
+				grp->cnm--;
+			
+		}else{
+			grp->mid[i] = NULL;
+		}
+	}
+
+	return RSC_CREATED;
+}
+
+bool validate_mid_dup(char **mid, int idx, char *new){
+	if(!mid) return true;
+	if(!new) return false;
+
+	for(int i = 0 ; i < idx; i++){
+		if( !strcmp(mid[i], new) ){
+			return false;
+		}
+	}
+	return true;
+}
+
 char* node_to_json(RTNode *node) {
 	char *json = NULL;
 
@@ -903,6 +993,48 @@ char* discovery_to_json(char **result, int size) {
 		cJSON_AddItemToArray(uril, cJSON_CreateString(result[i]));
 	}
 	cJSON_AddItemToObject(root, "m2m:uril", uril);
+
+	json = cJSON_PrintUnformatted(root);
+
+	cJSON_Delete(root);
+
+	return json;
+}
+
+char *grp_to_json(GRP *grp_object){
+
+	char *json = NULL;
+
+	cJSON *root;
+	cJSON *grp;
+	cJSON *mid;
+
+	int cnm = 0;
+
+	root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "m2m:grp", grp = cJSON_CreateObject());
+	cJSON_AddStringToObject(grp, "ri", grp_object->ri);
+	cJSON_AddStringToObject(grp, "pi", grp_object->pi);
+	cJSON_AddStringToObject(grp, "rn", grp_object->rn);
+	cJSON_AddStringToObject(grp, "ct", grp_object->ct);
+	cJSON_AddStringToObject(grp, "lt", grp_object->lt);
+	cJSON_AddStringToObject(grp, "et", grp_object->et);
+	if(grp_object->acpi) cJSON_AddStringToObject(grp, "acpi", grp_object->acpi);
+	cJSON_AddBoolToObject(grp, "mtv", grp_object->mtv);
+
+	cJSON_AddNumberToObject(grp, "mnm", grp_object->mnm);
+	cJSON_AddNumberToObject(grp, "cnm", grp_object->cnm);
+	cJSON_AddNumberToObject(grp, "mt", grp_object->mt);
+	cJSON_AddNumberToObject(grp, "ty", 9);
+	
+	if(grp_object->mid){
+		mid = cJSON_CreateArray();
+		for(int i = 0 ; i < grp_object->cnm ; i++){
+			cJSON_AddItemToArray(mid, cJSON_CreateString(grp_object->mid[i]));
+		}
+	}
+	cJSON_AddItemToObject(grp, "mid", mid);
+	
 
 	json = cJSON_PrintUnformatted(root);
 

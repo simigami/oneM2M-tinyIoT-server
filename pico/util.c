@@ -44,6 +44,12 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 		latest_oldest_flag = 1; index_end--;
 	}
 
+	int fopt_flag = -1;
+	if(!strcmp(uri_strtok[index_end], "fopt")){
+		index_end--;
+		fopt_flag = 1;
+	}
+
 	strcpy(uri_array, "\0");
 	for(int i=index_start; i<=index_end; i++) {
 		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
@@ -80,14 +86,13 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 		if(!rtnode) break;
 		if(i != index) rtnode = rtnode->child;
 	}
-
 	if(rtnode) return rtnode;
 
 	if(parent_rtnode) {
 		CIN *cin = db_get_cin(uri_array[index]);
 		if(cin) {
 			if(!strcmp(cin->pi, parent_rtnode->ri)) {
-				rtnode = create_rtnode(cin, TY_CIN);
+				rtnode = create_rtnode(cin, RT_CIN);
 				rtnode->parent = parent_rtnode;
 			}
 			free_cin(cin);
@@ -98,7 +103,7 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 }
 
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
-	if(rtnode->ty == TY_CNT) {
+	if(rtnode->ty == RT_CNT) {
 		RTNode *head = db_get_cin_rtnode_list_by_pi(rtnode->ri);
 		RTNode *cin = head;
 
@@ -172,21 +177,22 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 
 ResourceType http_parse_object_type() {
 	char *content_type = request_header("Content-Type");
-	if(!content_type) return TY_NONE;
+	if(!content_type) return RT_MIXED;
 	char *str_ty = strstr(content_type, "ty=");
-	if(!str_ty) return TY_NONE;
+	if(!str_ty) return RT_MIXED;
 	int object_type = atoi(str_ty+3);
 
 	ResourceType ty;
 	
 	switch(object_type) {
-	case 1 : ty = TY_ACP; break;
-	case 2 : ty = TY_AE; break;
-	case 3 : ty = TY_CNT; break;
-	case 4 : ty = TY_CIN; break;
-	case 5 : ty = TY_CSE; break;
-	case 23 : ty = TY_SUB; break;
-	default : ty = TY_NONE; break;
+	case 1 : ty = RT_ACP; break;
+	case 2 : ty = RT_AE; break;
+	case 3 : ty = RT_CNT; break;
+	case 4 : ty = RT_CIN; break;
+	case 5 : ty = RT_CSE; break;
+	case 9 : ty = RT_GRP; break;
+	case 23 : ty = RT_SUB; break;
+	default : ty = RT_MIXED; break;
 	}
 	
 	return ty;
@@ -256,15 +262,16 @@ void respond_to_client(oneM2MPrimitive *o2pt, int status) {
 ResourceType parse_object_type_cjson(cJSON *cjson) {
 	ResourceType ty;
 
-	if(!cjson) return TY_NONE;
+	if(!cjson) return RT_MIXED;
 	
-	if(cJSON_GetObjectItem(cjson, "m2m:cb") || cJSON_GetObjectItem(cjson, "m2m:cse")) ty = TY_CSE;
-	else if(cJSON_GetObjectItem(cjson, "m2m:ae")) ty = TY_AE;
-	else if(cJSON_GetObjectItem(cjson, "m2m:cnt")) ty = TY_CNT;
-	else if(cJSON_GetObjectItem(cjson, "m2m:cin")) ty = TY_CIN;
-	else if(cJSON_GetObjectItem(cjson, "m2m:sub")) ty = TY_SUB;
-	else if(cJSON_GetObjectItem(cjson, "m2m:acp")) ty = TY_ACP;
-	else ty = TY_NONE;
+	if(cJSON_GetObjectItem(cjson, "m2m:cb") || cJSON_GetObjectItem(cjson, "m2m:cse")) ty = RT_CSE;
+	else if(cJSON_GetObjectItem(cjson, "m2m:ae")) ty = RT_AE;
+	else if(cJSON_GetObjectItem(cjson, "m2m:cnt")) ty = RT_CNT;
+	else if(cJSON_GetObjectItem(cjson, "m2m:cin")) ty = RT_CIN;
+	else if(cJSON_GetObjectItem(cjson, "m2m:sub")) ty = RT_SUB;
+	else if(cJSON_GetObjectItem(cjson, "m2m:grp")) ty = RT_GRP;
+	else if(cJSON_GetObjectItem(cjson, "m2m:acp")) ty = RT_ACP;
+	else ty = RT_MIXED;
 	
 	return ty;
 }
@@ -273,10 +280,11 @@ char *resource_identifier(ResourceType ty, char *ct) {
 	char *ri = (char *)calloc(24, sizeof(char));
 
 	switch(ty) {
-		case TY_CNT : strcpy(ri, "3-"); break;
-		case TY_CIN : strcpy(ri, "4-"); break;
-		case TY_SUB : strcpy(ri, "23-"); break;
-		case TY_ACP : strcpy(ri, "1-"); break;
+		case RT_CNT : strcpy(ri, "3-"); break;
+		case RT_CIN : strcpy(ri, "4-"); break;
+		case RT_SUB : strcpy(ri, "23-"); break;
+		case RT_ACP : strcpy(ri, "1-"); break;
+		case RT_GRP : strcpy(ri, "9-"); break;
 	}
 
 	struct timespec specific_time;
@@ -375,7 +383,7 @@ void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) {
 		child = child->sibling_right;
 	}
 
-	if(node->ty != TY_SUB && node->ty != TY_ACP) {
+	if(node->ty != RT_SUB && node->ty != RT_ACP) {
 		RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(node->ri);
 
 		if(cin_list_head) cin_list_head = latest_cin_list(cin_list_head, cin_size);
@@ -430,7 +438,7 @@ void init_server() {
 		cse = db_get_cse(CSE_BASE_RI);
 	}
 	
-	rt->cb = create_rtnode(cse, TY_CSE);
+	rt->cb = create_rtnode(cse, RT_CSE);
 	free_cse(cse); cse = NULL;
 
  	restruct_resource_tree();
@@ -451,7 +459,7 @@ void restruct_resource_tree(){
 		if(cnt_list) cnt_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
 	} else {
-		logger("UTIL", LOG_LEVEL_DEBUG, "RESOURCE.db does not exist");
+		logger("MAIN", LOG_LEVEL_DEBUG, "RESOURCE.db does not exist");
 	}
 	
 	if(access("./SUB.db", 0) != -1) {
@@ -460,7 +468,7 @@ void restruct_resource_tree(){
 		if(sub_list) sub_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
 	} else {
-		logger("UTIL", LOG_LEVEL_DEBUG, "SUB.db does not exist");
+		logger("MAIN", LOG_LEVEL_DEBUG, "SUB.db does not exist");
 	}
 
 	if(access("./ACP.db", 0) != -1) {
@@ -469,7 +477,16 @@ void restruct_resource_tree(){
 		if(acp_list) acp_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
 	} else {
-		logger("UTIL", LOG_LEVEL_DEBUG, "ACP.db does not exist");
+		logger("MAIN", LOG_LEVEL_DEBUG, "ACP.db does not exist");
+	}
+
+	if(access("./GROUP.db", 0) != -1) {
+		RTNode* grp_list = db_get_all_grp();
+		tail->sibling_right = grp_list;
+		if(grp_list) grp_list->sibling_left = tail;
+		while(tail->sibling_right) tail = tail->sibling_right;
+	} else {
+		logger("MAIN", LOG_LEVEL_DEBUG, "GROUP.db does not exist");
 	}
 	
 	RTNode *prtnode = rtnode_list;
@@ -541,12 +558,12 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 
 	RTNode *parent_rtnode = rtnode;
 
-	while(parent_rtnode && parent_rtnode->ty != TY_AE) {
+	while(parent_rtnode && parent_rtnode->ty != RT_AE) {
 		parent_rtnode = parent_rtnode->parent;
 	}
 
 	if(!o2pt->fr) {
-		if(!(o2pt->op == OP_CREATE && o2pt->ty == TY_AE)) {
+		if(!(o2pt->op == OP_CREATE && o2pt->ty == RT_AE)) {
 			deny = true;
 		}
 	} else if(!strcmp(o2pt->fr, "CAdmin")) {
@@ -555,9 +572,9 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		deny = true;
 	}
 	/*
-	if(target_rtnode->ty == TY_CIN) target_rtnode = node->parent;
+	if(target_rtnode->ty == RT_CIN) target_rtnode = node->parent;
 
-	if((target_rtnode->ty == TY_CNT || target_rtnode->ty == TY_ACP) && (get_acop(target_rtnode) & acop) != acop) {
+	if((target_rtnode->ty == RT_CNT || target_rtnode->ty == RT_ACP) && (get_acop(target_rtnode) & acop) != acop) {
 		deny = true;
 	}
 	*/
@@ -579,11 +596,12 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	cJSON *resource, *rn;
 
 	switch(o2pt->ty) {
-		case TY_AE: resource = cJSON_GetObjectItem(root, "m2m:ae"); break;
-		case TY_CNT: resource = cJSON_GetObjectItem(root, "m2m:cnt"); break;
-		case TY_CIN: resource = cJSON_GetObjectItem(root, "m2m:cin"); break;
-		case TY_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
-		case TY_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
+		case RT_AE: resource = cJSON_GetObjectItem(root, "m2m:ae"); break;
+		case RT_CNT: resource = cJSON_GetObjectItem(root, "m2m:cnt"); break;
+		case RT_CIN: resource = cJSON_GetObjectItem(root, "m2m:cin"); break;
+		case RT_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
+		case RT_GRP: resource = cJSON_GetObjectItem(root, "m2m:grp"); break;
+		case RT_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
 	}
 
 	RTNode *child = rtnode->child;
@@ -663,10 +681,11 @@ int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty) {
 	cJSON *resource, *rn;
 
 	switch(ty) {
-		case TY_AE: resource = cJSON_GetObjectItem(root, "m2m:ae"); break;
-		case TY_CNT: resource = cJSON_GetObjectItem(root, "m2m:cnt"); break;
-		case TY_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
-		case TY_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
+		case RT_AE: resource = cJSON_GetObjectItem(root, "m2m:ae"); break;
+		case RT_CNT: resource = cJSON_GetObjectItem(root, "m2m:cnt"); break;
+		case RT_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
+		case RT_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
+		case RT_GRP: resource = cJSON_GetObjectItem(root, "m2m:grp"); break;
 	}
 
 	rn = cJSON_GetObjectItem(resource, "rn");
@@ -703,7 +722,7 @@ int check_resource_type_equal(oneM2MPrimitive *o2pt) {
 }
 
 int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
-	if(o2pt->ty == TY_NONE) {
+	if(o2pt->ty == RT_MIXED) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type is invalid\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
@@ -746,4 +765,95 @@ void db_store_fail(oneM2MPrimitive *o2pt) {
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
 	o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
 	respond_to_client(o2pt, 500);
+}
+
+
+bool isFopt(char *str){
+	char *s;
+	s = strrchr(str, '/');
+	return strcmp(s, "/fopt");
+}
+
+bool endswith(char *str, char *match){
+	size_t str_len = 0;
+	size_t match_len = 0;
+	if(!str || !match) 
+		return false;
+
+	str_len = strlen(str);
+	match_len = strlen(match);
+
+	if(!str_len || !match_len)
+		return false;
+
+	return strncmp(str + str_len - match_len, match, match_len);
+}
+
+int validate_grp(RTNode* cb,  GRP *grp){
+	bool hasFopt = false;
+	bool isLocalResource = true;
+	char *mid = NULL;
+	char *p = NULL;
+	char *tStr = NULL;
+
+	RTNode *rt_node;
+
+	if(grp->mtv) return 1;
+	if(grp->mt == RT_MIXED) {
+		grp->mtv = true;
+		return 1;
+	}
+
+
+	for(int i = 0 ; i < grp->mnm; i++){
+		mid = grp->mid[i];
+		if(!mid) break;
+
+		// Check is local resource
+		isLocalResource = true;
+		if(strlen(mid) >= 2 && mid[0] == '/' && mid[1] != '/'){
+			tStr = strdup(mid);
+			strtok(tStr, "/");
+			p = strtok(NULL, "/");
+			if( strcmp(p, CSE_BASE_NAME) != 0){
+				isLocalResource = false;
+			}
+
+			free(tStr); tStr = NULL;
+			p = NULL;
+		}
+
+		// resource check
+		if(isLocalResource) {
+			hasFopt = isFopt(mid);
+			tStr = strdup(mid);
+			if(hasFopt && strlen(mid) > 5)  // remove fopt 
+				tStr[strlen(mid) - 5] = '\0';
+
+			if(! (rt_node = find_rtnode_by_uri(cb, mid)))
+				return RSC_NOT_FOUND;
+		}else {
+			// Todo - remote resource
+		}
+
+	}
+}
+
+void handle_error(oneM2MPrimitive *o2pt) {
+	int rcode = 400;
+	switch(o2pt->rsc){
+		case RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED:
+			logger("MAIN", LOG_LEVEL_DEBUG, "Max Number of member exceeded");
+			break;
+		
+		case RSC_INVALID_ARGUMENTS:
+			logger("MAIN", LOG_LEVEL_DEBUG, "Invalid Arguments");
+			break;
+
+		default:
+			logger("MAIN", LOG_LEVEL_DEBUG, "Internal Server Error");
+			break;
+	}
+
+	respond_to_client(o2pt, rcode);
 }

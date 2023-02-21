@@ -1,13 +1,6 @@
 {
     "files.associations": {
         "pthread.h": "c",
-        "types.h": "c",
-        "httpd.h": "c",
-        "onem2m.h": "c",
-        "in.h": "c",
-        "timeb.h": "c",
-        "curl.h": "c",
-        "stdbool.h": "c",
-        "cjson.h": "c"
+        "types.h": "c"
     }
 }
