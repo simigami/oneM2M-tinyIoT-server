@@ -1,6 +1,6 @@
 #ifndef __ONEM2M_TYPES_H__
 #define __ONEM2M_TYPES_H__
-#endif
+
 #include <stdbool.h>
 
 
@@ -45,3 +45,30 @@ typedef enum {
 	RSC_INVALID_ARGUMENTS							= 6023,
 	RSC_INSUFFICIENT_ARGUMENTS						= 6024,
 }ResponseStatusCode;
+
+
+typedef enum {
+	RT_MIXED = 0,
+	RT_ACP = 1,
+	RT_AE = 2,
+	RT_CNT = 3,
+	RT_CIN = 4,
+	RT_CSE = 5,
+	RT_GRP = 9,
+	RT_MGMTOBJ = 13,
+	RT_NOD = 14,
+	RT_PCH = 15,
+	RT_CSR = 16,
+	RT_REQ = 17,
+	RT_SUB = 23,
+	RT_SMD = 24,
+	RT_FCNT = 28,
+	RT_TS = 29,
+	RT_TSI = 30,
+	RT_CRS = 48,
+	RT_FCI = 58,
+	RT_TSB = 60,
+	RT_ACTR = 63,
+} ResourceType;
+
+#endif

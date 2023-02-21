@@ -13,12 +13,13 @@
 #include "berkeleyDB.h"
 #include "httpd.h"
 #include "cJSON.h"
+#include "util.h"
 #include "config.h"
 #include "onem2mTypes.h"
 #include "mqttClient.h"
-#include "util.h"
 
 ResourceTree *rt;
+void *mqtt_serve();
 
 int main(int c, char **v) {
 	db_display("ACP.db");
@@ -27,7 +28,7 @@ int main(int c, char **v) {
 	
 	#ifdef ENABLE_MQTT
 	int mqtt_thread_id;
-	mqtt_thread_id = pthread_create(&mqtt, NULL, (void*) &mqtt_serve, "mqtt Client");
+	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
 	if(mqtt_thread_id < 0){
 		fprintf(stderr, "MQTT thread create error\n");
 		return 0;
@@ -37,6 +38,44 @@ int main(int c, char **v) {
 	serve_forever(SERVER_PORT); // main oneM2M operation logic in void route()    
 
 	return 0;
+}
+
+void handle_http_request() {
+	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+	char *header;
+	if(payload) {
+		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
+		strcpy(o2pt->pc, payload);
+		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
+		logger("MAIN", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
+		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
+	} 
+
+	if((header = request_header("X-M2M-Origin"))) {
+		o2pt->fr = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->fr, header);
+	} 
+
+	if((header = request_header("X-M2M-RI"))) {
+		o2pt->rqi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rqi, header);
+	} 
+
+	if((header = request_header("X-M2M-RVI"))) {
+		o2pt->rvi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rvi, header);
+	} 
+
+	if(uri) {
+		o2pt->to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
+		strcpy(o2pt->to, uri+1);
+	} 
+
+	o2pt->op = http_parse_operation();
+	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
+	o2pt->prot = PROT_HTTP;
+
+	route(o2pt);
 }
 
 void route(oneM2MPrimitive *o2pt) {
@@ -79,7 +118,7 @@ void route(oneM2MPrimitive *o2pt) {
 		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
 		respond_to_client(o2pt, 500);
 	}
-	if(target_rtnode->ty == TY_CIN) free_rtnode(target_rtnode);
+	if(target_rtnode->ty == RT_CIN) free_rtnode(target_rtnode);
 
 	log_runtime(start);
 }
@@ -94,32 +133,37 @@ void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e == -1) return;
 
 	switch(o2pt->ty) {	
-	case TY_AE :
+	case RT_AE :
 		logger("MAIN", LOG_LEVEL_INFO, "Create AE");
 		create_ae(o2pt, parent_rtnode);
 		break;	
 
-	case TY_CNT :
+	case RT_CNT :
 		logger("MAIN", LOG_LEVEL_INFO, "Create CNT");
 		create_cnt(o2pt, parent_rtnode);
 		break;
 		
-	case TY_CIN :
+	case RT_CIN :
 		logger("MAIN", LOG_LEVEL_INFO, "Create CIN");
 		create_cin(o2pt, parent_rtnode);
 		break;
 
-	case TY_SUB :
+	case RT_SUB :
 		logger("MAIN", LOG_LEVEL_INFO, "Create SUB");
 		create_sub(o2pt, parent_rtnode);
 		break;
 	
-	case TY_ACP :
+	case RT_ACP :
 		logger("MAIN", LOG_LEVEL_INFO, "Create ACP");
 		create_acp(o2pt, parent_rtnode);
 		break;
 
-	case TY_NONE :
+	case RT_GRP:
+		logger("MAIN", LOG_LEVEL_INFO, "Create GRP");
+		create_grp(o2pt, parent_rtnode);
+		break;
+
+	case RT_MIXED :
 		logger("MAIN", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type error\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
@@ -143,32 +187,37 @@ void retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 
 	switch(target_rtnode->ty) {
 		
-	case TY_CSE :
+	case RT_CSE :
 		logger("MAIN", LOG_LEVEL_INFO, "Retrieve CSE");
         retrieve_cse(o2pt, target_rtnode);
       	break;
 	
-	case TY_AE : 
+	case RT_AE : 
 		logger("MAIN", LOG_LEVEL_INFO, "Retrieve AE");
 		retrieve_ae(o2pt, target_rtnode);	
 		break;	
 			
-	case TY_CNT :
+	case RT_CNT :
 		logger("MAIN", LOG_LEVEL_INFO, "Retrieve CNT");
 		retrieve_cnt(o2pt, target_rtnode);			
 		break;
 			
-	case TY_CIN :
+	case RT_CIN :
 		logger("MAIN", LOG_LEVEL_INFO, "Retrieve CIN");
 		retrieve_cin(o2pt, target_rtnode);			
 		break;
 
-	case TY_SUB :
+	case RT_GRP :
+		logger("MAIN", LOG_LEVEL_INFO, "Retrieve GRP");
+		retrieve_grp(o2pt, target_rtnode);	
+		break;
+
+	case RT_SUB :
 		logger("MAIN", LOG_LEVEL_INFO, "Retrieve SUB");
 		retrieve_sub(o2pt, target_rtnode);			
 		break;
 
-	case TY_ACP :
+	case RT_ACP :
 		logger("MAIN", LOG_LEVEL_INFO, "Retrieve ACP");
 		retrieve_acp(o2pt, target_rtnode);			
 		break;
@@ -186,24 +235,29 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(e == -1) return;
 	
 	switch(ty) {
-	case TY_AE :
+	case RT_AE :
 		logger("MAIN", LOG_LEVEL_INFO, "Update AE");
 		update_ae(o2pt, target_rtnode);
 		break;
 
-	case TY_CNT :
+	case RT_CNT :
 		logger("MAIN", LOG_LEVEL_INFO, "Update CNT");
 		update_cnt(o2pt, target_rtnode);
 		break;
 
-	// case TY_SUB :
+	// case RT_SUB :
 	//	logger("MAIN", LOG_LEVEL_INFO, "Update SUB");
 	// 	update_sub(pnode);
 	// 	break;
 	
-	case TY_ACP :
+	case RT_ACP :
 		logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
 		update_acp(o2pt, target_rtnode);
+		break;
+
+	case RT_GRP:
+		logger("MAIN", LOG_LEVEL_INFO, "Update GRP");
+		update_grp(o2pt, target_rtnode);
 		break;
 
 	default :
@@ -213,6 +267,7 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 		respond_to_client(o2pt, 400);
 	}
 }
+
 /*
 void update_sub(RTNode *pnode) {
 	Sub* after = db_get_sub(pnode->ri);
@@ -236,67 +291,8 @@ void retrieve_filtercriteria_data(RTNode *node, ResourceType ty, char **discover
 	RTNode *sibling[1024];
 	int index = -1;
 
-	if(flag == 1) {
-		if(!node->uri) set_node_uri(node);
-		child[++index] = node->child;
-		sibling[index] = node;
-	}
-
-	while(node && flag == 0) {
-		if(!node->uri) set_node_uri(node);
-
-		if(ty != -1) {
-			if(node->ty == ty) {
-				discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
-				strcpy(discovery_list[(*size)++], node->uri);
-			}
-		} else {
-			discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
-			strcpy(discovery_list[(*size)++], node->uri);
-		}
-		child[++index] = node->child;
-		sibling[index] = node;
-		node = node->sibling_right;
-	}
-
-	if((ty == -1 || ty == TY_CIN) && curr < level) {
-		for(int i= 0; i <= index; i++) {
-			RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(sibling[i]->ri);
-			RTNode *p = cin_list_head;
-
-			while(p) {
-				discovery_list[*size] = (char*)malloc(MAX_URI_SIZE*sizeof(char));
-				strcpy(discovery_list[*size], sibling[i]->uri);
-				strcat(discovery_list[*size], "/");
-				strcat(discovery_list[*size], p->ri);
-				(*size)++;
-				p = p->sibling_right;
-			}
-
-			free_rtnode_list(cin_list_head);
-		}
-	}
-
-	for(int i = 0; i<=index; i++) {
-		retrieve_filtercriteria_data(child[i], ty, discovery_list, size, level, curr+1, 0);
-	} 
-}
-
-void retrieve_object_filtercriteria(RTNode *pnode) {
-	char **discovery_list = (char**)malloc(65536*sizeof(char*));
-	int size = 0;
-	ResourceType ty = get_value_querystring_int("ty");
-	int level = get_value_querystring_int("lvl");
-	if(level == -1) level = INT32_MAX;
-
-	retrieve_filtercriteria_data(pnode, ty, discovery_list, &size, level, 0, 1);
-
-	response_payload = discovery_to_json(discovery_list, size);
-	respond_to_client(200, NULL, "2000");
-	for(int i=0; i<size; i++) free(discovery_list[i]);
-	free(discovery_list);
-	free(response_payload); response_payload = NULL;
-
-	return;
+void *mqtt_serve(){
+	int result = 0;
+	result = mqtt_ser();
 }
 */

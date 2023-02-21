@@ -33,4 +33,3 @@ logger.o: logger.c
 
 util.o: util.c
 	gcc -c -o util.o util.c
-

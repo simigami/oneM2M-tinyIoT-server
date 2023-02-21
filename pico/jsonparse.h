@@ -9,12 +9,14 @@ CNT* cjson_to_cnt(cJSON *cjson);
 CIN* cjson_to_cin(cJSON *cjson);
 Sub* cjson_to_sub(cJSON *cjson);
 ACP* cjson_to_acp(cJSON *cjson);
+int cjson_to_grp(cJSON *cjson, GRP *grp);
 
 char* cse_to_json(CSE* cse_object);
 char* ae_to_json(AE* ae_object);
 char* cnt_to_json(CNT* cnt_object);
 char* cin_to_json(CIN* cin_object);
 char* sub_to_json(Sub *sub_object);
+char *grp_to_json(GRP *grp_object);
 char* notification_to_json(char *sur, int net, char *rep);
 char* node_to_json(RTNode *node);
 char* acp_to_json(ACP *acp_object);
@@ -29,5 +31,7 @@ char* get_json_value_list_v2(char *json, char *key);
 
 bool json_key_exist(char *json, char *key);
 char *cjson_list_item_to_string(cJSON *key);
+
+bool validate_mid_dup(char **mid, int idx, char *new);
 
 #endif

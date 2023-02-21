@@ -17,6 +17,6 @@
 int mqtt_respond_to_client(oneM2MPrimitive *o2pt);
 void idToMqttClientId(char *id);
 void MqttClientIdToId(char *id);
-void *mqtt_serve();
+int mqtt_ser(void);
 
 void route();

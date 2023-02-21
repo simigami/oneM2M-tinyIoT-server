@@ -1,5 +1,6 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
+#include "onem2mTypes.h"
 
 void init_server();
 
@@ -13,6 +14,8 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 void restruct_resource_tree();
 int add_child_resource_tree(RTNode *parent, RTNode *child);
 RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
+RTNode* find_latest_oldest(RTNode* node, int flag);
+RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 
 //error
 void no_mandatory_error(oneM2MPrimitive *o2pt);
@@ -48,11 +51,18 @@ void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
 bool is_rn_valid_char(char c);
 
+int validate_grp(RTNode* cb,  GRP *grp);
+
 ResourceType http_parse_object_type();
 ResourceType parse_object_type_cjson(cJSON *cjson);
 
 struct url_data { size_t size; char* data;};
 size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
 int send_http_packet(char *target, char *post_data);
+
+bool isFopt(char *str);
+bool endswith(char *str, char *match);
+
+void handle_error(oneM2MPrimitive *o2pt);
 
 #endif
