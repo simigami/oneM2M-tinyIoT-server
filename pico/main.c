@@ -22,6 +22,7 @@ ResourceTree *rt;
 void *mqtt_serve();
 
 int main(int c, char **v) {
+	db_display("ACP.db");
 	pthread_t mqtt;
 	init_server();
 	
@@ -120,7 +121,6 @@ void route(oneM2MPrimitive *o2pt) {
 	if(target_rtnode->ty == RT_CIN) free_rtnode(target_rtnode);
 
 	log_runtime(start);
-
 }
 
 void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -250,15 +250,15 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	// 	update_sub(pnode);
 	// 	break;
 	
+	case RT_ACP :
+		logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
+		update_acp(o2pt, target_rtnode);
+		break;
+
 	case RT_GRP:
 		logger("MAIN", LOG_LEVEL_INFO, "Update GRP");
 		update_grp(o2pt, target_rtnode);
 		break;
-
-	// case RT_ACP :
-	// 	logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
-	// 	update_acp(pnode);
-	// 	break;
 
 	default :
 		logger("MAIN", LOG_LEVEL_ERROR, "Resource type does not support Update");
@@ -268,28 +268,31 @@ void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	}
 }
 
-void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
-	logger("MAIN", LOG_LEVEL_INFO, "Delete oneM2M resource");
-	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT || target_rtnode->ty == RT_GRP) {
-		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
-			return;
-		}
-	}
-	if(target_rtnode->ty == RT_CSE) {
-		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"CSE can not be deleted\"}");
-		o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
-		respond_to_client(o2pt, 403);
-		return;
-	}
-	delete_rtnode_and_db_data(target_rtnode,1);
-	target_rtnode = NULL;
-	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"resource is deleted successfully\"}");
-	o2pt->rsc = RSC_DELETED;
-	respond_to_client(o2pt, 200);
+/*
+void update_sub(RTNode *pnode) {
+	Sub* after = db_get_sub(pnode->ri);
+	int result;
+	
+	set_sub_update(after);
+	set_rtnode_update(pnode, after);
+	result = db_delete_sub(after->ri);
+	result = db_store_sub(after);
+	
+	response_payload = sub_to_json(after);
+	respond_to_client(200, NULL, "2004");
+	free(response_payload); response_payload = NULL;
+	free_sub(after); after = NULL;
 }
 
+void retrieve_filtercriteria_data(RTNode *node, ResourceType ty, char **discovery_list, int *size, int level, int curr, int flag) {
+	if(!node || curr > level) return;
+
+	RTNode *child[1024];
+	RTNode *sibling[1024];
+	int index = -1;
 
 void *mqtt_serve(){
 	int result = 0;
 	result = mqtt_ser();
 }
+*/

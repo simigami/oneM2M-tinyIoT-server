@@ -608,6 +608,7 @@ int db_store_sub(Sub *sub_object) {
 int db_store_acp(ACP *acp_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_acp");
     char* DATABASE = "ACP.db";
+    char* blankspace = " ";
 
     DB* dbp;    // db handle
     DBC* dbcp;
@@ -622,18 +623,16 @@ int db_store_acp(ACP *acp_object) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
-    if (acp_object->rn == NULL) acp_object->rn = " ";
-    if (acp_object->pi == NULL) acp_object->pi = " ";
-    if (acp_object->ty == '\0') acp_object->ty = 0;
-    if (acp_object->ct == NULL) acp_object->ct = " ";
-    if (acp_object->lt == NULL) acp_object->lt = " ";
-    if (acp_object->et == NULL) acp_object->et = " ";
+    if (acp_object->rn == NULL) acp_object->rn = blankspace;
+    if (acp_object->pi == NULL) acp_object->pi = blankspace;
+    if (acp_object->ct == NULL) acp_object->ct = blankspace;
+    if (acp_object->lt == NULL) acp_object->lt = blankspace;
+    if (acp_object->et == NULL) acp_object->et = blankspace;
+    if (acp_object->pv_acor == NULL) acp_object->pv_acor = blankspace;       
+    if (acp_object->pv_acop == NULL) acp_object->pv_acop = blankspace; 
+    if (acp_object->pvs_acop == NULL) acp_object->pvs_acor = blankspace; 
+    if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = blankspace; 
 
-   if (acp_object->pv_acor == NULL) acp_object->pv_acor = " ";       
-   if (acp_object->pv_acop == NULL) acp_object->pv_acop = " "; 
-   if (acp_object->pvs_acop == NULL) acp_object->pvs_acor = " "; 
-   if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = " "; 
-  
 
     dbp = DB_CREATE_(dbp);
     dbp = DB_OPEN_(dbp,DATABASE);
@@ -664,7 +663,16 @@ int db_store_acp(ACP *acp_object) {
     /* DB close */
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
-    
+
+    if (acp_object->rn == blankspace) acp_object->rn = NULL;
+    if (acp_object->pi == blankspace) acp_object->pi = NULL;
+    if (acp_object->ct == blankspace) acp_object->ct = NULL;
+    if (acp_object->lt == blankspace) acp_object->lt = NULL;
+    if (acp_object->et == blankspace) acp_object->et = NULL;
+    if (acp_object->pv_acor == blankspace) acp_object->pv_acor = NULL;       
+    if (acp_object->pv_acop == blankspace) acp_object->pv_acop = NULL; 
+    if (acp_object->pvs_acop == blankspace) acp_object->pvs_acor = NULL; 
+    if (acp_object->pvs_acop == blankspace) acp_object->pvs_acop = NULL; 
     return 1;
 }
 
@@ -2106,7 +2114,6 @@ RTNode* db_get_all_sub(){
 }
 
 RTNode* db_get_all_acp() {
-    fprintf(stderr,"\x1b[92m[Get All ACP]\x1b[0m\n");
     char* DATABASE = "ACP.db";
     const char* TYPE = "1-";
 
@@ -2137,37 +2144,19 @@ RTNode* db_get_all_acp() {
         return NULL;
     }
 
-    RTNode* head = calloc(1,sizeof(RTNode));
-    RTNode* node;
-    node = head;
+    RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0){
             ACP* acp = db_get_acp((char*)key.data);
-            node->ri = malloc((strlen(acp->ri)+1) * sizeof(char));
-            node->rn = malloc((strlen(acp->rn)+1) * sizeof(char));
-            node->pi = malloc((strlen(acp->pi)+1) * sizeof(char));
-            if(acp->pv_acor && acp->pv_acop) { 
-                node->pv_acor = malloc((strlen(acp->pv_acor)+1) * sizeof(char));
-                node->pv_acop = malloc((strlen(acp->pv_acop)+1) * sizeof(char));
-                strcpy(node->pv_acor,acp->pv_acor);
-                strcpy(node->pv_acop,acp->pv_acop);
-            }
-            if(acp->pvs_acor && acp->pvs_acop) {
-                node->pvs_acor = malloc((strlen(acp->pvs_acor)+1) *sizeof(char));
-                node->pvs_acop = malloc(strlen((acp->pvs_acop)+1) *sizeof(char));
-                strcpy(node->pvs_acor,acp->pvs_acor);
-                strcpy(node->pvs_acop,acp->pvs_acop);
-            }
-
-            strcpy(node->ri,acp->ri);
-            strcpy(node->rn,acp->rn);
-            strcpy(node->pi,acp->pi);
-            node->ty = acp->ty;
-
-            node->sibling_right=calloc(1,sizeof(RTNode));            
-            node->sibling_right->sibling_left = node;
-            node = node->sibling_right;
+            if(!head) {
+                head = create_rtnode(acp,TY_ACP);
+                rtnode = head;
+            } else {
+                rtnode->sibling_right = create_rtnode(acp,TY_ACP);
+                rtnode->sibling_right->sibling_left = rtnode;
+                rtnode = rtnode->sibling_right;
+            }     
             free(acp);
         }
     }
@@ -2177,19 +2166,11 @@ RTNode* db_get_all_acp() {
         return NULL;
     }
 
-    node->sibling_left->sibling_right = NULL;
-    free(node->ri);
-    free(node->rn);
-    free(node->pi);
-    free(node);
-    node = NULL;
-
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-    fprintf(stderr,"\n");
     return head;
 }
 
