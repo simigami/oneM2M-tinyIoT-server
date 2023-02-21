@@ -37,7 +37,7 @@ void init_cse(CSE* cse) {
 	strcat(cse->csi,rn);
 	strcpy(cse->pi, "NULL");
 	
-	cse->ty = TY_CSE;
+	cse->ty = RT_CSE;
 	
 	free(ct); ct = NULL;
 }
@@ -73,7 +73,7 @@ void init_ae(AE* ae, char *pi, char *origin) {
 	strcpy(ae->lt, ct);
 	strcpy(ae->aei, ri);
 	
-	ae->ty = TY_AE;
+	ae->ty = RT_AE;
 	
 	free(ct); ct = NULL;
 	free(et); et = NULL;
@@ -82,7 +82,7 @@ void init_ae(AE* ae, char *pi, char *origin) {
 void init_cnt(CNT* cnt, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_CNT, ct);
+	char *ri = resource_identifier(RT_CNT, ct);
 	
 	if(!cnt->rn) {
 		cnt->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -100,7 +100,7 @@ void init_cnt(CNT* cnt, char *pi) {
 	strcpy(cnt->ct, ct);
 	strcpy(cnt->lt, ct);
 	
-	cnt->ty = TY_CNT;
+	cnt->ty = RT_CNT;
 	cnt->st = 0;
 	cnt->cni = 0;
 	cnt->cbs = 0;
@@ -113,7 +113,7 @@ void init_cnt(CNT* cnt, char *pi) {
 void init_cin(CIN* cin, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_CIN, ct);
+	char *ri = resource_identifier(RT_CIN, ct);
 	
 	cin->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 	cin->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -128,7 +128,7 @@ void init_cin(CIN* cin, char *pi) {
 	strcpy(cin->ct, ct);
 	strcpy(cin->lt, ct);
 	
-	cin->ty = TY_CIN;
+	cin->ty = RT_CIN;
 	cin->st = 0;
 	cin->cs = strlen(cin->con);
 	
@@ -140,7 +140,7 @@ void init_cin(CIN* cin, char *pi) {
 void init_sub(Sub* sub, char *pi, char *uri) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_SUB, ct);
+	char *ri = resource_identifier(RT_SUB, ct);
 	if(!sub->rn) {
 		sub->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 		strcpy(sub->rn, ri);
@@ -164,7 +164,7 @@ void init_sub(Sub* sub, char *pi, char *uri) {
 	strcpy(sub->et, et);
 	strcpy(sub->ct, ct);
 	strcpy(sub->lt, ct);
-	sub->ty = TY_SUB;
+	sub->ty = RT_SUB;
 	sub->nct = 0;
 
 	free(ct); ct = NULL;
@@ -175,7 +175,7 @@ void init_sub(Sub* sub, char *pi, char *uri) {
 void init_acp(ACP* acp, char *pi) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(TY_ACP, ct);
+	char *ri = resource_identifier(RT_ACP, ct);
 
 	if(!acp->rn) {
 		acp->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
@@ -193,7 +193,7 @@ void init_acp(ACP* acp, char *pi) {
 	strcpy(acp->ct, ct);
 	strcpy(acp->lt, ct);
 	
-	acp->ty = TY_ACP;
+	acp->ty = RT_ACP;
 	
 	free(ct); ct = NULL;
 	free(et); et = NULL;
@@ -204,12 +204,12 @@ RTNode* create_rtnode(void *resource, ResourceType ty){
 	RTNode* rtnode = NULL;
 
 	switch(ty) {
-	case TY_CSE: rtnode = create_cse_rtnode((CSE*)resource); break;
-	case TY_AE: rtnode = create_ae_rtnode((AE*)resource); break;
-	case TY_CNT: rtnode = create_cnt_rtnode((CNT*)resource); break;
-	case TY_CIN: rtnode = create_cin_rtnode((CIN*)resource); break;
-	case TY_SUB: rtnode = create_sub_rtnode((Sub*)resource); break;
-	case TY_ACP: rtnode = create_acp_rtnode((ACP*)resource); break;
+	case RT_CSE: rtnode = create_cse_rtnode((CSE*)resource); break;
+	case RT_AE: rtnode = create_ae_rtnode((AE*)resource); break;
+	case RT_CNT: rtnode = create_cnt_rtnode((CNT*)resource); break;
+	case RT_CIN: rtnode = create_cin_rtnode((CIN*)resource); break;
+	case RT_SUB: rtnode = create_sub_rtnode((Sub*)resource); break;
+	case RT_ACP: rtnode = create_acp_rtnode((ACP*)resource); break;
 	}
 
 	rtnode->parent = NULL;
@@ -231,7 +231,7 @@ RTNode* create_cse_rtnode(CSE *cse) {
 	strcpy(rtnode->ri, cse->ri);
 	strcpy(rtnode->pi, cse->pi);
 
-	rtnode->ty = TY_CSE;
+	rtnode->ty = RT_CSE;
 
 	return rtnode;
 }
@@ -247,7 +247,7 @@ RTNode* create_ae_rtnode(AE *ae) {
 	strcpy(rtnode->ri, ae->ri);
 	strcpy(rtnode->pi, ae->pi);
 
-	rtnode->ty = TY_AE;
+	rtnode->ty = RT_AE;
 
 	return rtnode;
 }
@@ -268,7 +268,7 @@ RTNode* create_cnt_rtnode(CNT *cnt) {
 		strcpy(rtnode->acpi, cnt->acpi);
 	}
 
-	rtnode->ty = TY_CNT;
+	rtnode->ty = RT_CNT;
 	rtnode->cni = cnt->cni;
 	rtnode->cbs = cnt->cbs;
 	rtnode->mni = cnt->mni;
@@ -288,7 +288,7 @@ RTNode* create_cin_rtnode(CIN *cin) {
 	strcpy(rtnode->ri, cin->ri);
 	strcpy(rtnode->pi, cin->pi);
 
-	rtnode->ty = TY_CIN;
+	rtnode->ty = RT_CIN;
 	rtnode->cs = cin->cs;
 
 	return rtnode;
@@ -309,7 +309,7 @@ RTNode* create_sub_rtnode(Sub *sub) {
 	strcpy(rtnode->nu, sub->nu);
 	strcpy(rtnode->sur, sub->sur);
 
-	rtnode->ty = TY_SUB;
+	rtnode->ty = RT_SUB;
 	rtnode->net = net_to_bit(sub->net);
 
 	return rtnode;
@@ -337,17 +337,17 @@ RTNode* create_acp_rtnode(ACP *acp) {
 	strcpy(rtnode->pvs_acor, acp->pvs_acor);
 	strcpy(rtnode->pvs_acop, acp->pvs_acop);
 
-	rtnode->ty = TY_ACP;
+	rtnode->ty = RT_ACP;
 
 	return rtnode;
 }
 
 void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int e = check_aei_duplicate(o2pt, parent_rtnode);
-	if(e != -1) e = check_rn_invalid(o2pt, TY_AE);
+	if(e != -1) e = check_rn_invalid(o2pt, RT_AE);
 	if(e == -1) return;
 
-	if(parent_rtnode->ty != TY_CSE) {
+	if(parent_rtnode->ty != RT_CSE) {
 		child_type_error(o2pt);
 		return;
 	}
@@ -369,7 +369,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return;
 	}
 	
-	RTNode* child_rtnode = create_rtnode(ae, TY_AE);
+	RTNode* child_rtnode = create_rtnode(ae, RT_AE);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
@@ -380,7 +380,7 @@ void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 }
 
 void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty != TY_CNT && parent_rtnode->ty != TY_AE && parent_rtnode->ty != TY_CSE) {
+	if(parent_rtnode->ty != RT_CNT && parent_rtnode->ty != RT_AE && parent_rtnode->ty != RT_CSE) {
 		child_type_error(o2pt);
 		return;
 	}
@@ -405,7 +405,7 @@ void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return;
 	}
 	
-	RTNode* child_rtnode = create_rtnode(cnt, TY_CNT);
+	RTNode* child_rtnode = create_rtnode(cnt, RT_CNT);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(cnt);
@@ -416,7 +416,7 @@ void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 }
 
 void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty != TY_CNT) {
+	if(parent_rtnode->ty != RT_CNT) {
 		child_type_error(o2pt);
 		return;
 	}
@@ -436,7 +436,7 @@ void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return;
 	}
 
-	RTNode *cin_rtnode = create_rtnode(cin, TY_CIN);
+	RTNode *cin_rtnode = create_rtnode(cin, RT_CIN);
 	update_cnt_cin(parent_rtnode, cin_rtnode, 1);
 	free_rtnode(cin_rtnode);
 	
@@ -449,7 +449,7 @@ void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 }
 
 void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty == TY_CIN || parent_rtnode->ty == TY_SUB) {
+	if(parent_rtnode->ty == RT_CIN || parent_rtnode->ty == RT_SUB) {
 		child_type_error(o2pt);
 		return;
 	}
@@ -468,7 +468,7 @@ void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	
 	free_sub(sub); sub = NULL;
 
-	RTNode* child_rtnode = create_rtnode(sub, TY_SUB);
+	RTNode* child_rtnode = create_rtnode(sub, RT_SUB);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = sub_to_json(sub);
@@ -478,7 +478,7 @@ void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 }
 
 void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	if(parent_rtnode->ty != TY_CSE && parent_rtnode->ty != TY_AE) {
+	if(parent_rtnode->ty != RT_CSE && parent_rtnode->ty != RT_AE) {
 		child_type_error(o2pt);
 		return;
 	}
@@ -495,7 +495,7 @@ void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return;
 	}
 	
-	RTNode* child_rtnode = create_rtnode(acp, TY_ACP);
+	RTNode* child_rtnode = create_rtnode(acp, RT_ACP);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
 	
 	if(o2pt->pc) free(o2pt->pc);
@@ -840,7 +840,7 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 	}
 	
 	switch(ty) {
-	case TY_CNT:
+	case RT_CNT:
 		CNT *cnt = (CNT*)after;
 		if(cnt->acpi) {
 			rtnode->acpi = (char*)malloc((strlen(cnt->acpi) + 1)*sizeof(char));
@@ -850,7 +850,7 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 		rtnode->mni = cnt->mni;
 		break;
 
-	case TY_SUB:
+	case RT_SUB:
 		Sub *sub = (Sub*)after;
 		rtnode->net = net_to_bit(sub->net);
 		if(sub->nu) {
@@ -859,7 +859,7 @@ void set_rtnode_update(RTNode *rtnode, void *after) {
 		}
 		break;
 
-	case TY_ACP:
+	case RT_ACP:
 		ACP *acp = (ACP*)after;
 		if(acp->pv_acor && acp->pv_acop) {
 			rtnode->pv_acor = (char*)malloc((strlen(acp->pv_acor) + 1)*sizeof(char));
@@ -892,12 +892,12 @@ void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 
 void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	logger("MAIN", LOG_LEVEL_INFO, "Delete oneM2M resource");
-	if(target_rtnode->ty == TY_AE || target_rtnode->ty == TY_CNT) {
+	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT) {
 		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
 			return;
 		}
 	}
-	if(target_rtnode->ty == TY_CSE) {
+	if(target_rtnode->ty == RT_CSE) {
 		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"CSE can not be deleted\"}");
 		o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
 		respond_to_client(o2pt, 403);
@@ -912,24 +912,24 @@ void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 
 void delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	switch(rtnode->ty) {
-	case TY_AE : 
+	case RT_AE : 
 		db_delete_onem2m_resource(rtnode->ri); 
 		break;
-	case TY_CNT : 
+	case RT_CNT : 
 		db_delete_onem2m_resource(rtnode->ri); 
 		//char *noti_json = (char*)malloc(sizeof("resource is deleted successfully") + 1);
 		//strcpy(noti_json, "resource is deleted successfully");
 		//notify_onem2m_resource(node->child,noti_json,NOTIFICATION_EVENT_2); 
 		//free(noti_json); noti_json = NULL;
 		break;
-	case TY_CIN :
+	case RT_CIN :
 		db_delete_onem2m_resource(rtnode->ri);
 		update_cnt_cin(rtnode->parent, rtnode,-1);
 		return;
-	case TY_SUB :
+	case RT_SUB :
 		db_delete_sub(rtnode->ri);
 		break;
-	case TY_ACP :
+	case RT_ACP :
 		db_delete_acp(rtnode->ri);
 		break;
 	}
@@ -937,7 +937,7 @@ void delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	RTNode *left = rtnode->sibling_left;
 	RTNode *right = rtnode->sibling_right;
 	
-	if(rtnode->ty != TY_CIN) {
+	if(rtnode->ty != RT_CIN) {
 		if(flag == 1) {
 			if(left) left->sibling_right = right;
 			else rtnode->parent->child = right;
@@ -1092,7 +1092,7 @@ void set_sub_update(Sub* after) {
 void notify_onem2m_resource(RTNode *node, char *response_payload, NET net) {
 	remove_invalid_char_json(response_payload);
 	while(node) {
-		if(node->ty == TY_SUB && (net & node->net) == net) {
+		if(node->ty == RT_SUB && (net & node->net) == net) {
 			if(!node->uri) set_node_uri(node);
 			char *notify_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, response_payload);
 			int result = send_http_packet(node->nu, notify_json);
@@ -1152,7 +1152,7 @@ int send_http_packet(char* target, char *post_data) {
     }
 	if(post_data) remove_invalid_char_json(post_data);
 
-	char nu[MAX_PROPERTY_SIZE];
+	char nu[MAX_PROPERRT_SIZE];
 	strcpy(nu, target);
 
 	target = strtok(nu, ",");

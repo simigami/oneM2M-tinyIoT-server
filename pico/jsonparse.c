@@ -9,6 +9,7 @@
 #include "cJSON.h"
 #include "onem2mTypes.h"
 #include "config.h"
+#include "util.h"
 
 void remove_quotation_mark(char *s){
 	int len = strlen(s);
@@ -148,7 +149,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 			cnt->acpi = NULL;
 		}
 		else {
-			char acpi_str[MAX_PROPERTY_SIZE] = { '\0' };
+			char acpi_str[MAX_PROPERRT_SIZE] = { '\0' };
 			for (int i = 0; i < acpi_size; i++) {
 				if (isspace(cJSON_GetArrayItem(acpi, i)->valuestring[0]) || (cJSON_GetArrayItem(acpi, i)->valuestring[0] == 0)) {
 					cnt->acpi = NULL;
@@ -181,7 +182,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 			cnt->lbl = NULL;
 		}
 		else {
-			char lbl_str[MAX_PROPERTY_SIZE] = { '\0' };
+			char lbl_str[MAX_PROPERRT_SIZE] = { '\0' };
 			for (int i = 0; i < lbl_size; i++) {
 				if (isspace(cJSON_GetArrayItem(lbl, i)->valuestring[0]) || (cJSON_GetArrayItem(lbl, i)->valuestring[0] == 0)) {
 					cnt->lbl = NULL;
@@ -284,7 +285,7 @@ Sub* cjson_to_sub(cJSON *cjson) {
 		return NULL;
 	}
 	else {
-		char nu_str[MAX_PROPERTY_SIZE] = { '\0' };
+		char nu_str[MAX_PROPERRT_SIZE] = { '\0' };
 		int is_NULL = 0;
 		for (int i = 0; i < nu_size; i++) {
 			if (isspace(cJSON_GetArrayItem(nu, i)->valuestring[0]) || (cJSON_GetArrayItem(nu, i)->valuestring[0] == 0)) {
@@ -651,7 +652,7 @@ char* cse_to_json(CSE* cse_object) {
 
 char* ae_to_json(AE *ae_object) {
 	char *json = NULL;
-	char str_array[MAX_PROPERTY_SIZE];
+	char str_array[MAX_PROPERRT_SIZE];
 
 	cJSON *root = NULL;
 	cJSON *ae = NULL;
@@ -706,7 +707,7 @@ char* ae_to_json(AE *ae_object) {
 char* cnt_to_json(CNT* cnt_object) {
 	logger("cJSON", LOG_LEVEL_DEBUG, "Call cnt_to_json");
 	char *json = NULL;
-	char str_array[MAX_PROPERTY_SIZE];
+	char str_array[MAX_PROPERRT_SIZE];
 
 	cJSON *root = NULL;
 	cJSON *cnt = NULL;
@@ -1409,7 +1410,7 @@ char *cjson_list_item_to_string(cJSON *key) {
 			return NULL;
 		}
 		else {
-			char item_str[MAX_PROPERTY_SIZE] = { '\0' };
+			char item_str[MAX_PROPERRT_SIZE] = { '\0' };
 			for (int i = 0; i < item_size; i++) {
 				if (isspace(cJSON_GetArrayItem(key, i)->valuestring[0]) || (cJSON_GetArrayItem(key, i)->valuestring[0] == 0)) {
 					return NULL;

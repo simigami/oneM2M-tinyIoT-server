@@ -7,6 +7,7 @@
 #include "onem2m.h"
 #include "berkeleyDB.h"
 #include "logger.h"
+#include "util.h"
 
 
 /*DB CREATE*/
@@ -2150,10 +2151,10 @@ RTNode* db_get_all_acp() {
         if (strncmp(key.data, TYPE , 2) == 0){
             ACP* acp = db_get_acp((char*)key.data);
             if(!head) {
-                head = create_rtnode(acp,TY_ACP);
+                head = create_rtnode(acp,RT_ACP);
                 rtnode = head;
             } else {
-                rtnode->sibling_right = create_rtnode(acp,TY_ACP);
+                rtnode->sibling_right = create_rtnode(acp,RT_ACP);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     

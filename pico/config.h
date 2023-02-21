@@ -10,7 +10,7 @@
 
 #define MAX_PAYLOAD_SIZE 65536 
 #define MAX_URI_SIZE 1024
-#define MAX_PROPERTY_SIZE 65536
+#define MAX_PROPERRT_SIZE 65536
 
 
 // Group Settings

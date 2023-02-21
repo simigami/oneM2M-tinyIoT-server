@@ -566,7 +566,7 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 
     if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
 
-	if(rtnode->ty == TY_ACP) {
+	if(rtnode->ty == RT_ACP) {
 		acop = (acop | get_acop_origin(origin, rtnode, 1));
 		acop = (acop | get_acop_origin("all", rtnode, 1));
 		return acop;
@@ -576,7 +576,7 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	while(cb->parent) cb = cb->parent;
 	
 	int uri_cnt = 0;
-	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERTY_SIZE] = "\0";
+	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERRT_SIZE] = "\0";
 	char *acp_uri = NULL;
 
 	if(rtnode->acpi)  {
@@ -655,7 +655,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		deny = true;
 	}
   
-	if(rtnode->ty == TY_CIN) rtnode = rtnode->parent;
+	if(rtnode->ty == RT_CIN) rtnode = rtnode->parent;
 
     ResourceType ty = rtnode->ty;
 
@@ -705,7 +705,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 			}
 			child = child->sibling_right;
 		}
-        if(rtnode->ty == TY_CNT) {
+        if(rtnode->ty == RT_CNT) {
             char invalid_rn[][8] = {"la", "latest", "ol", "oldest"};
             int invalid_rn_size = sizeof(invalid_rn)/(8*sizeof(char));
             for(int i=0; i<invalid_rn_size; i++) {

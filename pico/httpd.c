@@ -1,6 +1,7 @@
 #include "httpd.h"
 #include "config.h"
 #include "onem2m.h"
+#include "util.h"
 
 #include <arpa/inet.h>
 #include <ctype.h>
@@ -74,9 +75,6 @@ void serve_forever(const char *PORT) {
         while (clients[slot] != -1)
             slot = (slot + 1) % MAX_CONNECTIONS;
     }
-    while (clients[slot] != -1)
-      slot = (slot + 1) % MAX_CONNECTIONS;
-  }
 }
 
 // start server
@@ -255,6 +253,44 @@ Operation http_parse_operation(){
 	return op;
 }
 
+void handle_http_request() {
+	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+	char *header;
+	if(payload) {
+		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
+		strcpy(o2pt->pc, payload);
+		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
+		logger("MAIN", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
+		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
+	} 
+
+	if((header = request_header("X-M2M-Origin"))) {
+		o2pt->fr = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->fr, header);
+	} 
+
+	if((header = request_header("X-M2M-RI"))) {
+		o2pt->rqi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rqi, header);
+	} 
+
+	if((header = request_header("X-M2M-RVI"))) {
+		o2pt->rvi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rvi, header);
+	} 
+
+	if(uri) {
+		o2pt->to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
+		strcpy(o2pt->to, uri+1);
+	} 
+
+	o2pt->op = http_parse_operation();
+	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
+	o2pt->prot = PROT_HTTP;
+
+	route(o2pt);
+}
+
 void set_response_header(char *key, char *value, char *response_headers) {
   if(!value) return;
   char header[128];
@@ -277,7 +313,7 @@ void normalize_payload() {
 	payload[index] = '\0';
 }
 
-void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
+void http_respond_to_client(oneM2MPrimitive *o2pt, int status_code) {
     char content_length[64];
     char rsc[64];
     char response_headers[2048] = {'\0'};
