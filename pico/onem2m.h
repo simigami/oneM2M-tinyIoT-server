@@ -59,6 +59,7 @@ typedef struct {
 	char *aei;
 	char *lbl;
 	char *srv;
+	char *acpi;
 	ResourceType ty;
 	bool rr;
 } AE;

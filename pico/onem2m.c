@@ -243,6 +243,7 @@ RTNode* create_ae_rtnode(AE *ae) {
 	rtnode->rn = (char*)malloc((strlen(ae->rn) + 1) * sizeof(char));
 	rtnode->ri = (char*)malloc((strlen(ae->ri) + 1) * sizeof(char));
 	rtnode->pi = (char*)malloc((strlen(ae->pi) + 1) * sizeof(char));
+	if(ae->acpi) rtnode->acpi = strdup(ae->acpi);
 	
 	strcpy(rtnode->rn, ae->rn);
 	strcpy(rtnode->ri, ae->ri);
@@ -919,7 +920,7 @@ void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 
 void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	logger("MAIN", LOG_LEVEL_INFO, "Delete oneM2M resource");
-	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT) {
+	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT || target_rtnode->ty == RT_GRP) {
 		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
 			return;
 		}
@@ -1000,6 +1001,7 @@ void free_ae(AE *ae) {
 	if(ae->aei) free(ae->aei);
 	if(ae->lbl) free(ae->lbl);
 	if(ae->srv) free(ae->srv);
+	if(ae->acpi) free(ae->acpi);
 	free(ae); ae = NULL;
 }
 
@@ -1406,7 +1408,7 @@ void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	GRP *grp = (GRP *)calloc(1, sizeof(GRP));
 	o2pt->rsc = cjson_to_grp(o2pt->cjson_pc, grp); // TODO Validation(mid dup chk etc.)
 	init_grp(grp, parent_rtnode->ri);
-	validate_grp(parent_rtnode, grp);
+	//validate_grp(parent_rtnode, grp);
 
 
 	if(o2pt->rsc >= 5000 && o2pt->rsc <= 7000){

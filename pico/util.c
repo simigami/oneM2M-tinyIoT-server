@@ -102,6 +102,19 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 	return rtnode;
 }
 
+// RTNode *find_rtnode_by_ri(RTNode *rtnode, char *ri) {
+// 	if(!strcmp(rtnode->ri, ri)) return rtnode;
+
+// 	RTNode *ret = NULL;
+
+// 	while(rtnode) {
+// 		ret = find_rtnode_by_uri(rtnode->child);
+// 		rtnode = rtnode->sibling_right;
+// 	}
+
+// 	return ret;
+// }
+
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 	if(rtnode->ty == RT_CNT) {
 		RTNode *head = db_get_cin_rtnode_list_by_pi(rtnode->ri);
@@ -659,13 +672,11 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 
     ResourceType ty = rtnode->ty;
 
-	if(deny == true) {
-        if(ty == RT_CNT || ty == RT_ACP || ty == RT_GRP) {
-            if((get_acop(o2pt, rtnode) & acop) == acop) {
-                deny = false;
-            }
+    if(ty == RT_CNT || ty == RT_ACP || ty == RT_GRP || ty == RT_AE) {
+        if((get_acop(o2pt, rtnode) & acop) != acop) {
+            deny = true;
         }
-	}
+    }
 
 	if(deny) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Originator has no privilege");
@@ -960,3 +971,4 @@ void handle_error(oneM2MPrimitive *o2pt) {
 
 	respond_to_client(o2pt, rcode);
 }
+

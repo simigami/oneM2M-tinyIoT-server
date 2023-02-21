@@ -83,7 +83,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
             return MQTT_CODE_SUCCESS;
         }
 
-        if(strcmp(reciever, CSE_BASE_NAME)){
+        if(strcmp(reciever, CSE_BASE_RI)){
             logger(LOG_TAG, LOG_LEVEL_DEBUG, "recieved msg not for %s\n", CSE_BASE_NAME);
             return MQTT_CODE_SUCCESS;
         }
@@ -157,6 +157,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     pjson = cJSON_GetObjectItem(json, "rqi");
     if(pjson) o2pt->rqi = pjson->valuestring;
+    
 
     pjson = cJSON_GetObjectItem(json, "ty");
     if(pjson){
@@ -200,9 +201,9 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     idToMqttClientId(o2pt->origin);
 
     if( !strcmp(o2pt->req_type, "req") ){
-        sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
+        sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_RI);
     }else{
-        sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_NAME);
+        sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_RI);
     }
 
     logger(LOG_TAG, LOG_LEVEL_DEBUG, "Topic : %s", respTopic);
@@ -212,6 +213,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
     cJSON_AddStringToObject(json, "to", o2pt->to);    
     cJSON_AddStringToObject(json, "fr", o2pt->fr);
+    cJSON_AddStringToObject(json, "rvi", o2pt->rvi);
     if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
     if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 
@@ -536,10 +538,10 @@ void *mqtt_serve(void)
     reg_reqTopic = (char *) malloc(128);
     reg_respTopic = (char *) malloc(128);
 
-    sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_BASE_NAME, "/#");
-    sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_BASE_NAME, "/+/#");
-    sprintf(reg_reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/reg_req/+/", CSE_BASE_NAME, "/#");
-    sprintf(reg_respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req_resp/", CSE_BASE_NAME, "/+/#");
+    sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_BASE_RI, "/#");
+    sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_BASE_RI, "/+/#");
+    sprintf(reg_reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/reg_req/+/", CSE_BASE_RI, "/#");
+    sprintf(reg_respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req_resp/", CSE_BASE_RI, "/+/#");
 
     /* Subscribe and wait for Ack */
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));

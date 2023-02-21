@@ -211,6 +211,7 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->aei == NULL) ae_object->aei = blankspace;
     if (ae_object->lbl == NULL) ae_object->lbl = blankspace;
     if (ae_object->srv == NULL) ae_object->srv = blankspace;
+    if (ae_object->acpi == NULL) ae_object->acpi = blankspace;
     if(ae_object->rr == false) strcpy(rr, "false");
     else strcpy(rr, "true");
 
@@ -228,9 +229,9 @@ int db_store_ae(AE *ae_object) {
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s;%s",
             ae_object->rn,ae_object->pi,ae_object->ty,ae_object->ct,ae_object->lt,
-            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv);
+            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv,ae_object->acpi);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -253,7 +254,7 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->aei == blankspace) ae_object->aei = NULL;
     if (ae_object->lbl == blankspace) ae_object->lbl = NULL;
     if (ae_object->srv == blankspace) ae_object->srv = NULL;
-
+    if (ae_object->acpi == blankspace) ae_object->acpi = NULL;
     
     return 1;
 }
@@ -905,6 +906,14 @@ AE* db_get_ae(char* ri) {
                 else{                
                     new_ae->srv = malloc((strlen(ptr) + 1) * sizeof(char));
                     strcpy(new_ae->srv, ptr);
+                }            
+                    idx++;
+                    break; 
+                case 11:
+                if(strcmp(ptr," ")==0) new_ae->acpi=NULL; //data is NULL
+                else{                
+                    new_ae->acpi = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->acpi, ptr);
                 }            
                     idx++;
                     break;                                    

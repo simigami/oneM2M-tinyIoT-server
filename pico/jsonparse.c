@@ -29,6 +29,7 @@ AE* cjson_to_ae(cJSON *cjson) {
 	cJSON *rn = NULL;
 	cJSON *lbl = NULL;
 	cJSON *srv = NULL;
+	cJSON *acpi = NULL;
 
 	if (cjson == NULL) {
 		// const char *error_ptr = cJSON_GetErrorPtr();
@@ -100,6 +101,10 @@ AE* cjson_to_ae(cJSON *cjson) {
 	// lbl (optional)
 	lbl = cJSON_GetObjectItem(root, "lbl");
 	ae->lbl = cjson_list_item_to_string(lbl);
+
+	// acpi (optional)
+	acpi = cJSON_GetObjectItem(root, "acpi");
+	ae->acpi = cjson_list_item_to_string(acpi);
 
 	return ae;
 }
@@ -658,6 +663,7 @@ char* ae_to_json(AE *ae_object) {
 	cJSON *ae = NULL;
 	cJSON *lbl = NULL;
 	cJSON *srv = NULL;
+	cJSON *acpi = NULL;
 
 	/* Our "ae" item: */
 	root = cJSON_CreateObject();
@@ -683,6 +689,18 @@ char* ae_to_json(AE *ae_object) {
 			lbl_str = strtok(NULL, ",");
 		} while(lbl_str != NULL);
 		cJSON_AddItemToObject(ae, "lbl", lbl);
+	}
+
+	//lbl
+	if(ae_object->acpi) {
+		acpi = cJSON_CreateArray();
+		strcpy(str_array, ae_object->acpi);
+		char *acpi_str = strtok(str_array, ",");
+		do {
+			cJSON_AddItemToArray(acpi, cJSON_CreateString(acpi_str));
+			acpi_str = strtok(NULL, ",");
+		} while(acpi_str != NULL);
+		cJSON_AddItemToObject(ae, "acpi", acpi);
 	}
 
 	//srv
