@@ -137,6 +137,7 @@ typedef struct {
 
 	char **mid;
 	bool mtv;
+	ConsistencyStrategy csy;
 } GRP;
 
 //Resource Tree
@@ -184,39 +185,41 @@ typedef struct {
 	int ty;
 	char *origin;
 	char *req_type;
+	bool isFopt;
+	char *fopt;
 }oneM2MPrimitive;
 
 //onem2m resource
-void create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode);
-void retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_object_filtercriteria(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode);
+int retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_object_filtercriteria(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
 
-void create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
-void create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
-void create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
-void create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
-void create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
-void create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 
-void retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_cin_latest(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_cin_by_ri(char *ri);
-void retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void retrieve_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_cin_latest(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_cin_by_ri(char *ri);
+int retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int retrieve_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
-void update_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int update_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 
 void init_cse(CSE* cse);
@@ -226,10 +229,10 @@ void init_cin(CIN* cin, char *pi);
 void init_sub(Sub* sub, char *pi, char *uri);
 void init_acp(ACP* acp, char *pi);
 void init_grp(GRP* grp, char *pi);
-void set_ae_update(cJSON *m2m_ae, AE* after);
-void set_cnt_update(cJSON *m2m_cnt, CNT* after);
-void set_sub_update(cJSON *m2m_sub, Sub* after);
-void set_acp_update(cJSON *m2m_acp, ACP* after);
+int set_ae_update(cJSON *m2m_ae, AE* after);
+int set_cnt_update(cJSON *m2m_cnt, CNT* after);
+int set_sub_update(cJSON *m2m_sub, Sub* after);
+int set_acp_update(cJSON *m2m_acp, ACP* after);
 int set_grp_update(cJSON *m2m_grp, GRP* after);
 void set_rtnode_update(RTNode* rtnode, void *after);
 
@@ -250,19 +253,17 @@ RTNode* create_cin_rtnode(CIN *cin);
 RTNode* create_sub_rtnode(Sub *sub);
 RTNode* create_acp_rtnode(ACP *acp);
 RTNode* create_grp_rtnode(GRP *grp);
-void delete_rtnode_and_db_data(RTNode *node, int flag);
+int delete_rtnode_and_db_data(RTNode *node, int flag);
 void free_rtnode(RTNode *node);
 void free_rtnode_list(RTNode *node);
 
-void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
-void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size);
 RTNode* restruct_resource_tree_child(RTNode *node, RTNode *list);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 RTNode* find_latest_oldest(RTNode* node, int flag);
 void set_node_uri(RTNode* node);
 
 //etc
-void update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
+int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

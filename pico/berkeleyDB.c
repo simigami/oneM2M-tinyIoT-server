@@ -421,10 +421,11 @@ int db_store_grp(GRP *grp_object){
 
     /* mnm , mt, min*/
 
-    strbuf = (char *) malloc(sizeof(char) * 512);
+    strbuf = (char *) malloc(sizeof(char) * 1024);
 
-    sprintf(strbuf, "%s;%s;%s;%s;%s;%s;%d;%d;%d;", 
-        grp_object->pi, grp_object->rn, grp_object->ct, grp_object->et, grp_object->lt, grp_object->acpi, grp_object->mnm, grp_object->cnm, grp_object->mt);
+    sprintf(strbuf, "%s;%s;%s;%s;%s;%s;%d;%d;%d;%d;", 
+        grp_object->pi, grp_object->rn, grp_object->ct, grp_object->et, grp_object->lt, 
+        grp_object->acpi, grp_object->mnm, grp_object->cnm, grp_object->mt, grp_object->csy);
     strcat(str, strbuf);
     strcat(str, grp_object->mtv ? "1" : "0");
     if(grp_object->mid)
@@ -1118,8 +1119,8 @@ CIN* db_get_cin(char* ri) {
         if (strncmp(key.data, ri, key.size) == 0) {
             new_cin = calloc(1,sizeof(CIN));
             // ri = key
-            new_cin->ri = malloc((key.size+1)*sizeof(char));
-            strcpy(new_cin->ri, key.data);
+            new_cin->ri = strdup(key.data); //malloc((key.size+1)*sizeof(char));
+            //strcpy(new_cin->ri, key.data);
 
             char *ptr = strtok((char*)data.data, DB_SEP);  //split first string
             while (ptr != NULL) { // Split to end of next string
@@ -1127,16 +1128,16 @@ CIN* db_get_cin(char* ri) {
                 case 0:
                 if(strcmp(ptr," ")==0) new_cin->rn=NULL; //data is NULL
                     else{
-                    new_cin->rn = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->rn, ptr);
+                    new_cin->rn = strdup(ptr);//malloc(strlen(ptr)*sizeof(char));
+                    
                     }
                     idx++;
                     break;
                 case 1:
                 if(strcmp(ptr," ")==0) new_cin->pi=NULL; //data is NULL
                     else{
-                    new_cin->pi = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->pi, ptr);
+                    new_cin->pi = strdup(ptr);//malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->pi, ptr);
                     }
                     idx++;
                     break;
@@ -1150,30 +1151,30 @@ CIN* db_get_cin(char* ri) {
                 case 3:
                 if(strcmp(ptr," ")==0) new_cin->ct=NULL; //data is NULL
                     else{
-                    new_cin->ct = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->ct, ptr);
+                    new_cin->ct = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->ct, ptr);
                     }
                     idx++;
                     break;
                 case 4:
-                    new_cin->lt = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->lt, ptr);
+                    new_cin->lt = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->lt, ptr);
 
                     idx++;
                     break;                
                 case 5:
                 if(strcmp(ptr," ")==0) new_cin->et=NULL; //data is NULL
                     else{
-                    new_cin->et = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->et, ptr);
+                    new_cin->et = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->et, ptr);
                     }
                     idx++;
                     break;      
                 case 6:
                 if(strcmp(ptr," ")==0) new_cin->con=NULL; //data is NULL
                     else{
-                    new_cin->con = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->con, ptr);
+                    new_cin->con = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->con, ptr);
                     }
                     idx++;
                     break;       
@@ -1571,6 +1572,9 @@ GRP *db_get_grp(char* ri) {
 
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
             new_grp->mtv = atoi(ptr) ? true : false;
+
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            new_grp->csy = atoi(ptr);
 
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
             if(ptr){

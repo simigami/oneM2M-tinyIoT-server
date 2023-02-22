@@ -289,6 +289,7 @@ void handle_http_request() {
 	o2pt->prot = PROT_HTTP;
 
 	route(o2pt);
+  free_o2pt(o2pt);
 }
 
 void set_response_header(char *key, char *value, char *response_headers) {

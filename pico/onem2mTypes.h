@@ -71,4 +71,10 @@ typedef enum {
 	RT_ACTR = 63,
 } ResourceType;
 
+typedef enum {
+	CSY_ABANDON_MEMBER = 1,
+	CSY_ABANDON_GROUP = 2,
+	CSY_SET_MIXED = 3
+} ConsistencyStrategy;
+
 #endif

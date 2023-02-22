@@ -1,14 +1,18 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 #include "onem2mTypes.h"
+#include "cJSON.h"
 
 void init_server();
 
 void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc, ...);
 void set_o2pt_rsc(oneM2MPrimitive *o2pt, int rsc);
+void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src);
+void free_o2pt(oneM2MPrimitive *o2pt);
 void log_runtime(double start);
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
+int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
 
 //Resource Tree
 void restruct_resource_tree();
@@ -51,7 +55,7 @@ void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
 bool is_rn_valid_char(char c);
 
-int validate_grp(RTNode* cb,  GRP *grp);
+int validate_grp(GRP *grp);
 
 ResourceType http_parse_object_type();
 ResourceType parse_object_type_cjson(cJSON *cjson);
@@ -63,6 +67,10 @@ int send_http_packet(char *target, char *post_data);
 bool isFopt(char *str);
 bool endswith(char *str, char *match);
 
-void handle_error(oneM2MPrimitive *o2pt);
+void handle_error(oneM2MPrimitive *o2pt, int rsc, char *err);
+
+int rsc_to_http_status(int rsc);
+
+cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
 
 #endif

@@ -527,6 +527,7 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	cJSON *acpi = NULL;
 	cJSON *mid = NULL;
 	cJSON *pmid = NULL;
+	cJSON *csy = NULL;
 
 	cJSON *pjson = NULL;
 
@@ -541,6 +542,7 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	mnm = cJSON_GetObjectItem(root, "mnm");
 	mid = cJSON_GetObjectItem(root, "mid");
 	acpi = cJSON_GetObjectItem(root, "acpi");
+	csy = cJSON_GetObjectItem(root, "csy");
 
 	if(pjson = cJSON_GetObjectItem(root, ""))
 
@@ -569,6 +571,10 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 
 	if(acpi){
 		grp->acpi = cjson_list_item_to_string(acpi);
+	}
+
+	if(csy){
+		grp->csy = csy->valueint;
 	}
 	grp->mnm = mnm->valueint;
 
@@ -1046,6 +1052,7 @@ char *grp_to_json(GRP *grp_object){
 	cJSON_AddNumberToObject(grp, "mnm", grp_object->mnm);
 	cJSON_AddNumberToObject(grp, "cnm", grp_object->cnm);
 	cJSON_AddNumberToObject(grp, "mt", grp_object->mt);
+	cJSON_AddNumberToObject(grp, "csy", grp_object->csy);
 	cJSON_AddNumberToObject(grp, "ty", 9);
 	
 	if(grp_object->mid){

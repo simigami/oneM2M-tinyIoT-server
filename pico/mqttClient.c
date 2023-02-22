@@ -28,6 +28,7 @@
 #include "mqttClient.h"
 #include "onem2mTypes.h"
 #include "logger.h"
+#include "util.h"
 
 #define LOG_TAG "MQTT"
 
@@ -63,8 +64,8 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     char *puri, *req_type, *originator, *reciever, *contentType;
     oneM2MPrimitive *o2pt;
     
-    o2pt = (oneM2MPrimitive *) malloc(sizeof(oneM2MPrimitive));
-    memset(o2pt, 0, sizeof(oneM2MPrimitive));
+    o2pt = (oneM2MPrimitive *) calloc(1, sizeof(oneM2MPrimitive));
+
     (void)client;
 
     if (msg_new) {
@@ -84,7 +85,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         }
 
         if(strcmp(reciever, CSE_BASE_RI)){
-            logger(LOG_TAG, LOG_LEVEL_DEBUG, "recieved msg not for %s\n", CSE_BASE_NAME);
+            logger(LOG_TAG, LOG_LEVEL_DEBUG, "recieved msg not for %s\n", CSE_BASE_RI);
             return MQTT_CODE_SUCCESS;
         }
         
@@ -125,10 +126,10 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* type mqtt */
     o2pt->prot = PROT_MQTT;
-    o2pt->origin = originator;
+    o2pt->origin = strdup(originator);
     MqttClientIdToId(o2pt->origin);
 
-    o2pt->req_type = req_type;
+    o2pt->req_type = strdup(req_type);
 
     /* fill primitives */
     pjson = cJSON_GetObjectItem(json, "op");
@@ -139,24 +140,24 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     pjson = cJSON_GetObjectItem(json, "to");
     if(!pjson) return invalidRequest();
-    o2pt->to = cJSON_GetStringValue(pjson);
+    o2pt->to = strdup(pjson->valuestring);
 
     pjson = cJSON_GetObjectItem(json, "fr");
     if(!pjson) return invalidRequest();
-    o2pt->fr = cJSON_GetStringValue(pjson);//->valuestring;
+    if(pjson->valuestring) o2pt->fr = strdup(pjson->valuestring);
 
 
     pjson = cJSON_GetObjectItem(json, "pc");
     if(pjson){
         o2pt->pc = cJSON_PrintUnformatted(pjson);
-        o2pt->cjson_pc = pjson;
+        o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
     }
 
     pjson = cJSON_GetObjectItem(json, "rvi");
-    if(pjson) o2pt->rvi = pjson->valuestring;
+    if(pjson) o2pt->rvi = strdup(pjson->valuestring);
 
     pjson = cJSON_GetObjectItem(json, "rqi");
-    if(pjson) o2pt->rqi = pjson->valuestring;
+    if(pjson) o2pt->rqi = strdup(pjson->valuestring);
     
 
     pjson = cJSON_GetObjectItem(json, "ty");
@@ -164,6 +165,10 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         if(pjson->valueint) o2pt->ty = pjson->valueint;
         else o2pt->ty = atoi(pjson->valuestring);
     }
+
+    /* initialize */
+    o2pt->fopt = NULL;
+    o2pt->isFopt = false;
 
     /* supported content type : json*/
     if(strcmp(contentType, "json")){
@@ -181,7 +186,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* Free allocated memories */
     cJSON_Delete(pjson);
-    free(o2pt);
+    free_o2pt(o2pt);
     free(puri);
     
     return MQTT_CODE_SUCCESS;
@@ -194,7 +199,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     char *pl;
     int rc = 0;
 
-    respTopic =(char *) malloc(256);
+    respTopic =(char *) malloc(512);
 
     logger(LOG_TAG, LOG_LEVEL_DEBUG, "publish mqtt response");
 
@@ -207,25 +212,19 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     }
 
     logger(LOG_TAG, LOG_LEVEL_DEBUG, "Topic : %s", respTopic);
-    json = cJSON_CreateObject();
+    json = o2pt_to_json(o2pt);
 
-    cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
-    cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
-    cJSON_AddStringToObject(json, "to", o2pt->to);    
-    cJSON_AddStringToObject(json, "fr", o2pt->fr);
-    cJSON_AddStringToObject(json, "rvi", o2pt->rvi);
-    if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
-    if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
-
-    pl = cJSON_Print(json);
+    pl = cJSON_PrintUnformatted(json);
     XMEMSET(&mqttPub, 0, sizeof(MqttPublish));
     mqttPub.retain = 0;
     mqttPub.qos = MQTT_QOS;
-    mqttPub.topic_name = respTopic;
+    mqttPub.topic_name = strdup(respTopic);
     mqttPub.packet_id = mqtt_get_packetid();
     mqttPub.buffer = pl;
     mqttPub.total_len = XSTRLEN(pl);
 
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "MQTT Publish: Topic %s, Qos %d\n%s\n",
+        mqttPub.topic_name, mqttPub.qos, mqttPub.buffer);
 
     do{
         rc = MqttClient_Publish(&mClient, &mqttPub);
@@ -235,12 +234,11 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
         return rc;
     }
 
-    logger(LOG_TAG, LOG_LEVEL_DEBUG, "MQTT Publish: Topic %s, Qos %d\n%s\n",
-        mqttPub.topic_name, mqttPub.qos, mqttPub.buffer);
 
     cJSON_Delete(json);
 
     free(respTopic);
+    respTopic = NULL;
     
     return rc;
 }

@@ -21,42 +21,65 @@ extern ResourceTree *rt;
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	logger("O2M", LOG_LEVEL_DEBUG, "Call parse_uri");
+	logger("util-t", LOG_LEVEL_DEBUG, "%s", o2pt->to);
 	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
+	char *fopt_buf = NULL;
 	strcpy(uri_array, o2pt->to);
 
 	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
-	int index_start = 0, index_end = -1;
+	int index_start = 0, index_end = -1, fopt_cnt = -1;
 
 	uri_parse = strtok(uri_array, "/");
 
 	while(uri_parse) {
 		strcpy(uri_strtok[++index_end], uri_parse);
+		if(!o2pt->isFopt && uri_parse && !strcmp(uri_parse, "fopt")){
+			o2pt->isFopt = true;
+		}
+		if(uri_parse && o2pt->isFopt){
+			fopt_cnt++;
+		}
 		uri_parse = strtok(NULL, "/");
+		
 	}
 
 	int latest_oldest_flag = -1;
+	if(o2pt->isFopt)
+	{	
+		index_end = index_end - 1 - fopt_cnt;
+		if(fopt_cnt){
 
-	if(!strcmp(uri_strtok[0], "viewer")) index_start++;
-	if(!strcmp(uri_strtok[index_end], "la") || !strcmp(uri_strtok[index_end], "latest")) {
-		latest_oldest_flag = 0; index_end--;
-	} else if(!strcmp(uri_strtok[index_end], "ol") || !strcmp(uri_strtok[index_end], "oldest")) {
-		latest_oldest_flag = 1; index_end--;
-	}
+			fopt_buf = calloc(1, 256);
+			for(int i = 0 ; i < fopt_cnt ; i++){
+				strcat(fopt_buf, "/");
+				strcat(fopt_buf, uri_strtok[i+index_end + 2]); //index end before fopt so +2
+			}
+			o2pt->fopt = strdup(fopt_buf);
+			logger("util-f", LOG_LEVEL_DEBUG, "%s", o2pt->fopt);
+			free(fopt_buf);
+		}
+	}else{
 
-	int fopt_flag = -1;
-	if(!strcmp(uri_strtok[index_end], "fopt")){
-		index_end--;
-		fopt_flag = 1;
+		if(!strcmp(uri_strtok[0], "viewer")) index_start++;
+		if(!strcmp(uri_strtok[index_end], "la") || !strcmp(uri_strtok[index_end], "latest")) {
+			latest_oldest_flag = 0; index_end--;
+			
+		} else if(!strcmp(uri_strtok[index_end], "ol") || !strcmp(uri_strtok[index_end], "oldest")) {
+			latest_oldest_flag = 1; index_end--;
+			
+		}
 	}
 
 	strcpy(uri_array, "\0");
 	for(int i=index_start; i<=index_end; i++) {
-		strcat(uri_array,"/"); strcat(uri_array,uri_strtok[i]);
+		strcat(uri_array,"/"); 
+		strcat(uri_array,uri_strtok[i]);
 	}
+	logger("util-t", LOG_LEVEL_DEBUG, "%s", uri_array);
 	RTNode* rtnode = find_rtnode_by_uri(cb, uri_array);
 	
-	if(rtnode && latest_oldest_flag != -1) rtnode = find_latest_oldest(rtnode, latest_oldest_flag);
+	if(rtnode && !o2pt->isFopt && latest_oldest_flag != -1) rtnode = find_latest_oldest(rtnode, latest_oldest_flag);
 
 	if(index_start == 1) o2pt->op = OP_VIEWER;
 
@@ -344,7 +367,7 @@ void too_large_content_size_error(oneM2MPrimitive *o2pt) {
 	respond_to_client(o2pt, 400);
 }
 
-void tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
+int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	logger("O2M", LOG_LEVEL_DEBUG, "\x1b[43mTree Viewer API\x1b[0m\n");
 	char arr_viewer_data[MAX_TREE_VIEWER_SIZE] = "[";
 	char *viewer_data = arr_viewer_data;
@@ -846,11 +869,17 @@ int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 	return 0;
 }
 
+void handle_error(oneM2MPrimitive *o2pt, int rsc, char *err){
+	logger("UTIL", LOG_LEVEL_INFO, err);
+	o2pt->rsc = rsc;
+	set_o2pt_pc(o2pt, err);
+}
+
 void child_type_error(oneM2MPrimitive *o2pt){
 	logger("UTIL", LOG_LEVEL_ERROR, "Child type is invalid");
 	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"child can not be created under the type of parent\"}");
 	o2pt->rsc = RSC_INVALID_CHILD_RESOURCETYPE;
-	respond_to_client(o2pt, 403);
+	//respond_to_client(o2pt, 403);
 }
 
 void no_mandatory_error(oneM2MPrimitive *o2pt){
@@ -884,6 +913,7 @@ void db_store_fail(oneM2MPrimitive *o2pt) {
 
 bool isFopt(char *str){
 	char *s;
+	if(!str) return false;
 	s = strrchr(str, '/');
 	return strcmp(s, "/fopt");
 }
@@ -903,7 +933,7 @@ bool endswith(char *str, char *match){
 	return strncmp(str + str_len - match_len, match, match_len);
 }
 
-int validate_grp(RTNode* cb,  GRP *grp){
+int validate_grp(GRP *grp){
 	bool hasFopt = false;
 	bool isLocalResource = true;
 	char *mid = NULL;
@@ -943,32 +973,135 @@ int validate_grp(RTNode* cb,  GRP *grp){
 			tStr = strdup(mid);
 			if(hasFopt && strlen(mid) > 5)  // remove fopt 
 				tStr[strlen(mid) - 5] = '\0';
+			logger("util-t", LOG_LEVEL_DEBUG, "%s",tStr);
+			if((rt_node = find_rtnode_by_uri(rt->cb, tStr))){
+				if(rt_node->ty != grp->mt)
+					switch(grp->csy){
+						case CSY_ABANDON_MEMBER:
+							remove_mid(grp->mid, i, grp->cnm);
+							grp->cnm--;
+							break;
+						case CSY_ABANDON_GROUP:
+							return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
 
-			if(! (rt_node = find_rtnode_by_uri(cb, mid)))
-				return RSC_NOT_FOUND;
-		}else {
-			// Todo - remote resource
+						case CSY_SET_MIXED:
+							grp->mt = RT_MIXED;
+							break;
+					}
+			}else{
+				switch(grp->csy){
+					case CSY_ABANDON_MEMBER:
+						remove_mid(grp->mid, i, grp->cnm);
+						grp->cnm--;
+						break;
+					case CSY_ABANDON_GROUP:
+						return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
+
+					case CSY_SET_MIXED:
+						grp->mt = RT_MIXED;
+						break;
+				}
+			}
+			
+		}else{
+			return RSC_NOT_IMPLEMENTED;
 		}
 
 	}
+	grp->mtv = true;
+	return RSC_OK;
 }
 
-void handle_error(oneM2MPrimitive *o2pt) {
-	int rcode = 400;
-	switch(o2pt->rsc){
+void remove_mid(char **mid, int idx, int cnm){
+	
+	for(int i = idx ; i < cnm-1; i++){
+		mid[i] = mid[i+1];
+	}
+	free(mid[cnm]);
+	mid[cnm] = NULL;
+	free(mid[idx]);
+}
+
+int rsc_to_http_status(int rsc){
+	switch(rsc){
+		case RSC_OK:
+		case RSC_UPDATED:
+			return 200;
+
+		case RSC_CREATED:
+			return 201;
+
+		case RSC_BAD_REQUEST:
 		case RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED:
-			logger("MAIN", LOG_LEVEL_DEBUG, "Max Number of member exceeded");
-			break;
+			return 400;
 		
-		case RSC_INVALID_ARGUMENTS:
-			logger("MAIN", LOG_LEVEL_DEBUG, "Invalid Arguments");
-			break;
+		case RSC_OPERATION_NOT_ALLOWED:
+			return 403;
+
+		case RSC_INTERNAL_SERVER_ERROR:
+			return 500;
 
 		default:
-			logger("MAIN", LOG_LEVEL_DEBUG, "Internal Server Error");
-			break;
+			return 200;
 	}
-
-	respond_to_client(o2pt, rcode);
 }
 
+
+cJSON *o2pt_to_json(oneM2MPrimitive *o2pt){
+	cJSON *json = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(json, "rsc", o2pt->rsc);
+    cJSON_AddStringToObject(json, "rqi", o2pt->rqi);
+    cJSON_AddStringToObject(json, "to", o2pt->to);    
+    cJSON_AddStringToObject(json, "fr", o2pt->fr);
+    cJSON_AddStringToObject(json, "rvi", o2pt->rvi);
+    if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
+    if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
+	
+	return json;
+}
+
+void free_o2pt(oneM2MPrimitive *o2pt){
+	if(o2pt->rqi)
+		free(o2pt->rqi);
+	if(o2pt->origin)
+		free(o2pt->origin);
+	if(o2pt->pc)
+		free(o2pt->pc);
+	if(o2pt->fr)
+		free(o2pt->fr);
+	if(o2pt->to)
+		free(o2pt->to);
+	if(o2pt->req_type)
+		free(o2pt->req_type);
+	if(o2pt->fopt)
+		free(o2pt->fopt);
+	if(o2pt->rvi)
+		free(o2pt->rvi);
+	if(o2pt->cjson_pc)
+		cJSON_Delete(o2pt->cjson_pc);
+	free(o2pt);
+	o2pt = NULL;
+}
+
+void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src){
+	if(src == NULL) return;
+
+	(*dest) = (oneM2MPrimitive *) calloc(1, sizeof(oneM2MPrimitive));
+
+	(*dest)->fr = strdup(src->fr);
+	(*dest)->to = strdup(src->to);
+	if(src->rqi) (*dest)->rqi = strdup(src->rqi);
+	if(src->origin) (*dest)->origin = strdup(src->origin);
+	if(src->pc) (*dest)->pc = strdup(src->pc);
+	if(src->cjson_pc) (*dest)->cjson_pc = cJSON_Parse((*dest)->pc);
+	if(src->req_type) (*dest)->req_type = strdup(src->req_type);
+	if(src->rvi) (*dest)->rvi = strdup(src->rvi);
+	if(src->fopt) (*dest)->fopt = strdup(src->fopt);
+	(*dest)->ty = src->ty;
+	(*dest)->op = src->op;
+	(*dest)->isFopt = src->isFopt;
+	(*dest)->prot = src->prot;
+	(*dest)->rsc = src->rsc;
+
+}
