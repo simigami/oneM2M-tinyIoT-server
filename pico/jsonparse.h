@@ -32,6 +32,4 @@ char* get_json_value_list_v2(char *json, char *key);
 bool json_key_exist(char *json, char *key);
 char *cjson_list_item_to_string(cJSON *key);
 
-bool validate_mid_dup(char **mid, int idx, char *new);
-
 #endif

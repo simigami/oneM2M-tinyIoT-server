@@ -578,7 +578,7 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	}
 	grp->mnm = mnm->valueint;
 
-	grp->mid = (char **) malloc(sizeof(char *) * grp->mnm);
+	grp->mid = (char **) calloc(1, sizeof(char*) * grp->mnm);
 
 	int mid_size = cJSON_GetArraySize(mid);
 	if(mid_size > grp->mnm){
@@ -586,33 +586,26 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	}
 	
 	grp->cnm = mid_size;
+	int midx = 0;
 	for(int i = 0 ; i < grp->mnm; i++){
-		if(i < mid_size){
+		if(midx < mid_size){
 			pmid = cJSON_GetArrayItem(mid, i);
-			if(validate_mid_dup(grp->mid, i, pmid->valuestring))
-				grp->mid[i] = strdup(pmid->valuestring);
-			else
+			if(!isMinDup(grp->mid, midx, pmid->valuestring)){
+				logger("json-t", LOG_LEVEL_DEBUG, "adding %s to mid[%d]", pmid->valuestring, midx);
+				grp->mid[midx] = strdup(pmid->valuestring);
+				midx++;
+			}
+			else{
+				logger("json-t", LOG_LEVEL_DEBUG, "declining %s", pmid->valuestring);
+				grp->mid[i] = NULL;
 				grp->cnm--;
-			
-		}else{
-			grp->mid[i] = NULL;
+			}
 		}
 	}
 
 	return RSC_CREATED;
 }
 
-bool validate_mid_dup(char **mid, int idx, char *new){
-	if(!mid) return true;
-	if(!new) return false;
-
-	for(int i = 0 ; i < idx; i++){
-		if( !strcmp(mid[i], new) ){
-			return false;
-		}
-	}
-	return true;
-}
 
 char* node_to_json(RTNode *node) {
 	char *json = NULL;

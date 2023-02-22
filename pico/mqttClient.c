@@ -539,7 +539,7 @@ void *mqtt_serve(void)
     sprintf(reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req/+/", CSE_BASE_RI, "/#");
     sprintf(respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/resp/", CSE_BASE_RI, "/+/#");
     sprintf(reg_reqTopic, "%s%s%s%s", topicPrefix, "/oneM2M/reg_req/+/", CSE_BASE_RI, "/#");
-    sprintf(reg_respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/req_resp/", CSE_BASE_RI, "/+/#");
+    sprintf(reg_respTopic, "%s%s%s%s", topicPrefix, "/oneM2M/reg_resp/", CSE_BASE_RI, "/+/#");
 
     /* Subscribe and wait for Ack */
     XMEMSET(&mqttObj, 0, sizeof(mqttObj));

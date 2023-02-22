@@ -57,6 +57,7 @@ int is_json_valid_char(char c);
 bool is_rn_valid_char(char c);
 
 int validate_grp(GRP *grp);
+bool isMinDup(char **mid, int idx, char *new_mid);
 
 ResourceType http_parse_object_type();
 ResourceType parse_object_type_cjson(cJSON *cjson);

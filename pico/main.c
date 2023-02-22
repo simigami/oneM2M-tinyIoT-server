@@ -52,6 +52,7 @@ void route(oneM2MPrimitive *o2pt) {
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
 		log_runtime(start);
+		respond_to_client(o2pt, rsc_to_http_status(rsc));
 		return;
 	}
 
@@ -315,6 +316,7 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	
 	o2ptcpy(&req_o2pt, o2pt);
 
+
 	new_pc = cJSON_CreateObject();
 	cJSON_AddItemToObject(new_pc, "m2m:agr", agr = cJSON_CreateObject());
 	cJSON_AddItemToObject(agr, "m2m:rsp", rsp = cJSON_CreateArray());
@@ -332,6 +334,9 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		req_o2pt->isFopt = false;
 		
 		target_rtnode = parse_uri(req_o2pt, rt->cb);
+		if(target_rtnode->ty == RT_AE){
+			req_o2pt->fr = strdup(target_rtnode->ri);
+		}
 		
 		if(target_rtnode){
 			rsc = handle_onem2m_request(req_o2pt, target_rtnode);

@@ -51,8 +51,12 @@ void init_ae(AE* ae, char *pi, char *origin) {
 		if(origin[0] != 'C') strcpy(ri, "C");
 		strcat(ri, origin);
 	} else {
-		strcpy(ri, "CAE");
-		strcat(ri, ct);
+		struct timespec specific_time;
+
+    	clock_gettime(CLOCK_REALTIME, &specific_time);
+    	int millsec = floor(specific_time.tv_nsec/1.0e6);
+
+		sprintf(ri, "%s%s%09d","CAE", ct, millsec);
 	}
 
 	if(!ae->rn) {
@@ -956,7 +960,9 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	}
 	delete_rtnode_and_db_data(target_rtnode,1);
 	target_rtnode = NULL;
-	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"resource is deleted successfully\"}");
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = NULL;
+	//set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"resource is deleted successfully\"}");
 	o2pt->rsc = RSC_DELETED;
 	//respond_to_client(o2pt, 200);
 	return RSC_DELETED;
@@ -984,6 +990,8 @@ int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	case RT_ACP :
 		db_delete_acp(rtnode->ri);
 		break;
+	case RT_GRP:
+		db_delete_grp(rtnode->ri);
 	}
 
 	RTNode *left = rtnode->sibling_left;
@@ -1093,9 +1101,11 @@ void free_grp(GRP *grp) {
 				free(grp->mid[i]);
 			grp->mid[i] = NULL;
 		}
-		free(grp->mid); grp->mid = NULL;
+		free(grp->mid); 
+		grp->mid = NULL;
 	}
-	free(grp); grp = NULL;
+	free(grp); 
+	grp = NULL;
 }
 
 void free_rtnode(RTNode *rtnode) {
@@ -1320,7 +1330,7 @@ void init_grp(GRP *grp, char *pi){
 	strcpy(grp->ri, ri);
 	strcpy(grp->pi, pi);
 
-	grp->csy = CSY_ABANDON_MEMBER;
+	if(grp->csy == 0) grp->csy = CSY_ABANDON_MEMBER;
 
 
 	if(!grp->rn) {
@@ -1358,8 +1368,13 @@ int set_grp_update(cJSON *m2m_grp, GRP* after){
 	if(mt)
 		after->mt = mt->valueint;
 	
-	if(mnm)
+	if(mnm){
+		if(mnm->valueint < after->cnm){
+			return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+		}
 		after->mnm = mnm->valueint;
+		
+	}
 
 	int new_cnm = 0;
 
@@ -1367,15 +1382,28 @@ int set_grp_update(cJSON *m2m_grp, GRP* after){
 		size_t mid_size = cJSON_GetArraySize(mid);
 		if(mid_size > after->mnm) return -1;
 		new_cnm = mid_size;
-		for(int i = 0 ; i < after->mnm; i++){
-			if(i < after->cnm) 
+		int midx = 0;
+		for(int i = 0 ; i < after->mnm ; i++){ //re initialize mid
+			if(after->mid[i])
 				free(after->mid[i]);
+
+			after->mid[i] = NULL;
+		}
+		for(int i = 0 ; i < after->mnm; i++){
+			
 			if(i < mid_size){
 				mc = cJSON_GetArrayItem(mid, i);
-				if(validate_mid_dup(after->mid, i, mc->valuestring))
-					after->mid[i] = strdup(mc->valuestring);
-				else
+				if(!isMinDup(after->mid, midx, mc->valuestring)){
+					
+					logger("o2m-t", LOG_LEVEL_DEBUG, "updating %s to mid[%d]", mc->valuestring, midx);
+					after->mid[midx] = strdup(mc->valuestring);
+					midx++;
+				}
+				else{
+					logger("json-t", LOG_LEVEL_DEBUG, "declining %s", mc->valuestring);
+					after->mid[i] = NULL;
 					new_cnm--;
+				}
 				
 			}else{
 				after->mid[i] = NULL;
@@ -1386,6 +1414,7 @@ int set_grp_update(cJSON *m2m_grp, GRP* after){
 
 	if(after->lt) free(after->lt);
 	after->lt = get_local_time(0);
+	return RSC_OK;
 }
 
 int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
@@ -1403,17 +1432,16 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 
 	GRP *after = db_get_grp(target_rtnode->ri);
 	int result;
-	if( set_grp_update(m2m_grp, after) == -1){
-		o2pt->rsc = RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
-		//respond_to_client(o2pt, 400);
+	if( (o2pt->rsc = set_grp_update(m2m_grp, after)) >= 4000){
 
+		//respond_to_client(o2pt, 400);
 		free_grp(after);
 		after = NULL;
-		return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+		return o2pt->rsc;
 	}
 	if( (rsc = validate_grp(after))  >= 4000){
 		o2pt->rsc = rsc;
-		return RSC_BAD_REQUEST;
+		return rsc;
 	}
 	set_rtnode_update(target_rtnode, after);
 
@@ -1447,6 +1475,7 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	init_grp(grp, parent_rtnode->ri);
 	rsc = validate_grp(grp);
 	if(rsc >= 4000){
+		logger("O2M", LOG_LEVEL_DEBUG, "Group Validation failed");
 		o2pt->rsc = rsc;
 		free_grp(grp);
 		grp = NULL;

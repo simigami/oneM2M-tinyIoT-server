@@ -341,8 +341,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int status_code) {
         case 413: status = "413 Payload Too Large"; break;
         case 500: status = "500 Internal Server Error"; break;
     }
-    sprintf(buf, "%s %s\n%s%s\n", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers);
-    strcat(buf, o2pt->pc);
+    sprintf(buf, "%s %s\n%s%s\n%s", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers,o2pt->pc);
     printf("%s",buf); 
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
 }

@@ -27,6 +27,8 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	char *fopt_buf = NULL;
 	strcpy(uri_array, o2pt->to);
 
+	logger("util-c", LOG_LEVEL_DEBUG, "%s", o2pt->to);
+
 	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
 	int index_start = 0, index_end = -1, fopt_cnt = -1;
 
@@ -277,11 +279,6 @@ int is_json_valid_char(char c){
 }
 
 void respond_to_client(oneM2MPrimitive *o2pt, int status) {
-	if(!o2pt->pc) {
-		logger("O2M", LOG_LEVEL_ERROR, "Response payload is NULL");
-		return;
-	}
-
 	switch(o2pt->prot) {
 		case PROT_HTTP:
 			http_respond_to_client(o2pt, status); 
@@ -330,7 +327,7 @@ char *resource_identifier(ResourceType ty, char *ct) {
     clock_gettime(CLOCK_REALTIME, &specific_time);
     millsec = floor(specific_time.tv_nsec/1.0e6);
 
-	sprintf(buf, "%s%03d",ct, millsec);
+	sprintf(buf, "%s%04d",ct, millsec);
 
 	strcat(ri, buf);
 
@@ -363,7 +360,7 @@ void too_large_content_size_error(oneM2MPrimitive *o2pt) {
 	logger("O2M", LOG_LEVEL_ERROR, "Too large content size");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"too large content size\"}");
 	o2pt->rsc = RSC_NOT_ACCEPTABLE;
-	respond_to_client(o2pt, 400);
+	//respond_to_client(o2pt, 400);
 }
 
 int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
@@ -402,7 +399,7 @@ int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = res;
-	respond_to_client(o2pt, 200);
+	//respond_to_client(o2pt, 200);
 }
 
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) {
@@ -569,7 +566,7 @@ int check_payload_size(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Request payload too large");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload is too large\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		respond_to_client(o2pt, 413);
+		//respond_to_client(o2pt, 413);
 		return -1;
 	}
 	return 0;
@@ -580,7 +577,7 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		logger("UTIL", LOG_LEVEL_ERROR, "URI is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"URI is invalid\"}");
 		o2pt->rsc = RSC_NOT_FOUND;
-		respond_to_client(o2pt, 404);
+		//respond_to_client(o2pt, 404);
 		return -1;
 	} else {
 		return 0;
@@ -753,7 +750,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
         logger("UTIL", LOG_LEVEL_ERROR, "Attribute `rn` is duplicated");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
 		o2pt->rsc = RSC_CONFLICT;
-		respond_to_client(o2pt, 209);
+		//respond_to_client(o2pt, 209);
 		return -1;
     }
 
@@ -779,7 +776,7 @@ int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 			logger("UTIL", LOG_LEVEL_ERROR, "AE-ID is duplicated");
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `aei` is duplicated\"}");
 			o2pt->rsc = RSC_ORIGINATOR_HAS_ALREADY_REGISTERD;
-			respond_to_client(o2pt, 209);
+			//respond_to_client(o2pt, 209);
 			return -1;
 		}
 		child = child->sibling_right;
@@ -795,7 +792,7 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Payload format is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload format is invalid\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		respond_to_client(o2pt, 400);
+		//respond_to_client(o2pt, 400);
 		return -1;
 	}
 	return 0;
@@ -806,7 +803,7 @@ int check_payload_empty(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Payload is empty");
 		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"payload is empty\"}");
 		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-		respond_to_client(o2pt, 500);
+		//respond_to_client(o2pt, 500);
 		return -1;
 	}
 	return 0;
@@ -851,7 +848,7 @@ int check_resource_type_equal(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type is invalid\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		respond_to_client(o2pt, 400);
+		//respond_to_client(o2pt, 400);
 		return -1;
 	}
 	return 0;
@@ -862,7 +859,7 @@ int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type is invalid\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		respond_to_client(o2pt, 400);
+		//respond_to_client(o2pt, 400);
 		return -1;
 	}
 	return 0;
@@ -910,11 +907,12 @@ void db_store_fail(oneM2MPrimitive *o2pt) {
 }
 
 
-bool isFopt(char *str){
+bool isUriFopt(char *str){
 	char *s;
 	if(!str) return false;
 	s = strrchr(str, '/');
-	return strcmp(s, "/fopt");
+	if(!s) return false;
+	return !strcmp(s, "/fopt");
 }
 
 bool endswith(char *str, char *match){
@@ -933,6 +931,7 @@ bool endswith(char *str, char *match){
 }
 
 int validate_grp(GRP *grp){
+	int rsc = 0;
 	bool hasFopt = false;
 	bool isLocalResource = true;
 	char *mid = NULL;
@@ -968,47 +967,57 @@ int validate_grp(GRP *grp){
 
 		// resource check
 		if(isLocalResource) {
-			hasFopt = isFopt(mid);
+			hasFopt = isUriFopt(mid);
 			tStr = strdup(mid);
 			if(hasFopt && strlen(mid) > 5)  // remove fopt 
 				tStr[strlen(mid) - 5] = '\0';
 			logger("util-t", LOG_LEVEL_DEBUG, "%s",tStr);
+
 			if((rt_node = find_rtnode_by_uri(rt->cb, tStr))){
 				if(rt_node->ty != grp->mt)
-					switch(grp->csy){
-						case CSY_ABANDON_MEMBER:
-							remove_mid(grp->mid, i, grp->cnm);
-							grp->cnm--;
-							break;
-						case CSY_ABANDON_GROUP:
-							return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
-
-						case CSY_SET_MIXED:
-							grp->mt = RT_MIXED;
-							break;
-					}
+					if(handle_csy(grp, i)) return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
 			}else{
-				switch(grp->csy){
-					case CSY_ABANDON_MEMBER:
-						remove_mid(grp->mid, i, grp->cnm);
-						grp->cnm--;
-						break;
-					case CSY_ABANDON_GROUP:
-						return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
-
-					case CSY_SET_MIXED:
-						grp->mt = RT_MIXED;
-						break;
-				}
+				if(handle_csy(grp, i)) return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
 			}
-			
+			// if(rt_node->ty == RT_GRP){
+			// if((rsc = validate_grp(db_get_grp(rtnode->ri))) >= 4000 )
+			// 	handle_csy
+			// }
 		}else{
 			return RSC_NOT_IMPLEMENTED;
 		}
 
+
 	}
 	grp->mtv = true;
 	return RSC_OK;
+}
+
+int handle_csy(GRP *grp, int i){
+	switch(grp->csy){
+		case CSY_ABANDON_MEMBER:
+			remove_mid(grp->mid, i, grp->cnm);
+			grp->cnm--;
+			break;
+		case CSY_ABANDON_GROUP:
+			return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
+
+		case CSY_SET_MIXED:
+			grp->mt = RT_MIXED;
+			break;
+	}
+	return 0;
+}
+
+bool isMinDup(char **mid, int idx, char *new_mid){
+	if(!mid) return true;
+	if(!new_mid) return true;
+
+	for(int i = 0 ; i < idx ; i++){
+		if( mid[i] != 0 && !strcmp(mid[i], new_mid))
+			return true;
+	}
+	return false;
 }
 
 void remove_mid(char **mid, int idx, int cnm){
@@ -1016,7 +1025,7 @@ void remove_mid(char **mid, int idx, int cnm){
 	for(int i = idx ; i < cnm-1; i++){
 		mid[i] = mid[i+1];
 	}
-	free(mid[cnm]);
+	if(mid[cnm]) free(mid[cnm]);
 	mid[cnm] = NULL;
 	free(mid[idx]);
 }
@@ -1055,7 +1064,7 @@ cJSON *o2pt_to_json(oneM2MPrimitive *o2pt){
     cJSON_AddStringToObject(json, "fr", o2pt->fr);
     cJSON_AddStringToObject(json, "rvi", o2pt->rvi);
     if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
-    if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
+    //if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 	
 	return json;
 }
