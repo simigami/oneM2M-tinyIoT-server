@@ -21,7 +21,7 @@ extern ResourceTree *rt;
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	logger("O2M", LOG_LEVEL_DEBUG, "Call parse_uri");
-	logger("util-t", LOG_LEVEL_DEBUG, "%s", o2pt->to);
+	
 	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
 	char *fopt_buf = NULL;
@@ -56,7 +56,7 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 				strcat(fopt_buf, uri_strtok[i+index_end + 2]); //index end before fopt so +2
 			}
 			o2pt->fopt = strdup(fopt_buf);
-			logger("util-f", LOG_LEVEL_DEBUG, "%s", o2pt->fopt);
+			
 			free(fopt_buf);
 		}
 	}else{
@@ -76,7 +76,6 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 		strcat(uri_array,"/"); 
 		strcat(uri_array,uri_strtok[i]);
 	}
-	logger("util-t", LOG_LEVEL_DEBUG, "%s", uri_array);
 	RTNode* rtnode = find_rtnode_by_uri(cb, uri_array);
 	
 	if(rtnode && !o2pt->isFopt && latest_oldest_flag != -1) rtnode = find_latest_oldest(rtnode, latest_oldest_flag);
