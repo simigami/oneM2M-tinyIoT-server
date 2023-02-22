@@ -13,6 +13,7 @@ void log_runtime(double start);
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
+void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) ;
 
 //Resource Tree
 void restruct_resource_tree();
@@ -72,5 +73,7 @@ void handle_error(oneM2MPrimitive *o2pt, int rsc, char *err);
 int rsc_to_http_status(int rsc);
 
 cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
+void remove_mid(char **mid, int idx, int cnm);
+
 
 #endif

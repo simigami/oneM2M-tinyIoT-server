@@ -21,6 +21,8 @@
 ResourceTree *rt;
 extern void *mqtt_serve();
 
+
+
 int main(int c, char **v) {
 	db_display("ACP.db");
 	pthread_t mqtt;
@@ -114,7 +116,7 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e != -1) e = check_resource_type_equal(o2pt);
 	if(e != -1) e = check_privilege(o2pt, parent_rtnode, ACOP_CREATE);
 	if(e != -1) e = check_rn_duplicate(o2pt, parent_rtnode);
-	if(e == -1) return;
+	if(e == -1) return o2pt->rsc;
 
 	switch(o2pt->ty) {	
 	case RT_AE :
@@ -160,7 +162,7 @@ int retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int rsc = 0;
 	int e = check_privilege(o2pt, target_rtnode, ACOP_RETRIEVE);
 
-	if(e == -1) return;
+	if(e == -1) return o2pt->rsc;
 	/*
 	int fu = get_value_querystring_int("fu");
 
@@ -221,7 +223,7 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(e != -1) e = check_resource_type_equal(o2pt);
 	if(e != -1) e = check_privilege(o2pt, target_rtnode, ACOP_UPDATE);
 	if(e != -1) e = check_rn_duplicate(o2pt, target_rtnode->parent);
-	if(e == -1) return;
+	if(e == -1) return o2pt->rsc;
 	
 	switch(ty) {
 	case RT_AE :

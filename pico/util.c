@@ -704,7 +704,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Originator has no privilege");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"originator has no privilege.\"}");
 		o2pt->rsc = RSC_ORIGINATOR_HAS_NO_PRIVILEGE;
-		respond_to_client(o2pt, 403);
+		//respond_to_client(o2pt, 403);
 		return -1;
 	}
 
@@ -834,7 +834,7 @@ int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty) {
 			logger("UTIL", LOG_LEVEL_ERROR, "Resource name is invalid");
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}");
 			o2pt->rsc = RSC_BAD_REQUEST;
-			respond_to_client(o2pt, 406);
+			//respond_to_client(o2pt, 406);
 			return -1;
 		}
 	}
@@ -885,28 +885,28 @@ void no_mandatory_error(oneM2MPrimitive *o2pt){
 	logger("UTIL", LOG_LEVEL_ERROR, "Insufficient mandatory attribute(s)");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"insufficient mandatory attribute(s)\"}");
 	o2pt->rsc = RSC_CONTENTS_UNACCEPTABLE;
-	respond_to_client(o2pt, 400);
+	//respond_to_client(o2pt, 400);
 }
 
 void api_prefix_invalid(oneM2MPrimitive *o2pt) {
 	logger("UTIL", LOG_LEVEL_ERROR, "API prefix is invalid");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `api` prefix is invalid\"}");
 	o2pt->rsc = RSC_BAD_REQUEST;
-	respond_to_client(o2pt, 400);
+	//respond_to_client(o2pt, 400);
 }
 
 void mni_mbs_invalid(oneM2MPrimitive *o2pt, char *attribute) {
 	logger("UTIL", LOG_LEVEL_ERROR, "attribute `%s` is invalid", attribute);
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `%s` is invalid\"}", attribute);
 	o2pt->rsc = RSC_BAD_REQUEST;
-	respond_to_client(o2pt, 400);
+	//respond_to_client(o2pt, 400);
 }
 
 void db_store_fail(oneM2MPrimitive *o2pt) {
 	logger("UTIL", LOG_LEVEL_ERROR, "DB store fail");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
 	o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-	respond_to_client(o2pt, 500);
+	//respond_to_client(o2pt, 500);
 }
 
 

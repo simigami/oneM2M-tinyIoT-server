@@ -363,28 +363,28 @@ RTNode *create_grp_rtnode(GRP *grp){
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int e = check_aei_duplicate(o2pt, parent_rtnode);
 	if(e != -1) e = check_rn_invalid(o2pt, RT_AE);
-	if(e == -1) return;
+	if(e == -1) return o2pt->rsc;
 
 	if(parent_rtnode->ty != RT_CSE) {
 		child_type_error(o2pt);
-		return;
+		return o2pt->rsc;
 	}
 	AE* ae = cjson_to_ae(o2pt->cjson_pc);
 	if(!ae) {
 		no_mandatory_error(o2pt);
-		return;
+		return RSC_CONTENTS_UNACCEPTABLE;
 	}
 	if(ae->api[0] != 'R' && ae->api[0] != 'N') {
 		free_ae(ae);
 		api_prefix_invalid(o2pt);
-		return;
+		return RSC_BAD_REQUEST;
 	}
 	init_ae(ae,parent_rtnode->ri, o2pt->fr);
 	
 	int result = db_store_ae(ae);
 	if(result != 1) { 
 		db_store_fail(o2pt); free_ae(ae); ae = NULL;
-		return;
+		return RSC_INTERNAL_SERVER_ERROR;
 	}
 	
 	RTNode* child_rtnode = create_rtnode(ae, RT_AE);
@@ -399,27 +399,27 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(parent_rtnode->ty != RT_CNT && parent_rtnode->ty != RT_AE && parent_rtnode->ty != RT_CSE) {
 		child_type_error(o2pt);
-		return;
+		return RSC_INVALID_CHILD_RESOURCETYPE;
 	}
 	CNT* cnt = cjson_to_cnt(o2pt->cjson_pc);
 	if(!cnt) {
 		no_mandatory_error(o2pt);
-		return;
+		return o2pt->rsc;
 	}
 	if(cnt->mbs != INT_MIN && cnt->mbs < 0) {
 		mni_mbs_invalid(o2pt, "mbs"); free(cnt); cnt = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	if(cnt->mni != INT_MIN && cnt->mni < 0) {
 		mni_mbs_invalid(o2pt, "mni"); free(cnt); cnt = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	init_cnt(cnt,parent_rtnode->ri);
 
 	int result = db_store_cnt(cnt);
 	if(result != 1) { 
 		db_store_fail(o2pt); free_cnt(cnt); cnt = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	
 	RTNode* child_rtnode = create_rtnode(cnt, RT_CNT);
@@ -435,22 +435,22 @@ int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(parent_rtnode->ty != RT_CNT) {
 		child_type_error(o2pt);
-		return;
+		return o2pt->rsc;
 	}
 	CIN* cin = cjson_to_cin(o2pt->cjson_pc);
 	if(!cin) {
 		no_mandatory_error(o2pt);
-		return;
+		return o2pt->rsc;
 	} else if(parent_rtnode->mbs >= 0 && cin->cs > parent_rtnode->mbs) {
 		too_large_content_size_error(o2pt); free(cin); cin = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	init_cin(cin,parent_rtnode->ri);
 
 	int result = db_store_cin(cin);
 	if(result != 1) { 
 		db_store_fail(o2pt); free_cin(cin); cin = NULL;
-		return;
+		return o2pt->rsc;
 	}
 
 	RTNode *cin_rtnode = create_rtnode(cin, RT_CIN);
@@ -469,19 +469,19 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(parent_rtnode->ty == RT_CIN || parent_rtnode->ty == RT_SUB) {
 		child_type_error(o2pt);
-		return;
+		return o2pt->rsc;
 	}
 	Sub* sub = cjson_to_sub(o2pt->cjson_pc);
 	if(!sub) {
 		no_mandatory_error(o2pt);
-		return;
+		return o2pt->rsc;
 	}
 	init_sub(sub, parent_rtnode->ri, o2pt->to);
 	
 	int result = db_store_sub(sub);
 	if(result != 1) { 
 		db_store_fail(o2pt); free_sub(sub); sub = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	
 	free_sub(sub); sub = NULL;
@@ -499,19 +499,19 @@ int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 int create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(parent_rtnode->ty != RT_CSE && parent_rtnode->ty != RT_AE) {
 		child_type_error(o2pt);
-		return;
+		return o2pt->rsc;
 	}
 	ACP* acp = cjson_to_acp(o2pt->cjson_pc);
 	if(!acp) {
 		no_mandatory_error(o2pt);
-		return;
+		return o2pt->rsc;
 	}
 	init_acp(acp, parent_rtnode->ri);
 	
 	int result = db_store_acp(acp);
 	if(result != 1) { 
 		db_store_fail(o2pt); free_acp(acp); acp = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	
 	RTNode* child_rtnode = create_rtnode(acp, RT_ACP);
@@ -652,11 +652,11 @@ int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	set_cnt_update(m2m_cnt, after);
 	if(after->mbs != INT_MIN && after->mbs < 0) {
 		mni_mbs_invalid(o2pt, "mbs"); free(after); after = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	if(after->mni != INT_MIN && after->mni < 0) {
 		mni_mbs_invalid(o2pt, "mni"); free(after); after = NULL;
-		return;
+		return o2pt->rsc;
 	}
 	set_rtnode_update(target_rtnode, after);
 	delete_cin_under_cnt_mni_mbs(after);
@@ -945,7 +945,7 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	logger("MAIN", LOG_LEVEL_INFO, "Delete oneM2M resource");
 	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT || target_rtnode->ty == RT_GRP) {
 		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
-			return;
+			return o2pt->rsc;
 		}
 	}
 	if(target_rtnode->ty == RT_CSE) {
@@ -977,7 +977,7 @@ int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	case RT_CIN :
 		db_delete_onem2m_resource(rtnode->ri);
 		update_cnt_cin(rtnode->parent, rtnode,-1);
-		return;
+		return 1;
 	case RT_SUB :
 		db_delete_sub(rtnode->ri);
 		break;
@@ -1002,6 +1002,7 @@ int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	if(rtnode->child) delete_rtnode_and_db_data(rtnode->child, 0);
 	
 	free_rtnode(rtnode); rtnode = NULL;
+	return 1;
 }
 
 void free_cse(CSE *cse) {
