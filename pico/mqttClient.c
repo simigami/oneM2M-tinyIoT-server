@@ -32,6 +32,9 @@
 
 #define LOG_TAG "MQTT"
 
+/* thread signal */
+extern int terminate;
+
 /* Local Variables */
 static MqttClient mClient;
 static MqttNet mNetwork;
@@ -574,16 +577,16 @@ void *mqtt_serve(void)
     logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Subscribe Success: Topic %s, QoS %d", reg_respTopic, MQTT_QOS);
 
     /* Wait for messages */
-    while (1) {
+    while (!terminate) {
         rc = MqttClient_WaitMessage_ex(&mClient, &mqttObj, MQTT_CMD_TIMEOUT_MS);
 
         if (rc == MQTT_CODE_ERROR_TIMEOUT) {
             /* send keep-alive ping */
             rc = MqttClient_Ping_ex(&mClient, &mqttObj.ping);
-            if (rc != MQTT_CODE_SUCCESS) {
+            if (terminate || rc != MQTT_CODE_SUCCESS) {
                 break;
             }
-            logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Keep-Alive Ping");
+            //logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Keep-Alive Ping");
         }
         else if (rc != MQTT_CODE_SUCCESS) {
             break;

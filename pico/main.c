@@ -22,12 +22,15 @@
 ResourceTree *rt;
 extern void *mqtt_serve();
 void stop_server(int sig);
-
+int terminate = 0;
+#ifdef ENABLE_MQTT
+pthread_t mqtt;
+#endif
 
 
 int main(int c, char **v) {
-	pthread_t mqtt;
 	signal(SIGINT, stop_server);
+	
 	if(!init_dbp()){
 		logger("MAIN", LOG_LEVEL_ERROR, "DB Error");
 		return 0;
@@ -227,37 +230,37 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(e == -1) return o2pt->rsc;
 	
 	switch(ty) {
-	case RT_AE :
-		logger("MAIN", LOG_LEVEL_INFO, "Update AE");
-		rsc = update_ae(o2pt, target_rtnode);
-		break;
+		case RT_AE :
+			logger("MAIN", LOG_LEVEL_INFO, "Update AE");
+			rsc = update_ae(o2pt, target_rtnode);
+			break;
 
-	case RT_CNT :
-		logger("MAIN", LOG_LEVEL_INFO, "Update CNT");
-		rsc = update_cnt(o2pt, target_rtnode);
-		break;
+		case RT_CNT :
+			logger("MAIN", LOG_LEVEL_INFO, "Update CNT");
+			rsc = update_cnt(o2pt, target_rtnode);
+			break;
 
-	// case RT_SUB :
-	//	logger("MAIN", LOG_LEVEL_INFO, "Update SUB");
-	// 	update_sub(pnode);
-	// 	break;
-	
-	case RT_ACP :
-		logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
-		rsc = update_acp(o2pt, target_rtnode);
-		break;
+		// case RT_SUB :
+		//	logger("MAIN", LOG_LEVEL_INFO, "Update SUB");
+		// 	update_sub(pnode);
+		// 	break;
+		
+		case RT_ACP :
+			logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
+			rsc = update_acp(o2pt, target_rtnode);
+			break;
 
-	case RT_GRP:
-		logger("MAIN", LOG_LEVEL_INFO, "Update GRP");
-		rsc = update_grp(o2pt, target_rtnode);
-		break;
+		case RT_GRP:
+			logger("MAIN", LOG_LEVEL_INFO, "Update GRP");
+			rsc = update_grp(o2pt, target_rtnode);
+			break;
 
-	default :
-		logger("MAIN", LOG_LEVEL_ERROR, "Resource type does not support Update");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"`Update` operation is unsupported\"}");
-		rsc = o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
-		//respond_to_client(o2pt, 400);
-	}
+		default :
+			logger("MAIN", LOG_LEVEL_ERROR, "Resource type does not support Update");
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"`Update` operation is unsupported\"}");
+			rsc = o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
+			//respond_to_client(o2pt, 400);
+		}
 	return rsc;
 }
 
@@ -372,7 +375,14 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 }
 
 void stop_server(int sig){
-	logger("MAIN", LOG_LEVEL_INFO, "Shutting down server");
+	logger("MAIN", LOG_LEVEL_INFO, "Shutting down server...");
+	terminate = 1;
+	logger("MAIN", LOG_LEVEL_INFO, "Waiting for MQTT Client to shut down...");
+	pthread_join(mqtt, NULL);
+	logger("MAIN", LOG_LEVEL_INFO, "Closing DB...");
 	close_dbp();
+	free_rtnode(rt->cb);
+	free(rt);
+	logger("MAIN", LOG_LEVEL_INFO, "Done");
 	exit(0);
 }
