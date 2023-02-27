@@ -319,7 +319,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int status_code) {
     char rsc[64];
     char response_headers[2048] = {'\0'};
 
-    sprintf(content_length, "%ld", strlen(o2pt->pc));
+    sprintf(content_length, "%ld", o2pt->pc ? strlen(o2pt->pc) : 0);
     sprintf(rsc, "%d", o2pt->rsc);
     set_response_header("Content-Length", content_length, response_headers);
     set_response_header("X-M2M-RSC", rsc, response_headers);
@@ -341,7 +341,8 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int status_code) {
         case 413: status = "413 Payload Too Large"; break;
         case 500: status = "500 Internal Server Error"; break;
     }
-    sprintf(buf, "%s %s\n%s%s\n%s", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers,o2pt->pc);
+    sprintf(buf, "%s %s\n%s%s\n", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers);
+    if(o2pt->pc) strcat(buf, o2pt->pc);
     printf("%s",buf); 
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
 }

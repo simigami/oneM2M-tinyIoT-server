@@ -75,6 +75,7 @@ int rsc_to_http_status(int rsc);
 
 cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
 void remove_mid(char **mid, int idx, int cnm);
+int handle_csy(GRP *grp, int i);
 
 
 #endif

@@ -121,6 +121,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     if(!json){
         logger(LOG_TAG, LOG_LEVEL_WARN, "Invalid request\n");
         logger(LOG_TAG, LOG_LEVEL_DEBUG, "ERROR before %10s\n", cJSON_GetErrorPtr());
+        cJSON_Delete(json);
         return MQTT_CODE_SUCCESS;
     }
 
@@ -186,8 +187,14 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* Free allocated memories */
     cJSON_Delete(pjson);
+    cJSON_Delete(json);
     free_o2pt(o2pt);
-    free(puri);
+    if(puri)
+        free(puri);
+    
+    puri = NULL;
+    pjson = NULL;
+    json = NULL;
     
     return MQTT_CODE_SUCCESS;
 }
@@ -218,7 +225,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     XMEMSET(&mqttPub, 0, sizeof(MqttPublish));
     mqttPub.retain = 0;
     mqttPub.qos = MQTT_QOS;
-    mqttPub.topic_name = strdup(respTopic);
+    mqttPub.topic_name = respTopic;
     mqttPub.packet_id = mqtt_get_packetid();
     mqttPub.buffer = pl;
     mqttPub.total_len = XSTRLEN(pl);
@@ -238,6 +245,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     cJSON_Delete(json);
 
     free(respTopic);
+    free(pl);
     respTopic = NULL;
     
     return rc;

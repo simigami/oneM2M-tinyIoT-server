@@ -428,7 +428,7 @@ int db_store_grp(GRP *grp_object){
         grp_object->acpi, grp_object->mnm, grp_object->cnm, grp_object->mt, grp_object->csy);
     strcat(str, strbuf);
     strcat(str, grp_object->mtv ? "1" : "0");
-    if(grp_object->mid)
+    if(grp_object->mid) {
         for(int i = 0 ; i < grp_object->cnm; i++){
             if(grp_object->mid[i]){
                 sprintf(strbuf, ";%s", grp_object->mid[i]);
@@ -436,8 +436,8 @@ int db_store_grp(GRP *grp_object){
             }else
                 break;
         }
+    }
 
-    logger("db", LOG_LEVEL_DEBUG, "saving %s", str);
     data.data = str;
     data.size = strlen(str) + 1;
     /* input DB */
@@ -450,7 +450,7 @@ int db_store_grp(GRP *grp_object){
     
     if(grp_object->rn == bs) grp_object->rn = NULL;
     if(grp_object->acpi == bs) grp_object->acpi = NULL;
-
+    free(strbuf);
     return 1;
 }
 
@@ -2284,7 +2284,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
             //find pi
             if(strncmp(pi, cin->pi, strlen(pi)) == 0)
                 cnt++;
-            free(cin);
+            free_cin(cin);
         }
     }
     //fprintf(stderr, "<%d>\n",cnt);
@@ -2311,7 +2311,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
 
                 }
             }
-            free(cin);
+            free_cin(cin);
         }
     }
     if (ret != DB_NOTFOUND) {

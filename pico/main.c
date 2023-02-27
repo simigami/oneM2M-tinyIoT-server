@@ -56,19 +56,13 @@ void route(oneM2MPrimitive *o2pt) {
 		return;
 	}
 
-	if(o2pt->isFopt){
+	if(o2pt->isFopt)
 		rsc = fopt_onem2m_resource(o2pt, target_rtnode);
-		if(target_rtnode && target_rtnode->ty == RT_CIN){
-			free_rtnode(target_rtnode);
-			target_rtnode = NULL;
-		}
-	}else{
+	else
 		rsc = handle_onem2m_request(o2pt, target_rtnode);
-	}
+	
 	
 	respond_to_client(o2pt, rsc_to_http_status(rsc));
-	
-
 	log_runtime(start);
 }
 
@@ -322,11 +316,11 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	cJSON_AddItemToObject(agr, "m2m:rsp", rsp = cJSON_CreateArray());
 
 	for(int i = 0 ; i < grp->cnm ; i++){
-		free(req_o2pt->to);
+		if(req_o2pt->to) free(req_o2pt->to);
 		if(o2pt->fopt)
-			req_o2pt->to = malloc(strlen(grp->mid[i]) + strlen(o2pt->fopt) +1 );
+			req_o2pt->to = malloc(strlen(grp->mid[i]) + strlen(o2pt->fopt) + 1);
 		else
-			req_o2pt->to = malloc(strlen(grp->mid[i]) +1);
+			req_o2pt->to = malloc(strlen(grp->mid[i]) + 1);
 		
 		strcpy(req_o2pt->to, grp->mid[i]);
 		if(o2pt->fopt) strcat(req_o2pt->to, o2pt->fopt);
@@ -334,7 +328,7 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		req_o2pt->isFopt = false;
 		
 		target_rtnode = parse_uri(req_o2pt, rt->cb);
-		if(target_rtnode->ty == RT_AE){
+		if(target_rtnode && target_rtnode->ty == RT_AE){
 			req_o2pt->fr = strdup(target_rtnode->ri);
 		}
 		
@@ -344,12 +338,12 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 			json = o2pt_to_json(req_o2pt);
 			if(json) {
 				cJSON_AddItemToArray(rsp, json);
-				
 			}
-			if(target_rtnode->ty == RT_CIN){
+			if(target_rtnode && target_rtnode->ty == RT_CIN){
 				free_rtnode(target_rtnode);
 				target_rtnode = NULL;
 			}
+
 		} else{
 			logger("MAIN", LOG_LEVEL_DEBUG, "rtnode not found");
 		}
@@ -361,6 +355,8 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	cJSON_Delete(new_pc);
 	
 	o2pt->rsc = RSC_OK;	
+
+	
 
 	free_o2pt(req_o2pt);
 	req_o2pt = NULL;
