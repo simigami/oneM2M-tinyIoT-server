@@ -462,13 +462,14 @@ void init_server() {
 	
 	CSE *cse;
 
-	if(access("./RESOURCE.db", 0) == -1) {
-		cse = (CSE*)malloc(sizeof(CSE));
+	cse = db_get_cse(CSE_BASE_RI);
+
+	if(!cse){
+		cse = calloc(1, sizeof(CSE));
 		init_cse(cse);
 		db_store_cse(cse);
-	} else {
-		cse = db_get_cse(CSE_BASE_RI);
 	}
+
 	
 	rt->cb = create_rtnode(cse, RT_CSE);
 	free_cse(cse); cse = NULL;

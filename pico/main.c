@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <limits.h>
+#include <signal.h>
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "berkeleyDB.h"
@@ -20,11 +21,17 @@
 
 ResourceTree *rt;
 extern void *mqtt_serve();
+void stop_server(int sig);
 
 
 
 int main(int c, char **v) {
 	pthread_t mqtt;
+	signal(SIGINT, stop_server);
+	if(!init_dbp()){
+		logger("MAIN", LOG_LEVEL_ERROR, "DB Error");
+		return 0;
+	}
 	init_server();
 	
 	#ifdef ENABLE_MQTT
@@ -362,4 +369,10 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	req_o2pt = NULL;
 	free_grp(grp);
 	return RSC_OK;
+}
+
+void stop_server(int sig){
+	logger("MAIN", LOG_LEVEL_INFO, "Shutting down server");
+	close_dbp();
+	exit(0);
 }

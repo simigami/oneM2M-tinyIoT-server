@@ -3,6 +3,10 @@
 
 int db_display(char* database);
 
+
+int init_dbp();
+int close_dbp();
+
 int db_store_cse(CSE* cse_object);
 int db_store_ae(AE* ae_object);
 int db_store_cnt(CNT* cnt_object);
