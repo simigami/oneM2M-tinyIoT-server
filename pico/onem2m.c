@@ -1045,6 +1045,8 @@ void free_cnt(CNT *cnt) {
 	if(cnt->rn) free(cnt->rn);
 	if(cnt->ri) free(cnt->ri);
 	if(cnt->pi) free(cnt->pi);
+	if(cnt->acpi) free(cnt->acpi);
+	if(cnt->lbl) free(cnt->lbl);
 	free(cnt); cnt = NULL;
 }
 
@@ -1126,8 +1128,9 @@ void free_rtnode(RTNode *rtnode) {
 }
 
 void free_rtnode_list(RTNode *rtnode) {
+	RTNode *right = NULL;
 	while(rtnode) {
-		RTNode *right = rtnode->sibling_right;
+		right = rtnode->sibling_right;
 		free_rtnode(rtnode);
 		rtnode = right;
 	}

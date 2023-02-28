@@ -68,9 +68,15 @@ void route(oneM2MPrimitive *o2pt) {
 
 	if(o2pt->isFopt)
 		rsc = fopt_onem2m_resource(o2pt, target_rtnode);
-	else
+	else{
 		rsc = handle_onem2m_request(o2pt, target_rtnode);
 	
+		if(o2pt->op != OP_DELETE && target_rtnode->ty == RT_CIN){
+			free_rtnode(target_rtnode);
+			target_rtnode = NULL;
+		}
+	}
+
 	
 	respond_to_client(o2pt, rsc_to_http_status(rsc));
 	log_runtime(start);
@@ -349,7 +355,7 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 			if(json) {
 				cJSON_AddItemToArray(rsp, json);
 			}
-			if(target_rtnode && target_rtnode->ty == RT_CIN){
+			if(req_o2pt->op != OP_DELETE && target_rtnode->ty == RT_CIN){
 				free_rtnode(target_rtnode);
 				target_rtnode = NULL;
 			}
@@ -376,12 +382,15 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 
 void stop_server(int sig){
 	logger("MAIN", LOG_LEVEL_INFO, "Shutting down server...");
+	#ifdef ENABLE_MQTT
 	terminate = 1;
 	logger("MAIN", LOG_LEVEL_INFO, "Waiting for MQTT Client to shut down...");
 	pthread_join(mqtt, NULL);
+	#endif
 	logger("MAIN", LOG_LEVEL_INFO, "Closing DB...");
 	close_dbp();
-	free_rtnode(rt->cb);
+	logger("MAIN", LOG_LEVEL_INFO, "Cleaning ResourceTree...");
+	free_all_resource(rt->cb);
 	free(rt);
 	logger("MAIN", LOG_LEVEL_INFO, "Done");
 	exit(0);

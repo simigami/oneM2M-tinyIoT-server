@@ -22,6 +22,9 @@
 /* Standalone Example */
 
 //#define WOLFMQTT_MULTITHREAD true
+#include "config.h"
+
+#ifdef ENABLE_MQTT
 
 #include <pthread.h>
 
@@ -124,7 +127,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     if(!json){
         logger(LOG_TAG, LOG_LEVEL_WARN, "Invalid request\n");
         logger(LOG_TAG, LOG_LEVEL_DEBUG, "ERROR before %10s\n", cJSON_GetErrorPtr());
-        cJSON_Delete(json);
+        //cJSON_Delete(json);
         return MQTT_CODE_SUCCESS;
     }
 
@@ -189,14 +192,14 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     }
 
     /* Free allocated memories */
-    cJSON_Delete(pjson);
-    cJSON_Delete(json);
+    //cJSON_Delete(json);
     free_o2pt(o2pt);
     if(puri)
         free(puri);
     
     puri = NULL;
     pjson = NULL;
+    if(json) cJSON_Delete(json);
     json = NULL;
     
     return MQTT_CODE_SUCCESS;
@@ -625,3 +628,5 @@ void MqttClientIdToId(char *cseid){
         if(cseid[i] == ':') cseid[i] = '/';
     }
 }
+
+#endif

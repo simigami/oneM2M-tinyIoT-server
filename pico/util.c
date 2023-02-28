@@ -1125,3 +1125,15 @@ void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src){
 	(*dest)->rsc = src->rsc;
 
 }
+
+
+void free_all_resource(RTNode *rtnode){
+	RTNode *del;
+	while(rtnode) {
+		del = rtnode;
+		if(rtnode->child) free_all_resource(rtnode->child);
+		rtnode = rtnode->sibling_right;
+		free_rtnode(del);
+		del = NULL;
+	}
+}

@@ -927,6 +927,8 @@ char* acp_to_json(ACP *acp_object) {
 		acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acop) + 1);
 		acop_copy = strcpy(acop_copy, acp_object->pv_acop);
 		acop_str = strtok_r(acop_copy, ",", &acop_remainder);
+		free(acor_copy);
+		free(acop_copy);
 
 		while (1) {
 			if (acop_str == NULL) {
@@ -962,7 +964,7 @@ char* acp_to_json(ACP *acp_object) {
 	acor_copy = strcpy(acor_copy, acp_object->pvs_acor);
 	acor_remainder = NULL;
 	acor_str = strtok_r(acor_copy, ",", &acor_remainder);
-
+	
 	// acop
 	acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pvs_acop) + 1);
 	acop_copy = strcpy(acop_copy, acp_object->pvs_acop);
@@ -994,6 +996,8 @@ char* acp_to_json(ACP *acp_object) {
 
 	cJSON_Delete(root);
 
+	free(acor_copy);
+	free(acop_copy);
 	return json;
 }
 

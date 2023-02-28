@@ -35,8 +35,9 @@ int DB_OPEN(DB* dbp, char* DATABASE){
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
         fprintf(stderr, "DB Open ERROR\n");
-        return NULL;
+        return 0;
     }
+    return 1;
 }
 
 /*DB Get Cursor*/
@@ -688,7 +689,7 @@ int db_store_acp(ACP *acp_object) {
 
     //dbp = DB_CREATE_(dbp);
     // DB_OPEN(DATABASE);
-    DB_GET_CURSOR(acpDBp);
+    dbcp = DB_GET_CURSOR(acpDBp);
 
     /* keyand data must initialize */
     memset(&key_ri, 0, sizeof(DBT));
@@ -1629,10 +1630,13 @@ GRP *db_get_grp(char* ri) {
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
             if(ptr){
                 new_grp->mid = (char **) malloc(sizeof(char *) * new_grp->mnm);
-                for(int i = 0 ; i < new_grp->cnm ; i++){
-                    if(ptr)
+                for(int i = 0 ; i < new_grp->mnm ; i++){
+                    if(ptr){
                         new_grp->mid[i] = strdup(ptr);
-                    ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+                        ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+                    }else{
+                        new_grp->mid[i] = NULL;
+                    }
                 }
             }
         }
@@ -1976,7 +1980,7 @@ RTNode* db_get_all_ae() {
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }      
-            free(ae);
+            free_ae(ae);
         }
     }
     if (ret != DB_NOTFOUND) {
@@ -2038,7 +2042,7 @@ RTNode* db_get_all_cnt() {
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
-            free(cnt_);
+            free_cnt(cnt_);
         }
     }
     if (ret != DB_NOTFOUND) {
@@ -2171,7 +2175,7 @@ RTNode* db_get_all_sub(){
     }
 
     node->sibling_left->sibling_right = NULL;
-    free(node);
+    free_rtnode(node);
     node = NULL;
 
     /* DB close */
@@ -2226,7 +2230,7 @@ RTNode* db_get_all_acp() {
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
-            free(acp);
+            free_acp(acp);
         }
     }
     if (ret != DB_NOTFOUND) {
