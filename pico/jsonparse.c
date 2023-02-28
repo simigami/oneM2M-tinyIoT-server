@@ -528,6 +528,7 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	cJSON *mid = NULL;
 	cJSON *pmid = NULL;
 	cJSON *csy = NULL;
+	cJSON *macp = NULL;
 
 	cJSON *pjson = NULL;
 
@@ -543,8 +544,7 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	mid = cJSON_GetObjectItem(root, "mid");
 	acpi = cJSON_GetObjectItem(root, "acpi");
 	csy = cJSON_GetObjectItem(root, "csy");
-
-	if(pjson = cJSON_GetObjectItem(root, ""))
+	macp = cJSON_GetObjectItem(root, "macp");
 
 
 	// mnm & mid mandatory
@@ -571,6 +571,10 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 
 	if(acpi){
 		grp->acpi = cjson_list_item_to_string(acpi);
+	}
+
+	if(macp){
+		grp->macp = cjson_list_item_to_string(macp);
 	}
 
 	if(csy){
@@ -927,8 +931,6 @@ char* acp_to_json(ACP *acp_object) {
 		acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acop) + 1);
 		acop_copy = strcpy(acop_copy, acp_object->pv_acop);
 		acop_str = strtok_r(acop_copy, ",", &acop_remainder);
-		free(acor_copy);
-		free(acop_copy);
 
 		while (1) {
 			if (acop_str == NULL) {
@@ -950,6 +952,8 @@ char* acp_to_json(ACP *acp_object) {
 			cJSON_AddItemToObject(acr, "acor", acor);
 			cJSON_AddItemToObject(acr, "acop", cJSON_CreateNumber(atoi(acop)));
 		}
+		free(acor_copy);
+		free(acop_copy);
 	}
 
 	// pvs
@@ -1031,6 +1035,8 @@ char *grp_to_json(GRP *grp_object){
 
 	cJSON *root;
 	cJSON *grp;
+	cJSON *acpi;
+	cJSON *macp;
 	cJSON *mid;
 
 	int cnm = 0;
@@ -1043,7 +1049,6 @@ char *grp_to_json(GRP *grp_object){
 	cJSON_AddStringToObject(grp, "ct", grp_object->ct);
 	cJSON_AddStringToObject(grp, "lt", grp_object->lt);
 	cJSON_AddStringToObject(grp, "et", grp_object->et);
-	if(grp_object->acpi) cJSON_AddStringToObject(grp, "acpi", grp_object->acpi);
 	cJSON_AddBoolToObject(grp, "mtv", grp_object->mtv);
 
 	cJSON_AddNumberToObject(grp, "mnm", grp_object->mnm);
@@ -1051,7 +1056,16 @@ char *grp_to_json(GRP *grp_object){
 	cJSON_AddNumberToObject(grp, "mt", grp_object->mt);
 	cJSON_AddNumberToObject(grp, "csy", grp_object->csy);
 	cJSON_AddNumberToObject(grp, "ty", 9);
-	
+
+	if(grp_object->acpi){
+		acpi = string_to_cjson_list_item(grp_object->acpi);
+		cJSON_AddItemToObject(grp, "acpi", acpi);
+	}
+	if(grp_object->macp){
+		macp = string_to_cjson_list_item(grp_object->macp);
+		cJSON_AddItemToObject(grp, "macp", macp);
+	} 
+
 	if(grp_object->mid){
 		mid = cJSON_CreateArray();
 		for(int i = 0 ; i < grp_object->cnm ; i++){
@@ -1450,4 +1464,15 @@ char *cjson_list_item_to_string(cJSON *key) {
 			return ret;
 		}
 	}
+}
+
+cJSON *string_to_cjson_list_item(char *string){
+	cJSON *acpi = cJSON_CreateArray();
+		
+	char *acpi_str = strtok(string, ",");
+	do {
+		cJSON_AddItemToArray(acpi, cJSON_CreateString(acpi_str));
+		acpi_str = strtok(NULL, ",");
+	} while(acpi_str != NULL);
+	return acpi;
 }

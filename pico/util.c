@@ -145,6 +145,7 @@ RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 		RTNode *cin = head;
 
 		if(cin) {
+			logger("UTIL", LOG_LEVEL_DEBUG, "ADF");
 			if(flag == 1) {
 				head = head->sibling_right;
 				cin->sibling_right = NULL;			

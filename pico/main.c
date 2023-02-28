@@ -324,6 +324,12 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		return RSC_INTERNAL_SERVER_ERROR;
 	}
 	
+	if(grp->cnm == 0){
+		logger("MAIN", LOG_LEVEL_DEBUG, "No member to fanout");
+		free_grp(grp);
+		return o2pt->rsc = RSC_NO_MEMBERS;
+	}
+
 	o2ptcpy(&req_o2pt, o2pt);
 
 

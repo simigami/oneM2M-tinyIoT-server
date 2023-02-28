@@ -1904,6 +1904,7 @@ RTNode* db_get_all_cse() {
         return NULL;
     }
 
+    dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1966,6 +1967,7 @@ RTNode* db_get_all_ae() {
         return NULL;
     }
 
+    dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -2028,6 +2030,7 @@ RTNode* db_get_all_cnt() {
         logger("DB", LOG_LEVEL_DEBUG, "CNT does not exist");
         return NULL;
     }
+    dbcp0->close(dbcp0);
 
     RTNode* head = NULL, *rtnode = NULL;
 
@@ -2110,6 +2113,7 @@ RTNode* db_get_all_sub(){
         logger("DB", LOG_LEVEL_DEBUG, "SUB does not exist");
         return NULL;
     }
+    dbcp0->close(dbcp0);
 
     int struct_size = 10;
     cnt = cnt / struct_size;
@@ -2179,7 +2183,6 @@ RTNode* db_get_all_sub(){
     node = NULL;
 
     /* DB close */
-    dbcp0->close(dbcp0);
     dbcp->close(dbcp);
     // dbp->close(dbp, 0);
     fprintf(stderr,"\n");
@@ -2216,7 +2219,7 @@ RTNode* db_get_all_acp() {
         logger("DB", LOG_LEVEL_DEBUG, "ACP does not exist");
         return NULL;
     }
-
+    dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -2279,7 +2282,7 @@ RTNode* db_get_all_grp(){
         logger("DB", LOG_LEVEL_DEBUG, "GROUP does not exist");
         return NULL;
     }
-
+    dbcp0->close(dbcp0);
     RTNode* head = NULL;
     RTNode* rtnode = NULL;
 
@@ -2323,7 +2326,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
 
     //dbp = DB_CREATE_(dbp);
     //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
+    
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -2352,8 +2355,12 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
         //logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
+
+    if (dbcp0 != NULL)
+        dbcp0->close(dbcp0); 
+        
     RTNode* head = NULL, *rtnode;
-    
+    dbcp = DB_GET_CURSOR(resourceDBp);
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         //find CIN
         if (strncmp(key.data, TYPE , 2) == 0){
@@ -2382,8 +2389,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbcp != NULL)
-        dbcp->close(dbcp0);          
+         
     // if (dbp != NULL)
     //     dbp->close(dbp, 0); 
 
