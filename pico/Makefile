@@ -22,4 +22,4 @@ remake: clean all
 
 clean:
 	@rm -rf *.o
-	@rm -rf server
+	@rm -rf $(RELEXE)
