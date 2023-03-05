@@ -7,7 +7,9 @@
 #include "onem2m.h"
 #include "jsonparse.h"
 #include "cJSON.h"
+#include "onem2mTypes.h"
 #include "config.h"
+#include "util.h"
 
 void remove_quotation_mark(char *s){
 	int len = strlen(s);
@@ -27,6 +29,7 @@ AE* cjson_to_ae(cJSON *cjson) {
 	cJSON *rn = NULL;
 	cJSON *lbl = NULL;
 	cJSON *srv = NULL;
+	cJSON *acpi = NULL;
 
 	if (cjson == NULL) {
 		// const char *error_ptr = cJSON_GetErrorPtr();
@@ -99,6 +102,10 @@ AE* cjson_to_ae(cJSON *cjson) {
 	lbl = cJSON_GetObjectItem(root, "lbl");
 	ae->lbl = cjson_list_item_to_string(lbl);
 
+	// acpi (optional)
+	acpi = cJSON_GetObjectItem(root, "acpi");
+	ae->acpi = cjson_list_item_to_string(acpi);
+
 	return ae;
 }
 
@@ -147,7 +154,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 			cnt->acpi = NULL;
 		}
 		else {
-			char acpi_str[MAX_PROPERTY_SIZE] = { '\0' };
+			char acpi_str[MAX_PROPERRT_SIZE] = { '\0' };
 			for (int i = 0; i < acpi_size; i++) {
 				if (isspace(cJSON_GetArrayItem(acpi, i)->valuestring[0]) || (cJSON_GetArrayItem(acpi, i)->valuestring[0] == 0)) {
 					cnt->acpi = NULL;
@@ -180,7 +187,7 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 			cnt->lbl = NULL;
 		}
 		else {
-			char lbl_str[MAX_PROPERTY_SIZE] = { '\0' };
+			char lbl_str[MAX_PROPERRT_SIZE] = { '\0' };
 			for (int i = 0; i < lbl_size; i++) {
 				if (isspace(cJSON_GetArrayItem(lbl, i)->valuestring[0]) || (cJSON_GetArrayItem(lbl, i)->valuestring[0] == 0)) {
 					cnt->lbl = NULL;
@@ -283,7 +290,7 @@ Sub* cjson_to_sub(cJSON *cjson) {
 		return NULL;
 	}
 	else {
-		char nu_str[MAX_PROPERTY_SIZE] = { '\0' };
+		char nu_str[MAX_PROPERRT_SIZE] = { '\0' };
 		int is_NULL = 0;
 		for (int i = 0; i < nu_size; i++) {
 			if (isspace(cJSON_GetArrayItem(nu, i)->valuestring[0]) || (cJSON_GetArrayItem(nu, i)->valuestring[0] == 0)) {
@@ -512,6 +519,94 @@ ACP* cjson_to_acp(cJSON *cjson) {
 	return acp;
 }
 
+int cjson_to_grp(cJSON *cjson, GRP *grp){
+	cJSON *root = NULL;
+	cJSON *rn = NULL;
+	cJSON *mt = NULL;
+	cJSON *mnm = NULL;
+	cJSON *acpi = NULL;
+	cJSON *mid = NULL;
+	cJSON *pmid = NULL;
+	cJSON *csy = NULL;
+
+	cJSON *pjson = NULL;
+
+	if(cjson == NULL){
+		return 0;
+	}
+
+	root = cJSON_GetObjectItem(cjson, "m2m:grp");
+
+	rn = cJSON_GetObjectItem(root, "rn");
+	mt = cJSON_GetObjectItem(root, "mt");
+	mnm = cJSON_GetObjectItem(root, "mnm");
+	mid = cJSON_GetObjectItem(root, "mid");
+	acpi = cJSON_GetObjectItem(root, "acpi");
+	csy = cJSON_GetObjectItem(root, "csy");
+
+	if(pjson = cJSON_GetObjectItem(root, ""))
+
+
+	// mnm & mid mandatory
+	if(mnm == NULL || mid == NULL){
+		logger("JSON", LOG_LEVEL_DEBUG, "Invalid request");
+		return RSC_INVALID_ARGUMENTS;
+	}
+
+	// validate mnm >= 0
+	if(mnm->valueint < 0){
+		logger("JSON", LOG_LEVEL_DEBUG, "Invalid Maximum Member");
+		return RSC_INVALID_ARGUMENTS;
+	} 
+
+	// set rn(optional);
+	if(rn){
+		grp->rn = (char*) malloc( sizeof(char) * strlen(rn->valuestring) + 1 );
+		strcpy(grp->rn, rn->valuestring);
+	}
+
+	if(mt){
+		grp->mt = (unsigned) mt->valueint;
+	}
+
+	if(acpi){
+		grp->acpi = cjson_list_item_to_string(acpi);
+	}
+
+	if(csy){
+		grp->csy = csy->valueint;
+	}
+	grp->mnm = mnm->valueint;
+
+	grp->mid = (char **) calloc(1, sizeof(char*) * grp->mnm);
+
+	int mid_size = cJSON_GetArraySize(mid);
+	if(mid_size > grp->mnm){
+		return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+	}
+	
+	grp->cnm = mid_size;
+	int midx = 0;
+	for(int i = 0 ; i < grp->mnm; i++){
+		if(midx < mid_size){
+			pmid = cJSON_GetArrayItem(mid, i);
+			if(!isMinDup(grp->mid, midx, pmid->valuestring)){
+				logger("json-t", LOG_LEVEL_DEBUG, "adding %s to mid[%d]", pmid->valuestring, midx);
+				grp->mid[midx] = strdup(pmid->valuestring);
+				midx++;
+			}
+			else{
+				logger("json-t", LOG_LEVEL_DEBUG, "declining %s", pmid->valuestring);
+				grp->mid[i] = NULL;
+				grp->cnm--;
+			}
+		}
+	}
+
+	return RSC_CREATED;
+}
+
+
 char* node_to_json(RTNode *node) {
 	char *json = NULL;
 
@@ -561,12 +656,13 @@ char* cse_to_json(CSE* cse_object) {
 
 char* ae_to_json(AE *ae_object) {
 	char *json = NULL;
-	char str_array[MAX_PROPERTY_SIZE];
+	char str_array[MAX_PROPERRT_SIZE];
 
 	cJSON *root = NULL;
 	cJSON *ae = NULL;
 	cJSON *lbl = NULL;
 	cJSON *srv = NULL;
+	cJSON *acpi = NULL;
 
 	/* Our "ae" item: */
 	root = cJSON_CreateObject();
@@ -594,6 +690,18 @@ char* ae_to_json(AE *ae_object) {
 		cJSON_AddItemToObject(ae, "lbl", lbl);
 	}
 
+	//lbl
+	if(ae_object->acpi) {
+		acpi = cJSON_CreateArray();
+		strcpy(str_array, ae_object->acpi);
+		char *acpi_str = strtok(str_array, ",");
+		do {
+			cJSON_AddItemToArray(acpi, cJSON_CreateString(acpi_str));
+			acpi_str = strtok(NULL, ",");
+		} while(acpi_str != NULL);
+		cJSON_AddItemToObject(ae, "acpi", acpi);
+	}
+
 	//srv
 	if(ae_object->srv) {
 		srv = cJSON_CreateArray();
@@ -616,7 +724,7 @@ char* ae_to_json(AE *ae_object) {
 char* cnt_to_json(CNT* cnt_object) {
 	logger("cJSON", LOG_LEVEL_DEBUG, "Call cnt_to_json");
 	char *json = NULL;
-	char str_array[MAX_PROPERTY_SIZE];
+	char str_array[MAX_PROPERRT_SIZE];
 
 	cJSON *root = NULL;
 	cJSON *cnt = NULL;
@@ -803,41 +911,43 @@ char* acp_to_json(ACP *acp_object) {
 	cJSON_AddStringToObject(acp, "et", acp_object->et);
 
 	// pv
-	cJSON_AddItemToObject(acp, "pv", pv = cJSON_CreateObject());
+	if(acp_object->pv_acor && acp_object->pv_acop) {
+		cJSON_AddItemToObject(acp, "pv", pv = cJSON_CreateObject());
 
-	// acr
-	acrs = cJSON_CreateArray();
-	cJSON_AddItemToObject(pv, "acr", acrs);
+		// acr
+		acrs = cJSON_CreateArray();
+		cJSON_AddItemToObject(pv, "acr", acrs);
 
-	// acor
-	acor_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acor) + 1);
-	acor_copy = strcpy(acor_copy, acp_object->pv_acor);
-	acor_str = strtok_r(acor_copy, ",", &acor_remainder);
+		// acor
+		acor_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acor) + 1);
+		acor_copy = strcpy(acor_copy, acp_object->pv_acor);
+		acor_str = strtok_r(acor_copy, ",", &acor_remainder);
 
-	// acop
-	acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acop) + 1);
-	acop_copy = strcpy(acop_copy, acp_object->pv_acop);
-	acop_str = strtok_r(acop_copy, ",", &acop_remainder);
+		// acop
+		acop_copy = (char *)malloc(sizeof(char) * strlen(acp_object->pv_acop) + 1);
+		acop_copy = strcpy(acop_copy, acp_object->pv_acop);
+		acop_str = strtok_r(acop_copy, ",", &acop_remainder);
 
-	while (1) {
-		if (acop_str == NULL) {
-			break;
+		while (1) {
+			if (acop_str == NULL) {
+				break;
+			}
+
+			char *acop = acop_str;
+
+			cJSON_AddItemToArray(acrs, acr = cJSON_CreateObject());
+
+			acor = cJSON_CreateArray();
+
+			do {
+				cJSON_AddItemToArray(acor, cJSON_CreateString(acor_str));
+				acor_str = strtok_r(NULL, ",", &acor_remainder);
+
+				acop_str = strtok_r(NULL, ",", &acop_remainder);
+			} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
+			cJSON_AddItemToObject(acr, "acor", acor);
+			cJSON_AddItemToObject(acr, "acop", cJSON_CreateNumber(atoi(acop)));
 		}
-
-		char *acop = acop_str;
-
-		cJSON_AddItemToArray(acrs, acr = cJSON_CreateObject());
-
-		acor = cJSON_CreateArray();
-
-		do {
-			cJSON_AddItemToArray(acor, cJSON_CreateString(acor_str));
-			acor_str = strtok_r(NULL, ",", &acor_remainder);
-
-			acop_str = strtok_r(NULL, ",", &acop_remainder);
-		} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
-		cJSON_AddItemToObject(acr, "acor", acor);
-		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
 	}
 
 	// pvs
@@ -877,7 +987,7 @@ char* acp_to_json(ACP *acp_object) {
 			acop_str = strtok_r(NULL, ",", &acop_remainder);
 		} while (acop_str != NULL && strcmp(acop, acop_str) == 0);
 		cJSON_AddItemToObject(acr, "acor", acor);
-		cJSON_AddItemToObject(acr, "acop", cJSON_CreateString(acop));
+		cJSON_AddItemToObject(acr, "acop", cJSON_CreateNumber(atoi(acop)));
 	}
 
 	json = cJSON_PrintUnformatted(root);
@@ -903,6 +1013,49 @@ char* discovery_to_json(char **result, int size) {
 		cJSON_AddItemToArray(uril, cJSON_CreateString(result[i]));
 	}
 	cJSON_AddItemToObject(root, "m2m:uril", uril);
+
+	json = cJSON_PrintUnformatted(root);
+
+	cJSON_Delete(root);
+
+	return json;
+}
+
+char *grp_to_json(GRP *grp_object){
+
+	char *json = NULL;
+
+	cJSON *root;
+	cJSON *grp;
+	cJSON *mid;
+
+	int cnm = 0;
+
+	root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "m2m:grp", grp = cJSON_CreateObject());
+	cJSON_AddStringToObject(grp, "ri", grp_object->ri);
+	cJSON_AddStringToObject(grp, "pi", grp_object->pi);
+	cJSON_AddStringToObject(grp, "rn", grp_object->rn);
+	cJSON_AddStringToObject(grp, "ct", grp_object->ct);
+	cJSON_AddStringToObject(grp, "lt", grp_object->lt);
+	cJSON_AddStringToObject(grp, "et", grp_object->et);
+	if(grp_object->acpi) cJSON_AddStringToObject(grp, "acpi", grp_object->acpi);
+	cJSON_AddBoolToObject(grp, "mtv", grp_object->mtv);
+
+	cJSON_AddNumberToObject(grp, "mnm", grp_object->mnm);
+	cJSON_AddNumberToObject(grp, "cnm", grp_object->cnm);
+	cJSON_AddNumberToObject(grp, "mt", grp_object->mt);
+	cJSON_AddNumberToObject(grp, "csy", grp_object->csy);
+	cJSON_AddNumberToObject(grp, "ty", 9);
+	
+	if(grp_object->mid){
+		mid = cJSON_CreateArray();
+		for(int i = 0 ; i < grp_object->cnm ; i++){
+			cJSON_AddItemToArray(mid, cJSON_CreateString(grp_object->mid[i]));
+		}
+	}
+	cJSON_AddItemToObject(grp, "mid", mid);
+	
 
 	json = cJSON_PrintUnformatted(root);
 
@@ -1275,7 +1428,7 @@ char *cjson_list_item_to_string(cJSON *key) {
 			return NULL;
 		}
 		else {
-			char item_str[MAX_PROPERTY_SIZE] = { '\0' };
+			char item_str[MAX_PROPERRT_SIZE] = { '\0' };
 			for (int i = 0; i < item_size; i++) {
 				if (isspace(cJSON_GetArrayItem(key, i)->valuestring[0]) || (cJSON_GetArrayItem(key, i)->valuestring[0] == 0)) {
 					return NULL;

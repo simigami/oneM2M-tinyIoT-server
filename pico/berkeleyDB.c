@@ -7,6 +7,7 @@
 #include "onem2m.h"
 #include "berkeleyDB.h"
 #include "logger.h"
+#include "util.h"
 
 
 /*DB CREATE*/
@@ -210,8 +211,9 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->aei == NULL) ae_object->aei = blankspace;
     if (ae_object->lbl == NULL) ae_object->lbl = blankspace;
     if (ae_object->srv == NULL) ae_object->srv = blankspace;
-    if(ae_object->rr == false) strcpy(rr,"false");
-    else strcpy(rr,"true");
+    if (ae_object->acpi == NULL) ae_object->acpi = blankspace;
+    if(ae_object->rr == false) strcpy(rr, "false");
+    else strcpy(rr, "true");
 
     dbp = DB_CREATE_(dbp);
     dbp = DB_OPEN_(dbp,DATABASE);
@@ -227,9 +229,9 @@ int db_store_ae(AE *ae_object) {
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s;%s",
             ae_object->rn,ae_object->pi,ae_object->ty,ae_object->ct,ae_object->lt,
-            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv);
+            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv,ae_object->acpi);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -252,7 +254,7 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->aei == blankspace) ae_object->aei = NULL;
     if (ae_object->lbl == blankspace) ae_object->lbl = NULL;
     if (ae_object->srv == blankspace) ae_object->srv = NULL;
-
+    if (ae_object->acpi == blankspace) ae_object->acpi = NULL;
     
     return 1;
 }
@@ -369,7 +371,6 @@ int db_store_cin(CIN *cin_object) {
             cin_object->rn,cin_object->pi,cin_object->ty,cin_object->ct,cin_object->lt,cin_object->et,
             cin_object->con,cin_object->cs,cin_object->st);
 
-    logger("db", LOG_LEVEL_DEBUG, "dbg");
     data.data = str;
     data.size = strlen(str) + 1;
     /* input DB */
@@ -383,6 +384,75 @@ int db_store_cin(CIN *cin_object) {
     return 1;
 }
 
+int db_store_grp(GRP *grp_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_grp");
+    char *bs = " ";
+    char* DATABASE = "GROUP.db";
+
+    DB* dbp;    // db handle
+    DBC* dbcp;
+    int ret;        // template value
+
+    DBT key_rn;
+    DBT data;  // storving key and real data
+    
+    // if input == NULL
+    
+    if(grp_object->rn == NULL) grp_object->rn = bs;
+    if(grp_object->acpi == NULL) grp_object->acpi = bs;
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp,DATABASE);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    
+    /* key and data must initialize */
+    memset(&key_rn, 0, sizeof(DBT));
+    memset(&data, 0, sizeof(DBT));
+
+    
+    /* initialize the data to be the first of two duplicate records. */
+    key_rn.data = grp_object->ri;
+    key_rn.size = strlen(grp_object->ri) + 1;
+
+    
+    /* List data excluding 'ri' as strings using delimiters. */
+    char str[DB_STR_MAX]= "\0";
+    char *strbuf;
+
+    /* mnm , mt, min*/
+
+    strbuf = (char *) malloc(sizeof(char) * 1024);
+
+    sprintf(strbuf, "%s;%s;%s;%s;%s;%s;%d;%d;%d;%d;", 
+        grp_object->pi, grp_object->rn, grp_object->ct, grp_object->et, grp_object->lt, 
+        grp_object->acpi, grp_object->mnm, grp_object->cnm, grp_object->mt, grp_object->csy);
+    strcat(str, strbuf);
+    strcat(str, grp_object->mtv ? "1" : "0");
+    if(grp_object->mid)
+        for(int i = 0 ; i < grp_object->cnm; i++){
+            if(grp_object->mid[i]){
+                sprintf(strbuf, ";%s", grp_object->mid[i]);
+                strcat(str, strbuf);
+            }else
+                break;
+        }
+
+    logger("db", LOG_LEVEL_DEBUG, "saving %s", str);
+    data.data = str;
+    data.size = strlen(str) + 1;
+    /* input DB */
+    if ((ret = dbcp->put(dbcp, &key_rn, &data, DB_KEYLAST)) != 0)
+        dbp->err(dbp, ret, "db->cursor");
+
+    /* DB close */
+    dbcp->close(dbcp);
+    dbp->close(dbp, 0); 
+    
+    if(grp_object->rn == bs) grp_object->rn = NULL;
+    if(grp_object->acpi == bs) grp_object->acpi = NULL;
+
+    return 1;
+}
 
 int db_store_sub(Sub *sub_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
@@ -541,6 +611,7 @@ int db_store_sub(Sub *sub_object) {
 int db_store_acp(ACP *acp_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_acp");
     char* DATABASE = "ACP.db";
+    char* blankspace = " ";
 
     DB* dbp;    // db handle
     DBC* dbcp;
@@ -555,18 +626,16 @@ int db_store_acp(ACP *acp_object) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
-    if (acp_object->rn == NULL) acp_object->rn = " ";
-    if (acp_object->pi == NULL) acp_object->pi = " ";
-    if (acp_object->ty == '\0') acp_object->ty = 0;
-    if (acp_object->ct == NULL) acp_object->ct = " ";
-    if (acp_object->lt == NULL) acp_object->lt = " ";
-    if (acp_object->et == NULL) acp_object->et = " ";
+    if (acp_object->rn == NULL) acp_object->rn = blankspace;
+    if (acp_object->pi == NULL) acp_object->pi = blankspace;
+    if (acp_object->ct == NULL) acp_object->ct = blankspace;
+    if (acp_object->lt == NULL) acp_object->lt = blankspace;
+    if (acp_object->et == NULL) acp_object->et = blankspace;
+    if (acp_object->pv_acor == NULL) acp_object->pv_acor = blankspace;       
+    if (acp_object->pv_acop == NULL) acp_object->pv_acop = blankspace; 
+    if (acp_object->pvs_acop == NULL) acp_object->pvs_acor = blankspace; 
+    if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = blankspace; 
 
-   if (acp_object->pv_acor == NULL) acp_object->pv_acor = " ";       
-   if (acp_object->pv_acop == NULL) acp_object->pv_acop = " "; 
-   if (acp_object->pvs_acop == NULL) acp_object->pvs_acor = " "; 
-   if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = " "; 
-  
 
     dbp = DB_CREATE_(dbp);
     dbp = DB_OPEN_(dbp,DATABASE);
@@ -597,7 +666,16 @@ int db_store_acp(ACP *acp_object) {
     /* DB close */
     dbcp->close(dbcp);
     dbp->close(dbp, 0); 
-    
+
+    if (acp_object->rn == blankspace) acp_object->rn = NULL;
+    if (acp_object->pi == blankspace) acp_object->pi = NULL;
+    if (acp_object->ct == blankspace) acp_object->ct = NULL;
+    if (acp_object->lt == blankspace) acp_object->lt = NULL;
+    if (acp_object->et == blankspace) acp_object->et = NULL;
+    if (acp_object->pv_acor == blankspace) acp_object->pv_acor = NULL;       
+    if (acp_object->pv_acop == blankspace) acp_object->pv_acop = NULL; 
+    if (acp_object->pvs_acop == blankspace) acp_object->pvs_acor = NULL; 
+    if (acp_object->pvs_acop == blankspace) acp_object->pvs_acop = NULL; 
     return 1;
 }
 
@@ -831,6 +909,14 @@ AE* db_get_ae(char* ri) {
                     strcpy(new_ae->srv, ptr);
                 }            
                     idx++;
+                    break; 
+                case 11:
+                if(strcmp(ptr," ")==0) new_ae->acpi=NULL; //data is NULL
+                else{                
+                    new_ae->acpi = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->acpi, ptr);
+                }            
+                    idx++;
                     break;                                    
                 default:
                     idx=-1;
@@ -1033,8 +1119,8 @@ CIN* db_get_cin(char* ri) {
         if (strncmp(key.data, ri, key.size) == 0) {
             new_cin = calloc(1,sizeof(CIN));
             // ri = key
-            new_cin->ri = malloc((key.size+1)*sizeof(char));
-            strcpy(new_cin->ri, key.data);
+            new_cin->ri = strdup(key.data); //malloc((key.size+1)*sizeof(char));
+            //strcpy(new_cin->ri, key.data);
 
             char *ptr = strtok((char*)data.data, DB_SEP);  //split first string
             while (ptr != NULL) { // Split to end of next string
@@ -1042,16 +1128,16 @@ CIN* db_get_cin(char* ri) {
                 case 0:
                 if(strcmp(ptr," ")==0) new_cin->rn=NULL; //data is NULL
                     else{
-                    new_cin->rn = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->rn, ptr);
+                    new_cin->rn = strdup(ptr);//malloc(strlen(ptr)*sizeof(char));
+                    
                     }
                     idx++;
                     break;
                 case 1:
                 if(strcmp(ptr," ")==0) new_cin->pi=NULL; //data is NULL
                     else{
-                    new_cin->pi = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->pi, ptr);
+                    new_cin->pi = strdup(ptr);//malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->pi, ptr);
                     }
                     idx++;
                     break;
@@ -1065,30 +1151,30 @@ CIN* db_get_cin(char* ri) {
                 case 3:
                 if(strcmp(ptr," ")==0) new_cin->ct=NULL; //data is NULL
                     else{
-                    new_cin->ct = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->ct, ptr);
+                    new_cin->ct = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->ct, ptr);
                     }
                     idx++;
                     break;
                 case 4:
-                    new_cin->lt = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->lt, ptr);
+                    new_cin->lt = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->lt, ptr);
 
                     idx++;
                     break;                
                 case 5:
                 if(strcmp(ptr," ")==0) new_cin->et=NULL; //data is NULL
                     else{
-                    new_cin->et = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->et, ptr);
+                    new_cin->et = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->et, ptr);
                     }
                     idx++;
                     break;      
                 case 6:
                 if(strcmp(ptr," ")==0) new_cin->con=NULL; //data is NULL
                     else{
-                    new_cin->con = malloc(strlen(ptr)*sizeof(char));
-                    strcpy(new_cin->con, ptr);
+                    new_cin->con = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
+                    //strcpy(new_cin->con, ptr);
                     }
                     idx++;
                     break;       
@@ -1422,6 +1508,110 @@ ACP* db_get_acp(char* ri) {
     return new_acp;
 }
 
+GRP *db_get_grp(char* ri) {
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_grp");
+    char* DATABASE = "GROUP.db";
+
+    GRP *new_grp = calloc(1, sizeof(GRP));
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    int cnt = 0;
+    int flag = 0;
+    int idx = 0;
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp,DATABASE);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        cnt++;
+        if (strncmp(key.data, ri, key.size) == 0) {
+            flag=1;
+            new_grp->ri = strdup(key.data);
+            
+            //(char *) malloc( (key.size+1) *sizeof(char));
+            //strcpy(new_grp->rn, key.data);
+
+            char *ptr = strtok((char*)data.data, DB_SEP);  //split first string
+            new_grp->pi = strdup(ptr); //rn
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->rn = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->ct = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->et = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->lt = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            if(!strcmp(ptr, " "))
+                new_grp->acpi = NULL;
+            else   
+		        new_grp->acpi = strdup(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->mnm = atoi(ptr);
+
+            ptr = strtok(NULL, DB_SEP);
+            new_grp->cnm = atoi(ptr);
+            
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            new_grp->mt = atoi(ptr);
+
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            new_grp->mtv = atoi(ptr) ? true : false;
+
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            new_grp->csy = atoi(ptr);
+
+            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            if(ptr){
+                new_grp->mid = (char **) malloc(sizeof(char *) * new_grp->mnm);
+                for(int i = 0 ; i < new_grp->cnm ; i++){
+                    if(ptr)
+                        new_grp->mid[i] = strdup(ptr);
+                    ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+                }
+            }
+        }
+    }
+
+
+    if(ret != DB_NOTFOUND){
+        dbp->err(dbp, ret, "DBcursor->get");
+        logger("DB", LOG_LEVEL_DEBUG, "Cursor ERROR");
+        return NULL;
+    }
+    if (cnt == 0 || flag==0) {
+        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
+        return NULL;
+    }
+
+
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+    
+
+    return new_grp;
+}
+
+
+
 int db_delete_onem2m_resource(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",ri);
     char* DATABASE = "RESOURCE.db";
@@ -1586,6 +1776,46 @@ int db_delete_acp(char* ri) {
     return 1;
 }
 
+int db_delete_grp(char *ri){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_grp");
+    char *database = "GROUP.db";
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+    int flag = 0;
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp, database);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, ri, key.size) == 0) {
+            flag = 1;
+            dbcp->del(dbcp, 0);
+            break;
+        }
+    }
+    if (flag == 0) {
+        fprintf(stderr, "Not Found\n");
+        return -1;
+    }
+
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+    
+    
+    /* Delete Success */
+    return 1;
+}
+
 RTNode* db_get_all_cse() {
     fprintf(stderr,"\x1b[92m[Get All CSE]\x1b[0m\n");
     char* DATABASE = "RESOURCE.db";
@@ -1624,10 +1854,10 @@ RTNode* db_get_all_cse() {
         if (strncmp(key.data, TYPE , 2) == 0){
             CSE* cse = db_get_cse((char*)key.data);
             if(!head) {
-                head = create_rtnode(cse,TY_CSE);
+                head = create_rtnode(cse,RT_CSE);
                 rtnode = head;
             } else {
-                rtnode->sibling_right = create_rtnode(cse,TY_CSE);
+                rtnode->sibling_right = create_rtnode(cse,RT_CSE);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }   
@@ -1687,10 +1917,10 @@ RTNode* db_get_all_ae() {
             AE* ae = db_get_ae((char*)key.data);
 
             if(!head) {
-                head = create_rtnode(ae,TY_AE);
+                head = create_rtnode(ae,RT_AE);
                 rtnode = head;
             } else {
-                rtnode->sibling_right = create_rtnode(ae,TY_AE);
+                rtnode->sibling_right = create_rtnode(ae,RT_AE);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }      
@@ -1749,10 +1979,10 @@ RTNode* db_get_all_cnt() {
         if (strncmp(key.data, TYPE , 2) == 0){
             CNT* cnt_ = db_get_cnt((char*)key.data);
             if(!head) {
-                head = create_rtnode(cnt_,TY_CNT);
+                head = create_rtnode(cnt_,RT_CNT);
                 rtnode = head;
             } else {
-                rtnode->sibling_right = create_rtnode(cnt_,TY_CNT);
+                rtnode->sibling_right = create_rtnode(cnt_,RT_CNT);
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
@@ -1835,7 +2065,7 @@ RTNode* db_get_all_sub(){
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         switch (idx) {
             case 0:
-                node->ty = TY_SUB;
+                node->ty = RT_SUB;
                 node->ri = malloc(data.size);
                 strcpy(node->ri, data.data);
 
@@ -1898,7 +2128,6 @@ RTNode* db_get_all_sub(){
 }
 
 RTNode* db_get_all_acp() {
-    fprintf(stderr,"\x1b[92m[Get All ACP]\x1b[0m\n");
     char* DATABASE = "ACP.db";
     const char* TYPE = "1-";
 
@@ -1929,37 +2158,19 @@ RTNode* db_get_all_acp() {
         return NULL;
     }
 
-    RTNode* head = calloc(1,sizeof(RTNode));
-    RTNode* node;
-    node = head;
+    RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0){
             ACP* acp = db_get_acp((char*)key.data);
-            node->ri = malloc((strlen(acp->ri)+1) * sizeof(char));
-            node->rn = malloc((strlen(acp->rn)+1) * sizeof(char));
-            node->pi = malloc((strlen(acp->pi)+1) * sizeof(char));
-            if(acp->pv_acor && acp->pv_acop) { 
-                node->pv_acor = malloc((strlen(acp->pv_acor)+1) * sizeof(char));
-                node->pv_acop = malloc((strlen(acp->pv_acop)+1) * sizeof(char));
-                strcpy(node->pv_acor,acp->pv_acor);
-                strcpy(node->pv_acop,acp->pv_acop);
-            }
-            if(acp->pvs_acor && acp->pvs_acop) {
-                node->pvs_acor = malloc((strlen(acp->pvs_acor)+1) *sizeof(char));
-                node->pvs_acop = malloc(strlen((acp->pvs_acop)+1) *sizeof(char));
-                strcpy(node->pvs_acor,acp->pvs_acor);
-                strcpy(node->pvs_acop,acp->pvs_acop);
-            }
-
-            strcpy(node->ri,acp->ri);
-            strcpy(node->rn,acp->rn);
-            strcpy(node->pi,acp->pi);
-            node->ty = acp->ty;
-
-            node->sibling_right=calloc(1,sizeof(RTNode));            
-            node->sibling_right->sibling_left = node;
-            node = node->sibling_right;
+            if(!head) {
+                head = create_rtnode(acp,RT_ACP);
+                rtnode = head;
+            } else {
+                rtnode->sibling_right = create_rtnode(acp,RT_ACP);
+                rtnode->sibling_right->sibling_left = rtnode;
+                rtnode = rtnode->sibling_right;
+            }     
             free(acp);
         }
     }
@@ -1969,19 +2180,76 @@ RTNode* db_get_all_acp() {
         return NULL;
     }
 
-    node->sibling_left->sibling_right = NULL;
-    free(node->ri);
-    free(node->rn);
-    free(node->pi);
-    free(node);
-    node = NULL;
-
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
     if (dbp != NULL)
         dbp->close(dbp, 0);    
-    fprintf(stderr,"\n");
+    return head;
+}
+
+
+RTNode* db_get_all_grp(){
+    logger("DB", LOG_LEVEL_DEBUG,"Call db_get_all_grp");
+    char* DATABASE = "GROUP.db";
+    const char* TYPE = "9-";
+
+    DB* dbp;
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    dbp = DB_CREATE_(dbp);
+    dbp = DB_OPEN_(dbp,DATABASE);
+    dbcp = DB_GET_CURSOR(dbp,dbcp);
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    int grp = 0;
+    DBC* dbcp0;
+    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, TYPE , 2) == 0) 
+            grp++;
+    }
+    //fprintf(stderr, "<%d>\n",acp);
+
+    if (grp == 0) {
+        logger("DB", LOG_LEVEL_DEBUG, "GROUP does not exist");
+        return NULL;
+    }
+
+    RTNode* head = NULL;
+    RTNode* rtnode = NULL;
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, TYPE , 2) == 0){
+            GRP *grp = db_get_grp((char *) key.data);
+
+            if(!head){
+                head = create_rtnode(grp, RT_GRP);
+                rtnode = head;
+            }else{
+                rtnode->sibling_right = create_rtnode(grp, RT_GRP);
+                rtnode->sibling_right->sibling_left = rtnode;
+                rtnode = rtnode->sibling_right;
+            }            
+            free_grp(grp);
+        }
+    }
+    if (ret != DB_NOTFOUND) {
+        dbp->err(dbp, ret, "DBcursor->get");
+        fprintf(stderr, "Cursor ERROR\n");
+        return NULL;
+    }
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    if (dbp != NULL)
+        dbp->close(dbp, 0);    
+
     return head;
 }
 
@@ -2032,12 +2300,12 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
         if (strncmp(key.data, TYPE , 2) == 0){
             CIN *cin = db_get_cin((char*)key.data);
             //find pi
-            if(strncmp(pi, cin->pi, strlen(pi)) == 0){
+            if(pi && strncmp(pi, cin->pi, strlen(pi)) == 0){
                 if(!head) {
-                    head = create_rtnode(cin, TY_CIN);
+                    head = create_rtnode(cin, RT_CIN);
                     rtnode = head;
                 } else {
-                    rtnode->sibling_right = create_rtnode(cin,TY_CIN);
+                    rtnode->sibling_right = create_rtnode(cin,RT_CIN);
                     rtnode->sibling_right->sibling_left = rtnode;
                     rtnode = rtnode->sibling_right;
 

@@ -1,6 +1,7 @@
 #include "httpd.h"
 #include "config.h"
 #include "onem2m.h"
+#include "util.h"
 
 #include <arpa/inet.h>
 #include <ctype.h>
@@ -45,43 +46,35 @@ void *respond_thread(void *ps) {
 }
 
 void serve_forever(const char *PORT) {
-  pthread_mutex_init(&mutex_lock, NULL);
-  struct sockaddr_in clientaddr;
-  socklen_t addrlen = 0;
-  
-  int slot = 0; 
+    pthread_mutex_init(&mutex_lock, NULL);
+    struct sockaddr_in clientaddr;
+    socklen_t addrlen = 0;
 
-  logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s\n", "\033[92m", PORT, "\033[0m");
+    int slot = 0;
+    int slots[MAX_CONNECTIONS];
+    for(int i=0; i<MAX_CONNECTIONS; i++) {
+        slots[i] = i;
+        clients[i] = -1;
+    }   
 
-  // create shared memory for client slot array
-  //clients = mmap(NULL, sizeof(*clients) * MAX_CONNECTIONS,
-                 //PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-
-  // Setting all elements to -1: signifies there is no client connected
-  int i;
-  for (i = 0; i < MAX_CONNECTIONS; i++)
-    clients[i] = -1;
-  start_server(PORT);
-
-  // Ignore SIGCHLD to avoid zombie threads
-  signal(SIGCHLD, SIG_IGN);
-
-  // ACCEPT connections
-  while (1) {
-    clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
-    if (clients[slot] < 0) {
-      perror("accept() error");
-      exit(1);
-    } else {
-      pthread_t thread_id;
-      int s = slot;
-      int *ps = &s; 
-      pthread_create(&thread_id, NULL, respond_thread, (void*)ps);
-      if(MONO_THREAD) pthread_join(thread_id, NULL);
+    logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s\n", "\033[92m", PORT, "\033[0m");  
+    start_server(PORT); 
+    // Ignore SIGCHLD to avoid zombie threads
+    signal(SIGCHLD, SIG_IGN); 
+    // ACCEPT connections
+    while (1) {
+        clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
+        if (clients[slot] < 0) {
+            perror("accept() error");
+            exit(1);
+        } else {
+            pthread_t thread_id;
+            pthread_create(&thread_id, NULL, respond_thread, (void*)&slots[slot]);
+            if(MONO_THREAD) pthread_join(thread_id, NULL);
+        }
+        while (clients[slot] != -1)
+            slot = (slot + 1) % MAX_CONNECTIONS;
     }
-    while (clients[slot] != -1)
-      slot = (slot + 1) % MAX_CONNECTIONS;
-  }
 }
 
 // start server
@@ -260,6 +253,45 @@ Operation http_parse_operation(){
 	return op;
 }
 
+void handle_http_request() {
+	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+	char *header;
+	if(payload) {
+		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
+		strcpy(o2pt->pc, payload);
+		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
+		logger("MAIN", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
+		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
+	} 
+
+	if((header = request_header("X-M2M-Origin"))) {
+		o2pt->fr = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->fr, header);
+	} 
+
+	if((header = request_header("X-M2M-RI"))) {
+		o2pt->rqi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rqi, header);
+	} 
+
+	if((header = request_header("X-M2M-RVI"))) {
+		o2pt->rvi = (char *)malloc((strlen(header) + 1) * sizeof(char));
+		strcpy(o2pt->rvi, header);
+	} 
+
+	if(uri) {
+		o2pt->to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
+		strcpy(o2pt->to, uri+1);
+	} 
+
+	o2pt->op = http_parse_operation();
+	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
+	o2pt->prot = PROT_HTTP;
+
+	route(o2pt);
+  free_o2pt(o2pt);
+}
+
 void set_response_header(char *key, char *value, char *response_headers) {
   if(!value) return;
   char header[128];
@@ -282,7 +314,7 @@ void normalize_payload() {
 	payload[index] = '\0';
 }
 
-void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
+void http_respond_to_client(oneM2MPrimitive *o2pt, int status_code) {
     char content_length[64];
     char rsc[64];
     char response_headers[2048] = {'\0'};
@@ -296,18 +328,20 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int status) {
 
     char buf[BUF_SIZE] = {'\0'};
 
-    switch(status) {
-        case 200: sprintf(buf, "%s 200 OK\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 201: sprintf(buf, "%s 201 Created\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 209: sprintf(buf, "%s 209 Conflict\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 400: sprintf(buf, "%s 400 Bad Request\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 403: sprintf(buf, "%s 403 Forbidden\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 404: sprintf(buf, "%s 404 Not found\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 406: sprintf(buf, "%s 406 Not Acceptable\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 413: sprintf(buf, "%s 413 Payload Too Large\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
-        case 500: sprintf(buf, "%s 500 Internal Server Error\n%s%s\n", RESPONSE_PROTOCOL, DEFAULT_RESPONSE_HEADERS, response_headers); break;
+    char *status;
+
+    switch(status_code) {
+        case 200: status = "200 OK"; break;
+        case 201: status = "201 Created"; break;
+        case 209: status = "209 Conflict"; break;
+        case 400: status = "400 Bad Request"; break;
+        case 403: status = "403 Forbidden"; break;
+        case 404: status = "404 Not found"; break;
+        case 406: status = "406 Not Acceptable"; break;
+        case 413: status = "413 Payload Too Large"; break;
+        case 500: status = "500 Internal Server Error"; break;
     }
-    strcat(buf, o2pt->pc);
+    sprintf(buf, "%s %s\n%s%s\n%s", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers,o2pt->pc);
     printf("%s",buf); 
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
 }

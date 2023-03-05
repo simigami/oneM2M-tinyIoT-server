@@ -10,7 +10,12 @@
 
 #define MAX_PAYLOAD_SIZE 65536 
 #define MAX_URI_SIZE 1024
-#define MAX_PROPERTY_SIZE 65536
+#define MAX_PROPERRT_SIZE 65536
+
+
+// Group Settings
+#define CONSISTENCY_POLICY SET_MIXED
+
 
 // MQTT Settings
 #define ENABLE_MQTT
@@ -44,6 +49,6 @@
 
 #include "logger.h"
 #define LOG_LEVEL LOG_LEVEL_DEBUG
-#define LOG_BUFFER_SIZE 1024
+#define LOG_BUFFER_SIZE MAX_PAYLOAD_SIZE
 
 #endif
