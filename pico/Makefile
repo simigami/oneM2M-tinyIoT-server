@@ -12,7 +12,7 @@ RELEXE = server
 all: $(RELEXE)
 
 $(RELEXE) : $(OBJS)
-	$(CC) $(RELCFLAGS) -c -o $(RELEXE) $(OBJS) $(LIBS)
+	$(CC) $(RELCFLAGS) -o $(RELEXE) $(OBJS) $(LIBS)
 
 %.o: %.c
 	$(CC) $(RELCFLAGS) -c $< -o $@
