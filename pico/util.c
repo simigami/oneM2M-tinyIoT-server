@@ -14,8 +14,8 @@
 #include "logger.h"
 #include "onem2mTypes.h"
 #include "config.h"
-#include "berkeleyDB.h"
-#include "jsonparse.h"
+#include "dbmanager.h"
+#include "jsonparser.h"
 
 extern ResourceTree *rt;
 

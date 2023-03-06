@@ -10,8 +10,8 @@
 #include <limits.h>
 #include <signal.h>
 #include "onem2m.h"
-#include "jsonparse.h"
-#include "berkeleyDB.h"
+#include "jsonparser.h"
+#include "dbmanager.h"
 #include "httpd.h"
 #include "cJSON.h"
 #include "util.h"

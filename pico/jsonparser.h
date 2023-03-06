@@ -1,5 +1,5 @@
-#ifndef __JSONPARSE_H__
-#define __JSONPARSE_H__
+#ifndef __JSONPARSER_H__
+#define __JSONPARSER_H__
 
 #include "cJSON.h"
 

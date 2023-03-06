@@ -38,11 +38,11 @@ char *method, // "GET" or "POST"
 int payload_size;
 
 void *respond_thread(void *ps) {
-  int *slot = (int*)ps;
-	respond(*slot);
-	close(clients[*slot]);
-	clients[*slot] = -1;
-	return NULL;
+    int slot = *((int*)ps);
+    respond(slot);
+    close(clients[slot]);
+    clients[slot] = -1;
+    return NULL;
 }
 
 void serve_forever(const char *PORT) {
@@ -79,49 +79,46 @@ void serve_forever(const char *PORT) {
 
 // start server
 void start_server(const char *port) {
-  struct addrinfo hints, *res, *p;
-
-  // getaddrinfo for host
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
-  if (getaddrinfo(NULL, port, &hints, &res) != 0) {
-    perror("getaddrinfo() error");
-    exit(1);
-  }
-  // socket and 
-  for (p = res; p != NULL; p = p->ai_next) {
-    int option = 1;
-    listenfd = socket(p->ai_family, p->ai_socktype, 0);
-    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
-    if (listenfd == -1)
-      continue;
-    if (bind(listenfd, p->ai_addr, p->ai_addrlen) == 0)
-      break;
-  }
-  if (p == NULL) {
-    perror("socket() or bind()");
-    exit(1);
-  }
-
-  freeaddrinfo(res);
-
-  // listen for incoming connections
-  if (listen(listenfd, QUEUE_SIZE) != 0) {
-    perror("listen() error");
-    exit(1);
-  }
+    struct addrinfo hints, *res, *p;
+    // getaddrinfo for host
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    if (getaddrinfo(NULL, port, &hints, &res) != 0) {
+        perror("getaddrinfo() error");
+        exit(1);
+    }
+    // socket and 
+    for (p = res; p != NULL; p = p->ai_next) {
+        int option = 1;
+        listenfd = socket(p->ai_family, p->ai_socktype, 0);
+        setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+        if (listenfd == -1)
+            continue;
+        if (bind(listenfd, p->ai_addr, p->ai_addrlen) == 0)
+            break;
+    }
+    if (p == NULL) {
+        perror("socket() or bind()");
+        exit(1);
+    }
+    freeaddrinfo(res);
+    // listen for incoming connections
+    if (listen(listenfd, QUEUE_SIZE) != 0) {
+        perror("listen() error");
+        exit(1);
+    }
 }
 
 // get request header by name
 char *request_header(const char *name) {
-  header_t *h = reqhdr;
-  while (h->name) {
-    if (strcmp(h->name, name) == 0)
-      return h->value;
-    h++;
-  }
+    header_t *h = reqhdr;
+    while (h->name) {
+        if (strcmp(h->name, name) == 0)
+            return h->value;
+        h++;
+    }
   return NULL;
 }
 
@@ -130,116 +127,112 @@ header_t *request_headers(void) { return reqhdr; }
 
 // Handle escape characters (%xx)
 static void uri_unescape(char *uri) {
-  char chr = 0;
-  char *src = uri;
-  char *dst = uri;
-  
-  // Skip initial non encoded character
-  while (*src && !isspace((int)(*src)) && (*src != '%')) 
-    src++;
+    char chr = 0;
+    char *src = uri;
+    char *dst = uri;
 
-  // Replace encoded characters with corresponding code.
-  dst = src;
-  while (*src && !isspace((int)(*src))) {
-    if (*src == '+')
-      chr = ' ';
-    else if ((*src == '%') && src[1] && src[2]) {
-      src++;
-      chr = ((*src & 0x0F) + 9 * (*src > '9')) * 16;
-      src++;
-      chr += ((*src & 0x0F) + 9 * (*src > '9'));
-    } else
-      chr = *src;
-    *dst++ = chr;
-    src++;
-  }
+    // Skip initial non encoded character
+    while (*src && !isspace((int)(*src)) && (*src != '%')) 
+      src++;    
+    // Replace encoded characters with corresponding code.
+    dst = src;
+    while (*src && !isspace((int)(*src))) {
+        if (*src == '+')
+            chr = ' ';
+        else if ((*src == '%') && src[1] && src[2]) {
+            src++;
+            chr = ((*src & 0x0F) + 9 * (*src > '9')) * 16;
+            src++;
+            chr += ((*src & 0x0F) + 9 * (*src > '9'));
+        } else
+            chr = *src;
 
-  *dst = '\0';
+        *dst++ = chr;
+        src++;
+    }
+
+    *dst = '\0';
 }
 
 // client connection
 void respond(int slot) {
-  int rcvd;
-  
-  buf[slot] = malloc(BUF_SIZE*sizeof(char));
-  rcvd = recv(clients[slot], buf[slot], BUF_SIZE, 0);
+    int rcvd;
+    bool flag = false;
 
-  if (rcvd < 0){ // receive error
-    logger("HTTP", LOG_LEVEL_ERROR, "recv() error");
-    return;
-  }
-  else if (rcvd == 0) { // receive socket closed
-    logger("HTTP", LOG_LEVEL_ERROR, "Client disconnected upexpectedly");
-    return;
-  }
-  else // message received
-  {
-    pthread_mutex_lock(&mutex_lock);
+    buf[slot] = malloc(BUF_SIZE*sizeof(char));
+    rcvd = recv(clients[slot], buf[slot], BUF_SIZE, 0); 
 
-    buf[slot][rcvd] = '\0';
-    logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf[slot]);
+    memset(reqhdr, 0, sizeof(reqhdr));
 
-    method = strtok(buf[slot], " \t\r\n");
-    uri = strtok(NULL, " \t");
-    prot = strtok(NULL, " \t\r\n");
-
-    if(!uri) {
-      logger("HTTP", LOG_LEVEL_ERROR, "URI is NULL");
-      return;
-    }
-
-    uri_unescape(uri);
+    if (rcvd < 0){ // receive error
+        logger("HTTP", LOG_LEVEL_ERROR, "recv() error");
+        return;
+    } else if (rcvd == 0) { // receive socket closed
+        logger("HTTP", LOG_LEVEL_ERROR, "Client disconnected upexpectedly");
+        return;
+    } else { // message received
+        pthread_mutex_lock(&mutex_lock);  
+        buf[slot][rcvd] = '\0';
+        logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf[slot]);    
+        method = strtok(buf[slot], " \t\r\n");
+        uri = strtok(NULL, " \t");
+        prot = strtok(NULL, " \t\r\n");   
+        if(!uri) {
+            logger("HTTP", LOG_LEVEL_ERROR, "URI is NULL");
+            return;
+        } 
+        uri_unescape(uri);
     
-    logger("HTTP", LOG_LEVEL_DEBUG, "\x1b[36m + [%s] %s\x1b[0m",method, uri);
+        logger("HTTP", LOG_LEVEL_DEBUG, "\x1b[36m + [%s] %s\x1b[0m",method, uri); 
+        qs = strchr(uri, '?');    
+        if (qs)
+            *qs++ = '\0'; // split URI
+        else
+            qs = uri - 1; // use an empty string  
 
-    qs = strchr(uri, '?');
+        header_t *h = reqhdr;
+        char *t, *t2;
+        while (h < reqhdr + 16) {
+            char *key, *val;  
+            key = strtok(NULL, "\r\n: \t");
+            if (!key)
+                break;    
+            val = strtok(NULL, "\r\n");
+            while (*val && *val == ' ')
+                val++;    
+            h->name = key;
+            h->value = val;
+            h++;
+            //fprintf(stderr, "[H] %s: %s\n", key, val); // print request headers 
 
-    if (qs)
-      *qs++ = '\0'; // split URI
-    else
-      qs = uri - 1; // use an empty string
-
-    header_t *h = reqhdr;
-    char *t, *t2;
-    while (h < reqhdr + 16) {
-      char *key, *val;
-
-      key = strtok(NULL, "\r\n: \t");
-      if (!key)
-        break;
-
-      val = strtok(NULL, "\r\n");
-      while (*val && *val == ' ')
-        val++;
-
-      h->name = key;
-      h->value = val;
-      h++;
-      //fprintf(stderr, "[H] %s: %s\n", key, val); // print request headers 
-      
-      t = val + 1 + strlen(val);
-      if (t[1] == '\r' && t[2] == '\n')
-        break;
+            t = val + 1 + strlen(val);
+            if (t[1] == '\r' && t[2] == '\n')
+                break;
+      }
+        t = strtok(NULL, "\r\n");
+        t2 = request_header("Content-Length"); // and the related header if there is
+        payload = t;
+        payload_size = t2 ? atol(t2) : 0;
+        if(payload_size > 0 && payload == NULL) {
+            flag = true;
+            payload = (char *)malloc(MAX_PAYLOAD_SIZE*sizeof(char));
+            recv(clients[slot], payload, MAX_PAYLOAD_SIZE, 0);
+        }
+        if(payload) normalize_payload();
+        // bind clientfd to stdout, making it easier to write
+        int clientfd = clients[slot];
+        dup2(clientfd, STDOUT_FILENO);
+        close(clientfd);
+        // call router
+        handle_http_request();    
+        // tidy up
+        fflush(stdout);
+        shutdown(STDOUT_FILENO, SHUT_WR);
+        //close(STDOUT_FILENO);
     }
-    t = strtok(NULL, "\r\n");
-    t2 = request_header("Content-Length"); // and the related header if there is
-    payload = t;
-    payload_size = t2 ? atol(t2) : (rcvd - (t - buf[slot]));
-    if(payload) normalize_payload();
-    // bind clientfd to stdout, making it easier to write
-    int clientfd = clients[slot];
-    dup2(clientfd, STDOUT_FILENO);
-    close(clientfd);
-    // call router
-    handle_http_request();
-
-    // tidy up
-    fflush(stdout);
-    shutdown(STDOUT_FILENO, SHUT_WR);
-    //close(STDOUT_FILENO);
-  }
-  free(buf[slot]);
-  pthread_mutex_unlock(&mutex_lock);
+    if(flag) free(payload);
+    free(buf[slot]);
+    pthread_mutex_unlock(&mutex_lock);
 }
 
 Operation http_parse_operation(){
@@ -255,13 +248,11 @@ Operation http_parse_operation(){
 
 void handle_http_request() {
 	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
-	char *header;
+	char *header = NULL;
 	if(payload) {
 		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
 		strcpy(o2pt->pc, payload);
 		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
-		logger("MAIN", LOG_LEVEL_DEBUG, "Error at : %s", cJSON_GetErrorPtr());
-		//cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
 	} 
 
 	if((header = request_header("X-M2M-Origin"))) {
@@ -289,17 +280,17 @@ void handle_http_request() {
 	o2pt->prot = PROT_HTTP;
 
 	route(o2pt);
-  free_o2pt(o2pt);
+    free_o2pt(o2pt);
 }
 
 void set_response_header(char *key, char *value, char *response_headers) {
-  if(!value) return;
-  char header[128];
+    if(!value) return;
+    char header[128];
 
-  sprintf(header, "%s: %s\n", key, value);
-  strcat(response_headers, header);
+    sprintf(header, "%s: %s\n", key, value);
+    strcat(response_headers, header);
 
-  return;
+    return;
 }
 
 void normalize_payload() {

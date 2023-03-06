@@ -14,8 +14,8 @@
         "numbers": "c",
         "time.h": "c",
         "curl.h": "c",
-        "jsonparse.h": "c",
-        "berkeleydb.h": "c",
+        "jsonparser.h": "c",
+        "dbmanager.h": "c",
         "pthread.h": "c",
         "config.h": "c"
     },

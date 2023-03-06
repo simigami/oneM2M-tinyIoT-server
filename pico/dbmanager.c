@@ -5,7 +5,7 @@
 #include <time.h>
 #include <db.h>
 #include "onem2m.h"
-#include "berkeleyDB.h"
+#include "dbmanager.h"
 #include "logger.h"
 #include "util.h"
 

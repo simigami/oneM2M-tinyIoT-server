@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <limits.h>
 #include "onem2m.h"
-#include "jsonparse.h"
+#include "jsonparser.h"
 #include "cJSON.h"
 #include "onem2mTypes.h"
 #include "config.h"

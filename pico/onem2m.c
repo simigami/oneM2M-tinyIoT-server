@@ -9,8 +9,8 @@
 #include <malloc.h>
 #include <sys/timeb.h>
 #include "onem2m.h"
-#include "berkeleyDB.h"
-#include "jsonparse.h"
+#include "dbmanager.h"
+#include "jsonparser.h"
 #include "httpd.h"
 #include "mqttClient.h"
 #include "onem2mTypes.h"

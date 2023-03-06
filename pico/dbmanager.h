@@ -1,5 +1,5 @@
-#ifndef __BERKELEYDB_H__
-#define __BERKELEYDB_H__
+#ifndef __dbmanager_H__
+#define __dbmanager_H__
 
 int db_display(char* database);
 
