@@ -9,6 +9,7 @@ void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc, ...);
 void set_o2pt_rsc(oneM2MPrimitive *o2pt, int rsc);
 void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src);
 void free_o2pt(oneM2MPrimitive *o2pt);
+void free_all_resource(RTNode *rtnode);
 void log_runtime(double start);
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
@@ -75,6 +76,7 @@ int rsc_to_http_status(int rsc);
 
 cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
 void remove_mid(char **mid, int idx, int cnm);
+int handle_csy(GRP *grp, int i);
 
 
 #endif

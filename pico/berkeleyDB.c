@@ -9,6 +9,10 @@
 #include "logger.h"
 #include "util.h"
 
+DB *resourceDBp;
+DB *subDBp;
+DB *grpDBp;
+DB *acpDBp;
 
 /*DB CREATE*/
 DB* DB_CREATE_(DB *dbp){
@@ -24,20 +28,21 @@ DB* DB_CREATE_(DB *dbp){
 }
 
 /*DB Open*/
-DB* DB_OPEN_(DB *dbp,char* DATABASE){
+int DB_OPEN(DB* dbp, char* DATABASE){
     int ret;
 
     ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
         fprintf(stderr, "DB Open ERROR\n");
-        return NULL;
+        return 0;
     }
-    return dbp;
+    return 1;
 }
 
 /*DB Get Cursor*/
-DBC* DB_GET_CURSOR(DB *dbp, DBC *dbcp){
+DBC *DB_GET_CURSOR(DB *dbp){
+    DBC *dbcp;
     int ret;
     
     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
@@ -48,91 +53,136 @@ DBC* DB_GET_CURSOR(DB *dbp, DBC *dbcp){
     return dbcp;
 }
 
-/*DB Display*/
-int db_display(char* database)
-{
-    DB* dbp;
-    DBC* dbcp;
-    DBT key, data;
-    int close_db, close_dbc, ret;
-
-    close_db = close_dbc = 0;
-
-    /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return -1;
+/* DB init */
+int init_dbp(){
+    int ret;
+    logger("DB", LOG_LEVEL_DEBUG, "Initializing DB Pointer");
+    ret = db_create(&resourceDBp, NULL, 0);
+    if(ret) {
+        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+        fprintf(stderr, "File ERROR\n");
+        return 0;   
     }
-    close_db = 1;
-
-    /* Turn on additional error output. */
-    dbp->set_errfile(dbp, stderr);
-    dbp->set_errpfx(dbp, database);
-
-    /* Open the database. */
-    if ((ret = dbp->open(dbp, NULL, database, NULL,
-        DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-        dbp->err(dbp, ret, "%s: DB->open", database);
-        goto err;
+    ret = db_create(&subDBp, NULL, 0);
+    if(ret) {
+        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+        fprintf(stderr, "File ERROR\n");
+        return 0;   
     }
 
-    /* Acquire a cursor for the database. */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        goto err;
+    ret = db_create(&grpDBp, NULL, 0);
+    if(ret) {
+        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+        fprintf(stderr, "File ERROR\n");
+        return 0;   
     }
-    close_dbc = 1;
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    /* Walk through the database and print out the key/data pairs. */
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, "ty", key.size) == 0 ||
-            strncmp(key.data, "st", key.size) == 0 ||
-            strncmp(key.data, "cni", key.size) == 0 ||
-            strncmp(key.data, "cbs", key.size) == 0 ||
-            strncmp(key.data, "cs", key.size) == 0
-            ){
-            printf("%.*s : %d\n", (int)key.size, (char*)key.data, *(int*)data.data);
-        }
-        else if (strncmp(key.data, "rr", key.size) == 0) {
-            printf("%.*s : ", (int)key.size, (char*)key.data);
-            if (*(bool*)data.data == true)
-                printf("true\n");
-            else
-                printf("false\n");
-        }
-
-        else {
-            printf("%.*s : %.*s\n",
-                (int)key.size, (char*)key.data,
-                (int)data.size, (char*)data.data);
-        }
-    }
-    if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
-        printf("Cursor ERROR\n");
-        return -1;
+    ret = db_create(&acpDBp, NULL, 0);
+    if(ret) {
+        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+        fprintf(stderr, "File ERROR\n");
+        return 0;   
     }
 
+    DB_OPEN(resourceDBp, "RESOURCE.db");
+    DB_OPEN(subDBp, "SUB.db");
+    DB_OPEN(grpDBp, "GROUP.db");
+    DB_OPEN(acpDBp, "ACP.db");
 
-err:    if (close_dbc && (ret = dbcp->close(dbcp)) != 0)
-dbp->err(dbp, ret, "DBcursor->close");
-if (close_db && (ret = dbp->close(dbp, 0)) != 0)
-fprintf(stderr,
-    "%s: DB->close: %s\n", database, db_strerror(ret));
-return -1;
+    return 1;
 }
+
+int close_dbp(){
+    resourceDBp->close(resourceDBp, 0);
+    subDBp->close(subDBp, 0);
+    grpDBp->close(grpDBp, 0);
+    acpDBp->close(acpDBp, 0);
+    return 1;
+}
+
+// /*DB Display*/
+// int db_display(char* database)
+// {
+    
+//     DBC* dbcp;
+//     DBT key, data;
+//     int close_db, close_dbc, ret;
+
+//     close_db = close_dbc = 0;
+
+//     /* Open the database. */
+//     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+//         fprintf(stderr,
+//             "%s: db_create: %s\n", database, db_strerror(ret));
+//         return -1;
+//     }
+//     close_db = 1;
+
+//     /* Turn on additional error output. */
+//     dbp->set_errfile(dbp, stderr);
+//     dbp->set_errpfx(dbp, database);
+
+//     /* Open the database. */
+//     if ((ret = dbp->open(dbp, NULL, database, NULL,
+//         DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
+//         dbp->err(dbp, ret, "%s: DB->open", database);
+//         goto err;
+//     }
+
+//     /* Acquire a cursor for the database. */
+//     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+//         dbp->err(dbp, ret, "DB->cursor");
+//         goto err;
+//     }
+//     close_dbc = 1;
+
+//     /* Initialize the key/data return pair. */
+//     memset(&key, 0, sizeof(key));
+//     memset(&data, 0, sizeof(data));
+
+//     /* Walk through the database and print out the key/data pairs. */
+//     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+//         if (strncmp(key.data, "ty", key.size) == 0 ||
+//             strncmp(key.data, "st", key.size) == 0 ||
+//             strncmp(key.data, "cni", key.size) == 0 ||
+//             strncmp(key.data, "cbs", key.size) == 0 ||
+//             strncmp(key.data, "cs", key.size) == 0
+//             ){
+//             printf("%.*s : %d\n", (int)key.size, (char*)key.data, *(int*)data.data);
+//         }
+//         else if (strncmp(key.data, "rr", key.size) == 0) {
+//             printf("%.*s : ", (int)key.size, (char*)key.data);
+//             if (*(bool*)data.data == true)
+//                 printf("true\n");
+//             else
+//                 printf("false\n");
+//         }
+
+//         else {
+//             printf("%.*s : %.*s\n",
+//                 (int)key.size, (char*)key.data,
+//                 (int)data.size, (char*)data.data);
+//         }
+//     }
+//     if (ret != DB_NOTFOUND) {
+//         dbp->err(dbp, ret, "DBcursor->get");
+//         printf("Cursor ERROR\n");
+//         return -1;
+//     }
+
+
+// err:    if (close_dbc && (ret = dbcp->close(dbcp)) != 0)
+// dbp->err(dbp, ret, "DBcursor->close");
+// if (close_db && (ret = dbp->close(dbp, 0)) != 0)
+// fprintf(stderr,
+//     "%s: DB->close: %s\n", database, db_strerror(ret));
+// return -1;
+// }
 
 
 int db_store_cse(CSE *cse_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cse");
     char* DATABASE = "RESOURCE.db";
 
-    DB* dbp;    // db handle
     DBC* dbcp;
     int ret;        // template value
 
@@ -152,9 +202,9 @@ int db_store_cse(CSE *cse_object) {
     if (cse_object->lt == NULL) cse_object->lt = " ";
     if (cse_object->csi == NULL) cse_object->csi = " ";
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
     
     /* key and data must initialize */
     memset(&key_ri, 0, sizeof(DBT));
@@ -174,11 +224,11 @@ int db_store_cse(CSE *cse_object) {
 
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        resourceDBp->err(resourceDBp, ret, "db->cursor");
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
+    // dbp->close(dbp, 0); 
 
     return 1;
 }
@@ -188,7 +238,7 @@ int db_store_ae(AE *ae_object) {
     char* DATABASE = "RESOURCE.db";
     char* blankspace = " ";
 
-    DB* dbp;    // db handle
+        // db handle
     DBC* dbcp;
     int ret;        // template value
 
@@ -215,9 +265,9 @@ int db_store_ae(AE *ae_object) {
     if(ae_object->rr == false) strcpy(rr, "false");
     else strcpy(rr, "true");
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    ////dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
     
     /* key and data must initialize */
     memset(&key_ri, 0, sizeof(DBT));
@@ -238,11 +288,10 @@ int db_store_ae(AE *ae_object) {
 
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        resourceDBp->err(resourceDBp, ret, "db->cursor");
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0);
 
     if (ae_object->rn == blankspace) ae_object->rn = NULL;
     if (ae_object->pi == blankspace) ae_object->pi = NULL;
@@ -264,7 +313,7 @@ int db_store_cnt(CNT *cnt_object) {
     char* DATABASE = "RESOURCE.db";
     char* blankspace = " ";
 
-    DB* dbp;    // db handle
+        // db handle
     DBC* dbcp;
     int ret;        // template value
 
@@ -284,9 +333,9 @@ int db_store_cnt(CNT *cnt_object) {
     if (cnt_object->acpi == NULL) cnt_object->acpi = blankspace;
     if (cnt_object->lbl == NULL) cnt_object->lbl = blankspace;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    ////dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
     
     /* key and data must initialize */
     memset(&key_ri, 0, sizeof(DBT));
@@ -307,11 +356,11 @@ int db_store_cnt(CNT *cnt_object) {
 
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        resourceDBp->err(resourceDBp, ret, "db->cursor");
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
+    //dbp->close(dbp, 0); 
 
     if (cnt_object->rn == blankspace) cnt_object->rn = NULL;
     if (cnt_object->pi == blankspace) cnt_object->pi = NULL;
@@ -328,7 +377,7 @@ int db_store_cin(CIN *cin_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cin");
     char* DATABASE = "RESOURCE.db";
 
-    DB* dbp;    // db handle
+        // db handle
     DBC* dbcp;
     int ret;        // template value
 
@@ -351,9 +400,9 @@ int db_store_cin(CIN *cin_object) {
     if (cin_object->cs == '\0') cin_object->cs = 0;
     if (cin_object->st == '\0') cin_object->st = 0;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    ////dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
     
     /* key and data must initialize */
     memset(&key_ri, 0, sizeof(DBT));
@@ -375,11 +424,11 @@ int db_store_cin(CIN *cin_object) {
     data.size = strlen(str) + 1;
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        resourceDBp->err(resourceDBp, ret, "db->cursor");
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
+    //dbp->close(dbp, 0); 
     
     return 1;
 }
@@ -389,7 +438,7 @@ int db_store_grp(GRP *grp_object){
     char *bs = " ";
     char* DATABASE = "GROUP.db";
 
-    DB* dbp;    // db handle
+        // db handle
     DBC* dbcp;
     int ret;        // template value
 
@@ -401,9 +450,9 @@ int db_store_grp(GRP *grp_object){
     if(grp_object->rn == NULL) grp_object->rn = bs;
     if(grp_object->acpi == NULL) grp_object->acpi = bs;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(grpDBp);
     
     /* key and data must initialize */
     memset(&key_rn, 0, sizeof(DBT));
@@ -428,7 +477,7 @@ int db_store_grp(GRP *grp_object){
         grp_object->acpi, grp_object->mnm, grp_object->cnm, grp_object->mt, grp_object->csy);
     strcat(str, strbuf);
     strcat(str, grp_object->mtv ? "1" : "0");
-    if(grp_object->mid)
+    if(grp_object->mid) {
         for(int i = 0 ; i < grp_object->cnm; i++){
             if(grp_object->mid[i]){
                 sprintf(strbuf, ";%s", grp_object->mid[i]);
@@ -436,21 +485,20 @@ int db_store_grp(GRP *grp_object){
             }else
                 break;
         }
+    }
 
-    logger("db", LOG_LEVEL_DEBUG, "saving %s", str);
     data.data = str;
     data.size = strlen(str) + 1;
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_rn, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        grpDBp->err(grpDBp, ret, "db->cursor");
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
     
     if(grp_object->rn == bs) grp_object->rn = NULL;
     if(grp_object->acpi == bs) grp_object->acpi = NULL;
-
+    free(strbuf);
     return 1;
 }
 
@@ -458,7 +506,7 @@ int db_store_sub(Sub *sub_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
     char* DATABASE = "SUB.db";
 
-    DB* dbp;    // db handle
+        // db handle
     DBC* dbcp;
     FILE* error_file_pointer;
     DBT key, data;  // storving key and real data
@@ -487,42 +535,44 @@ int db_store_sub(Sub *sub_object) {
     if (sub_object->sur == NULL) sub_object->sur = "";    
 
 
-    ret = db_create(&dbp, NULL, 0);
-    if (ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr, "File ERROR\n");
-        return 0;
-    }
+    // ret = db_create(&dbp, NULL, 0);
+    // if (ret) {
+    //     fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+    //     fprintf(stderr, "File ERROR\n");
+    //     return 0;
+    // }
 
-    dbp->set_errfile(dbp, error_file_pointer);
-    dbp->set_errpfx(dbp, program_name);
+    // dbp->set_errfile(dbp, error_file_pointer);
+    // dbp->set_errpfx(dbp, program_name);
 
-    /*Set duplicate*/
-    ret = dbp->set_flags(dbp, DB_DUP);
-    if (ret != 0) {
-        dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
-        fprintf(stderr, "Flag Set ERROR\n");
-        dbp->close(dbp, 0);
-        return(ret);
-    }
+    // /*Set duplicate*/
+    // ret = dbp->set_flags(dbp, DB_DUP);
+    // if (ret != 0) {
+    //     dbp->err(dbp, ret, "Attempt to set DUPSORT flag failed.");
+    //     fprintf(stderr, "Flag Set ERROR\n");
+    //     dbp->close(dbp, 0);
+    //     return(ret);
+    // }
 
-    /*DB Open*/
-    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", DATABASE);
-        fprintf(stderr, "DB Open ERROR\n");
-        return 0;
-    }
+    // /*DB Open*/
+    // ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
+    // if (ret) {
+    //     dbp->err(dbp, ret, "%s", DATABASE);
+    //     fprintf(stderr, "DB Open ERROR\n");
+    //     return 0;
+    // }
 
     /*
   * The DB handle for a Btree database supporting duplicate data
   * items is the argument; acquire a cursor for the database.
   */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr, "Cursor ERROR");
-        return 0;
-    }
+    // if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+    //     dbp->err(dbp, ret, "DB->cursor");
+    //     fprintf(stderr, "Cursor ERROR");
+    //     return 0;
+    // }
+
+    dbcp = DB_GET_CURSOR(subDBp);
 
     /* keyand data must initialize */
     memset(&key_pi, 0, sizeof(DBT));
@@ -574,33 +624,33 @@ int db_store_sub(Sub *sub_object) {
 
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_pi, &data_ri, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_rn, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_nu, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_net, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_sur, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
 
 
     if ((ret = dbcp->put(dbcp, &key_pi, &data_ct, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_et, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_lt, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_ty, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
     if ((ret = dbcp->put(dbcp, &key_pi, &data_nct, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        subDBp->err(subDBp, ret, "db->cursor");
 
 
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
+    // dbp->close(dbp, 0); 
     
     if(!strcmp(sub_object->net, "0")) {
         sub_object->net = NULL;
@@ -613,7 +663,7 @@ int db_store_acp(ACP *acp_object) {
     char* DATABASE = "ACP.db";
     char* blankspace = " ";
 
-    DB* dbp;    // db handle
+        // db handle
     DBC* dbcp;
     int ret;        // template value
 
@@ -637,9 +687,9 @@ int db_store_acp(ACP *acp_object) {
     if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = blankspace; 
 
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    // DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(acpDBp);
 
     /* keyand data must initialize */
     memset(&key_ri, 0, sizeof(DBT));
@@ -661,11 +711,11 @@ int db_store_acp(ACP *acp_object) {
 
     /* input DB */
     if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        dbp->err(dbp, ret, "db->cursor");
+        acpDBp->err(acpDBp, ret, "db->cursor");
 
     /* DB close */
     dbcp->close(dbcp);
-    dbp->close(dbp, 0); 
+    // dbp->close(dbp, 0); 
 
     if (acp_object->rn == blankspace) acp_object->rn = NULL;
     if (acp_object->pi == blankspace) acp_object->pi = NULL;
@@ -686,7 +736,7 @@ CSE* db_get_cse(char* ri) {
     //struct to return
     CSE* new_cse= NULL;
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -695,9 +745,9 @@ CSE* db_get_cse(char* ri) {
     int flag = 0;
     int idx = 0;
     
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    ////dbp = DB_CREATE_(dbp);
+    // DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -771,7 +821,7 @@ CSE* db_get_cse(char* ri) {
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -783,8 +833,8 @@ CSE* db_get_cse(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
     return new_cse;
 }
@@ -796,7 +846,7 @@ AE* db_get_ae(char* ri) {
     //struct to return
     AE* new_ae = calloc(1,sizeof(AE));
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -805,9 +855,9 @@ AE* db_get_ae(char* ri) {
     int flag = 0;
     int idx = 0;
     
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    // DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -927,7 +977,7 @@ AE* db_get_ae(char* ri) {
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -939,8 +989,8 @@ AE* db_get_ae(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
     return new_ae;
 }
@@ -952,7 +1002,7 @@ CNT* db_get_cnt(char* ri) {
     //struct to return
     CNT* new_cnt = calloc(1,sizeof(CNT));
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -961,9 +1011,9 @@ CNT* db_get_cnt(char* ri) {
     int flag = 0;
     int idx = 0;
     
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    // DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1073,7 +1123,7 @@ CNT* db_get_cnt(char* ri) {
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -1085,8 +1135,8 @@ CNT* db_get_cnt(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
 
     return new_cnt;
 }
@@ -1098,7 +1148,7 @@ CIN* db_get_cin(char* ri) {
     //struct to return
     CIN* new_cin = NULL;
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -1106,9 +1156,9 @@ CIN* db_get_cin(char* ri) {
     int cin = 0;
     int idx = 0;
     
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    // DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1201,7 +1251,7 @@ CIN* db_get_cin(char* ri) {
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         exit(0);
     }
@@ -1213,8 +1263,8 @@ CIN* db_get_cin(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     //
     return new_cin;
 }
@@ -1226,29 +1276,30 @@ Sub* db_get_sub(char* ri) {
     //store AE
     Sub* new_sub = (Sub*)calloc(1, sizeof(Sub));
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return 0;
-    }
+    // /* Open the database. */
+    // if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+    //     fprintf(stderr,
+    //         "%s: db_create: %s\n", database, db_strerror(ret));
+    //     return 0;
+    // }
 
-    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", database);
-        exit(1);
-    }
+    // ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    // if (ret) {
+    //     dbp->err(dbp, ret, "%s", database);
+    //     exit(1);
+    // }
 
     /* Acquire a cursor for the database. */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
+    // if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+    //     dbp->err(dbp, ret, "DB->cursor");
+    //     exit(1);
+    // }
+    dbcp = DB_GET_CURSOR(subDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1258,23 +1309,23 @@ Sub* db_get_sub(char* ri) {
     int flag = 0;
     int struct_size = 10;
 
-    DBC* dbcp0;
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
-    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-        cnt++;
-        if (strncmp(data.data, ri, data.size) == 0) {
-            flag=1;
-            break;
-        }
-    }
-    if (cnt == 0 || flag==0) {
-        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
-        return NULL;
-        //exit(1);
-    }
+    // DBC* dbcp0;
+    // if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+    //     dbp->err(dbp, ret, "DB->cursor");
+    //     exit(1);
+    // }
+    // while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+    //     cnt++;
+    //     if (strncmp(data.data, ri, data.size) == 0) {
+    //         flag=1;
+    //         break;
+    //     }
+    // }
+    // if (cnt == 0 || flag==0) {
+    //     logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
+    //     return NULL;
+    //     //exit(1);
+    // }
     
     new_sub->pi = malloc(data.size);
     strcpy(new_sub->pi, key.data);
@@ -1349,18 +1400,18 @@ Sub* db_get_sub(char* ri) {
 
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        subDBp->err(subDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         exit(0);
     }
 
         /* Cursors must be closed */
-    if (dbcp0 != NULL)
-        dbcp0->close(dbcp0);
+    // if (dbcp0 != NULL)
+    //     dbcp0->close(dbcp0);
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
     if(!strcmp(new_sub->net, "0")) {
         new_sub->net = NULL;
@@ -1375,7 +1426,7 @@ ACP* db_get_acp(char* ri) {
     //struct to return
     ACP* new_acp = calloc(1,sizeof(ACP));
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -1384,9 +1435,9 @@ ACP* db_get_acp(char* ri) {
     int flag = 0;
     int idx = 0;
     
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(acpDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1489,7 +1540,7 @@ ACP* db_get_acp(char* ri) {
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        acpDBp->err(acpDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -1501,8 +1552,8 @@ ACP* db_get_acp(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
 
     return new_acp;
@@ -1514,7 +1565,7 @@ GRP *db_get_grp(char* ri) {
 
     GRP *new_grp = calloc(1, sizeof(GRP));
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -1523,9 +1574,9 @@ GRP *db_get_grp(char* ri) {
     int flag = 0;
     int idx = 0;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(grpDBp);
 
     memset(&key, 0, sizeof(key));
     memset(&data, 0, sizeof(data));
@@ -1579,10 +1630,13 @@ GRP *db_get_grp(char* ri) {
             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
             if(ptr){
                 new_grp->mid = (char **) malloc(sizeof(char *) * new_grp->mnm);
-                for(int i = 0 ; i < new_grp->cnm ; i++){
-                    if(ptr)
+                for(int i = 0 ; i < new_grp->mnm ; i++){
+                    if(ptr){
                         new_grp->mid[i] = strdup(ptr);
-                    ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+                        ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+                    }else{
+                        new_grp->mid[i] = NULL;
+                    }
                 }
             }
         }
@@ -1590,7 +1644,7 @@ GRP *db_get_grp(char* ri) {
 
 
     if(ret != DB_NOTFOUND){
-        dbp->err(dbp, ret, "DBcursor->get");
+        grpDBp->err(grpDBp, ret, "DBcursor->get");
         logger("DB", LOG_LEVEL_DEBUG, "Cursor ERROR");
         return NULL;
     }
@@ -1603,8 +1657,8 @@ GRP *db_get_grp(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
 
     return new_grp;
@@ -1615,15 +1669,15 @@ GRP *db_get_grp(char* ri) {
 int db_delete_onem2m_resource(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",ri);
     char* DATABASE = "RESOURCE.db";
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
     int flag = 0;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1644,8 +1698,8 @@ int db_delete_onem2m_resource(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
     
     /* Delete Success */
@@ -1656,31 +1710,33 @@ int db_delete_sub(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_sub");
     char* database = "SUB.db";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return 0;
-    }
+    // /* Open the database. */
+    // if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+    //     fprintf(stderr,
+    //         "%s: db_create: %s\n", database, db_strerror(ret));
+    //     return 0;
+    // }
 
-    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", database);
-        return 0;
-        exit(1);
-    }
+    // ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    // if (ret) {
+    //     dbp->err(dbp, ret, "%s", database);
+    //     return 0;
+    //     exit(1);
+    // }
 
-    /* Acquire a cursor for the database. */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        return 0;
-        exit(1);
-    }
+    // /* Acquire a cursor for the database. */
+    // if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+    //     dbp->err(dbp, ret, "DB->cursor");
+    //     return 0;
+    //     exit(1);
+    // }
+
+    dbcp = DB_GET_CURSOR(subDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1690,22 +1746,22 @@ int db_delete_sub(char* ri) {
     int flag = 0;
     int struct_size = 10;
 
-    DBC* dbcp0;
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        return 0;
-    }
-    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-        cnt++;
-        if (strncmp(data.data, ri, data.size) == 0) {
-            flag=1;
-            break;
-        }
-    }
-    if (cnt == 0 || flag==0) {
-        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
-        return 0;
-    }
+    // DBC* dbcp0;
+    // if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+    //     dbp->err(dbp, ret, "DB->cursor");
+    //     return 0;
+    // }
+    // while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
+    //     cnt++;
+    //     if (strncmp(data.data, ri, data.size) == 0) {
+    //         flag=1;
+    //         break;
+    //     }
+    // }
+    // if (cnt == 0 || flag==0) {
+    //     logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
+    //     return 0;
+    // }
 
     int idx = -1;
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1718,18 +1774,18 @@ int db_delete_sub(char* ri) {
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        subDBp->err(subDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return 0;
     }
 
     /* Cursors must be closed */
-    if (dbcp0 != NULL)
-        dbcp0->close(dbcp0);
+    // if (dbcp0 != NULL)
+    //     dbcp0->close(dbcp0);
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
     
     /* Delete Success */
@@ -1739,15 +1795,15 @@ int db_delete_sub(char* ri) {
 int db_delete_acp(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_acp");
     char* DATABASE = "ACP.db";
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
     int flag = 0;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(acpDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1768,8 +1824,8 @@ int db_delete_acp(char* ri) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
     /* Delete Success */
     
@@ -1779,15 +1835,15 @@ int db_delete_acp(char* ri) {
 int db_delete_grp(char *ri){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_grp");
     char *database = "GROUP.db";
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
     int flag = 0;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp, database);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN( database);
+    dbcp = DB_GET_CURSOR(grpDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1808,8 +1864,8 @@ int db_delete_grp(char *ri){
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);
     
     
     /* Delete Success */
@@ -1821,14 +1877,14 @@ RTNode* db_get_all_cse() {
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "5-";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1836,7 +1892,7 @@ RTNode* db_get_all_cse() {
 
     int cse = 0;
     DBC* dbcp0;
-    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    dbcp0 = DB_GET_CURSOR(resourceDBp);
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0) 
             cse++;
@@ -1848,6 +1904,7 @@ RTNode* db_get_all_cse() {
         return NULL;
     }
 
+    dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1865,7 +1922,7 @@ RTNode* db_get_all_cse() {
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -1873,8 +1930,8 @@ RTNode* db_get_all_cse() {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);    
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);    
     return head;
 }
 
@@ -1883,14 +1940,14 @@ RTNode* db_get_all_ae() {
     char* DATABASE = "RESOURCE.db";
     const const char* TYPE = "C";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1898,7 +1955,7 @@ RTNode* db_get_all_ae() {
 
     int cnt = 0;
     DBC* dbcp0;
-    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    dbcp0 = DB_GET_CURSOR(resourceDBp);
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 1) == 0) 
             cnt++;
@@ -1910,6 +1967,7 @@ RTNode* db_get_all_ae() {
         return NULL;
     }
 
+    dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -1924,11 +1982,11 @@ RTNode* db_get_all_ae() {
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }      
-            free(ae);
+            free_ae(ae);
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -1936,8 +1994,8 @@ RTNode* db_get_all_ae() {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);    
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);    
     return head;
 }
 
@@ -1946,14 +2004,14 @@ RTNode* db_get_all_cnt() {
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "3-";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -1961,7 +2019,7 @@ RTNode* db_get_all_cnt() {
 
     int cnt = 0;
     DBC* dbcp0;
-    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    dbcp0 = DB_GET_CURSOR(resourceDBp);
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0) 
             cnt++;
@@ -1972,6 +2030,7 @@ RTNode* db_get_all_cnt() {
         logger("DB", LOG_LEVEL_DEBUG, "CNT does not exist");
         return NULL;
     }
+    dbcp0->close(dbcp0);
 
     RTNode* head = NULL, *rtnode = NULL;
 
@@ -1986,11 +2045,11 @@ RTNode* db_get_all_cnt() {
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
-            free(cnt_);
+            free_cnt(cnt_);
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -1998,8 +2057,8 @@ RTNode* db_get_all_cnt() {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);    
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);    
     return head;
 }
 
@@ -2007,29 +2066,31 @@ RTNode* db_get_all_sub(){
     logger("DB", LOG_LEVEL_DEBUG, "Call get_all_sub");
     char* database = "SUB.db";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
     /* Open the database. */
-    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        fprintf(stderr,
-            "%s: db_create: %s\n", database, db_strerror(ret));
-        return 0;
-    }
+    // if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+    //     fprintf(stderr,
+    //         "%s: db_create: %s\n", database, db_strerror(ret));
+    //     return 0;
+    // }
 
-    ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", database);
-        exit(1);
-    }
+    // ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
+    // if (ret) {
+    //     dbp->err(dbp, ret, "%s", database);
+    //     exit(1);
+    // }
 
-    /* Acquire a cursor for the database. */
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
+    // /* Acquire a cursor for the database. */
+    // if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+    //     dbp->err(dbp, ret, "DB->cursor");
+    //     exit(1);
+    // }
+
+    dbcp = DB_GET_CURSOR(subDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -2040,10 +2101,11 @@ RTNode* db_get_all_sub(){
     int cnt_sub = 0;
 
     DBC* dbcp0;
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        exit(1);
-    }
+    // if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
+    //     dbp->err(dbp, ret, "DB->cursor");
+    //     exit(1);
+    // }
+    dbcp0 = DB_GET_CURSOR(subDBp);
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         cnt++;
     }
@@ -2051,6 +2113,7 @@ RTNode* db_get_all_sub(){
         logger("DB", LOG_LEVEL_DEBUG, "SUB does not exist");
         return NULL;
     }
+    dbcp0->close(dbcp0);
 
     int struct_size = 10;
     cnt = cnt / struct_size;
@@ -2116,13 +2179,12 @@ RTNode* db_get_all_sub(){
     }
 
     node->sibling_left->sibling_right = NULL;
-    free(node);
+    free_rtnode(node);
     node = NULL;
 
     /* DB close */
-    dbcp->close(dbcp0);
     dbcp->close(dbcp);
-    dbp->close(dbp, 0);
+    // dbp->close(dbp, 0);
     fprintf(stderr,"\n");
     return head;
 }
@@ -2131,14 +2193,14 @@ RTNode* db_get_all_acp() {
     char* DATABASE = "ACP.db";
     const char* TYPE = "1-";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(acpDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -2146,7 +2208,7 @@ RTNode* db_get_all_acp() {
 
     int acp = 0;
     DBC* dbcp0;
-    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    dbcp0 = DB_GET_CURSOR(acpDBp);
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0) 
             acp++;
@@ -2157,7 +2219,7 @@ RTNode* db_get_all_acp() {
         logger("DB", LOG_LEVEL_DEBUG, "ACP does not exist");
         return NULL;
     }
-
+    dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
@@ -2171,11 +2233,11 @@ RTNode* db_get_all_acp() {
                 rtnode->sibling_right->sibling_left = rtnode;
                 rtnode = rtnode->sibling_right;
             }     
-            free(acp);
+            free_acp(acp);
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        acpDBp->err(acpDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
@@ -2183,8 +2245,8 @@ RTNode* db_get_all_acp() {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);    
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);    
     return head;
 }
 
@@ -2194,14 +2256,14 @@ RTNode* db_get_all_grp(){
     char* DATABASE = "GROUP.db";
     const char* TYPE = "9-";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(grpDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -2209,7 +2271,7 @@ RTNode* db_get_all_grp(){
 
     int grp = 0;
     DBC* dbcp0;
-    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    dbcp0 = DB_GET_CURSOR(grpDBp);
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0) 
             grp++;
@@ -2220,7 +2282,7 @@ RTNode* db_get_all_grp(){
         logger("DB", LOG_LEVEL_DEBUG, "GROUP does not exist");
         return NULL;
     }
-
+    dbcp0->close(dbcp0);
     RTNode* head = NULL;
     RTNode* rtnode = NULL;
 
@@ -2240,15 +2302,15 @@ RTNode* db_get_all_grp(){
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        grpDBp->err(grpDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbp != NULL)
-        dbp->close(dbp, 0);    
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0);    
 
     return head;
 }
@@ -2257,14 +2319,14 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     char* DATABASE = "RESOURCE.db";
     const char* TYPE = "4-";
 
-    DB* dbp;
+    
     DBC* dbcp;
     DBT key, data;
     int ret;
 
-    dbp = DB_CREATE_(dbp);
-    dbp = DB_OPEN_(dbp,DATABASE);
-    dbcp = DB_GET_CURSOR(dbp,dbcp);
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -2275,7 +2337,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     int* arr = NULL;
 
     DBC* dbcp0;
-    dbcp0 = DB_GET_CURSOR(dbp,dbcp0);
+    dbcp0 = DB_GET_CURSOR(resourceDBp);
 
     while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
         // find CIN
@@ -2284,7 +2346,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
             //find pi
             if(strncmp(pi, cin->pi, strlen(pi)) == 0)
                 cnt++;
-            free(cin);
+            free_cin(cin);
         }
     }
     //fprintf(stderr, "<%d>\n",cnt);
@@ -2293,8 +2355,12 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
         //logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
         return NULL;
     }
+
+    if (dbcp0 != NULL)
+        dbcp0->close(dbcp0); 
+        
     RTNode* head = NULL, *rtnode;
-    
+    dbcp = DB_GET_CURSOR(resourceDBp);
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         //find CIN
         if (strncmp(key.data, TYPE , 2) == 0){
@@ -2311,11 +2377,11 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
 
                 }
             }
-            free(cin);
+            free_cin(cin);
         }
     }
     if (ret != DB_NOTFOUND) {
-        dbp->err(dbp, ret, "DBcursor->get");
+        resourceDBp->err(resourceDBp, ret, "DBcursor->get");
         fprintf(stderr, "Cursor ERROR\n");
         return NULL;
     }    
@@ -2323,10 +2389,9 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    if (dbcp != NULL)
-        dbcp->close(dbcp0);          
-    if (dbp != NULL)
-        dbp->close(dbp, 0); 
+         
+    // if (dbp != NULL)
+    //     dbp->close(dbp, 0); 
 
     return head;
 }

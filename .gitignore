@@ -1,3 +1,4 @@
 *.o
 pico/server
-pico/RESOURCE.db
+pico/*.db
+pico/.gdb_history

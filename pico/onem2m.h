@@ -130,6 +130,7 @@ typedef struct {
 	char *lt;
 	char *et;
 	char *acpi;
+	char *macp;
 	
 	ResourceType mt;
 	int mnm;

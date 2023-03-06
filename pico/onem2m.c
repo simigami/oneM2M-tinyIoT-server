@@ -1045,6 +1045,8 @@ void free_cnt(CNT *cnt) {
 	if(cnt->rn) free(cnt->rn);
 	if(cnt->ri) free(cnt->ri);
 	if(cnt->pi) free(cnt->pi);
+	if(cnt->acpi) free(cnt->acpi);
+	if(cnt->lbl) free(cnt->lbl);
 	free(cnt); cnt = NULL;
 }
 
@@ -1086,6 +1088,7 @@ void free_acp(ACP* acp) {
 }
 
 void free_grp(GRP *grp) {
+	if(!grp) return;
 	if(grp->rn) free(grp->rn);
 	if(grp->ri) free(grp->ri);
 	if(grp->ct) free(grp->ct);
@@ -1097,9 +1100,10 @@ void free_grp(GRP *grp) {
 	
 	if(grp->mid){
 		for(int i = 0 ; i < grp->cnm ; i++){
-			if(grp->mid[i])
+			if(grp->mid[i]){
 				free(grp->mid[i]);
-			grp->mid[i] = NULL;
+				grp->mid[i] = NULL;
+			}
 		}
 		free(grp->mid); 
 		grp->mid = NULL;
@@ -1124,8 +1128,9 @@ void free_rtnode(RTNode *rtnode) {
 }
 
 void free_rtnode_list(RTNode *rtnode) {
+	RTNode *right = NULL;
 	while(rtnode) {
-		RTNode *right = rtnode->sibling_right;
+		right = rtnode->sibling_right;
 		free_rtnode(rtnode);
 		rtnode = right;
 	}
@@ -1344,6 +1349,7 @@ void init_grp(GRP *grp, char *pi){
 }
 
 int set_grp_update(cJSON *m2m_grp, GRP* after){
+	if(!after) return RSC_BAD_REQUEST;
 	cJSON *acpi = cJSON_GetObjectItem(m2m_grp, "acpi");
 	cJSON *et = cJSON_GetObjectItem(m2m_grp, "et");
 	cJSON *mt = cJSON_GetObjectItem(m2m_grp, "mt");
@@ -1380,7 +1386,7 @@ int set_grp_update(cJSON *m2m_grp, GRP* after){
 
 	if(mid){
 		size_t mid_size = cJSON_GetArraySize(mid);
-		if(mid_size > after->mnm) return -1;
+		if(mid_size > after->mnm) return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
 		new_cnm = mid_size;
 		int midx = 0;
 		for(int i = 0 ; i < after->mnm ; i++){ //re initialize mid
@@ -1439,6 +1445,7 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		after = NULL;
 		return o2pt->rsc;
 	}
+	after->mtv = false;
 	if( (rsc = validate_grp(after))  >= 4000){
 		o2pt->rsc = rsc;
 		return rsc;
@@ -1460,13 +1467,12 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	int e = 1;
 	int rsc = 0;
 	if( parent_rtnode->ty != RT_AE && parent_rtnode->ty != RT_CSE ) {
-		//child_type_error(o2pt);
-		return RSC_INVALID_CHILD_RESOURCETYPE;
+		return o2pt->rsc = RSC_INVALID_CHILD_RESOURCETYPE;
 	}
 
 	GRP *grp = (GRP *)calloc(1, sizeof(GRP));
-	o2pt->rsc = rsc = cjson_to_grp(o2pt->cjson_pc, grp); // TODO Validation(mid dup chk etc.)
-	if(rsc >= 5000 && rsc <= 7000){
+	o2pt->rsc = rsc = cjson_to_grp(o2pt->cjson_pc, grp); 
+	if(rsc >= 4000){
 		free_grp(grp);
 		grp = NULL;
 		o2pt->rsc = rsc;
@@ -1486,16 +1492,17 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 
 	int result = db_store_grp(grp);
 	if(result != 1){
-		db_store_fail(o2pt); free_grp(grp); grp = NULL;
+		db_store_fail(o2pt); 
+		free_grp(grp); 
+		grp = NULL;
 		return RSC_INTERNAL_SERVER_ERROR;
 	}
 
 	RTNode *child_rtnode = create_rtnode(grp, RT_GRP);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
+
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = grp_to_json(grp);
-
-	//respond_to_client(o2pt, 201);
 
 	free_grp(grp); grp = NULL;
 	return rsc;

@@ -145,6 +145,7 @@ RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 		RTNode *cin = head;
 
 		if(cin) {
+			logger("UTIL", LOG_LEVEL_DEBUG, "ADF");
 			if(flag == 1) {
 				head = head->sibling_right;
 				cin->sibling_right = NULL;			
@@ -462,13 +463,14 @@ void init_server() {
 	
 	CSE *cse;
 
-	if(access("./RESOURCE.db", 0) == -1) {
-		cse = (CSE*)malloc(sizeof(CSE));
+	cse = db_get_cse(CSE_BASE_RI);
+
+	if(!cse){
+		cse = calloc(1, sizeof(CSE));
 		init_cse(cse);
 		db_store_cse(cse);
-	} else {
-		cse = db_get_cse(CSE_BASE_RI);
 	}
+
 	
 	rt->cb = create_rtnode(cse, RT_CSE);
 	free_cse(cse); cse = NULL;
@@ -931,6 +933,7 @@ bool endswith(char *str, char *match){
 }
 
 int validate_grp(GRP *grp){
+	logger("UTIL", LOG_LEVEL_DEBUG, "Validating GRP");
 	int rsc = 0;
 	bool hasFopt = false;
 	bool isLocalResource = true;
@@ -939,13 +942,9 @@ int validate_grp(GRP *grp){
 	char *tStr = NULL;
 
 	RTNode *rt_node;
+	GRP *pGrp;
 
 	if(grp->mtv) return 1;
-	if(grp->mt == RT_MIXED) {
-		grp->mtv = true;
-		return 1;
-	}
-
 
 	for(int i = 0 ; i < grp->mnm; i++){
 		mid = grp->mid[i];
@@ -955,6 +954,7 @@ int validate_grp(GRP *grp){
 		isLocalResource = true;
 		if(strlen(mid) >= 2 && mid[0] == '/' && mid[1] != '/'){
 			tStr = strdup(mid);
+			logger("util-t", LOG_LEVEL_DEBUG, "%s",tStr);
 			strtok(tStr, "/");
 			p = strtok(NULL, "/");
 			if( strcmp(p, CSE_BASE_NAME) != 0){
@@ -974,21 +974,32 @@ int validate_grp(GRP *grp){
 			logger("util-t", LOG_LEVEL_DEBUG, "%s",tStr);
 
 			if((rt_node = find_rtnode_by_uri(rt->cb, tStr))){
-				if(rt_node->ty != grp->mt)
+				if(grp->mt != 0 && rt_node->ty != grp->mt)
 					if(handle_csy(grp, i)) return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
 			}else{
+				logger("UTIL", LOG_LEVEL_DEBUG, "GRP member %s not present", tStr);
 				if(handle_csy(grp, i)) return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
 			}
-			// if(rt_node->ty == RT_GRP){
-			// if((rsc = validate_grp(db_get_grp(rtnode->ri))) >= 4000 )
-			// 	handle_csy
-			// }
+
+			if(rt_node && rt_node->ty == RT_GRP){
+				pGrp = db_get_grp(rt_node->ri);
+				if((rsc = validate_grp(pGrp)) >= 4000 ){
+					free_grp(pGrp);
+					if(handle_csy(grp, i)) return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
+				}
+				free_grp(pGrp);
+			}
+
+			free(tStr);
+			tStr = NULL;
 		}else{
+			logger("util-t", LOG_LEVEL_DEBUG, "~!!!!");
 			return RSC_NOT_IMPLEMENTED;
 		}
 
 
 	}
+
 	grp->mtv = true;
 	return RSC_OK;
 }
@@ -1000,6 +1011,7 @@ int handle_csy(GRP *grp, int i){
 			grp->cnm--;
 			break;
 		case CSY_ABANDON_GROUP:
+			free_grp(grp);
 			return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
 
 		case CSY_SET_MIXED:
@@ -1021,13 +1033,14 @@ bool isMinDup(char **mid, int idx, char *new_mid){
 }
 
 void remove_mid(char **mid, int idx, int cnm){
-	
+	char *del = mid[idx];
 	for(int i = idx ; i < cnm-1; i++){
 		mid[i] = mid[i+1];
 	}
-	if(mid[cnm]) free(mid[cnm]);
-	mid[cnm] = NULL;
-	free(mid[idx]);
+	if(mid[cnm-1]) free(mid[cnm-1]);
+	mid[cnm-1] = NULL;
+	if(idx != cnm-1) free(del);
+	del = NULL;
 }
 
 int rsc_to_http_status(int rsc){
@@ -1112,4 +1125,16 @@ void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src){
 	(*dest)->prot = src->prot;
 	(*dest)->rsc = src->rsc;
 
+}
+
+
+void free_all_resource(RTNode *rtnode){
+	RTNode *del;
+	while(rtnode) {
+		del = rtnode;
+		if(rtnode->child) free_all_resource(rtnode->child);
+		rtnode = rtnode->sibling_right;
+		free_rtnode(del);
+		del = NULL;
+	}
 }
