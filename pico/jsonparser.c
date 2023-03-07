@@ -262,8 +262,8 @@ CIN* cjson_to_cin(cJSON *cjson) {
 	return cin;
 }
 
-Sub* cjson_to_sub(cJSON *cjson) {
-	Sub *sub = (Sub *)calloc(1,sizeof(Sub));
+SUB* cjson_to_sub(cJSON *cjson) {
+	SUB *sub = (SUB *)calloc(1,sizeof(SUB));
 
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
@@ -611,7 +611,7 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 }
 
 
-char* node_to_json(RTNode *node) {
+char* rtnode_to_json(RTNode *rtnode) {
 	char *json = NULL;
 
 	cJSON *obj = NULL;
@@ -619,10 +619,10 @@ char* node_to_json(RTNode *node) {
 
 	/* Our "obj" item: */
 	obj = cJSON_CreateObject();
-	cJSON_AddStringToObject(obj, "ri", node->ri);
-	cJSON_AddStringToObject(obj, "rn", node->rn);
-	cJSON_AddStringToObject(obj, "pi", node->pi);
-	cJSON_AddNumberToObject(obj, "ty", node->ty);
+	cJSON_AddStringToObject(obj, "ri", get_ri_rtnode(rtnode));
+	cJSON_AddStringToObject(obj, "rn", get_rn_rtnode(rtnode));
+	cJSON_AddStringToObject(obj, "pi", get_pi_rtnode(rtnode));
+	cJSON_AddNumberToObject(obj, "ty", rtnode->ty);
 
 	child = cJSON_CreateArray();
 	cJSON_AddItemToObject(obj, "children", child);
@@ -808,7 +808,7 @@ char* cin_to_json(CIN* cin_object) {
 	return json;
 }
 
-char* sub_to_json(Sub *sub_object) {
+char* sub_to_json(SUB *sub_object) {
 	char *json = NULL;
 
 	cJSON *root = NULL;
