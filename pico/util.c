@@ -103,7 +103,7 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 	for(int i=0; i<=index; i++) {
 		while(rtnode) {
-			if(!strcmp(rtnode->rn, uri_array[i])) break;
+			if(!strcmp(get_rn_rtnode(rtnode), uri_array[i])) break;
 			rtnode = rtnode->sibling_right;
 		}
 		if(i == index-1) parent_rtnode = rtnode;
@@ -115,11 +115,10 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 	if(parent_rtnode) {
 		CIN *cin = db_get_cin(uri_array[index]);
 		if(cin) {
-			if(!strcmp(cin->pi, parent_rtnode->ri)) {
+			if(!strcmp(cin->pi, get_ri_rtnode(parent_rtnode))) {
 				rtnode = create_rtnode(cin, RT_CIN);
 				rtnode->parent = parent_rtnode;
 			}
-			free_cin(cin);
 		}
 	}
 
@@ -141,7 +140,7 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 	if(rtnode->ty == RT_CNT) {
-		RTNode *head = db_get_cin_rtnode_list_by_pi(rtnode->ri);
+		RTNode *head = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(rtnode));
 		RTNode *cin = head;
 
 		if(cin) {
@@ -184,7 +183,7 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 	RTNode *node = parent->child;
 	child->parent = parent;
 
-	logger("O2M", LOG_LEVEL_DEBUG, "Add Resource Tree Node [Parent-ID] : %s, [Child-ID] : %s",parent->ri, child->ri);
+	logger("O2M", LOG_LEVEL_DEBUG, "Add Resource Tree Node [Parent-ID] : %s, [Child-ID] : %s",get_ri_rtnode(parent), get_ri_rtnode(child));
 	
 	if(!node) {
 		parent->child = child;
@@ -207,8 +206,6 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 			child->sibling_left = node;
 		}
 	}
-	
-	
 	
 	return 1;
 }
@@ -344,8 +341,8 @@ void delete_cin_under_cnt_mni_mbs(CNT *cnt) {
 	while((cnt->mni >= 0 && cnt->cni > cnt->mni) || (cnt->mbs >= 0 && cnt->cbs > cnt->mbs)) {
 		if(head) {
 			right = head->sibling_right;
-			db_delete_onem2m_resource(head->ri);
-			cnt->cbs -= head->cs;
+			db_delete_onem2m_resource(get_ri_rtnode(head));
+			cnt->cbs -= ((CIN *)head->obj)->cs;
 			cnt->cni--;
 			free_rtnode(head);
 			head = right;
@@ -361,7 +358,6 @@ void too_large_content_size_error(oneM2MPrimitive *o2pt) {
 	logger("O2M", LOG_LEVEL_ERROR, "Too large content size");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"too large content size\"}");
 	o2pt->rsc = RSC_NOT_ACCEPTABLE;
-	//respond_to_client(o2pt, 400);
 }
 
 int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
@@ -371,7 +367,7 @@ int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	
 	RTNode *p = node;
 	while(p = p->parent) {
-		char *json = node_to_json(p);
+		char *json = rtnode_to_json(p);
 		strcat(viewer_data,",");
 		strcat(viewer_data,json);
 		free(json); json = NULL;
@@ -400,35 +396,34 @@ int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	fprintf(stderr,"Content-Size : %ld\n",strlen(res));
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = res;
-	//respond_to_client(o2pt, 200);
 }
 
-void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) {
-	char *json = node_to_json(node);
+void tree_viewer_data(RTNode *rtnode, char **viewer_data, int cin_size) {
+	char *json = rtnode_to_json(rtnode);
 
 	strcat(*viewer_data, ",");
 	strcat(*viewer_data, json);
 	free(json); json = NULL;
 
-	RTNode *child = node->child;
+	RTNode *child = rtnode->child;
 	while(child) {
 		tree_viewer_data(child, viewer_data, cin_size);
 		child = child->sibling_right;
 	}
 
-	if(node->ty != RT_SUB && node->ty != RT_ACP) {
-		RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(node->ri);
+	if(rtnode->ty == RT_CNT) {
+		RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(rtnode));
 
 		if(cin_list_head) cin_list_head = latest_cin_list(cin_list_head, cin_size);
 
-		RTNode *p = cin_list_head;
+		RTNode *cin = cin_list_head;
 
-		while(p) {
-			json = node_to_json(p);
+		while(cin) {
+			json = rtnode_to_json(cin);
 			strcat(*viewer_data, ",");
 			strcat(*viewer_data, json);
 			free(json); json = NULL;
-			p = p->sibling_right;		
+			cin = cin->sibling_right;		
 		}
 		free_rtnode_list(cin_list_head);
 	}
@@ -459,7 +454,7 @@ void log_runtime(double start) {
 
 
 void init_server() {
-	rt = (ResourceTree *)malloc(sizeof(rt));
+	rt = (ResourceTree *)calloc(1, sizeof(rt));
 	
 	CSE *cse;
 
@@ -471,24 +466,22 @@ void init_server() {
 		db_store_cse(cse);
 	}
 
-	
 	rt->cb = create_rtnode(cse, RT_CSE);
-	free_cse(cse); cse = NULL;
 
- 	restruct_resource_tree();
+ 	init_resource_tree();
 }
 
-void restruct_resource_tree(){
+void init_resource_tree(){
 	RTNode *rtnode_list = (RTNode *)calloc(1,sizeof(RTNode));
 	RTNode *tail = rtnode_list;
 	
 	if(access("./RESOURCE.db", 0) != -1) {
-		RTNode* ae_list = db_get_all_ae();
+		RTNode* ae_list = db_get_all_ae_rtnode();
 		tail->sibling_right = ae_list;
 		if(ae_list) ae_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
 
-		RTNode* cnt_list = db_get_all_cnt();
+		RTNode* cnt_list = db_get_all_cnt_rtnode();
 		tail->sibling_right = cnt_list;
 		if(cnt_list) cnt_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
@@ -497,7 +490,7 @@ void restruct_resource_tree(){
 	}
 	
 	if(access("./SUB.db", 0) != -1) {
-		RTNode* sub_list = db_get_all_sub();
+		RTNode* sub_list = db_get_all_sub_rtnode();
 		tail->sibling_right = sub_list;
 		if(sub_list) sub_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
@@ -506,7 +499,7 @@ void restruct_resource_tree(){
 	}
 
 	if(access("./ACP.db", 0) != -1) {
-		RTNode* acp_list = db_get_all_acp();
+		RTNode* acp_list = db_get_all_acp_rtnode();
 		tail->sibling_right = acp_list;
 		if(acp_list) acp_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
@@ -515,7 +508,7 @@ void restruct_resource_tree(){
 	}
 
 	if(access("./GROUP.db", 0) != -1) {
-		RTNode* grp_list = db_get_all_grp();
+		RTNode* grp_list = db_get_all_grp_rtnode();
 		tail->sibling_right = grp_list;
 		if(grp_list) grp_list->sibling_left = tail;
 		while(tail->sibling_right) tail = tail->sibling_right;
@@ -523,21 +516,21 @@ void restruct_resource_tree(){
 		logger("MAIN", LOG_LEVEL_DEBUG, "GROUP.db does not exist");
 	}
 	
-	RTNode *prtnode = rtnode_list;
+	RTNode *temp = rtnode_list;
 	rtnode_list = rtnode_list->sibling_right;
 	if(rtnode_list) rtnode_list->sibling_left = NULL;
-	free_rtnode(prtnode);
+	free_rtnode(temp);
 	
-	if(rtnode_list) restruct_resource_tree_child(rt->cb, rtnode_list);
+	if(rtnode_list) restruct_resource_tree(rt->cb, rtnode_list);
 }
 
-RTNode* restruct_resource_tree_child(RTNode *parent_rtnode, RTNode *list) {
+RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 	RTNode *rtnode = list;
 	
 	while(rtnode) {
 		RTNode *right = rtnode->sibling_right;
 
-		if(!strcmp(parent_rtnode->ri, rtnode->pi)) {
+		if(!strcmp(get_ri_rtnode(parent_rtnode), get_ri_rtnode(rtnode))) {
 			RTNode *left = rtnode->sibling_left;
 			
 			if(!left) {
@@ -555,7 +548,7 @@ RTNode* restruct_resource_tree_child(RTNode *parent_rtnode, RTNode *list) {
 	RTNode *child = parent_rtnode->child;
 	
 	while(child) {
-		list = restruct_resource_tree_child(child, list);
+		list = restruct_resource_tree(child, list);
 		child = child->sibling_right;
 	}
 	
@@ -568,7 +561,6 @@ int check_payload_size(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Request payload too large");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload is too large\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		//respond_to_client(o2pt, 413);
 		return -1;
 	}
 	return 0;
@@ -579,7 +571,6 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		logger("UTIL", LOG_LEVEL_ERROR, "URI is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"URI is invalid\"}");
 		o2pt->rsc = RSC_NOT_FOUND;
-		//respond_to_client(o2pt, 404);
 		return -1;
 	} else {
 		return 0;
@@ -587,7 +578,8 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 }
 
 int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
-    if(!rtnode->acpi) return ALL_ACOP;
+	char *acpi = get_acpi_rtnode(rtnode);
+    if(!acpi) return ALL_ACOP;
 
 	char origin[64];
 	int acop = 0;
@@ -613,15 +605,13 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERRT_SIZE] = "\0";
 	char *acp_uri = NULL;
 
-	if(rtnode->acpi)  {
-		strcpy(arr_acpi, rtnode->acpi);
+	strcpy(arr_acpi, acpi);
 
-		acp_uri = strtok(arr_acpi, ",");
+	acp_uri = strtok(arr_acpi, ",");
 
-		while(acp_uri) { 
-			strcpy(arr_acp_uri[uri_cnt++],acp_uri);
-			acp_uri = strtok(NULL, ",");
-		}
+	while(acp_uri) { 
+		strcpy(arr_acp_uri[uri_cnt++],acp_uri);
+		acp_uri = strtok(NULL, ",");
 	}
 
 	for(int i=0; i<uri_cnt; i++) {
@@ -636,11 +626,12 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	return acop;
 }
 
-int get_acop_origin(char *origin, RTNode *acp, int flag) {
+int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 	if(!origin) return 0;
 
 	int ret_acop = 0, cnt = 0;
 	char *acor, *acop, arr_acor[1024], arr_acop[1024];
+	ACP *acp = (ACP *)acp_rtnode->obj;
 
 	if(flag) {
 		if(!acp->pvs_acor) {
@@ -685,7 +676,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		}
 	} else if(!strcmp(o2pt->fr, "CAdmin")) {
 		deny = false;
-	} else if((parent_rtnode && strcmp(o2pt->fr, parent_rtnode->ri))) {
+	} else if((parent_rtnode && strcmp(o2pt->fr, get_ri_rtnode(parent_rtnode)))) {
 		deny = true;
 	}
   
@@ -703,7 +694,6 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Originator has no privilege");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"originator has no privilege.\"}");
 		o2pt->rsc = RSC_ORIGINATOR_HAS_NO_PRIVILEGE;
-		//respond_to_client(o2pt, 403);
 		return -1;
 	}
 
@@ -731,7 +721,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	if(rn) {
 		char *resource_name = rn->valuestring;
 		while(child) {
-			if(!strcmp(child->rn, resource_name)) {
+			if(!strcmp(get_rn_rtnode(child), resource_name)) {
                 flag = true; 
                 break;
 			}
@@ -752,7 +742,6 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
         logger("UTIL", LOG_LEVEL_ERROR, "Attribute `rn` is duplicated");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
 		o2pt->rsc = RSC_CONFLICT;
-		//respond_to_client(o2pt, 209);
 		return -1;
     }
 
@@ -774,11 +763,10 @@ int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	RTNode *child = rtnode->child;
 
 	while(child) {
-		if(!strcmp(child->ri, aei)) {
+		if(!strcmp(get_ri_rtnode(child), aei)) {
 			logger("UTIL", LOG_LEVEL_ERROR, "AE-ID is duplicated");
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `aei` is duplicated\"}");
 			o2pt->rsc = RSC_ORIGINATOR_HAS_ALREADY_REGISTERD;
-			//respond_to_client(o2pt, 209);
 			return -1;
 		}
 		child = child->sibling_right;
@@ -794,7 +782,6 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Payload format is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload format is invalid\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		//respond_to_client(o2pt, 400);
 		return -1;
 	}
 	return 0;
@@ -805,7 +792,6 @@ int check_payload_empty(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Payload is empty");
 		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"payload is empty\"}");
 		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-		//respond_to_client(o2pt, 500);
 		return -1;
 	}
 	return 0;
@@ -833,7 +819,6 @@ int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty) {
 			logger("UTIL", LOG_LEVEL_ERROR, "Resource name is invalid");
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}");
 			o2pt->rsc = RSC_BAD_REQUEST;
-			//respond_to_client(o2pt, 406);
 			return -1;
 		}
 	}
@@ -850,7 +835,6 @@ int check_resource_type_equal(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type is invalid\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		//respond_to_client(o2pt, 400);
 		return -1;
 	}
 	return 0;
@@ -861,7 +845,6 @@ int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 		logger("UTIL", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type is invalid\"}");
 		o2pt->rsc = RSC_BAD_REQUEST;
-		//respond_to_client(o2pt, 400);
 		return -1;
 	}
 	return 0;
@@ -877,37 +860,31 @@ void child_type_error(oneM2MPrimitive *o2pt){
 	logger("UTIL", LOG_LEVEL_ERROR, "Child type is invalid");
 	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"child can not be created under the type of parent\"}");
 	o2pt->rsc = RSC_INVALID_CHILD_RESOURCETYPE;
-	//respond_to_client(o2pt, 403);
 }
 
 void no_mandatory_error(oneM2MPrimitive *o2pt){
 	logger("UTIL", LOG_LEVEL_ERROR, "Insufficient mandatory attribute(s)");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"insufficient mandatory attribute(s)\"}");
 	o2pt->rsc = RSC_CONTENTS_UNACCEPTABLE;
-	//respond_to_client(o2pt, 400);
 }
 
 void api_prefix_invalid(oneM2MPrimitive *o2pt) {
-	logger("UTIL", LOG_LEVEL_ERROR, "API prefix is invalid");
+	logger("UTIL", LOG_LEVEL_ERROR, "attribute `api` prefix is invalid");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `api` prefix is invalid\"}");
 	o2pt->rsc = RSC_BAD_REQUEST;
-	//respond_to_client(o2pt, 400);
 }
 
 void mni_mbs_invalid(oneM2MPrimitive *o2pt, char *attribute) {
 	logger("UTIL", LOG_LEVEL_ERROR, "attribute `%s` is invalid", attribute);
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `%s` is invalid\"}", attribute);
 	o2pt->rsc = RSC_BAD_REQUEST;
-	//respond_to_client(o2pt, 400);
 }
 
 void db_store_fail(oneM2MPrimitive *o2pt) {
 	logger("UTIL", LOG_LEVEL_ERROR, "DB store fail");
 	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
 	o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
-	//respond_to_client(o2pt, 500);
 }
-
 
 bool isUriFopt(char *str){
 	char *s;
@@ -982,7 +959,8 @@ int validate_grp(GRP *grp){
 			}
 
 			if(rt_node && rt_node->ty == RT_GRP){
-				pGrp = db_get_grp(rt_node->ri);
+				//pGrp = db_get_grp(rt_node->ri);
+				pGrp = (GRP*)rt_node->obj;
 				if((rsc = validate_grp(pGrp)) >= 4000 ){
 					free_grp(pGrp);
 					if(handle_csy(grp, i)) return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
@@ -1137,4 +1115,68 @@ void free_all_resource(RTNode *rtnode){
 		free_rtnode(del);
 		del = NULL;
 	}
+}
+
+char *get_pi_rtnode(RTNode *rtnode) {
+	char *pi = NULL;
+	
+	switch(rtnode->ty) {
+		case RT_CSE: pi = ((CSE *)rtnode->obj)->pi; break;
+		case RT_AE: pi = ((AE *)rtnode->obj)->pi; break;
+		case RT_CNT: pi = ((CNT *)rtnode->obj)->pi; break;
+		case RT_CIN: pi = ((CIN *)rtnode->obj)->pi; break;
+		case RT_SUB: pi = ((SUB *)rtnode->obj)->pi; break;
+		case RT_ACP: pi = ((ACP *)rtnode->obj)->pi; break;
+		case RT_GRP: pi = ((GRP *)rtnode->obj)->pi; break;
+	}
+
+	return pi;
+}
+
+char *get_ri_rtnode(RTNode *rtnode) {
+	char *ri = NULL;
+	
+	switch(rtnode->ty) {
+		case RT_CSE: ri = ((CSE *)rtnode->obj)->ri; break;
+		case RT_AE: ri = ((AE *)rtnode->obj)->ri; break;
+		case RT_CNT: ri = ((CNT *)rtnode->obj)->ri; break;
+		case RT_CIN: ri = ((CIN *)rtnode->obj)->ri; break;
+		case RT_SUB: ri = ((SUB *)rtnode->obj)->ri; break;
+		case RT_ACP: ri = ((ACP *)rtnode->obj)->ri; break;
+		case RT_GRP: ri = ((GRP *)rtnode->obj)->ri; break;
+	}
+
+	return ri;
+}
+
+char *get_rn_rtnode(RTNode *rtnode) {
+	char *rn = NULL;
+	
+	switch(rtnode->ty) {
+		case RT_CSE: rn = ((CSE *)rtnode->obj)->rn; break;
+		case RT_AE: rn = ((AE *)rtnode->obj)->rn; break;
+		case RT_CNT: rn = ((CNT *)rtnode->obj)->rn; break;
+		case RT_CIN: rn = ((CIN *)rtnode->obj)->rn; break;
+		case RT_SUB: rn = ((SUB *)rtnode->obj)->rn; break;
+		case RT_ACP: rn = ((ACP *)rtnode->obj)->rn; break;
+		case RT_GRP: rn = ((GRP *)rtnode->obj)->rn; break;
+	}
+
+	return rn;
+}
+
+char *get_acpi_rtnode(RTNode *rtnode) {
+	char *acpi = NULL;
+	
+	switch(rtnode->ty) {
+		//case RT_CSE: acpi = ((CSE *)rtnode->obj)->acpi; break;
+		case RT_AE: acpi = ((AE *)rtnode->obj)->acpi; break;
+		case RT_CNT: acpi = ((CNT *)rtnode->obj)->acpi; break;
+		// case RT_CIN: acpi = ((CIN *)rtnode->obj)->acpi; break;
+		// case RT_SUB: acpi = ((SUB *)rtnode->obj)->acpi; break;
+		// case RT_ACP: acpi = ((ACP *)rtnode->obj)->acpi; break;
+		// case RT_GRP: acpi = ((GRP *)rtnode->obj)->acpi; break;
+	}
+
+	return acpi;
 }

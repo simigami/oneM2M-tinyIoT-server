@@ -77,7 +77,6 @@ void route(oneM2MPrimitive *o2pt) {
 		}
 	}
 
-	
 	respond_to_client(o2pt, rsc_to_http_status(rsc));
 	log_runtime(start);
 }
@@ -163,7 +162,6 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		logger("MAIN", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type error\"}");
 		rsc = o2pt->rsc = RSC_BAD_REQUEST;
-		//respond_to_client(o2pt, 400);
 	}	
 	return rsc;
 }
@@ -272,7 +270,7 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 
 /*
 void update_sub(RTNode *pnode) {
-	Sub* after = db_get_sub(pnode->ri);
+	SUB* after = db_get_sub(pnode->ri);
 	int result;
 	
 	set_sub_update(after);
@@ -318,7 +316,7 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	logger("MAIN", LOG_LEVEL_DEBUG, "handle fopt");
 
 
-	grp = db_get_grp(parent_rtnode->ri);
+	grp = db_get_grp(get_ri_rtnode(parent_rtnode));
 	if(!grp){
 		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
 		return RSC_INTERNAL_SERVER_ERROR;
@@ -351,7 +349,7 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		
 		target_rtnode = parse_uri(req_o2pt, rt->cb);
 		if(target_rtnode && target_rtnode->ty == RT_AE){
-			req_o2pt->fr = strdup(target_rtnode->ri);
+			req_o2pt->fr = strdup(get_ri_rtnode(target_rtnode));
 		}
 		
 		if(target_rtnode){
