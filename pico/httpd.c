@@ -248,7 +248,11 @@ Operation http_parse_operation(){
 
 void handle_http_request() {
 	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+    cJSON *fcjson = NULL;
 	char *header = NULL;
+
+    
+
 	if(payload) {
 		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
 		strcpy(o2pt->pc, payload);
@@ -278,6 +282,25 @@ void handle_http_request() {
 	o2pt->op = http_parse_operation();
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
 	o2pt->prot = PROT_HTTP;
+
+    if(qs && strlen(qs) > 0){
+        fcjson = qs_to_json(qs);
+        if(!(o2pt->fc = parseFilterCriteria(fcjson))){
+            if(o2pt->pc)
+                free(o2pt->pc);
+            o2pt->pc = strdup("{\"m2m:dbg\": \"Invalid FilterCriteria\"}");
+            o2pt->rsc = RSC_BAD_REQUEST;
+            http_respond_to_client(o2pt, 400);
+            cJSON_Delete(fcjson);
+            free_o2pt(o2pt);
+            return;
+        }
+
+        if(o2pt->fc->fu == FU_DISCOVERY_CRITERIA){
+            o2pt->op = OP_DISCOVERY;
+        }
+        cJSON_Delete(fcjson);
+    }
 
 	route(o2pt);
     free_o2pt(o2pt);

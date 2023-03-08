@@ -3,7 +3,6 @@
  
 #include "onem2mTypes.h"
 #include "cJSON.h"
-//#include "onem2m.h"
 
 typedef enum {
     FU_DISCOVERY_CRITERIA          = 1,
@@ -14,9 +13,9 @@ typedef enum {
 
 
 typedef enum{
-    AND = 1,    // DEFAULT
-    OR  = 2,
-    XOR = 3
+    FO_AND = 1,    // DEFAULT
+    FO_OR  = 2,
+    FO_XOR = 3
 } FilterOperation;
 
 
@@ -65,8 +64,8 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson);
 void free_fc(FilterCriteria *fc);
 
 /* check resource is apt to filter criteria */
-
 bool FC_isaptTy(int *fcTy, int tycnt, int ty);
-bool FC_isAptCra(char* fcCra, char* cra);
+bool FC_isAptCra(char* fcCra, void *obj, ResourceType ty);
+
 
 #endif

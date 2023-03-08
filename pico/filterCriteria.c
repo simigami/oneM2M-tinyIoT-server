@@ -108,36 +108,36 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
         int ty_len = cJSON_GetArraySize(pjson);
         fc->ty = calloc(sizeof(ResourceType), ty_len);
         for(int i = 0 ; i < ty_len ; i++){
-            fc->ty[i] = getNumberofJsonValue(cJSON_GetArrayItem(pjson, i));
+            fc->ty[i] = get_number_from_cjson(cJSON_GetArrayItem(pjson, i));
         }
         fc->tycnt = ty_len;
     }else{
         fc->tycnt = 1;
         fc->ty = calloc(sizeof(ResourceType), 1);
-        fc->ty[0] = getNumberofJsonValue(pjson);
+        fc->ty[0] = get_number_from_cjson(pjson);
     }
 
     
 
     pjson = cJSON_GetObjectItem(fcjson, "chty");
     if(pjson){
-        fc->chty = getNumberofJsonValue(pjson);
+        fc->chty = get_number_from_cjson(pjson);
     }
 
     pjson = cJSON_GetObjectItem(fcjson, "pty");
     if(pjson){
-        fc->pty = getNumberofJsonValue(pjson);
+        fc->pty = get_number_from_cjson(pjson);
     }
 
     pjson = cJSON_GetObjectItem(fcjson, "sza");
     if(pjson){
-        fc->sza = getNumberofJsonValue(pjson);
+        fc->sza = get_number_from_cjson(pjson);
     }
  
 
     pjson = cJSON_GetObjectItem(fcjson, "szb");
     if(pjson){
-        fc->szb = getNumberofJsonValue(pjson);
+        fc->szb = get_number_from_cjson(pjson);
 
     }
 
@@ -145,12 +145,12 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
 
     pjson = cJSON_GetObjectItem(fcjson, "fu");
     if(pjson){
-        fc->fu = getNumberofJsonValue(pjson);
+        fc->fu = get_number_from_cjson(pjson);
     }
 
     pjson = cJSON_GetObjectItem(fcjson, "lim");
     if(pjson){
-        fc->lim = getNumberofJsonValue(pjson);
+        fc->lim = get_number_from_cjson(pjson);
     }
 
     
@@ -161,20 +161,7 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
     return fc;
 }
 
-bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
-    int flag = 0;
-    if(fc->tycnt){
-        if(!FC_isaptTy(fc->ty, fc->tycnt, rtnode->ty)) 
-            return false;
-    }
 
-    if(fc->cra){
-        if(!FC_isAptCra(fc->cra, rtnode->ct)) 
-            return false;
-    }
-
-    return true;
-}
 
 void free_fc(FilterCriteria *fc){
     if(!fc) return;
@@ -228,7 +215,44 @@ bool FC_isaptTy(int *fcTy, int tycnt, int ty){
     return true;
 }
 
-bool FC_isAptCra(char* fcCra, char* cra){
+bool FC_isAptCra(char* fcCra, void *obj, ResourceType ty){
+
+    char *cra = NULL;
+    switch (ty)
+    {
+        case RT_CSE:
+            cra = ((CSE *) obj)->ct;
+            break;
+        
+        case RT_AE:
+            cra = ((AE *) obj)->ct;
+            break;
+
+        case RT_CNT:
+            cra = ((CNT *) obj)->ct;
+            break;
+
+        case RT_CIN:
+            cra = ((CIN *) obj)->ct;
+            break;
+
+        case RT_ACP:
+            cra = ((ACP *) obj)->ct;
+            break;
+        
+        case RT_GRP:
+            cra = ((GRP *) obj)->ct;
+            break;
+
+        case RT_SUB:
+            cra = ((SUB *) obj)->ct;
+            break;
+        
+        default:
+            break;
+    }
+
+    if(!cra) return false;
     if(strcmp(fcCra, cra) < 0) return false;
 
     return true;

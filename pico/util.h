@@ -1,6 +1,7 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 #include "onem2mTypes.h"
+#include "onem2m.h"
 #include "cJSON.h"
 
 void init_server();
@@ -81,6 +82,8 @@ int rsc_to_http_status(int rsc);
 cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
 void remove_mid(char **mid, int idx, int cnm);
 int handle_csy(GRP *grp, int i);
-
-
+int get_number_from_cjson(cJSON *json);
+cJSON *qs_to_json(char* qs);
+cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo);
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc);
 #endif

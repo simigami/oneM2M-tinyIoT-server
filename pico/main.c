@@ -20,7 +20,6 @@
 #include "mqttClient.h"
 
 ResourceTree *rt;
-extern void *mqtt_serve();
 void stop_server(int sig);
 int terminate = 0;
 #ifdef ENABLE_MQTT
@@ -104,7 +103,9 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		//case OP_OPTIONS:
 			//respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}", "2000");
 			//break;
-		
+		case OP_DISCOVERY:
+			rsc = discover_onem2m_resource(o2pt, target_rtnode); break;
+
 		default:
 			handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "{\"m2m:dbg\": \"internal server error\"}");
 			// logger("MAIN", LOG_LEVEL_ERROR, "Internal server error");
@@ -222,6 +223,10 @@ int retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	return rsc;
 }
 
+/**
+ * Handles Updates onem2m resource
+ * Update resource based on its Resource Type
+*/
 int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int rsc = 0;
 	o2pt->ty = target_rtnode->ty;
@@ -382,6 +387,30 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	req_o2pt = NULL;
 	free_grp(grp);
 	return RSC_OK;
+}
+/**
+ * Discover Resources based on Filter Criteria
+*/
+int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	logger("MAIN", LOG_LEVEL_DEBUG, "Discover Resource");
+	RTNode *pn = target_rtnode;
+	cJSON *root = cJSON_CreateObject();
+	cJSON *uril = NULL;
+
+	uril = fc_scan_resource_tree(target_rtnode, o2pt->fc);
+	if(uril)
+		cJSON_AddItemToObject(root, "m2m:uril", uril);
+	else
+		cJSON_AddItemToObject(root, "m2m:uril", uril = cJSON_CreateArray());
+
+	if(o2pt->pc)
+		free(o2pt->pc);
+	o2pt->pc = cJSON_PrintUnformatted(root);
+
+	cJSON_Delete(root);
+
+	return RSC_OK;
+
 }
 
 void stop_server(int sig){

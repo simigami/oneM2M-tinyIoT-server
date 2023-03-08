@@ -1313,10 +1313,7 @@ void init_grp(GRP *grp, char *pi){
 	if(grp->csy == 0) grp->csy = CSY_ABANDON_MEMBER;
 
 
-	if(!grp->rn) {
-		grp->rn = (char *) malloc((strlen(ri) + 1) * sizeof(char));
-		strcpy(grp->rn, ri);
-	} 
+	if(!grp->rn) grp->rn = strdup(ri);
 
 	free(ct); ct = NULL;
 	free(et); et = NULL;
@@ -1428,8 +1425,12 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = grp_to_json(after);
 	o2pt->rsc = RSC_UPDATED;
+	if(target_rtnode->obj)
+		free_grp((GRP *) target_rtnode->obj);
 
-	free_grp(after); after = NULL;
+	target_rtnode->obj = after;
+
+	//free_grp(after); after = NULL;
 	return RSC_UPDATED;
 }
 
@@ -1452,10 +1453,10 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	rsc = validate_grp(grp);
 	if(rsc >= 4000){
 		logger("O2M", LOG_LEVEL_DEBUG, "Group Validation failed");
-		o2pt->rsc = rsc;
+		
 		free_grp(grp);
 		grp = NULL;
-		return rsc;
+		return o2pt->rsc = rsc;
 	}
 
 
@@ -1474,6 +1475,27 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = grp_to_json(grp);
 
-	free_grp(grp); grp = NULL;
+	//free_grp(grp); grp = NULL;
 	return rsc;
+}
+
+
+bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
+    void *obj;
+    int flag = 0;
+    if(!rtnode || !fc) return false;
+
+    if(fc->tycnt > 0){
+        if(!FC_isaptTy(fc->ty, fc->tycnt, rtnode->ty)){
+			logger("O2M", LOG_LEVEL_DEBUG, "type not match");
+            return false;
+		}
+    }
+
+    if(fc->cra){
+        if(!FC_isAptCra(fc->cra, obj, rtnode->ty)) 
+            return false;
+    }
+
+    return true;
 }

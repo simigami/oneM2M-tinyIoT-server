@@ -173,6 +173,19 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         else o2pt->ty = atoi(pjson->valuestring);
     }
 
+    pjson = cJSON_GetObjectItem(json, "fc");
+    if(pjson){
+        if((o2pt->fc = parseFilterCriteria(pjson)) == NULL){
+            if(o2pt->pc)
+                free(o2pt->pc);
+            o2pt->pc = strdup("{\"m2m:dbg\": \"Invalid FilterCriteria\"}");
+            o2pt->rsc = RSC_BAD_REQUEST;
+            mqtt_respond_to_client(o2pt);
+            goto exit;
+
+        }
+    }
+
     /* initialize */
     o2pt->fopt = NULL;
     o2pt->isFopt = false;
@@ -193,6 +206,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     /* Free allocated memories */
     //cJSON_Delete(json);
+    exit:
     free_o2pt(o2pt);
     if(puri)
         free(puri);

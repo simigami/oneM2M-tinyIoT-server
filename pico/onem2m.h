@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "cJSON.h"
 #include "onem2mTypes.h"
+#include "filterCriteria.h"
 
 //enum
 typedef enum {
@@ -18,7 +19,8 @@ typedef enum {
 	OP_UPDATE,
 	OP_DELETE,
 	OP_VIEWER = 1000,
-	OP_OPTIONS
+	OP_OPTIONS,
+	OP_DISCOVERY
 }Operation;
 
 typedef enum {
@@ -172,6 +174,7 @@ typedef struct {
 	char *req_type;
 	bool isFopt;
 	char *fopt;
+	FilterCriteria *fc;
 }oneM2MPrimitive;
 
 //onem2m resource
@@ -251,6 +254,8 @@ void set_node_uri(RTNode* node);
 
 //etc
 int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
+
+bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2
