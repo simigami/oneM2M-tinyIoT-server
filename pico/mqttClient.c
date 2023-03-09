@@ -183,6 +183,9 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
             mqtt_respond_to_client(o2pt);
             goto exit;
 
+        }else{
+            if(o2pt->fc->fu == FU_DISCOVERY)
+                o2pt->op = OP_DISCOVERY;
         }
     }
 

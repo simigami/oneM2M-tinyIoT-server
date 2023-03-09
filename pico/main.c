@@ -75,7 +75,7 @@ void route(oneM2MPrimitive *o2pt) {
 			target_rtnode = NULL;
 		}
 	}
-
+	o2pt->rsc = rsc;
 	respond_to_client(o2pt, rsc_to_http_status(rsc));
 	log_runtime(start);
 }
@@ -393,13 +393,32 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 */
 int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	logger("MAIN", LOG_LEVEL_DEBUG, "Discover Resource");
-	RTNode *pn = target_rtnode;
+	RTNode *pn = target_rtnode->child;
 	cJSON *root = cJSON_CreateObject();
 	cJSON *uril = NULL;
+	int urilSize = 0;
 
-	uril = fc_scan_resource_tree(target_rtnode, o2pt->fc);
-	if(uril)
+	// TODO - IMPLEMENT OFFSET
+	// for(int i = 0 ; i < o2pt->fc->ofst ; i++){ 
+	// 	if(pn->child){
+	// 		pn = pn->child;
+	// 	}else{
+	// 		break;
+	// 	}
+	// }
+
+	uril = fc_scan_resource_tree(pn, o2pt->fc, 1);
+	
+	if(uril){
+		urilSize = cJSON_GetArraySize(uril);	//Todo : contentStatus(cnst) set to Partial_content, cnot too 
+		if(o2pt->fc->lim < urilSize){
+			logger("MAIN", LOG_LEVEL_DEBUG, "limit exceeded");
+			for(int i = 0 ; i < urilSize - o2pt->fc->lim; i++){
+				cJSON_DeleteItemFromArray(uril, i);
+			}
+		}
 		cJSON_AddItemToObject(root, "m2m:uril", uril);
+	}
 	else
 		cJSON_AddItemToObject(root, "m2m:uril", uril = cJSON_CreateArray());
 
@@ -409,7 +428,7 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 
 	cJSON_Delete(root);
 
-	return RSC_OK;
+	return o2pt->rsc = RSC_OK;
 
 }
 

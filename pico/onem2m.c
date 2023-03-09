@@ -375,27 +375,28 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	AE* ae = cjson_to_ae(o2pt->cjson_pc);
 	if(!ae) {
 		no_mandatory_error(o2pt);
-		return RSC_CONTENTS_UNACCEPTABLE;
+		return o2pt->rsc = RSC_CONTENTS_UNACCEPTABLE;
 	}
 	if(ae->api[0] != 'R' && ae->api[0] != 'N') {
 		free_ae(ae);
 		api_prefix_invalid(o2pt);
-		return RSC_BAD_REQUEST;
+		return o2pt->rsc = RSC_BAD_REQUEST;
 	}
 	init_ae(ae, get_ri_rtnode(parent_rtnode), o2pt->fr);
 	
 	int result = db_store_ae(ae);
 	if(result != 1) { 
 		db_store_fail(o2pt); free_ae(ae); ae = NULL;
-		return RSC_INTERNAL_SERVER_ERROR;
+		return o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
 	}
 	
 	RTNode* child_rtnode = create_rtnode(ae, RT_AE);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
-	o2pt->rsc = RSC_CREATED;
+	return o2pt->rsc = RSC_CREATED;
 	// notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	
 }
 
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -1483,19 +1484,189 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
     void *obj;
     int flag = 0;
+	RTNode *prtnode = NULL;
+	FilterOperation fo = fc->fo;
     if(!rtnode || !fc) return false;
 
-    if(fc->tycnt > 0){
-        if(!FC_isaptTy(fc->ty, fc->tycnt, rtnode->ty)){
-			logger("O2M", LOG_LEVEL_DEBUG, "type not match");
-            return false;
+
+	// check Created Time
+	logger("FC", LOG_LEVEL_DEBUG, "Checking ct");
+	if(fc->cra && fc->crb){
+		if(strcmp(fc->cra, fc->crb) >= 0 && fo == FO_AND) return false;
+	}
+    if(fc->cra){
+		if(!FC_isAptCra(fc->cra, rtnode)) {
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
 		}
     }
+	if(fc->crb){
+		if(!FC_isAptCrb(fc->crb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
 
-    if(fc->cra){
-        if(!FC_isAptCra(fc->cra, obj, rtnode->ty)) 
+	// check Last Modified
+	logger("FC", LOG_LEVEL_DEBUG, "Checking lt");
+	if(fc->ms && fc->us){
+		if(strcmp(fc->ms, fc->us) >= 0 && fo == FO_AND) return false;
+	}
+	if(fc->ms){
+		if(!FC_isAptMs(fc->ms, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	if(fc->us){
+		if(!FC_isAptUs(fc->us, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// check state tag
+	logger("FC", LOG_LEVEL_DEBUG, "Checking st");
+	if(fc->stb && fc->sts){
+		if(fc->stb >= fc->sts && fo == FO_AND) 
+			return false;
+	}
+	if(fc->stb){
+		if(!FC_isAptStb(fc->stb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	if(fc->sts){
+		if(!FC_isAptSts(fc->sts, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// check Expiration Time
+	logger("FC", LOG_LEVEL_DEBUG, "Checking et");
+	if(fc->exa){
+		if(!FC_isAptExa(fc->exa, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	
+	if(fc->exb){
+		if(!FC_isAptExb(fc->exb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// TODO - LABELS(lbl, clbl, palb)
+
+	// check TY
+	logger("FC", LOG_LEVEL_DEBUG, "Checking ty");
+    if(fc->tycnt > 0){
+        if(!FC_isAptTy(fc->ty, fc->tycnt, rtnode->ty)){
+			logger("O2M", LOG_LEVEL_DEBUG, "type not match");
             return false;
+		}else{
+			if(fo == FO_OR){
+				return true;
+			}
+		}
     }
+	// check chty
+	logger("FC", LOG_LEVEL_DEBUG, "Checking chty");
+	if(fc->chtycnt > 0){
+		int flag = 0;
+		prtnode = rtnode->child;
+		if(!prtnode){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			while(prtnode){
+				if(FC_isAptChty(fc->chty, fc->chtycnt, rtnode->parent->ty)){
+					flag = 1;
+					break;
+				}
+				prtnode = prtnode->sibling_right;
+			}
+			if(flag){
+				if(fo == FO_OR)
+					return true;
+			}else{
+				if(fo == FO_AND)
+					return false;
+			}
+		}
+		
+	}
+	// check pty
+	logger("FC", LOG_LEVEL_DEBUG, "Checking pty");
+	if(fc->ptycnt > 0){
+		if(!rtnode->parent){
+			if(fo == FO_AND)
+				return false;
+		}
+		else if(!FC_isAptChty(fc->pty, fc->ptycnt, rtnode->parent->ty)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	//check cs
+	logger("FC", LOG_LEVEL_DEBUG, "Checking cs");
+	if(fc->sza && fc->szb){
+		if(fc->sza >= fc->szb && fo == FO_AND){
+			return false;
+		}
+	}
+	if(fc->sza){
+		if(!FC_isAptSza(fc->sza, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	if(fc->szb){
+		if(!FC_isAptSzb(fc->szb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// TODO - Check Attr
 
     return true;
 }

@@ -1187,6 +1187,65 @@ char *get_acpi_rtnode(RTNode *rtnode) {
 	return acpi;
 }
 
+char *get_ct_rtnode(RTNode *rtnode){
+	char *ct = NULL;
+	switch((rtnode->ty)){
+		case RT_CSE: ct = ((CSE *)rtnode->obj)->ct; break;
+		case RT_AE: ct = ((AE *)rtnode->obj)->ct; break;
+		case RT_CNT: ct = ((CNT *)rtnode->obj)->ct; break;
+		case RT_CIN: ct = ((CIN *)rtnode->obj)->ct; break;
+		case RT_SUB: ct = ((SUB *)rtnode->obj)->ct; break;
+		case RT_ACP: ct = ((ACP *)rtnode->obj)->ct; break;
+		case RT_GRP: ct = ((GRP *)rtnode->obj)->ct; break;
+	}
+
+	return ct;
+}
+
+char *get_et_rtnode(RTNode *rtnode){
+	char *et = NULL;
+	switch((rtnode->ty)){
+		case RT_CSE: et = NULL; break;
+		case RT_AE: et = ((AE *)rtnode->obj)->et; break;
+		case RT_CNT: et = ((CNT *)rtnode->obj)->et; break;
+		case RT_CIN: et = ((CIN *)rtnode->obj)->et; break;
+		case RT_SUB: et = ((SUB *)rtnode->obj)->et; break;
+		case RT_ACP: et = ((ACP *)rtnode->obj)->et; break;
+		case RT_GRP: et = ((GRP *)rtnode->obj)->et; break;
+	}
+
+	return et;
+}
+
+char *get_lt_rtnode(RTNode *rtnode){
+	char *lt = NULL;
+	switch((rtnode->ty)){
+		case RT_CSE: lt = ((CSE *)rtnode->obj)->lt; break;
+		case RT_AE: lt = ((AE *)rtnode->obj)->lt; break;
+		case RT_CNT: lt = ((CNT *)rtnode->obj)->lt; break;
+		case RT_CIN: lt = ((CIN *)rtnode->obj)->lt; break;
+		case RT_SUB: lt = ((SUB *)rtnode->obj)->lt; break;
+		case RT_ACP: lt = ((ACP *)rtnode->obj)->lt; break;
+		case RT_GRP: lt = ((GRP *)rtnode->obj)->lt; break;
+	}
+
+	return lt;
+}
+
+int get_st_rtnode(RTNode *rtnode){
+	if(rtnode->ty != RT_CNT)
+		return -1;
+
+	return ((CNT *) rtnode->obj)->st;
+}
+
+int get_cs_rtnode(RTNode *rtnode){
+	if(rtnode->ty != RT_CIN)
+		return -1;
+
+	return ((CIN *) rtnode->obj)->cs;
+}
+
 int get_number_from_cjson(cJSON *json){
 	if(!json) return 0;
 
@@ -1247,50 +1306,6 @@ cJSON *qs_to_json(char* qs){
 	return json;
 }
 
-/**
- * Handles uril
-*/
-// cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo){
-// 	if(!new_uri) return;
-// 	if(fo == 0) fo = FO_AND;
-// 	int idx = 0;
-	
-// 	logger("UTIL", LOG_LEVEL_DEBUG, "handling uril");
-// 	if(!uril){
-// 		logger("UTIL", LOG_LEVEL_DEBUG, "uril is empty. creating new uril");
-// 		uril = cJSON_CreateArray();
-// 		cJSON_AddItemToArray(uril, cJSON_CreateString(new_uri));
-// 		logger("UTIL", LOG_LEVEL_DEBUG, "now uril size : %d", cJSON_GetArraySize(uril));
-// 		return uril;
-// 	}
-
-// 	switch(fo){
-// 		case FO_AND:	
-// 			if((idx = is_in_uril(uril, new_uri)) < 0){
-// 				cJSON_DeleteItemFromArray(uril, idx);
-// 			}
-// 			break;
-
-// 		case FO_OR:
-// 			if((idx = is_in_uril(uril, new_uri)) < 0){
-// 				cJSON_AddItemToArray(uril, cJSON_CreateString(new_uri));
-// 			}
-// 			break;
-
-// 		case FO_XOR:
-// 			if((idx = is_in_uril(uril, new_uri)) >= 0){
-// 				cJSON_DeleteItemFromArray(uril, idx);
-// 			}else{
-// 				cJSON_AddItemToArray(uril, cJSON_CreateString(new_uri));
-// 			}
-// 			break;
-		
-// 		default:
-// 			break;
-// 	}
-// 	return uril;
-
-// }
 
 int is_in_uril(cJSON *uril, char* new){
 	if(!uril) return false;
@@ -1311,33 +1326,41 @@ int is_in_uril(cJSON *uril, char* new){
 	return result;
 }
 
-cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc){
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 	
 	RTNode *prt = rtnode;
+	RTNode *trt = NULL;
 	cJSON *uril = cJSON_CreateArray();
 	cJSON *curil = NULL;
 	cJSON *pjson = NULL;
-	int hurilSize = 0;
+	char buf[512] = {0};
+	int curilSize = 0;
 
+	
 
 	while(prt){
-		if(prt->child){
-			curil = fc_scan_resource_tree(prt->child, fc);
-			if(curil){
-				hurilSize = cJSON_GetArraySize(curil);
-				for(int i = 0 ; i < hurilSize ; i++){
-					pjson = cJSON_GetArrayItem(curil, i);
-					cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
-				}
-				cJSON_Delete(curil);
-				curil = NULL;
+		logger("UTIL", LOG_LEVEL_DEBUG, "Examining %s", prt->uri);
+		if(fc->lvl - lvl > 0 && prt->child){
+			curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
+			curilSize = cJSON_GetArraySize(curil);
+			for(int i = 0 ; i < curilSize ; i++){
+				pjson = cJSON_GetArrayItem(curil, i);
+				logger("UTIL", LOG_LEVEL_DEBUG, "[child] adding %s", pjson->valuestring);
+				cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
 			}
+			cJSON_Delete(curil);
+			curil = NULL;
+			
 		}
-		logger("UTIL", LOG_LEVEL_DEBUG, "scanningRTNode %s", prt->uri);
 		if(isResourceAptFC(prt, fc)){
-			logger("UTIL", LOG_LEVEL_DEBUG, "Found apt RTNode %s", prt->uri);
-			cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
-			logger("UTIL", LOG_LEVEL_DEBUG, "now uril size : %d", cJSON_GetArraySize(uril));
+			logger("UTIL", LOG_LEVEL_DEBUG, "Valid");
+			if(fc->arp){
+				trt = find_rtnode_by_uri(prt, fc->arp);
+				cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
+			}else{
+				cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
+			}
+			
 		}
 		prt = prt->sibling_right;
 	}

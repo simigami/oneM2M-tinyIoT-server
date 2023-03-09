@@ -296,7 +296,7 @@ void handle_http_request() {
             return;
         }
 
-        if(o2pt->fc->fu == FU_DISCOVERY_CRITERIA){
+        if(o2pt->fc->fu == FU_DISCOVERY){
             o2pt->op = OP_DISCOVERY;
         }
         cJSON_Delete(fcjson);

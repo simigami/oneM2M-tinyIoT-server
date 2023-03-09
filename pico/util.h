@@ -27,6 +27,11 @@ char *get_ri_rtnode(RTNode *rtnode);
 char *get_pi_rtnode(RTNode *rtnode);
 char *get_rn_rtnode(RTNode *rtnode);
 char *get_acpi_rtnode(RTNode *rtnode);
+char *get_ct_rtnode(RTNode *rtnode);
+char *get_et_rtnode(RTNode *rtnode);
+char *get_lt_rtnode(RTNode *rtnode);
+int get_st_rtnode(RTNode *rtnode);
+int get_cs_rtnode(RTNode *rtnode);
 
 //error
 void no_mandatory_error(oneM2MPrimitive *o2pt);
@@ -85,5 +90,5 @@ int handle_csy(GRP *grp, int i);
 int get_number_from_cjson(cJSON *json);
 cJSON *qs_to_json(char* qs);
 cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo);
-cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc);
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl);
 #endif
