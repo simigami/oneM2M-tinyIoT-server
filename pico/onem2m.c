@@ -1076,6 +1076,9 @@ void free_grp(GRP *grp) {
 }
 
 void free_rtnode(RTNode *rtnode) {
+	if(rtnode->uri)
+		free(rtnode->uri);
+
 	switch(rtnode->ty) {
 		case RT_CSE:
 			free_cse((CSE *)rtnode->obj);
