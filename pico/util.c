@@ -1079,6 +1079,8 @@ void free_o2pt(oneM2MPrimitive *o2pt){
 		free(o2pt->to);
 	if(o2pt->req_type)
 		free(o2pt->req_type);
+	if(o2pt->fc)
+		free_fc(o2pt->fc);
 	if(o2pt->fopt)
 		free(o2pt->fopt);
 	if(o2pt->rvi)
@@ -1302,6 +1304,7 @@ cJSON *qs_to_json(char* qs){
 	}
 	free(temp);
 	free(buf);
+	free(qStr);
 
 	return json;
 }
@@ -1341,6 +1344,18 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 
 	while(prt){
 		logger("UTIL", LOG_LEVEL_DEBUG, "Examining %s", prt->uri);
+		if(prt->ty == RT_CNT){
+			cinrtHead = trt = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(prt));
+			while(trt){
+				trt->uri = calloc(1, strlen(prt->uri) + strlen(((CIN*)trt->obj)->rn) + 2);
+				strcpy(trt->uri, prt->uri);
+				strcat(trt->uri, "/");
+				strcat(trt->uri, ((CIN*)trt->obj)->rn);
+
+				prt->child = cinrtHead;
+				trt = trt->sibling_right;
+			}
+		}
 		if(isResourceAptFC(prt, fc)){
 			logger("UTIL", LOG_LEVEL_DEBUG, "Valid");
 			if(fc->arp){
@@ -1351,31 +1366,10 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 			}
 			
 		}
-		if(fc->lvl - lvl > 0 && (prt->child || prt->ty == RT_CNT) ){
-			if(prt->ty == RT_CNT){
-				cinrtHead = trt = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(prt));
-				while(trt){
-					trt->uri = calloc(1, strlen(prt->uri) + strlen(((CIN*)trt->obj)->rn) + 2);
-					strcpy(trt->uri, prt->uri);
-					strcat(trt->uri, "/");
-					strcat(trt->uri, ((CIN*)trt->obj)->rn);
+		if(fc->lvl - lvl > 0 && (prt->child) ){
 
-					curil = fc_scan_resource_tree(trt, fc, lvl+1);
-					curilSize = cJSON_GetArraySize(curil);
-					for(int i = 0 ; i < curilSize ; i++){
-						pjson = cJSON_GetArrayItem(curil, i);
-						logger("UTIL", LOG_LEVEL_DEBUG, "[child] adding %s", pjson->valuestring);
-						cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
-					}
-					cJSON_Delete(curil);
-					curil = NULL;
-					trt = trt->sibling_right;
-				}
-				free_rtnode_list(cinrtHead);
-				
-			}else{
-				curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
-			}
+			curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
+
 			curilSize = cJSON_GetArraySize(curil);
 			for(int i = 0 ; i < curilSize ; i++){
 				pjson = cJSON_GetArrayItem(curil, i);
@@ -1386,6 +1380,11 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 			curil = NULL;
 			
 		}
+		if(cinrtHead){
+			free_rtnode_list(cinrtHead);
+			prt->child = NULL;
+		}
+		cinrtHead = NULL;
 		prt = prt->sibling_right;
 	}
 

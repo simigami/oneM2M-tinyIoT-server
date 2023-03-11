@@ -882,7 +882,7 @@ void free_grp(GRP *grp) {
 }
 
 void free_rtnode(RTNode *rtnode) {
-	if(rtnode->uri)
+	if(rtnode->uri && rtnode->ty != RT_CSE)
 		free(rtnode->uri);
 
 	switch(rtnode->ty) {
@@ -1416,7 +1416,7 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 				return false;
 		}else{
 			while(prtnode){
-				if(FC_isAptChty(fc->chty, fc->chtycnt, rtnode->parent->ty)){
+				if(FC_isAptChty(fc->chty, fc->chtycnt, prtnode->ty)){
 					flag = 1;
 					break;
 				}
