@@ -330,7 +330,7 @@ bool FC_isAptExb(char *fcExb, RTNode *rtnode){
 }
 
 bool FC_isAptTy(int *fcTy, int tycnt, int ty){
- 
+    
     for(int i = 0 ; i < tycnt; i++){
         if(ty == fcTy[i]) return true;
     }
@@ -339,7 +339,7 @@ bool FC_isAptTy(int *fcTy, int tycnt, int ty){
 }
 
 bool FC_isAptChty(int *fcChty, int tycnt, int ty){
- 
+
     for(int i = 0 ; i < tycnt; i++){
         if(ty == fcChty[i]) return true;
     }

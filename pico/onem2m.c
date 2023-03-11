@@ -1298,7 +1298,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 
 
 	// check Created Time
-	logger("FC", LOG_LEVEL_DEBUG, "Checking ct");
 	if(fc->cra && fc->crb){
 		if(strcmp(fc->cra, fc->crb) >= 0 && fo == FO_AND) return false;
 	}
@@ -1322,7 +1321,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 	}
 
 	// check Last Modified
-	logger("FC", LOG_LEVEL_DEBUG, "Checking lt");
 	if(fc->ms && fc->us){
 		if(strcmp(fc->ms, fc->us) >= 0 && fo == FO_AND) return false;
 	}
@@ -1346,7 +1344,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 	}
 
 	// check state tag
-	logger("FC", LOG_LEVEL_DEBUG, "Checking st");
 	if(fc->stb && fc->sts){
 		if(fc->stb >= fc->sts && fo == FO_AND) 
 			return false;
@@ -1371,7 +1368,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 	}
 
 	// check Expiration Time
-	logger("FC", LOG_LEVEL_DEBUG, "Checking et");
 	if(fc->exa){
 		if(!FC_isAptExa(fc->exa, rtnode)){
 			if(fo == FO_AND)
@@ -1395,10 +1391,8 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 	// TODO - LABELS(lbl, clbl, palb)
 
 	// check TY
-	logger("FC", LOG_LEVEL_DEBUG, "Checking ty");
     if(fc->tycnt > 0){
         if(!FC_isAptTy(fc->ty, fc->tycnt, rtnode->ty)){
-			logger("O2M", LOG_LEVEL_DEBUG, "type not match");
             return false;
 		}else{
 			if(fo == FO_OR){
@@ -1407,7 +1401,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 		}
     }
 	// check chty
-	logger("FC", LOG_LEVEL_DEBUG, "Checking chty");
 	if(fc->chtycnt > 0){
 		int flag = 0;
 		prtnode = rtnode->child;
@@ -1433,7 +1426,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 		
 	}
 	// check pty
-	logger("FC", LOG_LEVEL_DEBUG, "Checking pty");
 	if(fc->ptycnt > 0){
 		if(!rtnode->parent){
 			if(fo == FO_AND)
@@ -1449,7 +1441,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 	}
 
 	//check cs
-	logger("FC", LOG_LEVEL_DEBUG, "Checking cs");
 	if(fc->sza && fc->szb){
 		if(fc->sza >= fc->szb && fo == FO_AND){
 			return false;
