@@ -8,9 +8,10 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <limits.h>
+#include <signal.h>
 #include "onem2m.h"
-#include "jsonparse.h"
-#include "berkeleyDB.h"
+#include "jsonparser.h"
+#include "dbmanager.h"
 #include "httpd.h"
 #include "cJSON.h"
 #include "util.h"
@@ -20,11 +21,20 @@
 
 ResourceTree *rt;
 extern void *mqtt_serve();
-
+void stop_server(int sig);
+int terminate = 0;
+#ifdef ENABLE_MQTT
+pthread_t mqtt;
+#endif
 
 
 int main(int c, char **v) {
-	pthread_t mqtt;
+	signal(SIGINT, stop_server);
+	
+	if(!init_dbp()){
+		logger("MAIN", LOG_LEVEL_ERROR, "DB Error");
+		return 0;
+	}
 	init_server();
 	
 	#ifdef ENABLE_MQTT
@@ -56,19 +66,18 @@ void route(oneM2MPrimitive *o2pt) {
 		return;
 	}
 
-	if(o2pt->isFopt){
+	if(o2pt->isFopt)
 		rsc = fopt_onem2m_resource(o2pt, target_rtnode);
-		if(target_rtnode && target_rtnode->ty == RT_CIN){
+	else{
+		rsc = handle_onem2m_request(o2pt, target_rtnode);
+	
+		if(o2pt->op != OP_DELETE && target_rtnode->ty == RT_CIN){
 			free_rtnode(target_rtnode);
 			target_rtnode = NULL;
 		}
-	}else{
-		rsc = handle_onem2m_request(o2pt, target_rtnode);
 	}
-	
-	respond_to_client(o2pt, rsc_to_http_status(rsc));
-	
 
+	respond_to_client(o2pt, rsc_to_http_status(rsc));
 	log_runtime(start);
 }
 
@@ -153,7 +162,6 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		logger("MAIN", LOG_LEVEL_ERROR, "Resource type is invalid");
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type error\"}");
 		rsc = o2pt->rsc = RSC_BAD_REQUEST;
-		//respond_to_client(o2pt, 400);
 	}	
 	return rsc;
 }
@@ -226,43 +234,43 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(e == -1) return o2pt->rsc;
 	
 	switch(ty) {
-	case RT_AE :
-		logger("MAIN", LOG_LEVEL_INFO, "Update AE");
-		rsc = update_ae(o2pt, target_rtnode);
-		break;
+		case RT_AE :
+			logger("MAIN", LOG_LEVEL_INFO, "Update AE");
+			rsc = update_ae(o2pt, target_rtnode);
+			break;
 
-	case RT_CNT :
-		logger("MAIN", LOG_LEVEL_INFO, "Update CNT");
-		rsc = update_cnt(o2pt, target_rtnode);
-		break;
+		case RT_CNT :
+			logger("MAIN", LOG_LEVEL_INFO, "Update CNT");
+			rsc = update_cnt(o2pt, target_rtnode);
+			break;
 
-	// case RT_SUB :
-	//	logger("MAIN", LOG_LEVEL_INFO, "Update SUB");
-	// 	update_sub(pnode);
-	// 	break;
-	
-	case RT_ACP :
-		logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
-		rsc = update_acp(o2pt, target_rtnode);
-		break;
+		// case RT_SUB :
+		//	logger("MAIN", LOG_LEVEL_INFO, "Update SUB");
+		// 	update_sub(pnode);
+		// 	break;
+		
+		case RT_ACP :
+			logger("MAIN", LOG_LEVEL_INFO, "Update ACP");
+			rsc = update_acp(o2pt, target_rtnode);
+			break;
 
-	case RT_GRP:
-		logger("MAIN", LOG_LEVEL_INFO, "Update GRP");
-		rsc = update_grp(o2pt, target_rtnode);
-		break;
+		case RT_GRP:
+			logger("MAIN", LOG_LEVEL_INFO, "Update GRP");
+			rsc = update_grp(o2pt, target_rtnode);
+			break;
 
-	default :
-		logger("MAIN", LOG_LEVEL_ERROR, "Resource type does not support Update");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"`Update` operation is unsupported\"}");
-		rsc = o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
-		//respond_to_client(o2pt, 400);
-	}
+		default :
+			logger("MAIN", LOG_LEVEL_ERROR, "Resource type does not support Update");
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"`Update` operation is unsupported\"}");
+			rsc = o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
+			//respond_to_client(o2pt, 400);
+		}
 	return rsc;
 }
 
 /*
 void update_sub(RTNode *pnode) {
-	Sub* after = db_get_sub(pnode->ri);
+	SUB* after = db_get_sub(pnode->ri);
 	int result;
 	
 	set_sub_update(after);
@@ -308,12 +316,18 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	logger("MAIN", LOG_LEVEL_DEBUG, "handle fopt");
 
 
-	grp = db_get_grp(parent_rtnode->ri);
+	grp = db_get_grp(get_ri_rtnode(parent_rtnode));
 	if(!grp){
 		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
 		return RSC_INTERNAL_SERVER_ERROR;
 	}
 	
+	if(grp->cnm == 0){
+		logger("MAIN", LOG_LEVEL_DEBUG, "No member to fanout");
+		free_grp(grp);
+		return o2pt->rsc = RSC_NO_MEMBERS;
+	}
+
 	o2ptcpy(&req_o2pt, o2pt);
 
 
@@ -322,11 +336,11 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	cJSON_AddItemToObject(agr, "m2m:rsp", rsp = cJSON_CreateArray());
 
 	for(int i = 0 ; i < grp->cnm ; i++){
-		free(req_o2pt->to);
+		if(req_o2pt->to) free(req_o2pt->to);
 		if(o2pt->fopt)
-			req_o2pt->to = malloc(strlen(grp->mid[i]) + strlen(o2pt->fopt) +1 );
+			req_o2pt->to = malloc(strlen(grp->mid[i]) + strlen(o2pt->fopt) + 1);
 		else
-			req_o2pt->to = malloc(strlen(grp->mid[i]) +1);
+			req_o2pt->to = malloc(strlen(grp->mid[i]) + 1);
 		
 		strcpy(req_o2pt->to, grp->mid[i]);
 		if(o2pt->fopt) strcat(req_o2pt->to, o2pt->fopt);
@@ -334,8 +348,8 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		req_o2pt->isFopt = false;
 		
 		target_rtnode = parse_uri(req_o2pt, rt->cb);
-		if(target_rtnode->ty == RT_AE){
-			req_o2pt->fr = strdup(target_rtnode->ri);
+		if(target_rtnode && target_rtnode->ty == RT_AE){
+			req_o2pt->fr = strdup(get_ri_rtnode(target_rtnode));
 		}
 		
 		if(target_rtnode){
@@ -344,12 +358,12 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 			json = o2pt_to_json(req_o2pt);
 			if(json) {
 				cJSON_AddItemToArray(rsp, json);
-				
 			}
-			if(target_rtnode->ty == RT_CIN){
+			if(req_o2pt->op != OP_DELETE && target_rtnode->ty == RT_CIN){
 				free_rtnode(target_rtnode);
 				target_rtnode = NULL;
 			}
+
 		} else{
 			logger("MAIN", LOG_LEVEL_DEBUG, "rtnode not found");
 		}
@@ -362,8 +376,26 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	
 	o2pt->rsc = RSC_OK;	
 
+	
+
 	free_o2pt(req_o2pt);
 	req_o2pt = NULL;
 	free_grp(grp);
 	return RSC_OK;
+}
+
+void stop_server(int sig){
+	logger("MAIN", LOG_LEVEL_INFO, "Shutting down server...");
+	#ifdef ENABLE_MQTT
+	terminate = 1;
+	logger("MAIN", LOG_LEVEL_INFO, "Waiting for MQTT Client to shut down...");
+	pthread_join(mqtt, NULL);
+	#endif
+	logger("MAIN", LOG_LEVEL_INFO, "Closing DB...");
+	close_dbp();
+	logger("MAIN", LOG_LEVEL_INFO, "Cleaning ResourceTree...");
+	free_all_resource(rt->cb);
+	free(rt);
+	logger("MAIN", LOG_LEVEL_INFO, "Done");
+	exit(0);
 }

@@ -106,7 +106,7 @@ typedef struct {
 	char *sur;
 	ResourceType ty;
 	int nct;
-} Sub;
+} SUB;
 
 typedef struct {
 	char *rn;
@@ -130,6 +130,7 @@ typedef struct {
 	char *lt;
 	char *et;
 	char *acpi;
+	char *macp;
 	
 	ResourceType mt;
 	int mnm;
@@ -146,26 +147,10 @@ typedef struct RTNode {
 	struct RTNode *child;
 	struct RTNode *sibling_left;
 	struct RTNode *sibling_right;
-	
-	char *rn;
-	char *ri;
-	char *pi;
-	char *nu;
-	char *sur;
-	char *acpi;
-	char *pv_acor;
-	char *pv_acop;
-	char *pvs_acor;
-	char *pvs_acop;
+
 	char *uri;
 	ResourceType ty;
-
-	int net;
-	int cni;
-	int cbs;
-	int mni;
-	int mbs;
-	int cs;
+	void *obj;
 }RTNode;
 
 typedef struct {  
@@ -228,12 +213,12 @@ void init_cse(CSE* cse);
 void init_ae(AE* ae, char *pi, char *origin);
 void init_cnt(CNT* cnt, char *pi);
 void init_cin(CIN* cin, char *pi);
-void init_sub(Sub* sub, char *pi, char *uri);
+void init_sub(SUB* sub, char *pi, char *uri);
 void init_acp(ACP* acp, char *pi);
 void init_grp(GRP* grp, char *pi);
 int set_ae_update(cJSON *m2m_ae, AE* after);
 int set_cnt_update(cJSON *m2m_cnt, CNT* after);
-int set_sub_update(cJSON *m2m_sub, Sub* after);
+int set_sub_update(cJSON *m2m_sub, SUB* after);
 int set_acp_update(cJSON *m2m_acp, ACP* after);
 int set_grp_update(cJSON *m2m_grp, GRP* after);
 void set_rtnode_update(RTNode* rtnode, void *after);
@@ -242,7 +227,7 @@ void free_cse(CSE* cse);
 void free_ae(AE* ae);
 void free_cnt(CNT* cnt);
 void free_cin(CIN* cin);
-void free_sub(Sub* sub);
+void free_sub(SUB* sub);
 void free_acp(ACP *acp);
 void free_grp(GRP *grp);
 
@@ -252,14 +237,14 @@ RTNode* create_cse_rtnode(CSE *cse);
 RTNode* create_ae_rtnode(AE *ae);
 RTNode* create_cnt_rtnode(CNT *cnt);
 RTNode* create_cin_rtnode(CIN *cin);
-RTNode* create_sub_rtnode(Sub *sub);
+RTNode* create_sub_rtnode(SUB *sub);
 RTNode* create_acp_rtnode(ACP *acp);
 RTNode* create_grp_rtnode(GRP *grp);
 int delete_rtnode_and_db_data(RTNode *node, int flag);
 void free_rtnode(RTNode *node);
 void free_rtnode_list(RTNode *node);
 
-RTNode* restruct_resource_tree_child(RTNode *node, RTNode *list);
+RTNode* restruct_resource_tree(RTNode *node, RTNode *list);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 RTNode* find_latest_oldest(RTNode* node, int flag);
 void set_node_uri(RTNode* node);

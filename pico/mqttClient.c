@@ -22,6 +22,9 @@
 /* Standalone Example */
 
 //#define WOLFMQTT_MULTITHREAD true
+#include "config.h"
+
+#ifdef ENABLE_MQTT
 
 #include <pthread.h>
 
@@ -31,6 +34,9 @@
 #include "util.h"
 
 #define LOG_TAG "MQTT"
+
+/* thread signal */
+extern int terminate;
 
 /* Local Variables */
 static MqttClient mClient;
@@ -121,6 +127,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     if(!json){
         logger(LOG_TAG, LOG_LEVEL_WARN, "Invalid request\n");
         logger(LOG_TAG, LOG_LEVEL_DEBUG, "ERROR before %10s\n", cJSON_GetErrorPtr());
+        //cJSON_Delete(json);
         return MQTT_CODE_SUCCESS;
     }
 
@@ -185,9 +192,15 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     }
 
     /* Free allocated memories */
-    cJSON_Delete(pjson);
+    //cJSON_Delete(json);
     free_o2pt(o2pt);
-    free(puri);
+    if(puri)
+        free(puri);
+    
+    puri = NULL;
+    pjson = NULL;
+    if(json) cJSON_Delete(json);
+    json = NULL;
     
     return MQTT_CODE_SUCCESS;
 }
@@ -218,7 +231,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     XMEMSET(&mqttPub, 0, sizeof(MqttPublish));
     mqttPub.retain = 0;
     mqttPub.qos = MQTT_QOS;
-    mqttPub.topic_name = strdup(respTopic);
+    mqttPub.topic_name = respTopic;
     mqttPub.packet_id = mqtt_get_packetid();
     mqttPub.buffer = pl;
     mqttPub.total_len = XSTRLEN(pl);
@@ -238,6 +251,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
     cJSON_Delete(json);
 
     free(respTopic);
+    free(pl);
     respTopic = NULL;
     
     return rc;
@@ -566,16 +580,16 @@ void *mqtt_serve(void)
     logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Subscribe Success: Topic %s, QoS %d", reg_respTopic, MQTT_QOS);
 
     /* Wait for messages */
-    while (1) {
+    while (!terminate) {
         rc = MqttClient_WaitMessage_ex(&mClient, &mqttObj, MQTT_CMD_TIMEOUT_MS);
 
         if (rc == MQTT_CODE_ERROR_TIMEOUT) {
             /* send keep-alive ping */
             rc = MqttClient_Ping_ex(&mClient, &mqttObj.ping);
-            if (rc != MQTT_CODE_SUCCESS) {
+            if (terminate || rc != MQTT_CODE_SUCCESS) {
                 break;
             }
-            logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Keep-Alive Ping");
+            //logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Keep-Alive Ping");
         }
         else if (rc != MQTT_CODE_SUCCESS) {
             break;
@@ -614,3 +628,5 @@ void MqttClientIdToId(char *cseid){
         if(cseid[i] == ':') cseid[i] = '/';
     }
 }
+
+#endif
