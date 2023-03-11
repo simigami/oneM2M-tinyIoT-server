@@ -236,13 +236,6 @@ void free_grp(GRP *grp);
 
 //resource tree
 RTNode* create_rtnode(void *resource, ResourceType ty);
-RTNode* create_cse_rtnode(CSE *cse);
-RTNode* create_ae_rtnode(AE *ae);
-RTNode* create_cnt_rtnode(CNT *cnt);
-RTNode* create_cin_rtnode(CIN *cin);
-RTNode* create_sub_rtnode(SUB *sub);
-RTNode* create_acp_rtnode(ACP *acp);
-RTNode* create_grp_rtnode(GRP *grp);
 int delete_rtnode_and_db_data(RTNode *node, int flag);
 void free_rtnode(RTNode *node);
 void free_rtnode_list(RTNode *node);

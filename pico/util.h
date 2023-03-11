@@ -55,7 +55,7 @@ void db_store_fail(oneM2MPrimitive *o2pt);
 char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
 void delete_cin_under_cnt_mni_mbs(CNT *cnt);
-void respond_to_client(oneM2MPrimitive *o2pt, int status);
+void respond_to_client(oneM2MPrimitive *o2pt);
 void cin_in_period(RTNode *pnode);
 void object_test_api(RTNode *node);
 char* json_label_value(char *json_payload);

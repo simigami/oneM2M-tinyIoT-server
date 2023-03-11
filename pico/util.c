@@ -281,10 +281,10 @@ int is_json_valid_char(char c){
 	return (('!' <= c && c <= '~') || c == ' ');
 }
 
-void respond_to_client(oneM2MPrimitive *o2pt, int status) {
+void respond_to_client(oneM2MPrimitive *o2pt) {
 	switch(o2pt->prot) {
 		case PROT_HTTP:
-			http_respond_to_client(o2pt, status); 
+			http_respond_to_client(o2pt); 
 			break;
 		#ifdef ENABLE_MQTT
 		case PROT_MQTT:
