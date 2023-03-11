@@ -1825,7 +1825,7 @@ RTNode* db_get_all_cnt_rtnode() {
 }
 
 RTNode* db_get_all_sub_rtnode(){
-    logger("DB", LOG_LEVEL_DEBUG, "Call get_all_sub");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_sub_rtnode");
 
     DBC* dbcp;
     DBT key, data;
