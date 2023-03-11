@@ -20,9 +20,9 @@ Linux Ubuntu 22.04
 
 ## Quick start
 
-Configure your running environment with the `config.h` file.
-Run `./server`
-If there is no executable file, Run `make`
+1. Configure your running environment with the `config.h` file.
+2. Run `./server`
+3. If there is no executable file, Run `make`
 
 ## make dependency
 
