@@ -186,6 +186,7 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
 int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);

@@ -1719,3 +1719,47 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	free_grp(grp);
 	return RSC_OK;
 }
+
+/**
+ * Discover Resources based on Filter Criteria
+*/
+int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	logger("MAIN", LOG_LEVEL_DEBUG, "Discover Resource");
+	RTNode *pn = target_rtnode->child;
+	cJSON *root = cJSON_CreateObject();
+	cJSON *uril = NULL;
+	int urilSize = 0;
+
+	// TODO - IMPLEMENT OFFSET
+	// for(int i = 0 ; i < o2pt->fc->ofst ; i++){ 
+	// 	if(pn->child){
+	// 		pn = pn->child;
+	// 	}else{
+	// 		break;
+	// 	}
+	// }
+
+	uril = fc_scan_resource_tree(pn, o2pt->fc, 1);
+	
+	if(uril){
+		urilSize = cJSON_GetArraySize(uril);	//Todo : contentStatus(cnst) set to Partial_content, cnot too 
+		if(o2pt->fc->lim < urilSize){
+			logger("MAIN", LOG_LEVEL_DEBUG, "limit exceeded");
+			for(int i = 0 ; i < urilSize - o2pt->fc->lim; i++){
+				cJSON_DeleteItemFromArray(uril, i);
+			}
+		}
+		cJSON_AddItemToObject(root, "m2m:uril", uril);
+	}
+	else
+		cJSON_AddItemToObject(root, "m2m:uril", uril = cJSON_CreateArray());
+
+	if(o2pt->pc)
+		free(o2pt->pc);
+	o2pt->pc = cJSON_PrintUnformatted(root);
+
+	cJSON_Delete(root);
+
+	return o2pt->rsc = RSC_OK;
+
+}

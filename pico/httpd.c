@@ -291,7 +291,7 @@ void handle_http_request() {
                 free(o2pt->pc);
             o2pt->pc = strdup("{\"m2m:dbg\": \"Invalid FilterCriteria\"}");
             o2pt->rsc = RSC_BAD_REQUEST;
-            http_respond_to_client(o2pt, 400);
+            http_respond_to_client(o2pt);
             cJSON_Delete(fcjson);
             free_o2pt(o2pt);
             return;
