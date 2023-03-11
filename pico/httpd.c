@@ -25,6 +25,7 @@ int listenfd;
 int clients[MAX_CONNECTIONS];
 static void start_server(const char *);
 static void respond(int);
+extern void route(oneM2MPrimitive *o2pt);
 
 static char *buf[MAX_CONNECTIONS];
 
@@ -57,7 +58,7 @@ void serve_forever(const char *PORT) {
         clients[i] = -1;
     }   
 
-    logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s\n", "\033[92m", PORT, "\033[0m");  
+    logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s", "\033[92m", PORT, "\033[0m");  
     start_server(PORT); 
     // Ignore SIGCHLD to avoid zombie threads
     signal(SIGCHLD, SIG_IGN); 
@@ -183,7 +184,7 @@ void respond(int slot) {
         } 
         uri_unescape(uri);
     
-        logger("HTTP", LOG_LEVEL_DEBUG, "\x1b[36m + [%s] %s\x1b[0m",method, uri); 
+        logger("HTTP", LOG_LEVEL_DEBUG, "\x1b[36m[%s] %s\x1b[0m",method, uri); 
         qs = strchr(uri, '?');    
         if (qs)
             *qs++ = '\0'; // split URI
@@ -305,7 +306,8 @@ void normalize_payload() {
 	payload[index] = '\0';
 }
 
-void http_respond_to_client(oneM2MPrimitive *o2pt, int status_code) {
+void http_respond_to_client(oneM2MPrimitive *o2pt) {
+    int status_code = rsc_to_http_status(o2pt->rsc);
     char content_length[64];
     char rsc[64];
     char response_headers[2048] = {'\0'};
