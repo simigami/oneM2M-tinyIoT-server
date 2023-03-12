@@ -30,7 +30,6 @@ int terminate = 0;
 pthread_t mqtt;
 #endif
 
-
 int main(int c, char **v) {
 	signal(SIGINT, stop_server);
 	

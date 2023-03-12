@@ -60,6 +60,7 @@ typedef struct {
 	char *lbl;
 	char *srv;
 	char *acpi;
+	char *origin;
 	ResourceType ty;
 	bool rr;
 } AE;
@@ -106,6 +107,7 @@ typedef struct {
 	char *sur;
 	ResourceType ty;
 	int nct;
+	int net_bit;
 } SUB;
 
 typedef struct {
@@ -119,6 +121,7 @@ typedef struct {
 	char *pv_acop;
 	char *pvs_acor;
 	char *pvs_acop;
+	char *lbl;
 	ResourceType ty;
 } ACP;
 
@@ -208,7 +211,6 @@ int update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
-
 void init_cse(CSE* cse);
 void init_ae(AE* ae, char *pi, char *origin);
 void init_cnt(CNT* cnt, char *pi);
@@ -216,12 +218,11 @@ void init_cin(CIN* cin, char *pi);
 void init_sub(SUB* sub, char *pi, char *uri);
 void init_acp(ACP* acp, char *pi);
 void init_grp(GRP* grp, char *pi);
-int set_ae_update(cJSON *m2m_ae, AE* after);
-int set_cnt_update(cJSON *m2m_cnt, CNT* after);
-int set_sub_update(cJSON *m2m_sub, SUB* after);
-int set_acp_update(cJSON *m2m_acp, ACP* after);
-int set_grp_update(cJSON *m2m_grp, GRP* after);
-void set_rtnode_update(RTNode* rtnode, void *after);
+int set_ae_update(oneM2MPrimitive *o2pt, cJSON *m2m_ae, AE* ae);
+int set_cnt_update(oneM2MPrimitive *o2pt, cJSON *m2m_cnt, CNT* cnt);
+int set_sub_update(oneM2MPrimitive *o2pt, cJSON *m2m_sub, SUB* sub);
+int set_acp_update(oneM2MPrimitive *o2pt, cJSON *m2m_acp, ACP* acp);
+int set_grp_update(oneM2MPrimitive *o2pt, cJSON *m2m_grp, GRP* grp);
 
 void free_cse(CSE* cse);
 void free_ae(AE* ae);
@@ -240,13 +241,11 @@ void free_rtnode_list(RTNode *node);
 RTNode* restruct_resource_tree(RTNode *node, RTNode *list);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 RTNode* find_latest_oldest(RTNode* node, int flag);
-void set_node_uri(RTNode* node);
+void set_node_uri(RTNode* rtnode);
 
 //etc
 int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
 
-#define MAX_TREE_VIEWER_SIZE 65536
-#define EXPIRE_TIME -3600*24*365*2
 #define ALL_ACOP ACOP_CREATE + ACOP_RETRIEVE + ACOP_UPDATE + ACOP_DELETE + ACOP_NOTIFY + ACOP_DISCOVERY
 
 #endif

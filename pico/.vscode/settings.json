@@ -17,7 +17,8 @@
         "jsonparser.h": "c",
         "dbmanager.h": "c",
         "pthread.h": "c",
-        "config.h": "c"
+        "config.h": "c",
+        "types.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

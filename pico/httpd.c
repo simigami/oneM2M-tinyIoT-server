@@ -214,10 +214,13 @@ void respond(int slot) {
         t2 = request_header("Content-Length"); // and the related header if there is
         payload = t;
         payload_size = t2 ? atol(t2) : 0;
-        if(payload_size > 0 && payload == NULL) {
+        if(payload_size > 0 && (payload == NULL)) {
             flag = true;
-            payload = (char *)malloc(MAX_PAYLOAD_SIZE*sizeof(char));
-            recv(clients[slot], payload, MAX_PAYLOAD_SIZE, 0);
+            payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
+            while(payload_size > strlen(payload)) {
+                recv(clients[slot], payload, MAX_PAYLOAD_SIZE, 0);
+            }
+            strcat(buf, payload);
         }
         if(payload) normalize_payload();
         // bind clientfd to stdout, making it easier to write
