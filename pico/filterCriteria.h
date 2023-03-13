@@ -37,8 +37,14 @@ typedef struct {
     char* exb;
     /*Expire After*/
     char* exa;
+    
     /*Label*/
-    char* lbl;
+    cJSON* lbl;
+    /*Parent Label*/
+    cJSON *palb;
+    /*Child Label*/
+    cJSON *clbl;
+
     /*Labels Query*/
     char* lbq;
     /*Resource Type*/

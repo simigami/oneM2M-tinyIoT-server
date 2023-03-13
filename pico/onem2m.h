@@ -255,6 +255,7 @@ bool FC_isAptCra(char* fcCra, RTNode *rtnode);
 bool FC_isAptCrb(char *fcCrb, RTNode *rtnode);
 bool FC_isAptExa(char *fcExa, RTNode *rtnode);
 bool FC_isAptExb(char *fcExa, RTNode *rtnode);
+bool FC_isAptLbl(cJSON* fcLbl, RTNode *rtnode);
 bool FC_isAptMs(char *fcMs, RTNode *rtnode);
 bool FC_isAptUs(char *fcUs, RTNode *rtnode);
 bool FC_isAptStb(int fcStb, RTNode *rtnode);

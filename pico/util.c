@@ -194,6 +194,7 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 
 		if(parent->child == node && child->ty < node->ty) {
 			parent->child = child;
+			child->parent = parent;
 			child->sibling_right = node;
 			node->sibling_left = child;
 		} else {
@@ -206,7 +207,6 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 			child->sibling_left = node;
 		}
 	}
-	
 	child->uri = malloc(strlen(parent->uri) + strlen(get_rn_rtnode(child)) + 2);
 	strcpy(child->uri, parent->uri);
 	strcat(child->uri, "/");
@@ -1234,6 +1234,27 @@ char *get_lt_rtnode(RTNode *rtnode){
 	return lt;
 }
 
+char *get_lbl_rtnode(RTNode *rtnode){
+	char *lbl = NULL;
+	switch ((rtnode->ty)){
+		case RT_CSE:
+		case RT_ACP:
+		case RT_CIN:
+		case RT_GRP:
+			break;
+		
+		case RT_AE:
+			lbl = ((AE *) rtnode->obj)->lbl;
+			break;
+		case RT_CNT:
+			lbl = ((CNT *) rtnode->obj)->lbl;
+			break;
+		default:
+			break;
+	}
+	return lbl;
+}
+
 int get_st_rtnode(RTNode *rtnode){
 	if(rtnode->ty != RT_CNT)
 		return -1;
@@ -1346,6 +1367,7 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 			cinrtHead = trt = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(prt));
 			prt->child = cinrtHead;
 			while(trt){
+				trt->parent = prt;
 				trt->uri = calloc(1, strlen(prt->uri) + strlen(((CIN*)trt->obj)->rn) + 2);
 				strcpy(trt->uri, prt->uri);
 				strcat(trt->uri, "/");
@@ -1354,7 +1376,7 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 				trt = trt->sibling_right;
 			}
 		}
-
+		logger("util", LOG_LEVEL_DEBUG, "examining %s", get_rn_rtnode(prt));
 		// Check if resource satisfies filter
 		if(isResourceAptFC(prt, fc)){
 			if(fc->arp){

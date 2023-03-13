@@ -9,6 +9,7 @@
 #include "util.h"
 #include "cJSON.h"
 #include "onem2m.h"
+#include "jsonparser.h"
 #include "logger.h"
 
 bool isFCAttrValid(FilterCriteria *fc){
@@ -35,11 +36,11 @@ bool isFCAttrValid(FilterCriteria *fc){
 }
 
 bool isValidFcAttr(char* attr){
-    char *fcAttr[30] = {
-    "crb", "cra", "ms", "us", "sts", "stb", "exb", "exa", "lbl", "lbq", "ty", "chty", "pty", "sza", "szb", "cty", 
+    char *fcAttr[32] = {
+    "crb", "cra", "ms", "us", "sts", "stb", "exb", "exa", "lbl","clbl", "palb", "lbq", "ty", "chty", "pty", "sza", "szb", "cty", 
     "atr", "catr", "patr", "fu", "lim", "smf", "fo", "cfs", "cfq", "lvl", "ofst", "arp", "gq", "ops"};
 
-    for(int i = 0 ; i < 30 ; i++){
+    for(int i = 0 ; i < 32 ; i++){
         if(!strcmp(attr, fcAttr[i])) return true;
     }
     return false;
@@ -97,15 +98,30 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
         fc->arp = strdup(pjson->valuestring);
     }
 
-    //TODO - LABEL
-    // pjson = cJSON_GetObjectItem(fcjson, "lbl");
-    // if(pjson && pjson->valuestring)
-    //     fc->crb = strdup(pjson->valuestring);
 
-    //TODO - LABEL Query
-    // pjson = cJSON_GetObjectItem(fcjson, "lbq");
-    // if(pjson && pjson->valuestring)
-    //     fc->crb = strdup(pjson->valuestring);
+    pjson = cJSON_GetObjectItem(fcjson, "lbl");
+    if(pjson && pjson->valuestring){
+        fc->lbl = cJSON_CreateArray();
+        cJSON_AddItemToArray(fc->lbl, cJSON_CreateString(pjson->valuestring));
+    }else{
+        fc->lbl = cJSON_Duplicate(pjson, true);
+    }
+
+    pjson = cJSON_GetObjectItem(fcjson, "palb");
+    if(pjson && pjson->valuestring){
+        fc->palb = cJSON_CreateArray();
+        cJSON_AddItemToArray(fc->palb, cJSON_CreateString(pjson->valuestring));
+    }else{
+        fc->palb = cJSON_Duplicate(pjson, true);
+    }
+
+    pjson = cJSON_GetObjectItem(fcjson, "clbl");
+    if(pjson && pjson->valuestring){
+        fc->clbl = cJSON_CreateArray();
+        cJSON_AddItemToArray(fc->clbl, cJSON_CreateString(pjson->valuestring));
+    }else{
+        fc->clbl = cJSON_Duplicate(pjson, true);
+    }
 
     pjson = cJSON_GetObjectItem(fcjson, "ty");
     
@@ -240,6 +256,12 @@ void free_fc(FilterCriteria *fc){
         free(fc->ms);
     if(fc->lbq)
         free(fc->lbq);
+    if(fc->lbl)
+        cJSON_Delete(fc->lbl);
+    if(fc->palb)
+        cJSON_Delete(fc->palb);
+    if(fc->clbl)
+        cJSON_Delete(fc->clbl);
 
     if(fc->ty)
         free(fc->ty);
@@ -327,6 +349,110 @@ bool FC_isAptExb(char *fcExb, RTNode *rtnode){
     if(strcmp(fcExb, et) < 0) return false;
 
     return true;
+}
+
+bool FC_isAptLbl(cJSON* fcLbl, RTNode *rtnode){
+    bool result = false;
+    int nodeSize = 0, fcSize = 0;
+
+    if(!rtnode || !fcLbl) return false;
+
+    cJSON *nodelbl = NULL;
+
+
+    char * lbl = get_lbl_rtnode(rtnode);
+    if(!lbl) return result; // if no lbl return false
+
+    nodelbl = string_to_cjson_list_item(lbl);
+    nodeSize = cJSON_GetArraySize(nodelbl);
+    
+    fcSize = cJSON_GetArraySize(fcLbl);
+    
+    for(int i = 0 ; i < nodeSize ; i++){
+        for(int j = 0 ; j < fcSize ; j++){
+            if(!strcmp(cJSON_GetArrayItem(fcLbl, j)->valuestring, cJSON_GetArrayItem(nodelbl, i)->valuestring)){
+                result = true;
+                break;
+            }
+        }
+        if(result) break;
+    }
+
+    cJSON_Delete(nodelbl);
+    return result;
+}
+
+bool FC_isAptPalb(cJSON *fcPalb, RTNode *rtnode){
+    bool result = false;
+    int nodeSize = 0, fcSize = 0;
+    if(!rtnode || !fcPalb) return false;
+    if(!rtnode->parent) {
+        logger("fc", LOG_LEVEL_DEBUG, "123142");
+        return false;
+    }
+
+    cJSON *nodelbl = NULL;
+    char *lbl = get_lbl_rtnode(rtnode->parent);
+    if(!lbl) return result;
+
+    nodelbl = string_to_cjson_list_item(lbl);
+    nodeSize = cJSON_GetArraySize(nodelbl);
+
+    fcSize = cJSON_GetArraySize(fcPalb);
+
+    for(int i = 0 ; i < nodeSize ; i++){
+        for(int j = 0 ; j < fcSize ; j++){
+            logger("fc", LOG_LEVEL_DEBUG, "%s, %s", cJSON_GetArrayItem(fcPalb, j)->valuestring, cJSON_GetArrayItem(nodelbl, i)->valuestring);
+            if(!strcmp(cJSON_GetArrayItem(fcPalb, j)->valuestring, cJSON_GetArrayItem(nodelbl, i)->valuestring)){
+                result = true;
+                break;
+            }
+        }
+        if(result) break;
+    }
+
+    cJSON_Delete(nodelbl);
+    return result;
+}
+
+bool FC_isAptClbl(cJSON *fcClbl, RTNode *rtnode){
+    bool result = false;
+    int nodeSize = 0, fcSize = 0;
+    RTNode *prt = NULL;
+    if(!rtnode || !fcClbl) return false;
+    if(!rtnode->child) return false;
+
+    cJSON *nodelbl = NULL;
+
+    prt = rtnode->child;
+
+    while(prt){
+        char *lbl = get_lbl_rtnode(prt);
+        if(!lbl) return result;
+
+        nodelbl = string_to_cjson_list_item(lbl);
+        nodeSize = cJSON_GetArraySize(nodelbl);
+
+        fcSize = cJSON_GetArraySize(fcClbl);
+
+        for(int i = 0 ; i < nodeSize ; i++){
+            for(int j = 0 ; j < fcSize ; j++){
+                if(!strcmp(cJSON_GetArrayItem(fcClbl, j)->valuestring, cJSON_GetArrayItem(nodelbl, i)->valuestring)){
+                    result = true;
+                    break;
+                }
+            }
+            if(result) break;
+        }
+        cJSON_Delete(nodelbl);
+        nodelbl = NULL;
+        if(result) break;
+        prt = prt->sibling_right;
+    }
+    
+
+    
+    return result;
 }
 
 bool FC_isAptTy(int *fcTy, int tycnt, int ty){

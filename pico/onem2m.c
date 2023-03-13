@@ -1296,7 +1296,6 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 	FilterOperation fo = fc->fo;
     if(!rtnode || !fc) return false;
 
-
 	// check Created Time
 	if(fc->cra && fc->crb){
 		if(strcmp(fc->cra, fc->crb) >= 0 && fo == FO_AND) return false;
@@ -1388,7 +1387,36 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 		}
 	}
 
-	// TODO - LABELS(lbl, clbl, palb)
+	// check label
+	if(fc->lbl){
+		if(!FC_isAptLbl(fc->lbl, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	if(fc->clbl){
+		if(!FC_isAptClbl(fc->clbl, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	if(fc->palb){
+		if(!FC_isAptPalb(fc->palb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
 
 	// check TY
     if(fc->tycnt > 0){
@@ -1732,18 +1760,16 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 
 	uril = fc_scan_resource_tree(pn, o2pt->fc, 1);
 	
-	if(uril){
-		urilSize = cJSON_GetArraySize(uril);	//Todo : contentStatus(cnst) set to Partial_content, cnot too 
-		if(o2pt->fc->lim < urilSize){
-			logger("MAIN", LOG_LEVEL_DEBUG, "limit exceeded");
-			for(int i = 0 ; i < urilSize - o2pt->fc->lim; i++){
-				cJSON_DeleteItemFromArray(uril, i);
-			}
+	
+	urilSize = cJSON_GetArraySize(uril);	//Todo : contentStatus(cnst) set to Partial_content, cnot too 
+	if(o2pt->fc->lim < urilSize){
+		logger("MAIN", LOG_LEVEL_DEBUG, "limit exceeded");
+		for(int i = o2pt->fc->lim ; i < urilSize; i++){
+			cJSON_DeleteItemFromArray(uril, o2pt->fc->lim);
 		}
-		cJSON_AddItemToObject(root, "m2m:uril", uril);
 	}
-	else
-		cJSON_AddItemToObject(root, "m2m:uril", uril = cJSON_CreateArray());
+	cJSON_AddItemToObject(root, "m2m:uril", uril);
+	
 
 	if(o2pt->pc)
 		free(o2pt->pc);
