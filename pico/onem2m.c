@@ -1493,7 +1493,15 @@ bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
 		}
 	}
 
-	// TODO - Check Attr
+	if(fc->ops){
+		if(!FC_isAptOps(fc->ops, fc->o2pt, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
 
     return true;
 }
@@ -1757,19 +1765,24 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	// 		break;
 	// 	}
 	// }
-
+	o2pt->fc->o2pt = o2pt;
 	uril = fc_scan_resource_tree(pn, o2pt->fc, 1);
 	
 	
 	urilSize = cJSON_GetArraySize(uril);	//Todo : contentStatus(cnst) set to Partial_content, cnot too 
-	if(o2pt->fc->lim < urilSize){
+	if(o2pt->fc->lim < urilSize - o2pt->fc->ofst){
 		logger("MAIN", LOG_LEVEL_DEBUG, "limit exceeded");
+		for(int i = 0 ; i < o2pt->fc->ofst ; i++){
+			cJSON_DeleteItemFromArray(uril, 0);
+		}
+		urilSize = cJSON_GetArraySize(uril);
 		for(int i = o2pt->fc->lim ; i < urilSize; i++){
 			cJSON_DeleteItemFromArray(uril, o2pt->fc->lim);
 		}
 	}
 	cJSON_AddItemToObject(root, "m2m:uril", uril);
-	
+	o2pt->cnst = CS_PARTIAL_CONTENT;
+	o2pt->cnot = o2pt->fc->ofst + o2pt->fc->lim;
 
 	if(o2pt->pc)
 		free(o2pt->pc);

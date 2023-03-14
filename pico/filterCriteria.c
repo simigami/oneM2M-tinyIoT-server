@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <malloc.h>
-#include "filterCriteria.h"
 #include "onem2mTypes.h"
 #include "util.h"
 #include "cJSON.h"
@@ -216,6 +215,10 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
         fc->ofst = 0;
     }
 
+    pjson = cJSON_GetObjectItem(fcjson, "ops");
+    if(pjson){
+        fc->ops = get_number_from_cjson(pjson);
+    }
     
     if(!isFCAttrValid(fc)){ // TODO - If rcn == 11(discovery result references) fu must be 1
         free_fc(fc);
@@ -386,10 +389,7 @@ bool FC_isAptPalb(cJSON *fcPalb, RTNode *rtnode){
     bool result = false;
     int nodeSize = 0, fcSize = 0;
     if(!rtnode || !fcPalb) return false;
-    if(!rtnode->parent) {
-        logger("fc", LOG_LEVEL_DEBUG, "123142");
-        return false;
-    }
+    if(!rtnode->parent) return false;
 
     cJSON *nodelbl = NULL;
     char *lbl = get_lbl_rtnode(rtnode->parent);
@@ -402,7 +402,6 @@ bool FC_isAptPalb(cJSON *fcPalb, RTNode *rtnode){
 
     for(int i = 0 ; i < nodeSize ; i++){
         for(int j = 0 ; j < fcSize ; j++){
-            logger("fc", LOG_LEVEL_DEBUG, "%s, %s", cJSON_GetArrayItem(fcPalb, j)->valuestring, cJSON_GetArrayItem(nodelbl, i)->valuestring);
             if(!strcmp(cJSON_GetArrayItem(fcPalb, j)->valuestring, cJSON_GetArrayItem(nodelbl, i)->valuestring)){
                 result = true;
                 break;
@@ -496,4 +495,11 @@ bool FC_isAptSzb(int fcSzb, RTNode *rtnode){
     if(cs < fcSzb) return true;
 
     return false;
+}
+
+bool FC_isAptOps(ACOP fcAcop, oneM2MPrimitive *o2pt, RTNode *rtnode){
+    if(check_privilege(o2pt, rtnode, fcAcop) == -1)
+        return false;
+
+    return true;
 }

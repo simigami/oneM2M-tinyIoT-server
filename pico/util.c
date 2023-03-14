@@ -1061,6 +1061,10 @@ cJSON *o2pt_to_json(oneM2MPrimitive *o2pt){
     cJSON_AddStringToObject(json, "fr", o2pt->fr);
     cJSON_AddStringToObject(json, "rvi", o2pt->rvi);
     if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
+	if(o2pt->cnot){
+		cJSON_AddNumberToObject(json, "cnst", CS_PARTIAL_CONTENT);
+		cJSON_AddNumberToObject(json, "cnot", o2pt->cnot);
+	}
     //if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 	
 	return json;
@@ -1376,7 +1380,7 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 				trt = trt->sibling_right;
 			}
 		}
-		logger("util", LOG_LEVEL_DEBUG, "examining %s", get_rn_rtnode(prt));
+		//logger("util", LOG_LEVEL_DEBUG, "examining %s", get_rn_rtnode(prt));
 		// Check if resource satisfies filter
 		if(isResourceAptFC(prt, fc)){
 			if(fc->arp){

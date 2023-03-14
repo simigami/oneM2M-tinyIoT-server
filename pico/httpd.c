@@ -333,6 +333,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
     int status_code = rsc_to_http_status(o2pt->rsc);
     char content_length[64];
     char rsc[64];
+    char cnst[32], ot[32];
     char response_headers[2048] = {'\0'};
 
     sprintf(content_length, "%ld", o2pt->pc ? strlen(o2pt->pc) : 0);
@@ -341,6 +342,13 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
     set_response_header("X-M2M-RSC", rsc, response_headers);
     set_response_header("X-M2M-RVI", o2pt->rvi, response_headers);
     set_response_header("X-M2M-RI", o2pt->rqi, response_headers);
+
+    if(o2pt->cnot > 0){
+        sprintf(cnst, "%d", o2pt->cnst);
+        set_response_header("X-M2M-CNST", cnst, response_headers);
+        sprintf(ot, "%d", o2pt->cnot);
+        set_response_header("X-M2M-CNOT", ot, response_headers);
+    }
 
     char buf[BUF_SIZE] = {'\0'};
 
