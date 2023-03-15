@@ -179,7 +179,7 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
 
     }
 
-    //TODO - remaining attrs
+    
 
     pjson = cJSON_GetObjectItem(fcjson, "fu");
     if(pjson){

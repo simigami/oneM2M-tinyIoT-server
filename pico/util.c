@@ -144,7 +144,6 @@ RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 		RTNode *cin = head;
 
 		if(cin) {
-			logger("UTIL", LOG_LEVEL_DEBUG, "ADF");
 			if(flag == 1) {
 				head = head->sibling_right;
 				cin->sibling_right = NULL;			
@@ -1384,8 +1383,10 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 		// Check if resource satisfies filter
 		if(isResourceAptFC(prt, fc)){
 			if(fc->arp){
-				trt = find_rtnode_by_uri(prt, fc->arp);
-				cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
+				sprintf(buf, "%s/%s", get_rn_rtnode(prt), fc->arp);
+				trt = find_rtnode_by_uri(prt, buf);
+				if(trt) cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
+				buf[0] = '\0';
 			}else{
 				cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
 			}
