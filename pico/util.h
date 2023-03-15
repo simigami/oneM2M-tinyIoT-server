@@ -55,7 +55,7 @@ void db_store_fail(oneM2MPrimitive *o2pt);
 //etc
 char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
-void delete_cin_under_cnt_mni_mbs(CNT *cnt);
+void delete_cin_under_cnt_mni_mbs(RTNode *rtnode);
 void respond_to_client(oneM2MPrimitive *o2pt);
 void cin_in_period(RTNode *pnode);
 void object_test_api(RTNode *node);

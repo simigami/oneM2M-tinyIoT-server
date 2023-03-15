@@ -496,7 +496,7 @@ int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 		return o2pt->rsc;
 	}
 	//set_rtnode_update(target_rtnode, after);
-	delete_cin_under_cnt_mni_mbs(cnt);
+	delete_cin_under_cnt_mni_mbs(target_rtnode);
 	cnt->st++;
 	result = db_delete_onem2m_resource(cnt->ri);
 	result = db_store_cnt(cnt);
@@ -712,7 +712,7 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 	CIN *cin = (CIN *)cin_rtnode->obj;
 	cnt->cni += sign;
 	cnt->cbs += sign*(cin->cs);
-	delete_cin_under_cnt_mni_mbs(cnt);	
+	delete_cin_under_cnt_mni_mbs(cnt_rtnode);	
 	cnt->st++;
 	db_delete_onem2m_resource(cnt->ri);
 	db_store_cnt(cnt);
@@ -1752,7 +1752,7 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 */
 int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	logger("MAIN", LOG_LEVEL_DEBUG, "Discover Resource");
-	RTNode *pn = target_rtnode->child;
+	RTNode *pn = NULL;
 	cJSON *root = cJSON_CreateObject();
 	cJSON *uril = NULL;
 	int urilSize = 0;
@@ -1766,6 +1766,13 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	// 	}
 	// }
 	o2pt->fc->o2pt = o2pt;
+	if(target_rtnode->ty == RT_CNT){
+		target_rtnode->child = pn = db_get_cin_rtnode_list(target_rtnode);
+		pn->parent = target_rtnode;	
+		logger("O2", LOG_LEVEL_DEBUG, "%s", pn->uri);
+	}else{
+		pn = target_rtnode->child;
+	}
 	uril = fc_scan_resource_tree(pn, o2pt->fc, 1);
 	
 	
@@ -1788,6 +1795,10 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		free(o2pt->pc);
 	o2pt->pc = cJSON_PrintUnformatted(root);
 
+	if(target_rtnode->ty == RT_CNT){
+		target_rtnode->child = NULL;
+		free_rtnode_list(pn);
+	}
 	cJSON_Delete(root);
 
 	return o2pt->rsc = RSC_OK;

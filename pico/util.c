@@ -140,7 +140,7 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 	if(rtnode->ty == RT_CNT) {
-		RTNode *head = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(rtnode));
+		RTNode *head = db_get_cin_rtnode_list(rtnode);
 		RTNode *cin = head;
 
 		if(cin) {
@@ -337,10 +337,11 @@ char *resource_identifier(ResourceType ty, char *ct) {
 	return ri;
 }
 
-void delete_cin_under_cnt_mni_mbs(CNT *cnt) {
+void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
+	CNT *cnt = (CNT *) rtnode->obj;
 	if(cnt->cni <= cnt->mni && cnt->cbs <= cnt->mbs) return;
 
-	RTNode *head = db_get_cin_rtnode_list_by_pi(cnt->ri);
+	RTNode *head = db_get_cin_rtnode_list(rtnode);
 	RTNode *right;
 
 	while((cnt->mni >= 0 && cnt->cni > cnt->mni) || (cnt->mbs >= 0 && cnt->cbs > cnt->mbs)) {
@@ -417,7 +418,7 @@ void tree_viewer_data(RTNode *rtnode, char **viewer_data, int cin_size) {
 	}
 
 	if(rtnode->ty == RT_CNT) {
-		RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(rtnode));
+		RTNode *cin_list_head = db_get_cin_rtnode_list(rtnode);
 
 		if(cin_list_head) cin_list_head = latest_cin_list(cin_list_head, cin_size);
 
@@ -1365,19 +1366,15 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 	int curilSize = 0;
 
 	while(prt){
+		if(prt->ty == RT_CIN){
+			if(prt->sibling_right){
+				prt->sibling_right->parent = prt->parent;
+			}
+		}
 		// If resource is cnt, Construct RTNode of child cin and attach it
 		if(prt->ty == RT_CNT){
-			cinrtHead = trt = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(prt));
+			cinrtHead = trt = db_get_cin_rtnode_list(prt);
 			prt->child = cinrtHead;
-			while(trt){
-				trt->parent = prt;
-				trt->uri = calloc(1, strlen(prt->uri) + strlen(((CIN*)trt->obj)->rn) + 2);
-				strcpy(trt->uri, prt->uri);
-				strcat(trt->uri, "/");
-				strcat(trt->uri, ((CIN*)trt->obj)->rn);
-
-				trt = trt->sibling_right;
-			}
 		}
 		//logger("util", LOG_LEVEL_DEBUG, "examining %s", get_rn_rtnode(prt));
 		// Check if resource satisfies filter

@@ -62,8 +62,16 @@ void route(oneM2MPrimitive *o2pt) {
 
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
-		log_runtime(start);
 		respond_to_client(o2pt);
+		log_runtime(start);
+		return;
+	}
+
+	if(o2pt->fc && o2pt->fc->fu != FU_DISCOVERY){
+		o2pt->rsc = RSC_BAD_REQUEST;
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\":\"Only Filter Usage Discovery Supported\"}");
+		respond_to_client(o2pt);
+		log_runtime(start);
 		return;
 	}
 
@@ -84,6 +92,10 @@ void route(oneM2MPrimitive *o2pt) {
 
 int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	int rsc = 0;
+
+	if(o2pt->op == OP_CREATE && o2pt->fc){
+		return o2pt->rsc = rsc = RSC_BAD_REQUEST;
+	}
 
 	switch(o2pt->op) {
 		
