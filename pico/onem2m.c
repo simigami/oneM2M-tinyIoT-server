@@ -302,7 +302,7 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		no_mandatory_error(o2pt);
 		return o2pt->rsc;
 	} else if(cnt->mbs >= 0 && cin->cs > cnt->mbs) {
-		too_large_content_size_error(o2pt); free(cin); cin = NULL;
+		too_large_content_size_error(o2pt); free_cin(cin); cin = NULL;
 		return o2pt->rsc;
 	}
 	init_cin(cin,get_ri_rtnode(parent_rtnode));
@@ -319,7 +319,6 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cin_to_json(cin);
 	o2pt->rsc = RSC_CREATED;
-
 	free_rtnode(cin_rtnode);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	return RSC_CREATED;
