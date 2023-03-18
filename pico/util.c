@@ -1172,3 +1172,27 @@ bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi) {
 
 	return ret;
 }
+
+char** http_split_uri(char *uri){
+	char **ret = (char **)malloc(3 * sizeof(char *));
+	char host[MAX_URI_SIZE] = {'\0'};
+	char remain[MAX_URI_SIZE] = {'\0'};
+	char port[8];
+
+	int index = 0;
+	int uri_size = strlen(uri);
+
+	char *p = strstr(uri, "http://");
+
+	if(p) {
+		p = p+7;
+		while(p < uri + uri_size && p != ':') {
+			host[index++] = *(p++);
+		}
+		p = p+1;
+		index = 0;
+		while(p < uri + uri_size && p != '/' && p != '?') {
+			port[index++] = *(p++);
+		}
+	}
+}
