@@ -1932,12 +1932,15 @@ RTNode* db_get_all_grp_rtnode(){
     return head;
 }
 
-RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
+RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
     const char* TYPE = "4-";
     
     DBC* dbcp;
     DBT key, data;
     int ret;
+
+    char buf[256] = {0};
+    char* pi = get_ri_rtnode(parent_rtnode);
 
     //dbp = DB_CREATE_(dbp);
     //DB_OPEN(DATABASE);
@@ -1947,6 +1950,7 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
     memset(&data, 0, sizeof(data));
 
     int idx = 0;
+    
         
     RTNode* head = NULL, *rtnode = NULL;
     dbcp = DB_GET_CURSOR(resourceDBp);
@@ -1956,11 +1960,14 @@ RTNode* db_get_cin_rtnode_list_by_pi(char* pi) {
             CIN *cin = db_get_cin((char*)key.data);
             //find pi
             if(!strcmp(pi, cin->pi)){
+                sprintf(buf, "%s/%s", parent_rtnode->uri, cin->rn);
                 if(!head) {
                     head = create_rtnode(cin, RT_CIN);
+                    head->uri = strdup(buf);
                     rtnode = head;
                 } else {
                     rtnode->sibling_right = create_rtnode(cin,RT_CIN);
+                    rtnode->sibling_right->uri = strdup(buf);
                     rtnode->sibling_right->sibling_left = rtnode;
                     rtnode = rtnode->sibling_right;
                 }

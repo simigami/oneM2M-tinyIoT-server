@@ -140,11 +140,10 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 	if(rtnode->ty == RT_CNT) {
-		RTNode *head = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(rtnode));
+		RTNode *head = db_get_cin_rtnode_list(rtnode);
 		RTNode *cin = head;
 
 		if(cin) {
-			logger("UTIL", LOG_LEVEL_DEBUG, "ADF");
 			if(flag == 1) {
 				head = head->sibling_right;
 				cin->sibling_right = NULL;			
@@ -194,6 +193,7 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 
 		if(parent->child == node && child->ty < node->ty) {
 			parent->child = child;
+			child->parent = parent;
 			child->sibling_right = node;
 			node->sibling_left = child;
 		} else {
@@ -206,7 +206,11 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 			child->sibling_left = node;
 		}
 	}
-	
+	child->uri = malloc(strlen(parent->uri) + strlen(get_rn_rtnode(child)) + 2);
+	strcpy(child->uri, parent->uri);
+	strcat(child->uri, "/");
+	strcat(child->uri, get_rn_rtnode(child));
+
 	return 1;
 }
 
@@ -318,24 +322,26 @@ char *resource_identifier(ResourceType ty, char *ct) {
 	}
 
 	struct timespec specific_time;
-    int millsec;
-
+    //int millsec;
+	static int n = 0;
 	char buf[32] = "\0";
 
-    clock_gettime(CLOCK_REALTIME, &specific_time);
-    millsec = floor(specific_time.tv_nsec/1.0e6);
+    //clock_gettime(CLOCK_REALTIME, &specific_time);
+    //millsec = floor(specific_time.tv_nsec/1.0e6);
 
-	sprintf(buf, "%s%04d",ct, millsec);
+	sprintf(buf, "%s%04d",ct, n);
+	n = (n+1) % 10000;
 
 	strcat(ri, buf);
 
 	return ri;
 }
 
-void delete_cin_under_cnt_mni_mbs(CNT *cnt) {
+void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
+	CNT *cnt = (CNT *) rtnode->obj;
 	if(cnt->cni <= cnt->mni && cnt->cbs <= cnt->mbs) return;
 
-	RTNode *head = db_get_cin_rtnode_list_by_pi(cnt->ri);
+	RTNode *head = db_get_cin_rtnode_list(rtnode);
 	RTNode *right;
 
 	while((cnt->mni >= 0 && cnt->cni > cnt->mni) || (cnt->mbs >= 0 && cnt->cbs > cnt->mbs)) {
@@ -412,7 +418,7 @@ void tree_viewer_data(RTNode *rtnode, char **viewer_data, int cin_size) {
 	}
 
 	if(rtnode->ty == RT_CNT) {
-		RTNode *cin_list_head = db_get_cin_rtnode_list_by_pi(get_ri_rtnode(rtnode));
+		RTNode *cin_list_head = db_get_cin_rtnode_list(rtnode);
 
 		if(cin_list_head) cin_list_head = latest_cin_list(cin_list_head, cin_size);
 
@@ -467,6 +473,7 @@ void init_server() {
 	}
 
 	rt->cb = create_rtnode(cse, RT_CSE);
+	rt->cb->uri = CSE_BASE_NAME;
 
  	init_resource_tree();
 }
@@ -529,8 +536,7 @@ RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 	
 	while(rtnode) {
 		RTNode *right = rtnode->sibling_right;
-
-		if(!strcmp(get_ri_rtnode(parent_rtnode), get_ri_rtnode(rtnode))) {
+		if(!strcmp(get_ri_rtnode(parent_rtnode), get_pi_rtnode(rtnode))) {
 			RTNode *left = rtnode->sibling_left;
 			
 			if(!left) {
@@ -965,7 +971,7 @@ int validate_grp(GRP *grp){
 					free_grp(pGrp);
 					if(handle_csy(grp, i)) return RSC_GROUPMEMBER_TYPE_INCONSISTENT;
 				}
-				free_grp(pGrp);
+				//free_grp(pGrp);
 			}
 
 			free(tStr);
@@ -1055,6 +1061,10 @@ cJSON *o2pt_to_json(oneM2MPrimitive *o2pt){
     cJSON_AddStringToObject(json, "fr", o2pt->fr);
     cJSON_AddStringToObject(json, "rvi", o2pt->rvi);
     if(o2pt->pc) cJSON_AddStringToObject(json, "pc", o2pt->pc);
+	if(o2pt->cnot){
+		cJSON_AddNumberToObject(json, "cnst", CS_PARTIAL_CONTENT);
+		cJSON_AddNumberToObject(json, "cnot", o2pt->cnot);
+	}
     //if(o2pt->ty >= 0) cJSON_AddNumberToObject(json, "ty", o2pt->ty);
 	
 	return json;
@@ -1073,6 +1083,8 @@ void free_o2pt(oneM2MPrimitive *o2pt){
 		free(o2pt->to);
 	if(o2pt->req_type)
 		free(o2pt->req_type);
+	if(o2pt->fc)
+		free_fc(o2pt->fc);
 	if(o2pt->fopt)
 		free(o2pt->fopt);
 	if(o2pt->rvi)
@@ -1179,4 +1191,227 @@ char *get_acpi_rtnode(RTNode *rtnode) {
 	}
 
 	return acpi;
+}
+
+char *get_ct_rtnode(RTNode *rtnode){
+	char *ct = NULL;
+	switch((rtnode->ty)){
+		case RT_CSE: ct = ((CSE *)rtnode->obj)->ct; break;
+		case RT_AE: ct = ((AE *)rtnode->obj)->ct; break;
+		case RT_CNT: ct = ((CNT *)rtnode->obj)->ct; break;
+		case RT_CIN: ct = ((CIN *)rtnode->obj)->ct; break;
+		case RT_SUB: ct = ((SUB *)rtnode->obj)->ct; break;
+		case RT_ACP: ct = ((ACP *)rtnode->obj)->ct; break;
+		case RT_GRP: ct = ((GRP *)rtnode->obj)->ct; break;
+	}
+
+	return ct;
+}
+
+char *get_et_rtnode(RTNode *rtnode){
+	char *et = NULL;
+	switch((rtnode->ty)){
+		case RT_CSE: et = NULL; break;
+		case RT_AE: et = ((AE *)rtnode->obj)->et; break;
+		case RT_CNT: et = ((CNT *)rtnode->obj)->et; break;
+		case RT_CIN: et = ((CIN *)rtnode->obj)->et; break;
+		case RT_SUB: et = ((SUB *)rtnode->obj)->et; break;
+		case RT_ACP: et = ((ACP *)rtnode->obj)->et; break;
+		case RT_GRP: et = ((GRP *)rtnode->obj)->et; break;
+	}
+
+	return et;
+}
+
+char *get_lt_rtnode(RTNode *rtnode){
+	char *lt = NULL;
+	switch((rtnode->ty)){
+		case RT_CSE: lt = ((CSE *)rtnode->obj)->lt; break;
+		case RT_AE: lt = ((AE *)rtnode->obj)->lt; break;
+		case RT_CNT: lt = ((CNT *)rtnode->obj)->lt; break;
+		case RT_CIN: lt = ((CIN *)rtnode->obj)->lt; break;
+		case RT_SUB: lt = ((SUB *)rtnode->obj)->lt; break;
+		case RT_ACP: lt = ((ACP *)rtnode->obj)->lt; break;
+		case RT_GRP: lt = ((GRP *)rtnode->obj)->lt; break;
+	}
+
+	return lt;
+}
+
+char *get_lbl_rtnode(RTNode *rtnode){
+	char *lbl = NULL;
+	switch ((rtnode->ty)){
+		case RT_CSE:
+		case RT_ACP:
+		case RT_CIN:
+		case RT_GRP:
+			break;
+		
+		case RT_AE:
+			lbl = ((AE *) rtnode->obj)->lbl;
+			break;
+		case RT_CNT:
+			lbl = ((CNT *) rtnode->obj)->lbl;
+			break;
+		default:
+			break;
+	}
+	return lbl;
+}
+
+int get_st_rtnode(RTNode *rtnode){
+	if(rtnode->ty != RT_CNT)
+		return -1;
+
+	return ((CNT *) rtnode->obj)->st;
+}
+
+int get_cs_rtnode(RTNode *rtnode){
+	if(rtnode->ty != RT_CIN)
+		return -1;
+
+	return ((CIN *) rtnode->obj)->cs;
+}
+
+int get_number_from_cjson(cJSON *json){
+	if(!json) return 0;
+
+	if(json->valueint)
+		return json->valueint;
+	if(json->valuestring)
+		return atoi(json->valuestring);
+}
+
+cJSON *qs_to_json(char* qs){
+	if(!qs) return NULL;
+
+	int prevb = 0;
+	char *qStr = strdup(qs);
+	char *buf = calloc(1, 256);
+	char *temp = calloc(1, 256);
+	char *key = NULL, *value = NULL;
+
+	size_t qslen = strlen(qs);
+	cJSON *json;
+
+	buf[0] = '{';
+
+	for(int i = 0 ; i <= qslen; i++){
+		if(qStr[i] == '='){
+			key = qStr + prevb;
+			qStr[i] = '\0';
+			prevb = i+1;
+		}
+		else if(qStr[i] == '&' || i == qslen){
+			value = qStr + prevb;
+			qStr[i] = '\0';
+			prevb = i+1;
+		}
+
+		if(key != NULL && value != NULL){
+			if(value[0] == '['){
+				sprintf(temp, "\"%s\":%s,", key, value);
+			}else{
+				sprintf(temp, "\"%s\":\"%s\",", key, value);
+			}
+
+			strcat(buf, temp);
+			key = NULL;
+			value = NULL;
+		}
+
+	}
+	buf[strlen(buf)-1] = '}';
+	json = cJSON_Parse(buf);
+	if(!json){
+		logger("UTIL", LOG_LEVEL_DEBUG, "ERROR before %10s\n", cJSON_GetErrorPtr());
+		return NULL;
+	}
+	free(temp);
+	free(buf);
+	free(qStr);
+
+	return json;
+}
+
+
+int is_in_uril(cJSON *uril, char* new){
+	if(!uril) return false;
+	if(!new) return false;
+	int result = -1;
+	cJSON *pjson = NULL;
+
+	int urilSize = cJSON_GetArraySize(uril);
+
+	for(int i = 0 ; i < urilSize ; i++){
+		pjson = cJSON_GetArrayItem(uril, i);
+		if(!strcmp(pjson->valuestring, new)){
+			result = i;
+			break;
+		}
+	}
+
+	return result;
+}
+
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
+	
+	RTNode *prt = rtnode;
+	RTNode *trt = NULL;
+	RTNode *cinrtHead = NULL;
+	cJSON *uril = cJSON_CreateArray();
+	cJSON *curil = NULL;
+	cJSON *pjson = NULL;
+	char buf[512] = {0};
+	int curilSize = 0;
+
+	while(prt){
+		if(prt->ty == RT_CIN){
+			if(prt->sibling_right){
+				prt->sibling_right->parent = prt->parent;
+			}
+		}
+		// If resource is cnt, Construct RTNode of child cin and attach it
+		if(prt->ty == RT_CNT){
+			cinrtHead = trt = db_get_cin_rtnode_list(prt);
+			prt->child = cinrtHead;
+		}
+		//logger("util", LOG_LEVEL_DEBUG, "examining %s", get_rn_rtnode(prt));
+		// Check if resource satisfies filter
+		if(isResourceAptFC(prt, fc)){
+			if(fc->arp){
+				sprintf(buf, "%s/%s", get_rn_rtnode(prt), fc->arp);
+				trt = find_rtnode_by_uri(prt, buf);
+				if(trt) cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
+				buf[0] = '\0';
+			}else{
+				cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
+			}
+			
+		}
+
+		// Check child resources if available
+		if(fc->lvl - lvl > 0 && prt->child ){
+			curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
+
+			curilSize = cJSON_GetArraySize(curil);
+			for(int i = 0 ; i < curilSize ; i++){
+				pjson = cJSON_GetArrayItem(curil, i);
+				cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
+			}
+			cJSON_Delete(curil);
+			curil = NULL;
+			
+		}
+
+		// Remove attatched rtnode of CIN when available
+		if(cinrtHead){
+			free_rtnode_list(cinrtHead);
+			prt->child = NULL;
+		}
+		cinrtHead = NULL;
+		prt = prt->sibling_right;
+	}
+
+	return uril;
 }

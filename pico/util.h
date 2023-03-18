@@ -1,6 +1,7 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 #include "onem2mTypes.h"
+#include "onem2m.h"
 #include "cJSON.h"
 
 void init_server();
@@ -26,6 +27,12 @@ char *get_ri_rtnode(RTNode *rtnode);
 char *get_pi_rtnode(RTNode *rtnode);
 char *get_rn_rtnode(RTNode *rtnode);
 char *get_acpi_rtnode(RTNode *rtnode);
+char *get_ct_rtnode(RTNode *rtnode);
+char *get_et_rtnode(RTNode *rtnode);
+char *get_lt_rtnode(RTNode *rtnode);
+int get_st_rtnode(RTNode *rtnode);
+int get_cs_rtnode(RTNode *rtnode);
+char *get_lbl_rtnode(RTNode *rtnode);
 
 //error
 void no_mandatory_error(oneM2MPrimitive *o2pt);
@@ -48,7 +55,7 @@ void db_store_fail(oneM2MPrimitive *o2pt);
 //etc
 char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
-void delete_cin_under_cnt_mni_mbs(CNT *cnt);
+void delete_cin_under_cnt_mni_mbs(RTNode *rtnode);
 void respond_to_client(oneM2MPrimitive *o2pt);
 void cin_in_period(RTNode *pnode);
 void object_test_api(RTNode *node);
@@ -81,6 +88,8 @@ int rsc_to_http_status(int rsc);
 cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
 void remove_mid(char **mid, int idx, int cnm);
 int handle_csy(GRP *grp, int i);
-
-
+int get_number_from_cjson(cJSON *json);
+cJSON *qs_to_json(char* qs);
+cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo);
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl);
 #endif

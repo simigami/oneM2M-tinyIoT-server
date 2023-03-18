@@ -18,7 +18,8 @@ typedef enum {
 	OP_UPDATE,
 	OP_DELETE,
 	OP_VIEWER = 1000,
-	OP_OPTIONS
+	OP_OPTIONS,
+	OP_DISCOVERY
 }Operation;
 
 typedef enum {
@@ -36,6 +37,11 @@ typedef enum {
 	ACOP_NOTIFY = 16,
 	ACOP_DISCOVERY = 32
 }ACOP;
+
+typedef enum {
+	CS_PARTIAL_CONTENT = 1,
+	CS_FULL_CONTENT = 2
+} ContentStatus;
 
 //oneM2M Resource
 typedef struct {
@@ -157,7 +163,99 @@ typedef struct {
 	RTNode *cb;
 }ResourceTree;
 
+typedef enum {
+    FU_DISCOVERY                    = 1,
+    FU_CONDITIONAL_OPERATION       = 2, // DEFAULT
+    FU_IPE_ON_DEMAND_DISCOVERY     = 3,
+    FU_DISCOVERY_BASED_OPERATION   = 4
+} FilterUsage;
+
+
+typedef enum{
+    FO_AND = 1,    // DEFAULT
+    FO_OR  = 2,
+    FO_XOR = 3
+} FilterOperation;
+
+
 typedef struct {
+    /*Created Before*/
+    char* crb;
+    /*Created After*/
+    char* cra;
+    /*Modified Since*/
+    char* ms;
+    /*Unmodified Since*/
+    char* us;
+    /*stateTag Smaller*/
+    int sts;
+    /*stateTag Bigger*/
+    int stb;
+    /*Expire Before*/
+    char* exb;
+    /*Expire After*/
+    char* exa;
+    
+    /*Label*/
+    cJSON* lbl;
+    /*Parent Label*/
+    cJSON *palb;
+    /*Child Label*/
+    cJSON *clbl;
+
+    /*Labels Query*/
+    char* lbq;
+    /*Resource Type*/
+    int *ty;
+    int tycnt;
+    /*Child Resource Type*/
+    int *chty;
+    int chtycnt;
+    /*Parent Resource Type*/
+    int *pty;
+    int ptycnt;
+    /*Size Above*/
+    int sza;
+    /*Size Below*/
+    int szb;
+
+    /*Content Type*/
+    char* cty;
+    /*Attribute*/
+    char* atr;
+    /*Child Attribute*/
+    char* catr;
+    /*Parent Attribute*/
+    char* patr;
+
+    FilterUsage fu;
+    /*Limit*/
+    int lim;
+    /*sememtics FIlter*/
+    char* smf;
+    FilterOperation fo;
+
+    /*Content Filter Syntax*/
+    char* cfs;
+    /*Content Filter Query*/
+    char* cfq;
+
+    /*Level*/
+    int lvl;
+    /*Offset*/
+    int ofst;
+    /*apply Relative Path*/
+    char* arp;
+    /*GeoQuery*/
+    char* gq;
+    /*Operations*/
+    ACOP ops;
+    
+    struct _o *o2pt;
+} FilterCriteria;
+
+
+typedef struct _o{
 	char *to;
 	char *fr;
 	char *rqi;
@@ -172,6 +270,9 @@ typedef struct {
 	char *req_type;
 	bool isFopt;
 	char *fopt;
+	ContentStatus cnst;
+	int cnot;
+	FilterCriteria *fc;
 }oneM2MPrimitive;
 
 //onem2m resource
@@ -183,6 +284,7 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 void notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
 int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
@@ -244,6 +346,30 @@ void set_node_uri(RTNode* node);
 
 //etc
 int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
+
+/* check resource is apt to filter criteria */
+bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc);
+bool FC_isAptCra(char* fcCra, RTNode *rtnode);
+bool FC_isAptCrb(char *fcCrb, RTNode *rtnode);
+bool FC_isAptExa(char *fcExa, RTNode *rtnode);
+bool FC_isAptExb(char *fcExa, RTNode *rtnode);
+bool FC_isAptLbl(cJSON* fcLbl, RTNode *rtnode);
+bool FC_isAptMs(char *fcMs, RTNode *rtnode);
+bool FC_isAptUs(char *fcUs, RTNode *rtnode);
+bool FC_isAptStb(int fcStb, RTNode *rtnode);
+bool FC_isAptSts(int fcSts, RTNode *rtnode);
+bool FC_isAptTy(int *fcTy, int tycnt, int ty);
+bool FC_isAptChty(int *fcChty, int tycnt, int ty);
+bool FC_isAptPty(int *fcPty, int tycnt, int ty);
+bool FC_isAptSza(int fcSza, RTNode *rtnode);
+bool FC_isAptSzb(int fcSzb, RTNode *rtnode);
+bool FC_isAptOps(ACOP fcAcop, oneM2MPrimitive *o2pt, RTNode *rtnode);
+
+bool isValidFcAttr(char* attr);
+
+FilterCriteria *parseFilterCriteria(cJSON *fcjson);
+
+void free_fc(FilterCriteria *fc);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

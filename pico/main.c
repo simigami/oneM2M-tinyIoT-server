@@ -20,8 +20,6 @@
 #include "mqttClient.h"
 
 ResourceTree *rt;
-
-extern void *mqtt_serve();
 void route(oneM2MPrimitive *o2pt);
 void stop_server(int sig);
 
@@ -64,8 +62,16 @@ void route(oneM2MPrimitive *o2pt) {
 
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
-		log_runtime(start);
 		respond_to_client(o2pt);
+		log_runtime(start);
+		return;
+	}
+
+	if(o2pt->fc && o2pt->fc->fu != FU_DISCOVERY){
+		o2pt->rsc = RSC_BAD_REQUEST;
+		set_o2pt_pc(o2pt, "{\"m2m:dbg\":\"Only Filter Usage Discovery Supported\"}");
+		respond_to_client(o2pt);
+		log_runtime(start);
 		return;
 	}
 
@@ -87,6 +93,10 @@ void route(oneM2MPrimitive *o2pt) {
 int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	int rsc = 0;
 
+	if(o2pt->op == OP_CREATE && o2pt->fc){
+		return o2pt->rsc = rsc = RSC_BAD_REQUEST;
+	}
+
 	switch(o2pt->op) {
 		
 		case OP_CREATE:	
@@ -104,9 +114,12 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		case OP_VIEWER:
 			rsc = tree_viewer_api(o2pt, target_rtnode); break;
 		
-		case OP_OPTIONS:
-			break;
-		
+		//case OP_OPTIONS:
+			//respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}", "2000");
+			//break;
+		case OP_DISCOVERY:
+			rsc = discover_onem2m_resource(o2pt, target_rtnode); break;
+
 		default:
 			handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "{\"m2m:dbg\": \"internal server error\"}");
 			return RSC_INTERNAL_SERVER_ERROR;
