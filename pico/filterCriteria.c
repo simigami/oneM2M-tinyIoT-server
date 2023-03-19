@@ -366,7 +366,7 @@ bool FC_isAptLbl(cJSON* fcLbl, RTNode *rtnode){
     char * lbl = get_lbl_rtnode(rtnode);
     if(!lbl) return result; // if no lbl return false
 
-    nodelbl = string_to_cjson_list_item(lbl);
+    nodelbl = string_to_cjson_string_list_item(lbl);
     nodeSize = cJSON_GetArraySize(nodelbl);
     
     fcSize = cJSON_GetArraySize(fcLbl);
@@ -395,7 +395,7 @@ bool FC_isAptPalb(cJSON *fcPalb, RTNode *rtnode){
     char *lbl = get_lbl_rtnode(rtnode->parent);
     if(!lbl) return result;
 
-    nodelbl = string_to_cjson_list_item(lbl);
+    nodelbl = string_to_cjson_string_list_item(lbl);
     nodeSize = cJSON_GetArraySize(nodelbl);
 
     fcSize = cJSON_GetArraySize(fcPalb);
@@ -429,7 +429,7 @@ bool FC_isAptClbl(cJSON *fcClbl, RTNode *rtnode){
         char *lbl = get_lbl_rtnode(prt);
         if(!lbl) return result;
 
-        nodelbl = string_to_cjson_list_item(lbl);
+        nodelbl = string_to_cjson_string_list_item(lbl);
         nodeSize = cJSON_GetArraySize(nodelbl);
 
         fcSize = cJSON_GetArraySize(fcClbl);

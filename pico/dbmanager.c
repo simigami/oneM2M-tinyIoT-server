@@ -260,7 +260,8 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->lbl == NULL) ae_object->lbl = blankspace;
     if (ae_object->srv == NULL) ae_object->srv = blankspace;
     if (ae_object->acpi == NULL) ae_object->acpi = blankspace;
-    if(ae_object->rr == false) strcpy(rr, "false");
+    if (ae_object->origin == NULL) ae_object->origin = blankspace;
+    if (ae_object->rr == false) strcpy(rr, "false");
     else strcpy(rr, "true");
 
     ////dbp = DB_CREATE_(dbp);
@@ -277,9 +278,9 @@ int db_store_ae(AE *ae_object) {
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s;%s",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s",
             ae_object->rn,ae_object->pi,ae_object->ty,ae_object->ct,ae_object->lt,
-            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv,ae_object->acpi);
+            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv,ae_object->acpi,ae_object->origin);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -302,6 +303,7 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->lbl == blankspace) ae_object->lbl = NULL;
     if (ae_object->srv == blankspace) ae_object->srv = NULL;
     if (ae_object->acpi == blankspace) ae_object->acpi = NULL;
+    if (ae_object->origin == blankspace) ae_object->origin = NULL;
     
     return 1;
 }
@@ -498,7 +500,7 @@ int db_store_grp(GRP *grp_object){
 }
 
 int db_store_sub(SUB *sub_object) {
-    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cnt");
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
     char* blankspace = " ";
 
         // db handle
@@ -534,9 +536,9 @@ int db_store_sub(SUB *sub_object) {
     key_ri.size = strlen(sub_object->ri) + 1;
 
     char str[DB_STR_MAX] = "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%s",sub_object->rn, sub_object->pi, sub_object->ty, 
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%d",sub_object->rn, sub_object->pi, sub_object->ty, 
     sub_object->ct, sub_object->et, sub_object->lt, sub_object->nu, sub_object->net,
-    sub_object->nct, sub_object->sur);
+    sub_object->sur, sub_object->nct);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -604,9 +606,9 @@ int db_store_acp(ACP *acp_object) {
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
     //strcat(str,acp_object->rn);
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s",
             acp_object->rn,acp_object->pi,acp_object->ty,acp_object->ct,acp_object->lt,
-            acp_object->et,acp_object->pv_acor,acp_object->pv_acop,acp_object->pvs_acor,acp_object->pvs_acop);
+            acp_object->et,acp_object->pv_acor,acp_object->pv_acop,acp_object->pvs_acor,acp_object->pvs_acop,acp_object->lbl);
             
     data.data = str;
     data.size = strlen(str) + 1;
@@ -853,7 +855,15 @@ AE* db_get_ae(char* ri) {
                     strcpy(new_ae->acpi, ptr);
                 }            
                     idx++;
-                    break;                                    
+                    break;
+                case 12:
+                if(strcmp(ptr," ")==0) new_ae->origin=NULL; //data is NULL
+                else{                
+                    new_ae->origin = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->origin, ptr);
+                }            
+                    idx++;
+                    break;                                     
                 default:
                     idx=-1;
                 }
@@ -885,7 +895,6 @@ CNT* db_get_cnt(char* ri) {
     bool flag = false;
     int idx = 0;
     
-    //dbp = DB_CREATE_(dbp);
     // DB_OPEN(DATABASE);
     dbcp = DB_GET_CURSOR(resourceDBp);
 
@@ -1130,127 +1139,110 @@ SUB* db_get_sub(char* ri) {
     DBT key, data;
     int ret;
 
+    bool flag = false;
+    int idx = 0;
+
     dbcp = DB_GET_CURSOR(subDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
     memset(&data, 0, sizeof(data));
 
-    bool flag = false;
-    int idx = 0;
-    
-    // new_sub->pi = malloc(data.size);
-    // strcpy(new_sub->pi, key.data);
+    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, ri, key.size) == 0) {
+            new_sub = (SUB*)calloc(1, sizeof(SUB));
+            flag=true;
+            // ri = key
+            new_sub->ri = malloc((key.size+1)*sizeof(char));
+            strcpy(new_sub->ri, key.data);
 
-    // while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-    //     if (strncmp(key.data, ri, key.size) == 0) {
-    //         new_sub = (SUB*)calloc(1, sizeof(SUB));
-    //         flag=true;
-    //         // ri = key
-    //         new_sub->ri = malloc((key.size+1)*sizeof(char));
-    //         strcpy(new_cnt->ri, key.data);
+            char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
+            while (ptr != NULL) { // Split to end of next string
+                switch (idx) {
+                case 0:
+                if(strcmp(ptr," ")==0) new_sub->rn=NULL; //data is NULL
+                    else{
+                    new_sub->rn = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->rn, ptr);
+                    }
+                    idx++;
+                    break;
+                case 1:
+                if(strcmp(ptr," ")==0) new_sub->pi=NULL; //data is NULL
+                    else{
+                    new_sub->pi = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->pi, ptr);
+                    }
+                    idx++;
+                    break;
+                case 2:
+                    new_sub->ty = atoi(ptr);
+                    idx++;
+                    break;
+                case 3:
+                if(strcmp(ptr," ")==0) new_sub->ct=NULL; //data is NULL
+                    else{
+                    new_sub->ct = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->ct, ptr);
+                    }
+                    idx++;
+                    break;
+                case 4:
+                if(strcmp(ptr," ")==0) new_sub->et=NULL; //data is NULL
+                    else{
+                    new_sub->et = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->et, ptr);
+                    }
+                    idx++;
+                    break;                
+                case 5:
+                if(strcmp(ptr," ")==0) new_sub->lt=NULL; //data is NULL
+                    else{
+                    new_sub->lt = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->lt, ptr);
+                    }
+                    idx++;
+                    break;      
+                case 6:
+                if(strcmp(ptr," ")==0) new_sub->nu=NULL; //data is NULL
+                    else{
+                    new_sub->nu = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->nu, ptr);
+                    }
+                    idx++;
+                    break;   
+                case 7:
+                if(strcmp(ptr," ")==0) new_sub->net=NULL; //data is NULL
+                    else{
+                    new_sub->net = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->net, ptr);
+                    }
+                    idx++;
+                    break;                                           
+                case 8:
+                if(strcmp(ptr," ")==0) new_sub->sur=NULL; //data is NULL
+                    else{
+                    new_sub->sur = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_sub->sur, ptr);
+                    }
+                    idx++;
+                    break;     
+                case 9:
+                    new_sub->nct = atoi(ptr);
 
-    //         char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
-    //         while (ptr != NULL) { // Split to end of next string
-    //             switch (idx) {
-    //             case 0:
-    //             if(strcmp(ptr," ")==0) new_cnt->rn=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->rn = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->rn, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;
-    //             case 1:
-    //             if(strcmp(ptr," ")==0) new_cnt->pi=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->pi = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->pi, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;
-    //             case 2:
-    //                 new_cnt->ty = atoi(ptr);
-    //                 idx++;
-    //                 break;
-    //             case 3:
-    //             if(strcmp(ptr," ")==0) new_cnt->ct=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->ct = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->ct, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;
-    //             case 4:
-    //             if(strcmp(ptr," ")==0) new_cnt->lt=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->lt = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->lt, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;                
-    //             case 5:
-    //             if(strcmp(ptr," ")==0) new_cnt->et=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->et = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->et, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;      
-    //             case 6:
-    //             if(strcmp(ptr," ")==0) new_cnt->lbl=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->lbl = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->lbl, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;   
-    //             case 7:
-    //             if(strcmp(ptr," ")==0) new_cnt->acpi=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->acpi = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->acpi, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;                                           
-    //             case 8:
-    //                 new_cnt->cbs = atoi(ptr);
+                    idx++;
+                    break;                                                             
+                default:
+                    idx=-1;
+                }         
+                ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+            }
+        }
+    }
 
-    //                 idx++;
-    //                 break;     
-    //             case 9:
-    //                 new_cnt->cni = atoi(ptr);
-
-    //                 idx++;
-    //                 break;    
-    //             case 10:
-    //                 new_cnt->st = atoi(ptr);
-
-    //                 idx++;
-    //                 break;
-    //             case 11:
-    //                 new_cnt->mni = atoi(ptr);  
-    //                 idx++;
-    //                 break;
-    //             case 12:
-    //                 new_cnt->mbs = atoi(ptr);
-    //                 idx++;
-    //                 break;                                                                  
-    //             default:
-    //                 idx=-1;
-    //             }         
-    //             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-    //         }
-    //     }
-    // }
-
-    /* Cursors must be closed */
-    // if (dbcp0 != NULL)
-    //     dbcp0->close(dbcp0);
     if (dbcp != NULL)
         dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
+
 
     return new_sub;
 }
@@ -1363,7 +1355,15 @@ ACP* db_get_acp(char* ri) {
                     strcpy(new_acp->pvs_acop, ptr);
                 }
                     idx++;
-                    break;                
+                    break;   
+                case 10:
+                if(strcmp(ptr," ")==0) new_acp->lbl=NULL; //data is NULL
+                else{
+                    new_acp->lbl = malloc((strlen(ptr)+1)*sizeof(char));
+                    strcpy(new_acp->lbl, ptr);
+                }
+                    idx++;
+                    break;              
                 default:
                     idx=-1;
                 }
@@ -1504,7 +1504,7 @@ int db_delete_onem2m_resource(char* ri) {
     memset(&data, 0, sizeof(data));
 
     while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
+        if (strcmp(key.data, ri) == 0) {
             flag = true;
             dbcp->del(dbcp, 0);
             break;
@@ -1826,6 +1826,7 @@ RTNode* db_get_all_cnt_rtnode() {
 
 RTNode* db_get_all_sub_rtnode(){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_sub_rtnode");
+    const char *TYPE = "23-";
 
     DBC* dbcp;
     DBT key, data;
@@ -1837,14 +1838,26 @@ RTNode* db_get_all_sub_rtnode(){
     memset(&key, 0, sizeof(key));
     memset(&data, 0, sizeof(data));
 
-    int idx = 0;
-
     RTNode* head = NULL, *rtnode = NULL;
     
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, TYPE , 3) == 0){
+            SUB* sub = db_get_sub((char*)key.data);
+            if(!head) {
+                head = create_rtnode(sub,RT_SUB);
+                rtnode = head;
+            } else {
+                rtnode->sibling_right = create_rtnode(sub,RT_SUB);
+                rtnode->sibling_right->sibling_left = rtnode;
+                rtnode = rtnode->sibling_right;
+            }     
+        }
+    }
 
     /* DB close */
-    dbcp->close(dbcp);
-    // dbp->close(dbp, 0);
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+
     return head;
 }
 
@@ -1971,6 +1984,7 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
                     rtnode->sibling_right->sibling_left = rtnode;
                     rtnode = rtnode->sibling_right;
                 }
+                rtnode->parent = parent_rtnode;
             } else {
                 free_cin(cin);
             }

@@ -67,7 +67,8 @@ void serve_forever(const char *PORT) {
         clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
         if (clients[slot] < 0) {
             perror("accept() error");
-            exit(1);
+            //exit(1);
+            clients[slot] = -1;
         } else {
             pthread_t thread_id;
             pthread_create(&thread_id, NULL, respond_thread, (void*)&slots[slot]);
@@ -214,9 +215,9 @@ void respond(int slot) {
         t2 = request_header("Content-Length"); // and the related header if there is
         payload = t;
         payload_size = t2 ? atol(t2) : 0;
-        if(payload_size > 0 && payload == NULL) {
+        if(payload_size > 0 && (payload == NULL)) {
             flag = true;
-            payload = (char *)malloc(MAX_PAYLOAD_SIZE*sizeof(char));
+            payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
             recv(clients[slot], payload, MAX_PAYLOAD_SIZE, 0);
         }
         if(payload) normalize_payload();
@@ -283,6 +284,7 @@ void handle_http_request() {
 	o2pt->op = http_parse_operation();
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
 	o2pt->prot = PROT_HTTP;
+    o2pt->errFlag = false;
 
     if(qs && strlen(qs) > 0){
         fcjson = qs_to_json(qs);
@@ -365,8 +367,61 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
         case 413: status = "413 Payload Too Large"; break;
         case 500: status = "500 Internal Server Error"; break;
     }
-    sprintf(buf, "%s %s\n%s%s\n", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers);
+    sprintf(buf, "%s %s\n%s%s\n", HTTP_PROTOCOL_VERSION, status, DEFAULT_RESPONSE_HEADERS, response_headers);
     if(o2pt->pc) strcat(buf, o2pt->pc);
     printf("%s",buf); 
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
+}
+
+void http_notify(oneM2MPrimitive *o2pt, cJSON *noti_cjson, char *noti_uri) {
+    int uri_len = strlen(noti_uri);
+    char *p = noti_uri+7;
+    char host[1024] = {'\0'};
+    char target[1024] = "/\0";
+    char port[8] = "80";
+
+    int index = 0;
+    while(noti_uri + uri_len > p && *p != ':' && *p != '/' && *p != '?'){
+        host[index++] = *(p++);
+    }
+    if(noti_uri + uri_len > p && *p == ':') {
+        p++;
+        index = 0;
+        while(noti_uri + uri_len > p && *p != '/' && *p != '?'){
+            port[index++] = *(p++);
+        }
+    }
+    if(noti_uri + uri_len > p) {
+        if(*p == '?') {
+            sprintf(target, "/%s", p);
+        } else if(*p == '/') {
+            strcpy(target, p);
+        }
+    } 
+
+    struct sockaddr_in serv_addr;
+    int sock = socket(PF_INET, SOCK_STREAM, 0);
+    if(sock == -1) {
+        logger("HTTP", LOG_LEVEL_ERROR, "socket error");
+        return;
+    }
+
+    char *noti_json = cJSON_PrintUnformatted(noti_cjson);
+    char buffer[BUF_SIZE];
+
+    sprintf(buffer, "GET %s %s\r\n%s\r\n%s", target, HTTP_PROTOCOL_VERSION, DEFAULT_REQUEST_HEADERS, noti_json);
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(host);
+    serv_addr.sin_port = htons(atoi(port));
+
+    if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
+        logger("HTTP", LOG_LEVEL_ERROR, "connect error");
+        return;
+    }
+
+    send(sock, buffer, sizeof(buffer), 0);
+    close(sock);
+    free(noti_json);
 }

@@ -28,7 +28,6 @@ int terminate = 0;
 pthread_t mqtt;
 #endif
 
-
 int main(int c, char **v) {
 	signal(SIGINT, stop_server);
 	
@@ -87,6 +86,7 @@ void route(oneM2MPrimitive *o2pt) {
 	}
 
 	respond_to_client(o2pt);
+	if(o2pt->op != OP_DELETE && !o2pt->errFlag && target_rtnode) notify_onem2m_resource(o2pt, target_rtnode);
 	log_runtime(start);
 }
 

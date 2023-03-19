@@ -20,7 +20,8 @@ void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) ;
 //Resource Tree
 void init_resource_tree();
 int add_child_resource_tree(RTNode *parent, RTNode *child);
-RTNode *find_rtnode_by_uri(RTNode *cse, char *node_uri);
+RTNode *find_rtnode_by_uri(RTNode *cb, char *node_uri);
+RTNode *find_rtnode_by_ri(RTNode *cb, char *ri);
 RTNode* find_latest_oldest(RTNode* node, int flag);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 char *get_ri_rtnode(RTNode *rtnode);
@@ -35,8 +36,6 @@ int get_cs_rtnode(RTNode *rtnode);
 char *get_lbl_rtnode(RTNode *rtnode);
 
 //error
-void no_mandatory_error(oneM2MPrimitive *o2pt);
-void child_type_error(oneM2MPrimitive *o2pt);
 int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop);
 int check_payload_empty(oneM2MPrimitive *o2pt);
 int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode);
@@ -47,9 +46,7 @@ int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int check_payload_size(oneM2MPrimitive *o2pt);
 int check_payload_format(oneM2MPrimitive *o2pt);
 int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty);
-void api_prefix_invalid(oneM2MPrimitive *o2pt);
-void too_large_content_size_error(oneM2MPrimitive *o2pt);
-void mni_mbs_invalid(oneM2MPrimitive *o2pt, char *attribute);
+bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi);
 void db_store_fail(oneM2MPrimitive *o2pt);
 
 //etc
@@ -57,9 +54,6 @@ char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
 void delete_cin_under_cnt_mni_mbs(RTNode *rtnode);
 void respond_to_client(oneM2MPrimitive *o2pt);
-void cin_in_period(RTNode *pnode);
-void object_test_api(RTNode *node);
-char* json_label_value(char *json_payload);
 int net_to_bit(char *net);
 int get_acop(oneM2MPrimitive *o2pt, RTNode *node);
 int get_acop_origin(char *origin, RTNode *acp, int flag);
@@ -74,10 +68,6 @@ bool isMinDup(char **mid, int idx, char *new_mid);
 ResourceType http_parse_object_type();
 ResourceType parse_object_type_cjson(cJSON *cjson);
 
-struct url_data { size_t size; char* data;};
-size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
-int send_http_packet(char *target, char *post_data);
-
 bool isFopt(char *str);
 bool endswith(char *str, char *match);
 
@@ -91,5 +81,6 @@ int handle_csy(GRP *grp, int i);
 int get_number_from_cjson(cJSON *json);
 cJSON *qs_to_json(char* qs);
 cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo);
-cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl);
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl);void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, int net);
+
 #endif
