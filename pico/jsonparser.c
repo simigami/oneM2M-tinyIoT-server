@@ -176,7 +176,7 @@ CIN* cjson_to_cin(cJSON *cjson) {
 
 	// con (mandatory)
 	con = cJSON_GetObjectItem(root, "con");
-	if (con == NULL || con->valuestring[0] == 0 || isspace(con->valuestring[0]))
+	if (con == NULL || con->valuestring == NULL || con->valuestring[0] == 0 || isspace(con->valuestring[0]))
 	{
 		fprintf(stderr, "Invalid con\n");
 		return NULL;

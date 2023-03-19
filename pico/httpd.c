@@ -250,7 +250,11 @@ Operation http_parse_operation(){
 
 void handle_http_request() {
 	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+    cJSON *fcjson = NULL;
 	char *header = NULL;
+
+    
+
 	if(payload) {
 		o2pt->pc = (char *)malloc((payload_size + 1) * sizeof(char));
 		strcpy(o2pt->pc, payload);
@@ -282,6 +286,25 @@ void handle_http_request() {
 	o2pt->prot = PROT_HTTP;
     o2pt->errFlag = false;
 
+    if(qs && strlen(qs) > 0){
+        fcjson = qs_to_json(qs);
+        if(!(o2pt->fc = parseFilterCriteria(fcjson))){
+            if(o2pt->pc)
+                free(o2pt->pc);
+            o2pt->pc = strdup("{\"m2m:dbg\": \"Invalid FilterCriteria\"}");
+            o2pt->rsc = RSC_BAD_REQUEST;
+            http_respond_to_client(o2pt);
+            cJSON_Delete(fcjson);
+            free_o2pt(o2pt);
+            return;
+        }
+
+        if(o2pt->fc->fu == FU_DISCOVERY){
+            o2pt->op = OP_DISCOVERY;
+        }
+        cJSON_Delete(fcjson);
+    }
+
 	route(o2pt);
     free_o2pt(o2pt);
 }
@@ -312,6 +335,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
     int status_code = rsc_to_http_status(o2pt->rsc);
     char content_length[64];
     char rsc[64];
+    char cnst[32], ot[32];
     char response_headers[2048] = {'\0'};
 
     sprintf(content_length, "%ld", o2pt->pc ? strlen(o2pt->pc) : 0);
@@ -320,6 +344,13 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
     set_response_header("X-M2M-RSC", rsc, response_headers);
     set_response_header("X-M2M-RVI", o2pt->rvi, response_headers);
     set_response_header("X-M2M-RI", o2pt->rqi, response_headers);
+
+    if(o2pt->cnot > 0){
+        sprintf(cnst, "%d", o2pt->cnst);
+        set_response_header("X-M2M-CNST", cnst, response_headers);
+        sprintf(ot, "%d", o2pt->cnot);
+        set_response_header("X-M2M-CNOT", ot, response_headers);
+    }
 
     char buf[BUF_SIZE] = {'\0'};
 

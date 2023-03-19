@@ -206,8 +206,9 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	add_child_resource_tree(parent_rtnode, child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
-	o2pt->rsc = RSC_CREATED;
+	return o2pt->rsc = RSC_CREATED;
 	// notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
+	
 }
 
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -282,7 +283,6 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cin_to_json(cin);
 	o2pt->rsc = RSC_CREATED;
-
 	free_rtnode(cin_rtnode);
 	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	return RSC_CREATED;
@@ -463,7 +463,7 @@ int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 		return o2pt->rsc;
 	}
 	//set_rtnode_update(target_rtnode, after);
-	delete_cin_under_cnt_mni_mbs(cnt);
+	delete_cin_under_cnt_mni_mbs(target_rtnode);
 	cnt->st++;
 	result = db_delete_onem2m_resource(cnt->ri);
 	result = db_store_cnt(cnt);
@@ -701,7 +701,7 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 	CIN *cin = (CIN *)cin_rtnode->obj;
 	cnt->cni += sign;
 	cnt->cbs += sign*(cin->cs);
-	delete_cin_under_cnt_mni_mbs(cnt);	
+	delete_cin_under_cnt_mni_mbs(cnt_rtnode);	
 	cnt->st++;
 	db_delete_onem2m_resource(cnt->ri);
 	db_store_cnt(cnt);
@@ -869,6 +869,9 @@ void free_grp(GRP *grp) {
 }
 
 void free_rtnode(RTNode *rtnode) {
+	if(rtnode->uri && rtnode->ty != RT_CSE)
+		free(rtnode->uri);
+
 	switch(rtnode->ty) {
 		case RT_CSE:
 			free_cse((CSE *)rtnode->obj);
@@ -979,10 +982,7 @@ void init_grp(GRP *grp, char *pi){
 	if(grp->csy == 0) grp->csy = CSY_ABANDON_MEMBER;
 
 
-	if(!grp->rn) {
-		grp->rn = (char *) malloc((strlen(ri) + 1) * sizeof(char));
-		strcpy(grp->rn, ri);
-	} 
+	if(!grp->rn) grp->rn = strdup(ri);
 
 	free(ct); ct = NULL;
 	free(et); et = NULL;
@@ -1092,6 +1092,8 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = grp_to_json(grp);
 	o2pt->rsc = RSC_UPDATED;
+	if(target_rtnode->obj)
+		free_grp((GRP *) target_rtnode->obj);
 
 	return RSC_UPDATED;
 }
@@ -1115,10 +1117,10 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	rsc = validate_grp(grp);
 	if(rsc >= 4000){
 		logger("O2M", LOG_LEVEL_DEBUG, "Group Validation failed");
-		o2pt->rsc = rsc;
+		
 		free_grp(grp);
 		grp = NULL;
-		return rsc;
+		return o2pt->rsc = rsc;
 	}
 
 	int result = db_store_grp(grp);
@@ -1135,8 +1137,225 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = grp_to_json(grp);
 
-	free_grp(grp); grp = NULL;
+	//free_grp(grp); grp = NULL;
 	return rsc;
+}
+
+bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
+    void *obj;
+    int flag = 0;
+	RTNode *prtnode = NULL;
+	FilterOperation fo = fc->fo;
+    if(!rtnode || !fc) return false;
+
+	// check Created Time
+	if(fc->cra && fc->crb){
+		if(strcmp(fc->cra, fc->crb) >= 0 && fo == FO_AND) return false;
+	}
+    if(fc->cra){
+		if(!FC_isAptCra(fc->cra, rtnode)) {
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+    }
+	if(fc->crb){
+		if(!FC_isAptCrb(fc->crb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// check Last Modified
+	if(fc->ms && fc->us){
+		if(strcmp(fc->ms, fc->us) >= 0 && fo == FO_AND) return false;
+	}
+	if(fc->ms){
+		if(!FC_isAptMs(fc->ms, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	if(fc->us){
+		if(!FC_isAptUs(fc->us, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// check state tag
+	if(fc->stb && fc->sts){
+		if(fc->stb >= fc->sts && fo == FO_AND) 
+			return false;
+	}
+	if(fc->stb){
+		if(!FC_isAptStb(fc->stb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	if(fc->sts){
+		if(!FC_isAptSts(fc->sts, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// check Expiration Time
+	if(fc->exa){
+		if(!FC_isAptExa(fc->exa, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	
+	if(fc->exb){
+		if(!FC_isAptExb(fc->exb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// check label
+	if(fc->lbl){
+		if(!FC_isAptLbl(fc->lbl, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	if(fc->clbl){
+		if(!FC_isAptClbl(fc->clbl, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	if(fc->palb){
+		if(!FC_isAptPalb(fc->palb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	// check TY
+    if(fc->tycnt > 0){
+        if(!FC_isAptTy(fc->ty, fc->tycnt, rtnode->ty)){
+            return false;
+		}else{
+			if(fo == FO_OR){
+				return true;
+			}
+		}
+    }
+	// check chty
+	if(fc->chtycnt > 0){
+		int flag = 0;
+		prtnode = rtnode->child;
+		if(!prtnode){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			while(prtnode){
+				if(FC_isAptChty(fc->chty, fc->chtycnt, prtnode->ty)){
+					flag = 1;
+					break;
+				}
+				prtnode = prtnode->sibling_right;
+			}
+			if(flag){
+				if(fo == FO_OR)
+					return true;
+			}else{
+				if(fo == FO_AND)
+					return false;
+			}
+		}
+		
+	}
+	// check pty
+	if(fc->ptycnt > 0){
+		if(!rtnode->parent){
+			if(fo == FO_AND)
+				return false;
+		}
+		else if(!FC_isAptChty(fc->pty, fc->ptycnt, rtnode->parent->ty)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	//check cs
+	if(fc->sza && fc->szb){
+		if(fc->sza >= fc->szb && fo == FO_AND){
+			return false;
+		}
+	}
+	if(fc->sza){
+		if(!FC_isAptSza(fc->sza, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+	if(fc->szb){
+		if(!FC_isAptSzb(fc->szb, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+	if(fc->ops){
+		if(!FC_isAptOps(fc->ops, fc->o2pt, rtnode)){
+			if(fo == FO_AND)
+				return false;
+		}else{
+			if(fo == FO_OR)
+				return true;
+		}
+	}
+
+    return true;
 }
 
 int update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
@@ -1384,6 +1603,64 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	req_o2pt = NULL;
 	free_grp(grp);
 	return RSC_OK;
+}
+
+/**
+ * Discover Resources based on Filter Criteria
+*/
+int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	logger("MAIN", LOG_LEVEL_DEBUG, "Discover Resource");
+	RTNode *pn = NULL;
+	cJSON *root = cJSON_CreateObject();
+	cJSON *uril = NULL;
+	int urilSize = 0;
+
+	// TODO - IMPLEMENT OFFSET
+	// for(int i = 0 ; i < o2pt->fc->ofst ; i++){ 
+	// 	if(pn->child){
+	// 		pn = pn->child;
+	// 	}else{
+	// 		break;
+	// 	}
+	// }
+	o2pt->fc->o2pt = o2pt;
+	if(target_rtnode->ty == RT_CNT){
+		target_rtnode->child = pn = db_get_cin_rtnode_list(target_rtnode);
+		pn->parent = target_rtnode;	
+		logger("O2", LOG_LEVEL_DEBUG, "%s", pn->uri);
+	}else{
+		pn = target_rtnode->child;
+	}
+	uril = fc_scan_resource_tree(pn, o2pt->fc, 1);
+	
+	
+	urilSize = cJSON_GetArraySize(uril);	//Todo : contentStatus(cnst) set to Partial_content, cnot too 
+	if(o2pt->fc->lim < urilSize - o2pt->fc->ofst){
+		logger("MAIN", LOG_LEVEL_DEBUG, "limit exceeded");
+		for(int i = 0 ; i < o2pt->fc->ofst ; i++){
+			cJSON_DeleteItemFromArray(uril, 0);
+		}
+		urilSize = cJSON_GetArraySize(uril);
+		for(int i = o2pt->fc->lim ; i < urilSize; i++){
+			cJSON_DeleteItemFromArray(uril, o2pt->fc->lim);
+		}
+	}
+	cJSON_AddItemToObject(root, "m2m:uril", uril);
+	o2pt->cnst = CS_PARTIAL_CONTENT;
+	o2pt->cnot = o2pt->fc->ofst + o2pt->fc->lim;
+
+	if(o2pt->pc)
+		free(o2pt->pc);
+	o2pt->pc = cJSON_PrintUnformatted(root);
+
+	if(target_rtnode->ty == RT_CNT){
+		target_rtnode->child = NULL;
+		free_rtnode_list(pn);
+	}
+	cJSON_Delete(root);
+
+	return o2pt->rsc = RSC_OK;
+
 }
 
 int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
