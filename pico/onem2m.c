@@ -207,8 +207,6 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
 	return o2pt->rsc = RSC_CREATED;
-	// notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
-	
 }
 
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -246,7 +244,6 @@ int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(cnt);
 	o2pt->rsc = RSC_CREATED;
-	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	return RSC_CREATED;
 }
 
@@ -284,7 +281,6 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	o2pt->pc = cin_to_json(cin);
 	o2pt->rsc = RSC_CREATED;
 	free_rtnode(cin_rtnode);
-	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	return RSC_CREATED;
 }
 
@@ -314,7 +310,6 @@ int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = sub_to_json(sub);
 	o2pt->rsc = RSC_CREATED;
-	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	return RSC_CREATED;
 }
 
@@ -345,7 +340,6 @@ int create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(acp);
 	o2pt->rsc = RSC_CREATED;
-	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_3);
 	return RSC_CREATED;
 }
 
@@ -435,7 +429,6 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
 	o2pt->rsc = RSC_UPDATED;
-	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	return RSC_UPDATED;
 }
 
@@ -471,7 +464,6 @@ int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(cnt);
 	o2pt->rsc = RSC_UPDATED;
-	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	return RSC_UPDATED;
 }
 
@@ -496,7 +488,6 @@ int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(acp);
 	o2pt->rsc = RSC_UPDATED;
-	//notify_onem2m_resource(pnode->child, response_payload, NOTIFICATION_EVENT_1);
 	return RSC_UPDATED;
 }
 
@@ -719,7 +710,7 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 		handle_error(o2pt, RSC_OPERATION_NOT_ALLOWED, "CSE can not be deleted");
 		return RSC_OPERATION_NOT_ALLOWED;
 	}
-	delete_rtnode_and_db_data(target_rtnode,1);
+	delete_rtnode_and_db_data(o2pt, target_rtnode,1);
 	target_rtnode = NULL;
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = NULL;
@@ -727,7 +718,7 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	return RSC_DELETED;
 }
 
-int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
+int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag) {
 	switch(rtnode->ty) {
 	case RT_AE : 
 		db_delete_onem2m_resource(((AE *)rtnode->obj)->ri); 
@@ -738,7 +729,7 @@ int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	case RT_CIN :
 		db_delete_onem2m_resource(((CIN *)rtnode->obj)->ri);
 		update_cnt_cin(rtnode->parent, rtnode,-1);
-		return 1;
+		break;
 	case RT_SUB :
 		db_delete_sub(((SUB *)rtnode->obj)->ri);
 		break;
@@ -750,6 +741,9 @@ int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 		break;
 	}
 
+	notify_onem2m_resource(o2pt, rtnode);
+	if(rtnode->ty == RT_CIN) return 1;
+
 	RTNode *left = rtnode->sibling_left;
 	RTNode *right = rtnode->sibling_right;
 	
@@ -759,11 +753,11 @@ int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 			else rtnode->parent->child = right;
 			if(right) right->sibling_left = left;
 		} else {
-			if(right) delete_rtnode_and_db_data(right, 0);
+			if(right) delete_rtnode_and_db_data(o2pt, right, 0);
 		}
 	}
 	
-	if(rtnode->child) delete_rtnode_and_db_data(rtnode->child, 0);
+	if(rtnode->child) delete_rtnode_and_db_data(o2pt, rtnode->child, 0);
 	
 	free_rtnode(rtnode); rtnode = NULL;
 	return 1;
@@ -1664,6 +1658,10 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 }
 
 int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	if(!target_rtnode) {
+		logger("O2M", LOG_LEVEL_ERROR, "target_rtnode is NULL");
+		return -1;
+	}
 	int net = NET_NONE;
 
 	switch(o2pt->op) {
@@ -1672,6 +1670,9 @@ int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 			break;
 		case OP_UPDATE:
 			net = NET_UPDATE_OF_RESOURCE;
+			break;
+		case OP_DELETE:
+			net = NET_DELETE_OF_RESOURCE;
 			break;
 	}
 
@@ -1682,16 +1683,34 @@ int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	cJSON_AddNumberToObject(nev, "net", net);
 	cJSON_AddStringToObject(nev, "rep", o2pt->pc);
 
+
 	RTNode *child = target_rtnode->child;
 
 	while(child) {
 		if(child->ty == RT_SUB) {
-			cJSON_AddStringToObject(sgn, "sur", get_rn_rtnode(child));
+			cJSON_AddStringToObject(sgn, "sur", child->uri);
 			notify_to_nu(o2pt, child, noti_cjson, net);
 			cJSON_DeleteItemFromObject(sgn, "sur");
 		}
 		child = child->sibling_right;
 	}
 
+	if(net == NET_DELETE_OF_RESOURCE) {
+		net = NET_DELETE_OF_DIRECT_CHILD_RESOURCE;
+		cJSON_DeleteItemFromObject(nev, "net");
+		cJSON_AddNumberToObject(nev, "net", net);
+		child = target_rtnode->parent->child;
+		while(child) {
+			if(child->ty == RT_SUB) {
+				cJSON_AddStringToObject(sgn, "sur", child->uri);
+				notify_to_nu(o2pt, child, noti_cjson, net);
+				cJSON_DeleteItemFromObject(sgn, "sur");
+			}
+			child = child->sibling_right;
+		}
+	}
+
 	cJSON_Delete(noti_cjson);
+
+	return 1;
 }

@@ -330,9 +330,9 @@ void free_grp(GRP *grp);
 
 //resource tree
 RTNode* create_rtnode(void *resource, ResourceType ty);
-int delete_rtnode_and_db_data(RTNode *node, int flag);
-void free_rtnode(RTNode *node);
-void free_rtnode_list(RTNode *node);
+int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag);
+void free_rtnode(RTNode *rtnode);
+void free_rtnode_list(RTNode *rtnode);
 
 RTNode* restruct_resource_tree(RTNode *node, RTNode *list);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API

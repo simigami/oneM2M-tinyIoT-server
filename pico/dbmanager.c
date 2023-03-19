@@ -1984,6 +1984,7 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
                     rtnode->sibling_right->sibling_left = rtnode;
                     rtnode = rtnode->sibling_right;
                 }
+                rtnode->parent = parent_rtnode;
             } else {
                 free_cin(cin);
             }

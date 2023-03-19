@@ -27,8 +27,6 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	char *fopt_buf = NULL;
 	strcpy(uri_array, o2pt->to);
 
-	logger("util-c", LOG_LEVEL_DEBUG, "%s", o2pt->to);
-
 	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
 	int index_start = 0, index_end = -1, fopt_cnt = -1;
 
@@ -151,26 +149,25 @@ RTNode *find_rtnode_by_ri(RTNode *cb, char *ri){
 	return ret;
 }
 
-RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
-	if(rtnode->ty == RT_CNT) {
-		RTNode *head = db_get_cin_rtnode_list(rtnode);
-		RTNode *cin = head;
+RTNode *find_latest_oldest(RTNode* parent_rtnode, int flag) {
+	if(parent_rtnode->ty == RT_CNT) {
+		RTNode *head = db_get_cin_rtnode_list(parent_rtnode);
+		RTNode *cin_rtnode = head;
 
-		if(cin) {
+		if(cin_rtnode) {
 			if(flag == 1) {
 				head = head->sibling_right;
-				cin->sibling_right = NULL;			
+				cin_rtnode->sibling_right = NULL;			
 			} else {
-				while(cin->sibling_right) cin = cin->sibling_right;
-				if(cin->sibling_left) {
-					cin->sibling_left->sibling_right = NULL;
-					cin->sibling_left = NULL;
+				while(cin_rtnode->sibling_right) cin_rtnode = cin_rtnode->sibling_right;
+				if(cin_rtnode->sibling_left) {
+					cin_rtnode->sibling_left->sibling_right = NULL;
+					cin_rtnode->sibling_left = NULL;
 				}
 			}
-			if(head != cin) free_rtnode_list(head);
-			if(cin) {
-				cin->parent = rtnode;
-				return cin;
+			if(head != cin_rtnode) free_rtnode_list(head);
+			if(cin_rtnode) {
+				return cin_rtnode;
 			} else {
 				return NULL;
 			}
