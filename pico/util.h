@@ -61,10 +61,6 @@ bool isMinDup(char **mid, int idx, char *new_mid);
 ResourceType http_parse_object_type();
 ResourceType parse_object_type_cjson(cJSON *cjson);
 
-struct url_data { size_t size; char* data;};
-size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
-int send_http_packet(char *target, char *post_data);
-
 bool isFopt(char *str);
 bool endswith(char *str, char *match);
 
@@ -76,5 +72,6 @@ cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
 void remove_mid(char **mid, int idx, int cnm);
 int handle_csy(GRP *grp, int i);
 
+void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, int net);
 
 #endif

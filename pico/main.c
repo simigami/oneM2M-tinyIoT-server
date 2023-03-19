@@ -80,6 +80,7 @@ void route(oneM2MPrimitive *o2pt) {
 	}
 
 	respond_to_client(o2pt);
+	if(target_rtnode && !o2pt->errFlag) notify_onem2m_resource(o2pt, target_rtnode);
 	log_runtime(start);
 }
 

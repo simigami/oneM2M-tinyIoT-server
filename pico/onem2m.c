@@ -16,6 +16,7 @@
 #include "onem2mTypes.h"
 #include "config.h"
 #include "util.h"
+#include "cJSON.h"
 
 extern ResourceTree *rt;
 
@@ -308,7 +309,6 @@ int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return o2pt->rsc;
 	}
 
-	fprintf(stderr,"%s %s",sub->nu, sub->net);
 	RTNode* child_rtnode = create_rtnode(sub, RT_SUB);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
 	if(o2pt->pc) free(o2pt->pc);
@@ -924,20 +924,6 @@ int set_sub_update(oneM2MPrimitive *o2pt, cJSON *m2m_sub, SUB* sub) {
 }
 
 /*
-
-void notify_onem2m_resource(RTNode *node, char *response_payload, NET net) {
-	remove_invalid_char_json(response_payload);
-	while(node) {
-		if(node->ty == RT_SUB && (net & node->net) == net) {
-			if(!node->uri) set_node_uri(node);
-			char *notify_json = notification_to_json(node->uri, (int)log2((double)net ) + 1, response_payload);
-			int result = send_http_packet(node->nu, notify_json);
-			free(notify_json); notify_json = NULL;
-		}
-		node = node->sibling_right;
-	}
-}
-
 void remove_invalid_char_json(char* json) { 
 	int size = (int)malloc_usable_size(json); // segmentation fault if json memory not in heap (malloc)
 	int index = 0;
@@ -949,87 +935,6 @@ void remove_invalid_char_json(char* json) {
 	}
 
 	json[index] = '\0';
-}
-
-size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data) {
-    size_t index = data->size;
-    size_t n = (size * nmemb);
-    char* tmp;
-
-    data->size += (size * nmemb);
-    tmp = realloc(data->data, data->size + 1); // +1 for '\0' 
-
-    if(tmp) {
-        data->data = tmp;
-    } else {
-        if(data->data) {
-            free(data->data);
-        }
-        fprintf(stderr, "Failed to allocate memory.\n");
-        return 0;
-    }
-
-    memcpy((data->data + index), ptr, n);
-    data->data[data->size] = '\0';
-
-    return size * nmemb;
-}
-
-int send_http_packet(char* target, char *post_data) {
-    CURL *curl;
-    struct url_data data;
-
-    data.size = 0;
-    data.data = malloc(4096 * sizeof(char)); // reasonable size initial buffer
-
-    if(NULL == data.data) {
-        fprintf(stderr, "Failed to allocate memory.\n");
-        return EXIT_FAILURE;
-    }
-	if(post_data) remove_invalid_char_json(post_data);
-
-	char nu[MAX_ATTRIBUTE_SIZE];
-	strcpy(nu, target);
-
-	target = strtok(nu, ",");
-
-    CURLcode res;
-
-    curl = curl_easy_init();
-
-    if (curl) {
-		if(post_data) curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
-		
-		while(target) {
-			data.data[0] = '\0';
-			curl_easy_setopt(curl, CURLOPT_URL, target);
-			res = curl_easy_perform(curl);
-			
-			if(res != CURLE_OK) {
-				fprintf(stderr, "curl_easy_perform() failed: %s\n",
-				curl_easy_strerror(res));
-			}
-			target = strtok(NULL, ",");
-		}
-		
-        curl_easy_cleanup(curl);
-    }
-
-	if(data.data) free(data.data);
-
-    return EXIT_SUCCESS;
-}
-
-int get_value_querystring_int(char *key) {
-	char *value = strstr(qs, key);
-	if(!value) return -1;
-
-	value = value + strlen(key) + 1;
-
-	return atoi(value);
 }
 
 void set_node_uri(RTNode* node) {
@@ -1050,16 +955,6 @@ void set_node_uri(RTNode* node) {
 	}
 
 	return;
-}
-
-int check_origin() {
-	if(request_header("X-M2M-Origin")) {
-		return 1;
-	} else {
-		HTTP_403;
-		printf("{\"m2m:dbg\": \"DB store fail\"}");
-		return 0;
-	}
 }
 */
 /* GROUP IMPLEMENTATION */
@@ -1489,4 +1384,37 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	req_o2pt = NULL;
 	free_grp(grp);
 	return RSC_OK;
+}
+
+int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	int net = NET_NONE;
+
+	switch(o2pt->op) {
+		case OP_CREATE:
+			net = NET_CREATE_OF_DIRECT_CHILD_RESOURCE;
+			break;
+		case OP_UPDATE:
+			net = NET_UPDATE_OF_RESOURCE;
+			break;
+	}
+
+	cJSON *noti_cjson, *sgn, *nev;
+	noti_cjson = cJSON_CreateObject();
+	cJSON_AddItemToObject(noti_cjson, "m2m:sgn", sgn = cJSON_CreateObject());
+	cJSON_AddItemToObject(sgn, "nev", nev = cJSON_CreateObject());
+	cJSON_AddNumberToObject(nev, "net", net);
+	cJSON_AddStringToObject(nev, "rep", o2pt->pc);
+
+	RTNode *child = target_rtnode->child;
+
+	while(child) {
+		if(child->ty == RT_SUB) {
+			//cJSON_AddStringToObject(sgn, "sur", get_rn_rtnode(child));
+			notify_to_nu(o2pt, child, noti_cjson, net);
+			//cJSON_DeleteItemFromObject(sgn, "sur");
+		}
+		child = child->sibling_right;
+	}
+
+	cJSON_Delete(noti_cjson);
 }

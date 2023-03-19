@@ -849,6 +849,7 @@ int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 void handle_error(oneM2MPrimitive *o2pt, int rsc, char *err){
 	logger("UTIL", LOG_LEVEL_ERROR, err);
 	o2pt->rsc = rsc;
+	o2pt->errFlag = true;
 	char pc[MAX_PAYLOAD_SIZE];
 	sprintf(pc, "{\"m2m:dbg\": \"%s\"}", err);
 	set_o2pt_pc(o2pt, pc);
@@ -1194,5 +1195,32 @@ char** http_split_uri(char *uri){
 		while(p < uri + uri_size && p != '/' && p != '?') {
 			port[index++] = *(p++);
 		}
+	}
+}
+
+void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, int net) {
+	SUB *sub = (SUB *)sub_rtnode->obj;
+	if(sub->net_bit <= 0) {
+		sub->net_bit = net_to_bit(sub->net);
+	}
+	int net_bit = (int)pow(2, net-1);
+	if(sub->net_bit & net_bit != net_bit) {
+		return;
+	}
+
+	char nu[4096];
+	strcpy(nu, sub->nu);
+
+	char *noti_uri = strtok(nu, ",");
+
+	while(noti_uri) {
+		if(!strncmp(noti_uri, "http://", 7)) {
+			http_notify(o2pt, noti_cjson, noti_uri);		
+		} else if(!strncmp(noti_uri, "mqtt://", 7)) {
+			// mqtt notify logic
+			// noti_uri -> mqtt://~~~~~~
+			// noti_cjson -> payload cjson for notification
+		}
+		noti_uri = strtok(NULL, ",");
 	}
 }

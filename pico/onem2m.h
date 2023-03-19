@@ -22,13 +22,6 @@ typedef enum {
 }Operation;
 
 typedef enum {
-	NOTIFICATION_EVENT_1 = 1,
-	NOTIFICATION_EVENT_2 = 2,
-	NOTIFICATION_EVENT_3 = 4,
-	NOTIFICATION_EVENT_4 = 8
-}NET;
-
-typedef enum {
 	ACOP_CREATE = 1,
 	ACOP_RETRIEVE = 2,
 	ACOP_UPDATE = 4,
@@ -175,6 +168,7 @@ typedef struct {
 	char *req_type;
 	bool isFopt;
 	char *fopt;
+	bool errFlag;
 }oneM2MPrimitive;
 
 //onem2m resource
@@ -184,7 +178,7 @@ int retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int retrieve_object_filtercriteria(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-void notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *node, char *response_payload, NET net);
+int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);

@@ -22,6 +22,7 @@ void set_response_header(char *key, char *value, char *response_headers);
 void normalize_payload();
 Operation http_parse_operation();
 void http_respond_to_client(oneM2MPrimitive *o2pt);
+void http_notify(oneM2MPrimitive *o2pt, cJSON *noti_cjson, char *noti_uri);
 
 typedef struct {
   char *name, *value;
@@ -33,7 +34,8 @@ header_t *request_headers(void);
 void handle_http_request();
 
 // Response
-#define RESPONSE_PROTOCOL "HTTP/1.1"
+#define HTTP_PROTOCOL_VERSION "HTTP/1.1"
 #define DEFAULT_RESPONSE_HEADERS "Connection: Close\nAccept: application/json\nContent-Type: application/json; charset=utf-8\nAccess-Control-Allow-Origin: *\nAccess-Control-Allow-Headers: Accept, Accept-Language, Content-Language, Content-Type\nAccess-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS\nAccess-Control-Request-Methods: GET, PUT, POST, DELETE, OPTIONS\n"
+#define DEFAULT_REQUEST_HEADERS "Content-Type: application/json\r\n"
 
 #endif
