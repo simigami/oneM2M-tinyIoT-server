@@ -1409,9 +1409,9 @@ int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 
 	while(child) {
 		if(child->ty == RT_SUB) {
-			//cJSON_AddStringToObject(sgn, "sur", get_rn_rtnode(child));
+			cJSON_AddStringToObject(sgn, "sur", get_rn_rtnode(child));
 			notify_to_nu(o2pt, child, noti_cjson, net);
-			//cJSON_DeleteItemFromObject(sgn, "sur");
+			cJSON_DeleteItemFromObject(sgn, "sur");
 		}
 		child = child->sibling_right;
 	}

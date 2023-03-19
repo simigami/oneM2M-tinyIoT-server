@@ -392,4 +392,5 @@ void http_notify(oneM2MPrimitive *o2pt, cJSON *noti_cjson, char *noti_uri) {
 
     send(sock, buffer, sizeof(buffer), 0);
     close(sock);
+    free(noti_json);
 }
