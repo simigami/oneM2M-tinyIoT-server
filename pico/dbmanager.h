@@ -1,19 +1,17 @@
 #ifndef __dbmanager_H__
 #define __dbmanager_H__
-
-int db_display(char* database);
-
+#include "onem2m.h"
 
 int init_dbp();
 int close_dbp();
 
-int db_store_cse(CSE* cse_object);
-int db_store_ae(AE* ae_object);
-int db_store_cnt(CNT* cnt_object);
-int db_store_cin(CIN* cin_object);
-int db_store_grp(GRP* grp_object);
-int db_store_sub(SUB *sub_object);
-int db_store_acp(ACP *acp_object);
+int db_store_cse(CSE *cse_object);
+int db_store_ae(AE *ae_object);
+int db_store_cnt(RTNode* rtnode);
+int db_store_cin(RTNode* rtnode);
+int db_store_grp(RTNode* rtnode);
+int db_store_sub(RTNode* rtnode);
+int db_store_acp(RTNode* rtnode);
 
 CSE* db_get_cse();
 AE* db_get_ae(char *ri);

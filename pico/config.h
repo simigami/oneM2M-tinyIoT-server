@@ -24,7 +24,7 @@
 #define MQTT_HOST            "127.0.0.1"
 #define MQTT_QOS             MQTT_QOS_0
 #define MQTT_KEEP_ALIVE_SEC  60
-#define MQTT_CMD_TIMEOUT_MS  3000
+#define MQTT_CMD_TIMEOUT_MS  30000
 #define MQTT_CON_TIMEOUT_MS  5000
 #define MQTT_CLIENT_ID       "TinyIoT"
 #define MQTT_USERNAME        "test"

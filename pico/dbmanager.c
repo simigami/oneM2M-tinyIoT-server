@@ -3,193 +3,135 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <db.h>
+#include "sqlite/sqlite3.h"
 #include "onem2m.h"
 #include "dbmanager.h"
 #include "logger.h"
 #include "util.h"
 
-DB *resourceDBp;
-DB *subDBp;
-DB *grpDBp;
-DB *acpDBp;
-
-/*DB CREATE*/
-DB* DB_CREATE_(DB *dbp){
-    int ret;
-
-    ret = db_create(&dbp, NULL, 0);
-    if (ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr, "File ERROR\n");
-        return NULL;
-    }
-    return dbp;
-}
-
-/*DB Open*/
-int DB_OPEN(DB* dbp, char* DATABASE){
-    int ret;
-
-    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", DATABASE);
-        fprintf(stderr, "DB Open ERROR\n");
-        return 0;
-    }
-    return 1;
-}
-
-/*DB Get Cursor*/
-DBC *DB_GET_CURSOR(DB *dbp){
-    DBC *dbcp;
-    int ret;
-    
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr, "Cursor ERROR");
-        return NULL;
-    }
-    return dbcp;
-}
+sqlite3* db;
 
 /* DB init */
 int init_dbp(){
-    int ret;
-    logger("DB", LOG_LEVEL_DEBUG, "Initializing DB Pointer");
-    ret = db_create(&resourceDBp, NULL, 0);
-    if(ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr, "File ERROR\n");
-        return 0;   
-    }
-    ret = db_create(&subDBp, NULL, 0);
-    if(ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr, "File ERROR\n");
-        return 0;   
+    sqlite3_stmt* res;
+    char *sql = NULL, *err_msg = NULL;
+
+    // Open (or create) DB File
+    int rc = sqlite3_open("data.db", &db);
+    
+    if( rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot open database: %s", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return 0;
     }
 
-    ret = db_create(&grpDBp, NULL, 0);
-    if(ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr, "File ERROR\n");
-        return 0;   
-    }
-    ret = db_create(&acpDBp, NULL, 0);
-    if(ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr, "File ERROR\n");
-        return 0;   
+    // Setup Tables
+    sql = calloc(1, 1024);
+    
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS general ( \
+        rn VARCHAR(60), ri VARCHAR(40), pi VARCHAR(40), ct VARCHAR(30), et VARCHAR(30), lt VARCHAR(30), \
+        uri VARCHAR(255), acpi VARCHAR(255), lbl VARCHAR(255), ty INT );");
+    
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
     }
 
-    DB_OPEN(resourceDBp, "RESOURCE.db");
-    DB_OPEN(subDBp, "SUB.db");
-    DB_OPEN(grpDBp, "GROUP.db");
-    DB_OPEN(acpDBp, "ACP.db");
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS ae ( \
+        ri VARCHAR(40), pi VARCHAR(40), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100));");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
 
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS cnt ( \
+        ri VARCHAR(40), cr VARCHAR(40), mni INT, mbs INT, mia INT, cni INT, cbs INT, li VARCHAR(45), oref VARCHAR(45), disr VARCHAR(45));");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS cin ( \
+        ri VARCHAR(40), pi VARCHAR(40), cs INT, cr VARCHAR(45), cnf VARCHAR(45), oref VARCHAR(45), con TEXT);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS acp ( ri VARCHAR(40), pvacop VARCHAR(60), pvacor VARCHAR(60), pvsacop VARCHAR(60), pvsacor VARCHAR(60));");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS sub ( \
+        ri VARCHAR(40), pi VARCHAR(40), enc VARCHAR(45), exc VARCHAR(45), nu VARCHAR(200), gpi VARCHAR(45), nfu VARCAHR(45), bn VARCHAR(45), rl VARCHAR(45), \
+        psn VARCHAR(45), pn VARCAHR(45), nsp VARCHAR(45), ln VARCHAR(45), nct VARCHAR(45), net VARCHAR(45), cr VARCHAR(45), su VARCHAR(45));");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS grp ( \
+        ri VARCHAR(40), cr VARCHAR(45), mt INT, cnm INT, mnm INT, mid TEXT, macp TEXT, mtv INT, csy INT, gn VARCAHR(30));");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS cb ( \
+        ri VARCHAR(40), cst VARCHAR(45), csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45));");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
+
+    free(sql);
     return 1;
 }
+
+
+
 
 int close_dbp(){
-    resourceDBp->close(resourceDBp, 0);
-    subDBp->close(subDBp, 0);
-    grpDBp->close(grpDBp, 0);
-    acpDBp->close(acpDBp, 0);
+    if(db)
+        sqlite3_close(db);
+    db = NULL;
     return 1;
 }
 
-// /*DB Display*/
-// int db_display(char* database)
-// {
-    
-//     DBC* dbcp;
-//     DBT key, data;
-//     int close_db, close_dbc, ret;
-
-//     close_db = close_dbc = 0;
-
-//     /* Open the database. */
-//     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-//         fprintf(stderr,
-//             "%s: db_create: %s\n", database, db_strerror(ret));
-//         return -1;
-//     }
-//     close_db = 1;
-
-//     /* Turn on additional error output. */
-//     dbp->set_errfile(dbp, stderr);
-//     dbp->set_errpfx(dbp, database);
-
-//     /* Open the database. */
-//     if ((ret = dbp->open(dbp, NULL, database, NULL,
-//         DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-//         dbp->err(dbp, ret, "%s: DB->open", database);
-//         goto err;
-//     }
-
-//     /* Acquire a cursor for the database. */
-//     if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-//         dbp->err(dbp, ret, "DB->cursor");
-//         goto err;
-//     }
-//     close_dbc = 1;
-
-//     /* Initialize the key/data return pair. */
-//     memset(&key, 0, sizeof(key));
-//     memset(&data, 0, sizeof(data));
-
-//     /* Walk through the database and print out the key/data pairs. */
-//     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-//         if (strncmp(key.data, "ty", key.size) == 0 ||
-//             strncmp(key.data, "st", key.size) == 0 ||
-//             strncmp(key.data, "cni", key.size) == 0 ||
-//             strncmp(key.data, "cbs", key.size) == 0 ||
-//             strncmp(key.data, "cs", key.size) == 0
-//             ){
-//             printf("%.*s : %d\n", (int)key.size, (char*)key.data, *(int*)data.data);
-//         }
-//         else if (strncmp(key.data, "rr", key.size) == 0) {
-//             printf("%.*s : ", (int)key.size, (char*)key.data);
-//             if (*(bool*)data.data == true)
-//                 printf("true\n");
-//             else
-//                 printf("false\n");
-//         }
-
-//         else {
-//             printf("%.*s : %.*s\n",
-//                 (int)key.size, (char*)key.data,
-//                 (int)data.size, (char*)data.data);
-//         }
-//     }
-//     if (ret != DB_NOTFOUND) {
-//         dbp->err(dbp, ret, "DBcursor->get");
-//         printf("Cursor ERROR\n");
-//         return -1;
-//     }
-
-
-// err:    if (close_dbc && (ret = dbcp->close(dbcp)) != 0)
-// dbp->err(dbp, ret, "DBcursor->close");
-// if (close_db && (ret = dbp->close(dbp, 0)) != 0)
-// fprintf(stderr,
-//     "%s: DB->close: %s\n", database, db_strerror(ret));
-// return -1;
-// }
-
-
-int db_store_cse(CSE *cse_object) {
+int db_store_cse(CSE *cse_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cse");
 
-    DBC* dbcp;
-    int ret;        // template value
+    int rc = 0;
+    char sql[512] = {0}, err_msg = NULL;
 
-    DBT key_ri;
-    DBT data;  // storving key and real data
-
-
-    // if input == NULL
+     // if input == NULL
     if (cse_object->ri == NULL) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
@@ -201,47 +143,35 @@ int db_store_cse(CSE *cse_object) {
     if (cse_object->lt == NULL) cse_object->lt = " ";
     if (cse_object->csi == NULL) cse_object->csi = " ";
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
+
+    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, lt, ty) VALUES ('%s', '%s', '%s', '%s', '%s', %d);",
+                cse_object->rn, cse_object->ri, cse_object->pi, cse_object->ct,
+                cse_object->lt, cse_object->ty);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        return 0;
+    }
+
+    sprintf(sql, "INSERT INTO cb (ri, csi) VALUES('%s', '%s');",
+                cse_object->ri, cse_object->csi);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        return 0;
+    }
     
-    /* key and data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = cse_object->ri;
-    key_ri.size = strlen(cse_object->ri) + 1;
-
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s",
-            cse_object->rn,cse_object->pi,cse_object->ty,cse_object->ct,cse_object->lt,cse_object->csi);
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        resourceDBp->err(resourceDBp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
-    // dbp->close(dbp, 0); 
-
     return 1;
 }
 
-int db_store_ae(AE *ae_object) {
+int db_store_ae(AE *ae_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_ae");
+  //  AE *ae_object = (AE *) rtnode->obj;
     char* blankspace = " ";
+    char *sql = NULL, err_msg = NULL;
+    int rc = 0;
 
         // db handle
-    DBC* dbcp;
-    int ret;        // template value
-
-    DBT key_ri;
-    DBT data;  // storving key and real data
     char rr[6] ="";
 
     // if input == NULL
@@ -263,33 +193,26 @@ int db_store_ae(AE *ae_object) {
     if(ae_object->rr == false) strcpy(rr, "false");
     else strcpy(rr, "true");
 
-    ////dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
-    
-    /* key and data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
+    sql = malloc(sizeof(char) * 1024);
 
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = ae_object->ri;
-    key_ri.size = strlen(ae_object->ri) + 1;
+    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, acpi, lbl, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
+                ae_object->rn, ae_object->ri, ae_object->pi, ae_object->ct, ae_object->et, 
+                ae_object->lt, "", ae_object->acpi, ae_object->lbl, ae_object->ty);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s;%s;%s",
-            ae_object->rn,ae_object->pi,ae_object->ty,ae_object->ct,ae_object->lt,
-            ae_object->et,ae_object->api,rr,ae_object->aei,ae_object->lbl,ae_object->srv,ae_object->acpi);
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        resourceDBp->err(resourceDBp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
+    sprintf(sql, "INSERT INTO ae (ri, pi, rr) VALUES('%s', '%s', '%s');",
+                ae_object->ri, ae_object->pi, rr);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
     if (ae_object->rn == blankspace) ae_object->rn = NULL;
     if (ae_object->pi == blankspace) ae_object->pi = NULL;
@@ -303,20 +226,21 @@ int db_store_ae(AE *ae_object) {
     if (ae_object->srv == blankspace) ae_object->srv = NULL;
     if (ae_object->acpi == blankspace) ae_object->acpi = NULL;
     
+    free(sql);
     return 1;
+
 }
 
-int db_store_cnt(CNT *cnt_object) {
+int db_store_cnt(RTNode *rtnode){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cnt");
     char* blankspace = " ";
+    char *sql = NULL, err_msg = NULL;
+    int rc = 0;
 
-        // db handle
-    DBC* dbcp;
-    int ret;        // template value
-
-    DBT key_ri;
-    DBT data;  // storving key and real data
-    
+    if(rtnode->ty != RT_CNT){
+        return -1;
+    }
+    CNT * cnt_object = (CNT*) rtnode->obj;
     // if input == NULL
     if (cnt_object->ri == NULL) {
         fprintf(stderr, "ri is NULL\n");
@@ -330,34 +254,26 @@ int db_store_cnt(CNT *cnt_object) {
     if (cnt_object->acpi == NULL) cnt_object->acpi = blankspace;
     if (cnt_object->lbl == NULL) cnt_object->lbl = blankspace;
 
-    ////dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
-    
-    /* key and data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
+    sql = malloc(sizeof(char) * 1024);
 
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = cnt_object->ri;
-    key_ri.size = strlen(cnt_object->ri) + 1;
+    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, acpi, lbl, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
+                cnt_object->rn, cnt_object->ri, cnt_object->pi, cnt_object->ct, cnt_object->et, 
+                cnt_object->lt, rtnode->uri, cnt_object->acpi, cnt_object->lbl, cnt_object->ty);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d;%d;%d",
-            cnt_object->rn,cnt_object->pi,cnt_object->ty,cnt_object->ct,cnt_object->lt,cnt_object->et,
-            cnt_object->lbl,cnt_object->acpi,cnt_object->cbs,cnt_object->cni,cnt_object->st,cnt_object->mni,cnt_object->mbs);
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        resourceDBp->err(resourceDBp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
-    //dbp->close(dbp, 0); 
+    sprintf(sql, "INSERT INTO cnt (ri, mni, mbs, cni, cbs) VALUES('%s', %d, %d, %d, %d);",
+                cnt_object->ri, cnt_object->mni, cnt_object->mbs, cnt_object->cni, cnt_object->cbs);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
     if (cnt_object->rn == blankspace) cnt_object->rn = NULL;
     if (cnt_object->pi == blankspace) cnt_object->pi = NULL;
@@ -367,18 +283,18 @@ int db_store_cnt(CNT *cnt_object) {
     if (cnt_object->acpi == blankspace) cnt_object->acpi = NULL;
     if (cnt_object->lbl == blankspace) cnt_object->lbl = NULL;
     
+    free(sql);
     return 1;
 }
 
-int db_store_cin(CIN *cin_object) {
+int db_store_cin(RTNode *rtnode) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cin");
-
-        // db handle
-    DBC* dbcp;
-    int ret;        // template value
-
-    DBT key_ri;
-    DBT data;  // storving key and real data
+    if(rtnode->ty != RT_CIN){
+        return -1;
+    }
+    CIN * cin_object = (CIN*) rtnode->obj;
+    char *sql = NULL, err_msg = NULL;
+    int rc = 0;
     
     // if input == NULL
     if (cin_object->ri == NULL) {
@@ -396,117 +312,95 @@ int db_store_cin(CIN *cin_object) {
     if (cin_object->cs == '\0') cin_object->cs = 0;
     if (cin_object->st == '\0') cin_object->st = 0;
 
-    ////dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
     
-    /* key and data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
+    sql = malloc(sizeof(char) * 1024);
 
-    
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = cin_object->ri;
-    key_ri.size = strlen(cin_object->ri) + 1;
+    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
+              cin_object->rn, cin_object->ri, cin_object->pi, cin_object->ct, cin_object->et, cin_object->lt, rtnode->uri, cin_object->ty );
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
-    
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%d;%d",
-            cin_object->rn,cin_object->pi,cin_object->ty,cin_object->ct,cin_object->lt,cin_object->et,
-            cin_object->con,cin_object->cs,cin_object->st);
+    sprintf(sql, "INSERT INTO cin (ri, pi, cs, con) VALUES('%s', '%s', %d, '%s');",
+               cin_object->ri, cin_object->pi, cin_object->cs, cin_object->con);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
-    data.data = str;
-    data.size = strlen(str) + 1;
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        resourceDBp->err(resourceDBp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
-    //dbp->close(dbp, 0); 
-    
+    free(sql);
     return 1;
 }
 
-int db_store_grp(GRP *grp_object){
+int db_store_grp(RTNode *rtnode){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_grp");
     char *bs = " ";
+    char *sql = NULL, err_msg = NULL;
+    char mid[1024] = {0};
+    int rc = 0;
 
-        // db handle
-    DBC* dbcp;
-    int ret;        // template value
-
-    DBT key_rn;
-    DBT data;  // storving key and real data
-    
-    // if input == NULL
+    if(rtnode->ty != RT_GRP){
+        return -1;
+    }
+    GRP* grp_object = (GRP *) rtnode->obj;
     
     if(grp_object->rn == NULL) grp_object->rn = bs;
     if(grp_object->acpi == NULL) grp_object->acpi = bs;
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(grpDBp);
-    
-    /* key and data must initialize */
-    memset(&key_rn, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
 
-    
-    /* initialize the data to be the first of two duplicate records. */
-    key_rn.data = grp_object->ri;
-    key_rn.size = strlen(grp_object->ri) + 1;
+    sql = malloc(sizeof(char) * 1024);
 
-    
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    char *strbuf;
-
-    /* mnm , mt, min*/
-
-    strbuf = (char *) malloc(sizeof(char) * 1024);
-
-    sprintf(strbuf, "%s;%s;%s;%s;%s;%s;%d;%d;%d;%d;", 
-        grp_object->pi, grp_object->rn, grp_object->ct, grp_object->et, grp_object->lt, 
-        grp_object->acpi, grp_object->mnm, grp_object->cnm, grp_object->mt, grp_object->csy);
-    strcat(str, strbuf);
-    strcat(str, grp_object->mtv ? "1" : "0");
+    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
+                grp_object->rn, grp_object->ri, grp_object->pi, grp_object->ct, grp_object->et, grp_object->lt, rtnode->uri, RT_GRP);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
+    // change mid to str
+    char strbuf[128] = {0};
     if(grp_object->mid) {
-        for(int i = 0 ; i < grp_object->cnm; i++){
+        sprintf(strbuf, "%s", grp_object->mid[0]);
+        strcat(mid, strbuf);
+        for(int i = 1 ; i < grp_object->cnm; i++){
             if(grp_object->mid[i]){
-                sprintf(strbuf, ";%s", grp_object->mid[i]);
-                strcat(str, strbuf);
+                sprintf(strbuf, ",%s", grp_object->mid[i]);
+                strcat(mid, strbuf);
             }else
                 break;
         }
     }
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_rn, &data, DB_KEYLAST)) != 0)
-        grpDBp->err(grpDBp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
     
+
+    sprintf(sql, "INSERT INTO grp (ri, mt, cnm, mnm, mid, mtv, csy) VALUES('%s', %d, %d, %d, '%s', '%s', '%s', %d);",
+               grp_object->ri, grp_object->mt, grp_object->cnm, grp_object->mnm, mid, grp_object->mtv, grp_object->csy);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
+    
+
     if(grp_object->rn == bs) grp_object->rn = NULL;
     if(grp_object->acpi == bs) grp_object->acpi = NULL;
-    free(strbuf);
+
     return 1;
 }
 
-int db_store_sub(SUB *sub_object) {
+int db_store_sub(RTNode* rtnode){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cnt");
     char* blankspace = " ";
+    char *sql = NULL, err_msg = NULL;
+    int rc = 0;
 
-        // db handle
-    DBC* dbcp;
-    int ret;        // template value
-
-    DBT key_ri;
-    DBT data;  // storving key and real data
+    SUB *sub_object = (SUB *)rtnode->obj;
     
     // if input == NULL
     if (sub_object->ri == NULL) {
@@ -523,30 +417,25 @@ int db_store_sub(SUB *sub_object) {
     if (sub_object->ty == '\0') sub_object->ty = 23;
     if (sub_object->sur == NULL) sub_object->sur = blankspace;    
 
-    dbcp = DB_GET_CURSOR(subDBp);
+    sql = malloc(sizeof(char) * 1024);
 
-    /* keyand data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-    
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = sub_object->ri;
-    key_ri.size = strlen(sub_object->ri) + 1;
+    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
+              sub_object->rn, sub_object->ri, sub_object->pi, sub_object->ct, sub_object->et, sub_object->lt, rtnode->uri, sub_object->ty );
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
-    char str[DB_STR_MAX] = "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%s",sub_object->rn, sub_object->pi, sub_object->ty, 
-    sub_object->ct, sub_object->et, sub_object->lt, sub_object->nu, sub_object->net,
-    sub_object->nct, sub_object->sur);
-
-    data.data = str;
-    data.size = strlen(str) + 1;
-
-    /* DB close */
-    dbcp->close(dbcp);
-    // dbp->close(dbp, 0); 
-
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        subDBp->err(resourceDBp, ret, "db->cursor");
+    sprintf(sql, "INSERT INTO sub (ri, pi, nu, nct, net, sur) VALUES('%s', '%s', '%s', %d, '%s', '%s');",
+               sub_object->ri, sub_object->pi, sub_object->nu, sub_object->nct, sub_object->net, sub_object->sur);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
     
     if (sub_object->rn == blankspace) sub_object->rn = NULL;
     if (sub_object->ri == blankspace) sub_object->ri = NULL;
@@ -558,20 +447,17 @@ int db_store_sub(SUB *sub_object) {
     if (sub_object->ty == '\0') sub_object->ty = 23;
     if (sub_object->sur == blankspace) sub_object->sur = NULL; 
 
+    free(sql);
     return 1;
 }
 
-int db_store_acp(ACP *acp_object) {
+int db_store_acp(RTNode *rtnode) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_acp");
     char* blankspace = " ";
+    char *sql = NULL, err_msg = NULL;
+    int rc = 0;
 
-        // db handle
-    DBC* dbcp;
-    int ret;        // template value
-
-    DBT key_ri;
-    DBT data;  // storving key and real data
-
+    ACP *acp_object = (ACP *) rtnode->obj;
 
     // if input == NULL
     if (acp_object->ri == NULL) {
@@ -588,36 +474,23 @@ int db_store_acp(ACP *acp_object) {
     if (acp_object->pvs_acop == NULL) acp_object->pvs_acor = blankspace; 
     if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = blankspace; 
 
+   sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
+              acp_object->rn, acp_object->ri, acp_object->pi, acp_object->ct, acp_object->et, acp_object->lt, rtnode->uri, acp_object->ty );
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
-    //dbp = DB_CREATE_(dbp);
-    // DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(acpDBp);
-
-    /* keyand data must initialize */
-    memset(&key_ri, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-
-    /* initialize the data to be the first of two duplicate records. */
-    key_ri.data = acp_object->ri;
-    key_ri.size = strlen(acp_object->ri) + 1;
-
-    /* List data excluding 'ri' as strings using delimiters. */
-    char str[DB_STR_MAX]= "\0";
-    //strcat(str,acp_object->rn);
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%s;%s",
-            acp_object->rn,acp_object->pi,acp_object->ty,acp_object->ct,acp_object->lt,
-            acp_object->et,acp_object->pv_acor,acp_object->pv_acop,acp_object->pvs_acor,acp_object->pvs_acop);
-            
-    data.data = str;
-    data.size = strlen(str) + 1;
-
-    /* input DB */
-    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
-        acpDBp->err(acpDBp, ret, "db->cursor");
-
-    /* DB close */
-    dbcp->close(dbcp);
-    // dbp->close(dbp, 0); 
+    sprintf(sql, "INSERT INTO acp (ri, pvacop, pvacor, pvsacop, pvsacor) VALUES('%s', '%s', '%s', '%s', '%s');",
+               acp_object->ri, acp_object->pv_acop, acp_object->pv_acor, acp_object->pvs_acop, acp_object->pvs_acor);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
 
     if (acp_object->rn == blankspace) acp_object->rn = NULL;
     if (acp_object->pi == blankspace) acp_object->pi = NULL;
@@ -631,1358 +504,951 @@ int db_store_acp(ACP *acp_object) {
     return 1;
 }
 
-CSE* db_get_cse(char* ri) {
+CSE *db_get_cse(){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_cse");
-
-    //struct to return
+    int rc = 0;
+    int cols = 0;
+    sqlite3_stmt *res;
     CSE* new_cse= NULL;
+    char *colname;
+    int bytes = 0;
 
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    bool flag = false;
-    int idx = 0;
-    
-    ////dbp = DB_CREATE_(dbp);
-    // DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
-            flag=true;
-            new_cse= calloc(1,sizeof(CSE));
-            // ri = key
-            new_cse->ri = malloc((key.size + 1)*sizeof(char));
-            strcpy(new_cse->ri, key.data);
-
-            char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
-            while (ptr != NULL) { // Split to end of next string
-
-                switch (idx) {
-                case 0:
-                    if(strcmp(ptr," ")==0) new_cse->rn=NULL; //data is NULL
-                    else{
-                        new_cse->rn = malloc((strlen(ptr) + 1) *sizeof(char));
-                        strcpy(new_cse->rn, ptr);
-                    }
-                    idx++;
-                    break;
-                case 1:
-                    if(strcmp(ptr," ")==0) new_cse->pi=NULL; //data is NULL
-                    else{
-                        new_cse->pi = malloc((strlen(ptr)+1)*sizeof(char));
-                        strcpy(new_cse->pi, ptr);
-                    }
-                    idx++;
-                    break;
-                case 2:
-                    if(strcmp(ptr,"0")==0) new_cse->ty=0;
-                    else {new_cse->ty = atoi(ptr);}
-
-                    idx++;
-                    break;
-                case 3:
-                    if(strcmp(ptr," ")==0) new_cse->ct=NULL; //data is NULL
-                    else{
-                        new_cse->ct = malloc((strlen(ptr)+1)*sizeof(char));
-                        strcpy(new_cse->ct, ptr);
-                    }
-                    idx++;
-                    break;
-                case 4:
-                    if(strcmp(ptr," ")==0) new_cse->lt=NULL;
-                    else{
-                    new_cse->lt = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cse->lt, ptr);
-                    }
-                    idx++;
-                    break;                
-                case 5:
-                if(strcmp(ptr," ")==0) new_cse->csi=NULL;
-                else{
-                    new_cse->csi = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cse->csi, ptr);
-                }
-                    idx++;
-                    break;             
-                default:
-                    idx=-1;
-                }
-                
-                ptr = strtok(NULL, DB_SEP); //The delimiter is ,
-            }
-        }
+    rc = sqlite3_prepare_v2(db, "SELECT * FROM general, cb WHERE general.ri = cb.ri;", -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
     
+    cols = sqlite3_column_count(res);
+    rc = sqlite3_step(res);
+    logger("DB", LOG_LEVEL_DEBUG, "cols : %d, rc : %d", cols, rc);
+    if(rc == SQLITE_ROW){
+        new_cse = calloc(1, sizeof(CSE));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if( (bytes = sqlite3_column_bytes(res, col)) == 0)
+                continue;
+
+            logger("DB", LOG_LEVEL_DEBUG, "colname : %s, bytes : %d", colname, bytes);
+            if(!strcmp(colname, "rn") ){
+                new_cse->rn = calloc(sizeof(char), bytes + 2);
+                strncpy(new_cse->rn, sqlite3_column_text(res, col), bytes);
+            }else if( !strcmp(colname, "ri") ){
+                new_cse->ri = calloc(sizeof(char), bytes + 2);
+                strncpy(new_cse->ri, sqlite3_column_text(res, col), bytes);
+            }else if( !strcmp(colname, "pi") ){
+                new_cse->pi = calloc(sizeof(char), bytes + 2);
+                strncpy(new_cse->pi, sqlite3_column_text(res, col), bytes);
+            }else if( !strcmp(colname, "ct") ){
+                new_cse->ct = calloc(sizeof(char), bytes + 2);
+                strncpy(new_cse->ct, sqlite3_column_text(res, col), bytes);
+            }else if( !strcmp(colname, "lt") ){
+                new_cse->lt = calloc(sizeof(char), bytes + 2);
+                strncpy(new_cse->lt, sqlite3_column_text(res, col), bytes);
+            }else if( !strcmp(colname, "csi") ){
+                new_cse->csi = calloc(sizeof(char), bytes + 2);
+                strncpy(new_cse->csi, sqlite3_column_text(res, col), bytes);
+            }
+        }
+        new_cse->ty = RT_CSE;
+    }
+    
+
+    sqlite3_finalize(res);
     return new_cse;
 }
 
-AE* db_get_ae(char* ri) {
+AE *db_get_ae(char *ri){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_ae");
 
     //struct to return
+    int rc = 0;
+    int cols = 0;
     AE* new_ae = NULL;
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    bool flag = false;
-    int idx = 0;
-    
-    //dbp = DB_CREATE_(dbp);
-    // DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
+    sprintf(sql, "SELECT * FROM general, ae WHERE general.ri='%s' and ae.ri='%s';", ri, ri);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    new_ae = calloc(1, sizeof(AE));
+    cols = sqlite3_column_count(res);
 
-    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
-            new_ae = calloc(1,sizeof(AE));
-            flag=true;
-            // ri = key
-            new_ae->ri = malloc((key.size+1)*sizeof(char));
-            strcpy(new_ae->ri, key.data);
-
-            char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
-            while (ptr != NULL) { // Split to end of next string
-                switch (idx) {
-                case 0:
-                if(strcmp(ptr," ")==0) new_ae->rn=NULL; //data is NULL
-                else{
-                    new_ae->rn = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->rn, ptr);
-                }
-                    idx++;
-                    break;
-                case 1:
-                if(strcmp(ptr," ")==0) new_ae->pi=NULL; //data is NULL
-                    else{
-                    new_ae->pi = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->pi, ptr);
-                    }
-                    idx++;
-                    break;
-                case 2:
-                if(strcmp(ptr,"0")==0) new_ae->ty=0;
-                else new_ae->ty = atoi(ptr);
-
-                    idx++;
-                    break;
-                case 3:
-                if(strcmp(ptr," ")==0) new_ae->ct=NULL; //data is NULL
-                else{
-                    new_ae->ct = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->ct, ptr);
-                }
-                    idx++;
-                    break;
-                case 4:
-                if(strcmp(ptr," ")==0) new_ae->lt=NULL; //data is NULL
-                else{                
-                    new_ae->lt = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->lt, ptr);
-                }
-                    idx++;
-                    break;                
-                case 5:
-                if(strcmp(ptr," ")==0) new_ae->et=NULL; //data is NULL
-                else{                
-                    new_ae->et = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->et, ptr);
-                }
-                    idx++;
-                    break;      
-                case 6:
-                if(strcmp(ptr," ")==0) new_ae->api=NULL; //data is NULL
-                else{                
-                    new_ae->api = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->api, ptr);
-                }
-                    idx++;
-                    break;      
-                case 7:
-                    if(strcmp(ptr,"true")==0)
-                        new_ae->rr = true;
-                    else
-                        new_ae->rr = false;
-
-                    idx++;
-                    break;      
-                case 8:
-                if(strcmp(ptr," ")==0) new_ae->aei=NULL; //data is NULL
-                else{                
-                    new_ae->aei = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->aei, ptr);
-                }
-                    idx++;
-                    break; 
-                case 9:
-                if(strcmp(ptr," ")==0) new_ae->lbl=NULL; //data is NULL
-                else{                
-                    new_ae->lbl = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->lbl, ptr);
-                }
-                    idx++;
-                    break;
-                case 10:
-                if(strcmp(ptr," ")==0) new_ae->srv=NULL; //data is NULL
-                else{                
-                    new_ae->srv = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->srv, ptr);
-                }            
-                    idx++;
-                    break; 
-                case 11:
-                if(strcmp(ptr," ")==0) new_ae->acpi=NULL; //data is NULL
-                else{                
-                    new_ae->acpi = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->acpi, ptr);
-                }            
-                    idx++;
-                    break;                                    
-                default:
-                    idx=-1;
-                }
-                
-                ptr = strtok(NULL, DB_SEP); //The delimiter is ,
+    rc = sqlite3_step(res);
+    if(rc == SQLITE_ROW){
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                new_ae->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                new_ae->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                new_ae->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                new_ae->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                new_ae->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                new_ae->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "acpi") ){
+                new_ae->acpi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "aei") ){
+                new_ae->aei = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "api") ){
+                new_ae->api = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lbl") ){
+                new_ae->lbl = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "rr") ){
+                if( strcmp(sqlite3_column_text(res, col), "true") )
+                    new_ae->rr = true;
+                else
+                    new_ae->rr = false;
+            }else if( !strcmp(colname, "srv") ){
+                new_ae->srv = strdup(sqlite3_column_text(res, col));
             }
         }
     }
+    new_ae->ty = RT_AE;
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    
-    return new_ae;
+    sqlite3_finalize(res);
+    return new_ae;   
 }
 
-CNT* db_get_cnt(char* ri) {
+CNT *db_get_cnt(char *ri){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_cnt");
 
     //struct to return
+    int rc = 0;
+    int cols = 0;
     CNT* new_cnt = NULL;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sprintf(sql, "SELECT * FROM general, cnt WHERE general.ri='%s' and cnt.ri='%s';", ri, ri);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
-    bool flag = false;
-    int idx = 0;
-    
-    //dbp = DB_CREATE_(dbp);
-    // DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
+    new_cnt = calloc(1, sizeof(CNT));
+    cols = sqlite3_column_count(res);
 
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
-            new_cnt = calloc(1,sizeof(CNT));
-            flag=true;
-            // ri = key
-            new_cnt->ri = malloc((key.size+1)*sizeof(char));
-            strcpy(new_cnt->ri, key.data);
-
-            char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
-            while (ptr != NULL) { // Split to end of next string
-                switch (idx) {
-                case 0:
-                if(strcmp(ptr," ")==0) new_cnt->rn=NULL; //data is NULL
-                    else{
-                    new_cnt->rn = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cnt->rn, ptr);
-                    }
-                    idx++;
-                    break;
-                case 1:
-                if(strcmp(ptr," ")==0) new_cnt->pi=NULL; //data is NULL
-                    else{
-                    new_cnt->pi = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cnt->pi, ptr);
-                    }
-                    idx++;
-                    break;
-                case 2:
-                    new_cnt->ty = atoi(ptr);
-                    idx++;
-                    break;
-                case 3:
-                if(strcmp(ptr," ")==0) new_cnt->ct=NULL; //data is NULL
-                    else{
-                    new_cnt->ct = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cnt->ct, ptr);
-                    }
-                    idx++;
-                    break;
-                case 4:
-                if(strcmp(ptr," ")==0) new_cnt->lt=NULL; //data is NULL
-                    else{
-                    new_cnt->lt = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cnt->lt, ptr);
-                    }
-                    idx++;
-                    break;                
-                case 5:
-                if(strcmp(ptr," ")==0) new_cnt->et=NULL; //data is NULL
-                    else{
-                    new_cnt->et = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cnt->et, ptr);
-                    }
-                    idx++;
-                    break;      
-                case 6:
-                if(strcmp(ptr," ")==0) new_cnt->lbl=NULL; //data is NULL
-                    else{
-                    new_cnt->lbl = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cnt->lbl, ptr);
-                    }
-                    idx++;
-                    break;   
-                case 7:
-                if(strcmp(ptr," ")==0) new_cnt->acpi=NULL; //data is NULL
-                    else{
-                    new_cnt->acpi = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cnt->acpi, ptr);
-                    }
-                    idx++;
-                    break;                                           
-                case 8:
-                    new_cnt->cbs = atoi(ptr);
-
-                    idx++;
-                    break;     
-                case 9:
-                    new_cnt->cni = atoi(ptr);
-
-                    idx++;
-                    break;    
-                case 10:
-                    new_cnt->st = atoi(ptr);
-
-                    idx++;
-                    break;
-                case 11:
-                    new_cnt->mni = atoi(ptr);  
-                    idx++;
-                    break;
-                case 12:
-                    new_cnt->mbs = atoi(ptr);
-                    idx++;
-                    break;                                                                  
-                default:
-                    idx=-1;
-                }         
-                ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+    rc = sqlite3_step(res);
+    if(rc == SQLITE_ROW){
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                new_cnt->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                new_cnt->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                new_cnt->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                new_cnt->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                new_cnt->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                new_cnt->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "acpi") ){
+                new_cnt->acpi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lbl") ){
+                new_cnt->lbl = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "cbs") ){
+                new_cnt->cbs = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "cni") ){
+                new_cnt->cni = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mbs") ){
+                new_cnt->mbs = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mni") ){
+                new_cnt->mni = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "st") ){
+                new_cnt->st = sqlite3_column_int(res, col);
             }
         }
     }
+    new_cnt->ty = RT_CNT;
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-
-    return new_cnt;
+    sqlite3_finalize(res);
+    return new_cnt;   
 }
 
-CIN* db_get_cin(char* ri) {
+CIN *db_get_cin(char *ri){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_cin");
+
     //struct to return
+    int rc = 0;
+    int cols = 0;
     CIN* new_cin = NULL;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sprintf(sql, "SELECT * FROM general, cin WHERE general.ri='%s' and cin.ri='%s';", ri, ri);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
-    int idx = 0;
-    bool flag = false;
-    
-    //dbp = DB_CREATE_(dbp);
-    // DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
+    new_cin = calloc(1, sizeof(CIN));
+    cols = sqlite3_column_count(res);
 
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
-            flag = true;
-            new_cin = calloc(1,sizeof(CIN));
-            // ri = key
-            new_cin->ri = strdup(key.data); //malloc((key.size+1)*sizeof(char));
-            //strcpy(new_cin->ri, key.data);
-
-            char *ptr = strtok((char*)data.data, DB_SEP);  //split first string
-            while (ptr != NULL) { // Split to end of next string
-                switch (idx) {
-                case 0:
-                if(strcmp(ptr," ")==0) new_cin->rn=NULL; //data is NULL
-                    else{
-                    new_cin->rn = strdup(ptr);//malloc(strlen(ptr)*sizeof(char));
-                    
-                    }
-                    idx++;
-                    break;
-                case 1:
-                if(strcmp(ptr," ")==0) new_cin->pi=NULL; //data is NULL
-                    else{
-                    new_cin->pi = strdup(ptr);//malloc(strlen(ptr)*sizeof(char));
-                    //strcpy(new_cin->pi, ptr);
-                    }
-                    idx++;
-                    break;
-                case 2:
-                if(strcmp(ptr,"0")==0) new_cin->ty=0;
-                    else
-                    new_cin->ty = atoi(ptr);
-
-                    idx++;
-                    break;
-                case 3:
-                if(strcmp(ptr," ")==0) new_cin->ct=NULL; //data is NULL
-                    else{
-                    new_cin->ct = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
-                    //strcpy(new_cin->ct, ptr);
-                    }
-                    idx++;
-                    break;
-                case 4:
-                    new_cin->lt = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
-                    //strcpy(new_cin->lt, ptr);
-
-                    idx++;
-                    break;                
-                case 5:
-                if(strcmp(ptr," ")==0) new_cin->et=NULL; //data is NULL
-                    else{
-                    new_cin->et = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
-                    //strcpy(new_cin->et, ptr);
-                    }
-                    idx++;
-                    break;      
-                case 6:
-                if(strcmp(ptr," ")==0) new_cin->con=NULL; //data is NULL
-                    else{
-                    new_cin->con = strdup(ptr);// malloc(strlen(ptr)*sizeof(char));
-                    //strcpy(new_cin->con, ptr);
-                    }
-                    idx++;
-                    break;       
-                case 7:
-                if(strcmp(ptr,"0")==0) new_cin->cs=0;
-                    else
-                    new_cin->cs = atoi(ptr);
-
-                    idx++;
-                    break;            
-                case 8:
-                if(strcmp(ptr,"0")==0) new_cin->st=0;
-                    else
-                    new_cin->st = atoi(ptr);
-
-                    idx++;
-                    break;                                                                              
-                default:
-                    idx=-1;
-                }
-                
-                ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+    rc = sqlite3_step(res);
+    if(rc == SQLITE_ROW){
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                new_cin->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                new_cin->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                new_cin->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                new_cin->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                new_cin->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                new_cin->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "con") ){
+                new_cin->con = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "cs") ){
+                new_cin->cs = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "st") ){
+                new_cin->st = sqlite3_column_int(res, col);
             }
         }
     }
+    new_cin->ty = RT_CIN;
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    //
-    return new_cin;
+    sqlite3_finalize(res);
+    return new_cin;   
 }
 
-SUB* db_get_sub(char* ri) {
+SUB *db_get_sub(char *ri){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_sub");
 
-    //store AE
+    //struct to return
+    int rc = 0;
+    int cols = 0;
     SUB* new_sub = NULL;
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    dbcp = DB_GET_CURSOR(subDBp);
+    sprintf(sql, "SELECT * FROM general, sub WHERE general.ri='%s' and sub.ri='%s';", ri, ri);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    new_sub = calloc(1, sizeof(SUB));
+    cols = sqlite3_column_count(res);
 
-    bool flag = false;
-    int idx = 0;
-    
-    // new_sub->pi = malloc(data.size);
-    // strcpy(new_sub->pi, key.data);
+    rc = sqlite3_step(res);
+    if(rc == SQLITE_ROW){
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                new_sub->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                new_sub->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                new_sub->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                new_sub->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                new_sub->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                new_sub->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "net") ){
+                new_sub->net = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "nu") ){
+                new_sub->nu = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "sur") ){
+                new_sub->sur = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "nct") ){
+                new_sub->nct = sqlite3_column_int(res, col);
+            }
+        }
+    }
+    new_sub->ty = RT_SUB;
 
-    // while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-    //     if (strncmp(key.data, ri, key.size) == 0) {
-    //         new_sub = (SUB*)calloc(1, sizeof(SUB));
-    //         flag=true;
-    //         // ri = key
-    //         new_sub->ri = malloc((key.size+1)*sizeof(char));
-    //         strcpy(new_cnt->ri, key.data);
-
-    //         char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
-    //         while (ptr != NULL) { // Split to end of next string
-    //             switch (idx) {
-    //             case 0:
-    //             if(strcmp(ptr," ")==0) new_cnt->rn=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->rn = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->rn, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;
-    //             case 1:
-    //             if(strcmp(ptr," ")==0) new_cnt->pi=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->pi = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->pi, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;
-    //             case 2:
-    //                 new_cnt->ty = atoi(ptr);
-    //                 idx++;
-    //                 break;
-    //             case 3:
-    //             if(strcmp(ptr," ")==0) new_cnt->ct=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->ct = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->ct, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;
-    //             case 4:
-    //             if(strcmp(ptr," ")==0) new_cnt->lt=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->lt = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->lt, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;                
-    //             case 5:
-    //             if(strcmp(ptr," ")==0) new_cnt->et=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->et = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->et, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;      
-    //             case 6:
-    //             if(strcmp(ptr," ")==0) new_cnt->lbl=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->lbl = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->lbl, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;   
-    //             case 7:
-    //             if(strcmp(ptr," ")==0) new_cnt->acpi=NULL; //data is NULL
-    //                 else{
-    //                 new_cnt->acpi = malloc((strlen(ptr)+1)*sizeof(char));
-    //                 strcpy(new_cnt->acpi, ptr);
-    //                 }
-    //                 idx++;
-    //                 break;                                           
-    //             case 8:
-    //                 new_cnt->cbs = atoi(ptr);
-
-    //                 idx++;
-    //                 break;     
-    //             case 9:
-    //                 new_cnt->cni = atoi(ptr);
-
-    //                 idx++;
-    //                 break;    
-    //             case 10:
-    //                 new_cnt->st = atoi(ptr);
-
-    //                 idx++;
-    //                 break;
-    //             case 11:
-    //                 new_cnt->mni = atoi(ptr);  
-    //                 idx++;
-    //                 break;
-    //             case 12:
-    //                 new_cnt->mbs = atoi(ptr);
-    //                 idx++;
-    //                 break;                                                                  
-    //             default:
-    //                 idx=-1;
-    //             }         
-    //             ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-    //         }
-    //     }
-    // }
-
-    /* Cursors must be closed */
-    // if (dbcp0 != NULL)
-    //     dbcp0->close(dbcp0);
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-
-    return new_sub;
+    sqlite3_finalize(res);
+    return new_sub;   
 }
 
-ACP* db_get_acp(char* ri) {
+GRP *db_get_grp(char *ri){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_grp");
+
+    //struct to return
+    int rc = 0;
+    int cols = 0;
+    GRP* new_grp = NULL;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
+
+    sprintf(sql, "SELECT * FROM general, grp WHERE general.ri='%s' and grp.ri='%s';", ri, ri);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
+
+    new_grp = calloc(1, sizeof(GRP));
+    cols = sqlite3_column_count(res);
+
+    rc = sqlite3_step(res);
+    if(rc == SQLITE_ROW){
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                new_grp->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                new_grp->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                new_grp->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                new_grp->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                new_grp->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                new_grp->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "mid") ){
+                new_grp->mid = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "macp") ){
+                new_grp->macp = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "mt") ){
+                new_grp->mt = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "cnm") ){
+                new_grp->cnm = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mnm") ){
+                new_grp->mnm = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mtv") ){
+                new_grp->mtv = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "csy") ){
+                new_grp->csy = sqlite3_column_int(res, col);
+            }
+        }
+    }
+
+    sqlite3_finalize(res);
+    return new_grp;   
+}
+
+ACP *db_get_acp(char *ri){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_acp");
 
     //struct to return
+    int rc = 0;
+    int cols = 0;
     ACP* new_acp = NULL;
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    bool flag = false;
-    int idx = 0;
-    
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(acpDBp);
+    sprintf(sql, "SELECT * FROM general, acp WHERE general.ri='%s' and acp.ri='%s';", ri, ri);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    new_acp = calloc(1, sizeof(ACP));
+    cols = sqlite3_column_count(res);
 
-    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        new_acp = calloc(1,sizeof(ACP));
-        if (strncmp(key.data, ri, key.size) == 0) {
-            flag=true;
-            // ri = key
-            new_acp->ri =malloc((key.size+1)*sizeof(char));
-            strcpy(new_acp->ri, key.data);
-
-            char *ptr = strtok((char*)data.data, DB_SEP);  //split first string
-            while (ptr != NULL) { // Split to end of next string
-                switch (idx) {
-                case 0:if(strcmp(ptr," ")==0) new_acp->rn=NULL; //data is NULL
-                else{
-                    new_acp->rn = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->rn, ptr);
-                    }
-                    idx++;
-                    break;
-                case 1:
-                if(strcmp(ptr," ")==0) new_acp->pi=NULL; //data is NULL
-                else{
-                    new_acp->pi = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->pi, ptr);
-                    }
-                    idx++;
-                    break;
-                case 2:
-                if(strcmp(ptr,"0")==0) new_acp->ty=0;
-                else new_acp->ty = atoi(ptr);
-
-                    idx++;
-                    break;
-                case 3:
-                if(strcmp(ptr," ")==0) new_acp->ct=NULL; //data is NULL
-                else{
-                    new_acp->ct = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->ct, ptr);
-                    }
-                    idx++;
-                    break;
-                case 4:
-                if(strcmp(ptr," ")==0) new_acp->lt=NULL; //data is NULL
-                else{
-                    new_acp->lt = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->lt, ptr);
-                    }
-                    idx++;
-                    break;                
-                case 5:
-                if(strcmp(ptr," ")==0) new_acp->et=NULL; //data is NULL
-                else{
-                    new_acp->et = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->et, ptr);
-                }
-                    idx++;
-                    break;
-                case 6:
-                if(strcmp(ptr," ")==0) new_acp->pv_acor=NULL; //data is NULL
-                else{
-                    new_acp->pv_acor = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->pv_acor, ptr);
-                }
-                    idx++;
-                    break;
-                case 7:
-                if(strcmp(ptr," ")==0) new_acp->pv_acop=NULL; //data is NULL
-                else{
-                    new_acp->pv_acop = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->pv_acop, ptr);
-                }
-                    idx++;
-                    break;
-                case 8:
-                if(strcmp(ptr," ")==0) new_acp->pvs_acor=NULL; //data is NULL
-                else{
-                    new_acp->pvs_acor = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->pvs_acor, ptr);
-                }
-                    idx++;
-                    break;
-                case 9:
-                if(strcmp(ptr," ")==0) new_acp->pvs_acop=NULL; //data is NULL
-                else{
-                    new_acp->pvs_acop = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_acp->pvs_acop, ptr);
-                }
-                    idx++;
-                    break;                
-                default:
-                    idx=-1;
-                }
-                
-                ptr = strtok(NULL, DB_SEP); //The delimiter is ;
+    rc = sqlite3_step(res);
+    if(rc == SQLITE_ROW){
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                new_acp->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                new_acp->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                new_acp->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                new_acp->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                new_acp->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                new_acp->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvacop") ){
+                new_acp->pv_acop = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvacor") ){
+                new_acp->pv_acor = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvsacop") ){
+                new_acp->pvs_acop = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvsacor") ){
+                new_acp->pvs_acor = strdup(sqlite3_column_text(res, col));
             }
         }
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    
-
-    return new_acp;
-}
-
-GRP *db_get_grp(char* ri) {
-    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_grp");
-
-    GRP *new_grp = calloc(1, sizeof(GRP));
-
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    int cnt = 0;
-    int flag = 0;
-    int idx = 0;
-
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(grpDBp);
-
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        cnt++;
-        if (strncmp(key.data, ri, key.size) == 0) {
-            flag=1;
-            new_grp->ri = strdup(key.data);
-            
-            //(char *) malloc( (key.size+1) *sizeof(char));
-            //strcpy(new_grp->rn, key.data);
-
-            char *ptr = strtok((char*)data.data, DB_SEP);  //split first string
-            new_grp->pi = strdup(ptr); //rn
-
-            ptr = strtok(NULL, DB_SEP);
-            new_grp->rn = strdup(ptr);
-
-            ptr = strtok(NULL, DB_SEP);
-            new_grp->ct = strdup(ptr);
-
-            ptr = strtok(NULL, DB_SEP);
-            new_grp->et = strdup(ptr);
-
-            ptr = strtok(NULL, DB_SEP);
-            new_grp->lt = strdup(ptr);
-
-            ptr = strtok(NULL, DB_SEP);
-            if(!strcmp(ptr, " "))
-                new_grp->acpi = NULL;
-            else   
-		        new_grp->acpi = strdup(ptr);
-
-            ptr = strtok(NULL, DB_SEP);
-            new_grp->mnm = atoi(ptr);
-
-            ptr = strtok(NULL, DB_SEP);
-            new_grp->cnm = atoi(ptr);
-            
-            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-            new_grp->mt = atoi(ptr);
-
-            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-            new_grp->mtv = atoi(ptr) ? true : false;
-
-            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-            new_grp->csy = atoi(ptr);
-
-            ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-            if(ptr){
-                new_grp->mid = (char **) malloc(sizeof(char *) * new_grp->mnm);
-                for(int i = 0 ; i < new_grp->mnm ; i++){
-                    if(ptr){
-                        new_grp->mid[i] = strdup(ptr);
-                        ptr = strtok(NULL, DB_SEP); //The delimiter is ;
-                    }else{
-                        new_grp->mid[i] = NULL;
-                    }
-                }
-            }
-        }
-    }
-
-
-    if(ret != DB_NOTFOUND){
-        grpDBp->err(grpDBp, ret, "DBcursor->get");
-        logger("DB", LOG_LEVEL_DEBUG, "Cursor ERROR");
-        return NULL;
-    }
-    if (cnt == 0 || flag==0) {
-        logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
-        return NULL;
-    }
-
-
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    
-
-    return new_grp;
+    new_acp->ty = RT_ACP;
+    sqlite3_finalize(res);
+    return new_acp;   
 }
 
 int db_delete_onem2m_resource(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",ri);
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-    bool flag = false;
+    char sql[1024] = {0};
+    char *err_msg;
+    int rc; 
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
-            flag = true;
-            dbcp->del(dbcp, 0);
-            break;
-        }
+    sprintf(sql, "DELETE FROM general WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
 
-    if (!flag) {
-        fprintf(stderr, "DB data not found\n");
-        return -1;
-    }
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    
-    
-    /* Delete Success */
     return 1;
 }
 
 int db_delete_sub(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_sub");
     
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    char sql[1024] = {0};
+    char *err_msg;
+    int rc; 
 
-    // /* Open the database. */
-    // if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-    //     fprintf(stderr,
-    //         "%s: db_create: %s\n", database, db_strerror(ret));
-    //     return 0;
-    // }
-
-    // ret = dbp->open(dbp, NULL, database, NULL, DB_BTREE, DB_CREATE, 0664);
-    // if (ret) {
-    //     dbp->err(dbp, ret, "%s", database);
-    //     return 0;
-    //     exit(1);
-    // }
-
-    // /* Acquire a cursor for the database. */
-    // if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-    //     dbp->err(dbp, ret, "DB->cursor");
-    //     return 0;
-    //     exit(1);
-    // }
-
-    dbcp = DB_GET_CURSOR(subDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    int cnt = 0;
-    int flag = 0;
-    int struct_size = 10;
-
-    // DBC* dbcp0;
-    // if ((ret = dbp->cursor(dbp, NULL, &dbcp0, 0)) != 0) {
-    //     dbp->err(dbp, ret, "DB->cursor");
-    //     return 0;
-    // }
-    // while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-    //     cnt++;
-    //     if (strncmp(data.data, ri, data.size) == 0) {
-    //         flag=1;
-    //         break;
-    //     }
-    // }
-    // if (cnt == 0 || flag==0) {
-    //     logger("DB", LOG_LEVEL_DEBUG, "Data does not exist");
-    //     return 0;
-    // }
-
-    int idx = -1;
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(data.data, ri, data.size) == 0) {
-            idx=0;
-        }
-        if(idx!=-1 && idx < struct_size){
-            dbcp->del(dbcp, 0);
-            idx++;
-        }
-    }
-    if (ret != DB_NOTFOUND) {
-        subDBp->err(subDBp, ret, "DBcursor->get");
-        fprintf(stderr, "Cursor ERROR\n");
+    sprintf(sql, "DELETE FROM sub WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
         return 0;
     }
 
-    /* Cursors must be closed */
-    // if (dbcp0 != NULL)
-    //     dbcp0->close(dbcp0);
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    
-    
-    /* Delete Success */
+    sprintf(sql, "DELETE FROM general WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
+    }
+
     return 1;
 }
 
 int db_delete_acp(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_acp");
     
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-    int flag = 0;
+    char sql[1024] = {0};
+    char *err_msg;
+    int rc; 
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(acpDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
-            flag = 1;
-            dbcp->del(dbcp, 0);
-            break;
-        }
-    }
-    if (flag == 0) {
-        fprintf(stderr, "Not Found\n");
-        return -1;
+    sprintf(sql, "DELETE FROM acp WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    
-    /* Delete Success */
-    
+    sprintf(sql, "DELETE FROM general WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
+    }
+
     return 1;
 }
 
-int db_delete_grp(char *ri){
+int db_delete_grp(char* ri) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_grp");
     
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-    int flag = 0;
+    char sql[1024] = {0};
+    char *err_msg;
+    int rc; 
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN( database);
-    dbcp = DB_GET_CURSOR(grpDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
-            flag = 1;
-            dbcp->del(dbcp, 0);
-            break;
-        }
-    }
-    if (flag == 0) {
-        fprintf(stderr, "Not Found\n");
-        return -1;
+    sprintf(sql, "DELETE FROM grp WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);
-    
-    
-    /* Delete Success */
+    sprintf(sql, "DELETE FROM general WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
+    }
+
     return 1;
 }
 
 RTNode* db_get_all_cse() {
     fprintf(stderr,"\x1b[92m[Get All CSE]\x1b[0m\n");
-    const char* TYPE = "5-";
+    int rc = 0;
+    int cols = 0;
     
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    int cse = 0;
-    DBC* dbcp0;
-    dbcp0 = DB_GET_CURSOR(resourceDBp);
-    while ((ret = dbcp0->get(dbcp0, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0) 
-            cse++;
+    sprintf(sql, "SELECT * FROM general, cb WHERE general.ri = cb.ri;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
     }
 
-    if (cse == 0) {
-        logger("DB", LOG_LEVEL_DEBUG, "CSE does not exist");
-        return NULL;
-    }
-
-    dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0){
-            CSE* cse = db_get_cse((char*)key.data);
-            if(!head) {
-                head = create_rtnode(cse,RT_CSE);
-                rtnode = head;
-            } else {
-                rtnode->sibling_right = create_rtnode(cse,RT_CSE);
-                rtnode->sibling_right->sibling_left = rtnode;
-                rtnode = rtnode->sibling_right;
-            }   
+    cols = sqlite3_column_count(res);
+    logger("DB", LOG_LEVEL_DEBUG, "cols : %d", cols);
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        CSE* cse = calloc(1, sizeof(CSE));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                cse->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                cse->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                cse->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                cse->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                cse->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "csi") ){
+                cse->csi = strdup(sqlite3_column_text(res, col));
+            }
         }
+        cse->ty = RT_CSE;
+        if(!head) {
+            head = create_rtnode(cse,RT_CSE);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(cse,RT_CSE);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }   
+        rc = sqlite3_step(res);
     }
-    
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
+
     // if (dbp != NULL)
-    //     dbp->close(dbp, 0);    
+    //     dbp->close(dbp, 0);   
+    sqlite3_finalize(res); 
     return head;
 }
 
-RTNode* db_get_all_ae_rtnode() {
+RTNode *db_get_all_ae_rtnode(){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_ae_rtnode");
-    const const char* TYPE = "C";
+    int rc = 0;
+    int cols = 0;
     
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    sprintf(sql, "SELECT * FROM general, ae WHERE general.ri = ae.ri;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
     RTNode* head = NULL, *rtnode = NULL;
 
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 1) == 0){
-            AE* ae = db_get_ae((char*)key.data);
+    cols = sqlite3_column_count(res);
 
-            if(!head) {
-                head = create_rtnode(ae,RT_AE);
-                rtnode = head;
-            } else {
-                rtnode->sibling_right = create_rtnode(ae,RT_AE);
-                rtnode->sibling_right->sibling_left = rtnode;
-                rtnode = rtnode->sibling_right;
-            }      
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        AE* ae = calloc(1, sizeof(AE));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                ae->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                ae->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                ae->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                ae->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                ae->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                ae->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "acpi") ){
+                ae->acpi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "aei") ){
+                ae->aei = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "api") ){
+                ae->api = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lbl") ){
+                ae->lbl = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "rr") ){
+                if(!strcmp(sqlite3_column_text(res, col), "true"))
+                    ae->rr = true;
+                else  
+                    ae->rr = false;
+            }else if( !strcmp(colname, "srv") ){
+                ae->srv = strdup(sqlite3_column_text(res, col));
+            }
         }
+        ae->ty = RT_AE;
+        if(!head) {
+            head = create_rtnode(ae,RT_AE);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(ae, RT_AE);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }   
+        rc = sqlite3_step(res);
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);    
+    sqlite3_finalize(res); 
     return head;
 }
 
-RTNode* db_get_all_cnt_rtnode() {
+RTNode *db_get_all_cnt_rtnode(){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_cnt_rtnode");
-    const char* TYPE = "3-";
+    int rc = 0;
+    int cols = 0;
     
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(resourceDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    sprintf(sql, "SELECT * FROM general, cnt WHERE general.ri = cnt.ri;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
     RTNode* head = NULL, *rtnode = NULL;
 
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0){
-            CNT* cnt = db_get_cnt((char*)key.data);
-            if(!head) {
-                head = create_rtnode(cnt,RT_CNT);
-                rtnode = head;
-            } else {
-                rtnode->sibling_right = create_rtnode(cnt,RT_CNT);
-                rtnode->sibling_right->sibling_left = rtnode;
-                rtnode = rtnode->sibling_right;
-            }     
+    cols = sqlite3_column_count(res);
+
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        CNT* cnt = calloc(1, sizeof(CNT));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                cnt->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                cnt->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                cnt->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                cnt->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                cnt->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                cnt->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "acpi") ){
+                cnt->acpi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lbl") ){
+                cnt->lbl = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "cbs") ){
+                cnt->cbs = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "cni") ){
+                cnt->cni = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mbs") ){
+                cnt->mbs = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mni") ){
+                cnt->mni = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "st") ){
+                cnt->st = sqlite3_column_int(res, col);
+            }
+            
         }
+        cnt->ty = RT_CNT;
+        if(!head) {
+            head = create_rtnode(cnt,RT_CNT);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(cnt, RT_CNT);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }   
+        rc = sqlite3_step(res);
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);    
+    sqlite3_finalize(res); 
     return head;
 }
 
-RTNode* db_get_all_sub_rtnode(){
+RTNode *db_get_all_sub_rtnode(){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_sub_rtnode");
-
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    dbcp = DB_GET_CURSOR(subDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    int idx = 0;
-
-    RTNode* head = NULL, *rtnode = NULL;
+    int rc = 0;
+    int cols = 0;
     
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    /* DB close */
-    dbcp->close(dbcp);
-    // dbp->close(dbp, 0);
-    return head;
-}
-
-RTNode* db_get_all_acp_rtnode() {
-    const char* TYPE = "1-";
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(acpDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    sprintf(sql, "SELECT * FROM general, sub WHERE general.ri = sub.ri;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
 
     RTNode* head = NULL, *rtnode = NULL;
 
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0){
-            ACP* acp = db_get_acp((char*)key.data);
-            if(!head) {
-                head = create_rtnode(acp,RT_ACP);
-                rtnode = head;
-            } else {
-                rtnode->sibling_right = create_rtnode(acp,RT_ACP);
-                rtnode->sibling_right->sibling_left = rtnode;
-                rtnode = rtnode->sibling_right;
-            }     
+    cols = sqlite3_column_count(res);
+
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        SUB* sub = calloc(1, sizeof(SUB));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                sub->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                sub->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                sub->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                sub->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                sub->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                sub->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "net") ){
+                sub->net = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "nu") ){
+                sub->nu = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "sur") ){
+                sub->sur = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "nct") ){
+                sub->nct = sqlite3_column_int(res, col);
+            }
+            
         }
+        sub->ty = RT_SUB;
+        if(!head) {
+            head = create_rtnode(sub,RT_SUB);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(sub, RT_SUB);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }   
+        rc = sqlite3_step(res);
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);    
+    sqlite3_finalize(res); 
     return head;
 }
 
+RTNode *db_get_all_acp_rtnode(){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_acp_rtnode");
+    int rc = 0;
+    int cols = 0;
+    
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-RTNode* db_get_all_grp_rtnode(){
-    logger("DB", LOG_LEVEL_DEBUG,"Call db_get_all_grp_rtnode");
-    const char* TYPE = "9-";
- 
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
-
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-    dbcp = DB_GET_CURSOR(grpDBp);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    RTNode* head = NULL;
-    RTNode* rtnode = NULL;
-
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0){
-            GRP *grp = db_get_grp((char *) key.data);
-
-            if(!head){
-                head = create_rtnode(grp, RT_GRP);
-                rtnode = head;
-            }else{
-                rtnode->sibling_right = create_rtnode(grp, RT_GRP);
-                rtnode->sibling_right->sibling_left = rtnode;
-                rtnode = rtnode->sibling_right;
-            }            
-            free_grp(grp);
-        }
+    sprintf(sql, "SELECT * FROM general, acp WHERE general.ri = acp.ri;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0);    
+    RTNode* head = NULL, *rtnode = NULL;
 
+    cols = sqlite3_column_count(res);
+
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        ACP* acp = calloc(1, sizeof(ACP));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                acp->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                acp->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                acp->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                acp->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                acp->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                acp->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvacop") ){
+                acp->pv_acop = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvacor") ){
+                acp->pv_acor = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvsacop") ){
+                acp->pvs_acop = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pvsacor") ){
+                acp->pvs_acor = strdup(sqlite3_column_text(res, col));
+            }
+            
+        }
+        acp->ty = RT_SUB;
+        if(!head) {
+            head = create_rtnode(acp,RT_SUB);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(acp, RT_SUB);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }   
+        rc = sqlite3_step(res);
+    }
+
+    sqlite3_finalize(res); 
+    return head;
+}
+
+RTNode *db_get_all_grp_rtnode(){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_grp_rtnode");
+    int rc = 0;
+    int cols = 0;
+    
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
+
+    sprintf(sql, "SELECT * FROM general, grp WHERE general.ri = grp.ri;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
+
+    RTNode* head = NULL, *rtnode = NULL;
+
+    cols = sqlite3_column_count(res);
+
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        GRP* grp = calloc(1, sizeof(GRP));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                grp->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                grp->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                grp->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                grp->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                grp->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                grp->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "mid") ){
+                grp->mid = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "macp") ){
+                grp->macp = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "mt") ){
+                grp->mt = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "cnm") ){
+                grp->cnm = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mnm") ){
+                grp->mnm = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "mtv") ){
+                grp->mtv = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "csy") ){
+                grp->csy = sqlite3_column_int(res, col);
+            }
+            
+        }
+        
+        if(!head) {
+            head = create_rtnode(grp,RT_GRP);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(grp, RT_GRP);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }   
+        rc = sqlite3_step(res);
+    }
+
+    sqlite3_finalize(res); 
     return head;
 }
 
 RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
-    const char* TYPE = "4-";
-    
-    DBC* dbcp;
-    DBT key, data;
-    int ret;
 
     char buf[256] = {0};
     char* pi = get_ri_rtnode(parent_rtnode);
+    int rc = 0;
+    int cols = 0;
+    
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
-
-    /* Initialize the key/data return pair. */
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-
-    int idx = 0;
+    sprintf(sql, "SELECT * FROM general, cin WHERE cin.pi='%s' AND general.ri=cin.ri ;",pi);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
     
         
     RTNode* head = NULL, *rtnode = NULL;
-    dbcp = DB_GET_CURSOR(resourceDBp);
-    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        //find CIN
-        if (strncmp(key.data, TYPE , 2) == 0){
-            CIN *cin = db_get_cin((char*)key.data);
-            //find pi
-            if(!strcmp(pi, cin->pi)){
-                sprintf(buf, "%s/%s", parent_rtnode->uri, cin->rn);
-                if(!head) {
-                    head = create_rtnode(cin, RT_CIN);
-                    head->uri = strdup(buf);
-                    rtnode = head;
-                } else {
-                    rtnode->sibling_right = create_rtnode(cin,RT_CIN);
-                    rtnode->sibling_right->uri = strdup(buf);
-                    rtnode->sibling_right->sibling_left = rtnode;
-                    rtnode = rtnode->sibling_right;
-                }
-            } else {
-                free_cin(cin);
+
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        CIN* cin = calloc(1, sizeof(CIN));
+        for(int col = 0 ; col < cols; col++){
+            colname = sqlite3_column_name(res, col);
+            if(!strcmp(colname, "rn") ){
+                cin->rn = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ri") ){
+                cin->ri = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "pi") ){
+                cin->pi = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "ct") ){
+                cin->ct = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "lt") ){
+                cin->lt = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "et") ){
+                cin->et = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "con") ){
+                cin->con = strdup(sqlite3_column_text(res, col));
+            }else if( !strcmp(colname, "cs") ){
+                cin->cs = sqlite3_column_int(res, col);
+            }else if( !strcmp(colname, "st") ){
+                cin->st = sqlite3_column_int(res, col);
             }
+            
         }
+        cin->ty = RT_CIN;
+        if(!head) {
+            head = create_rtnode(cin,RT_CIN);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(cin, RT_CIN);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }   
+        rc = sqlite3_step(res);
     }
 
-    /* Cursors must be closed */
-    if (dbcp != NULL)
-        dbcp->close(dbcp);
-         
-    // if (dbp != NULL)
-    //     dbp->close(dbp, 0); 
-
+    sqlite3_finalize(res); 
     return head;
 }
