@@ -482,58 +482,43 @@ void init_resource_tree(){
 	RTNode *rtnode_list = (RTNode *)calloc(1,sizeof(RTNode));
 	RTNode *tail = rtnode_list;
 	
-	if(access("./RESOURCE.db", 0) != -1) {
-		RTNode* ae_list = db_get_all_ae_rtnode();
-		tail->sibling_right = ae_list;
-		if(ae_list) ae_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
+	RTNode* ae_list = db_get_all_ae_rtnode();
+	tail->sibling_right = ae_list;
+	if(ae_list) ae_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 
-		RTNode* cnt_list = db_get_all_cnt_rtnode();
-		tail->sibling_right = cnt_list;
-		if(cnt_list) cnt_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "RESOURCE.db does not exist");
-	}
+	RTNode* cnt_list = db_get_all_cnt_rtnode();
+	tail->sibling_right = cnt_list;
+	if(cnt_list) cnt_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 	
-	if(access("./SUB.db", 0) != -1) {
-		RTNode* sub_list = db_get_all_sub_rtnode();
-		tail->sibling_right = sub_list;
-		if(sub_list) sub_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "SUB.db does not exist");
-	}
 
-	if(access("./ACP.db", 0) != -1) {
-		RTNode* acp_list = db_get_all_acp_rtnode();
-		tail->sibling_right = acp_list;
-		if(acp_list) acp_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "ACP.db does not exist");
-	}
+	RTNode* sub_list = db_get_all_sub_rtnode();
+	tail->sibling_right = sub_list;
+	if(sub_list) sub_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 
-	if(access("./GROUP.db", 0) != -1) {
-		RTNode* grp_list = db_get_all_grp_rtnode();
-		tail->sibling_right = grp_list;
-		if(grp_list) grp_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "GROUP.db does not exist");
-	}
+
+	RTNode* acp_list = db_get_all_acp_rtnode();
+	tail->sibling_right = acp_list;
+	if(acp_list) acp_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
+
+	RTNode* grp_list = db_get_all_grp_rtnode();
+	tail->sibling_right = grp_list;
+	if(grp_list) grp_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 	
 	RTNode *temp = rtnode_list;
 	rtnode_list = rtnode_list->sibling_right;
 	if(rtnode_list) rtnode_list->sibling_left = NULL;
 	free_rtnode(temp);
-	
+	temp = NULL;
 	if(rtnode_list) restruct_resource_tree(rt->cb, rtnode_list);
 }
 
 RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 	RTNode *rtnode = list;
-	
 	while(rtnode) {
 		RTNode *right = rtnode->sibling_right;
 		if(!strcmp(get_ri_rtnode(parent_rtnode), get_pi_rtnode(rtnode))) {
@@ -937,7 +922,6 @@ int validate_grp(GRP *grp){
 		isLocalResource = true;
 		if(strlen(mid) >= 2 && mid[0] == '/' && mid[1] != '/'){
 			tStr = strdup(mid);
-			logger("util-t", LOG_LEVEL_DEBUG, "%s",tStr);
 			strtok(tStr, "/");
 			p = strtok(NULL, "/");
 			if( strcmp(p, CSE_BASE_NAME) != 0){

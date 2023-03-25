@@ -459,7 +459,7 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	AE *ae = (AE*)target_rtnode->obj;
 
 	set_ae_update(m2m_ae, ae);
-	result = db_delete_onem2m_resource(ae);
+	result = db_delete_onem2m_resource(target_rtnode);
 	result = db_store_ae(ae);
 	
 	if(o2pt->pc) free(o2pt->pc);
@@ -730,7 +730,7 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 		o2pt->rsc = RSC_OPERATION_NOT_ALLOWED;
 		return RSC_OPERATION_NOT_ALLOWED;
 	}
-	delete_rtnode_and_db_data(target_rtnode,1);
+	delete_rtnode_and_db_data(target_rtnode, 1);
 	target_rtnode = NULL;
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = NULL;
@@ -742,13 +742,11 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 int delete_rtnode_and_db_data(RTNode *rtnode, int flag) {
 	switch(rtnode->ty) {
 	case RT_AE : 
-		db_delete_onem2m_resource(((AE *)rtnode->obj)->ri); 
-		break;
 	case RT_CNT : 
-		db_delete_onem2m_resource(((CNT *)rtnode->obj)->ri); 
+		db_delete_onem2m_resource(rtnode); 
 		break;
 	case RT_CIN :
-		db_delete_onem2m_resource(((CIN *)rtnode->obj)->ri);
+		db_delete_onem2m_resource(rtnode);
 		update_cnt_cin(rtnode->parent, rtnode,-1);
 		return 1;
 	case RT_SUB :
@@ -819,6 +817,7 @@ void free_cnt(CNT *cnt) {
 }
 
 void free_cin(CIN* cin) {
+	if(!cin) return;
 	if(cin->et) free(cin->et);
 	if(cin->ct) free(cin->ct);
 	if(cin->lt) free(cin->lt);
@@ -1217,6 +1216,10 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	}
 
 	GRP *after = db_get_grp(get_ri_rtnode(target_rtnode));
+	if(!after){
+		logger("O2M", LOG_LEVEL_ERROR, "Internal server Error");
+		return RSC_INTERNAL_SERVER_ERROR;
+	}
 	int result;
 	if( (o2pt->rsc = set_grp_update(m2m_grp, after)) >= 4000){
 		free_grp(after);

@@ -30,6 +30,7 @@ AE* cjson_to_ae(cJSON *cjson) {
 	cJSON *lbl = NULL;
 	cJSON *srv = NULL;
 	cJSON *acpi = NULL;
+	cJSON *pjson = NULL;
 
 	if (cjson == NULL) {
 		// const char *error_ptr = cJSON_GetErrorPtr();
@@ -106,23 +107,39 @@ AE* cjson_to_ae(cJSON *cjson) {
 	acpi = cJSON_GetObjectItem(root, "acpi");
 	ae->acpi = cjson_list_item_to_string(acpi);
 
+	if(pjson = cJSON_GetObjectItem(root, "pi")){
+		ae->pi = strdup(pjson->valuestring);
+
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ri") ){
+		ae->ri = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ct")){
+		ae->ct = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "lt")){
+		ae->lt = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "et")){
+		ae->et = strdup(pjson->valuestring);
+	}
+
+	ae->ty = RT_AE;
 	return ae;
 }
 
 CNT* cjson_to_cnt(cJSON *cjson) {
 	cJSON *root = NULL;
+	cJSON *pi = NULL;
+	cJSON *ri = NULL;
 	cJSON *rn = NULL;
 	cJSON *acpi = NULL;
 	cJSON *lbl = NULL;
 	cJSON *mni = NULL;
 	cJSON *mbs = NULL;
+	cJSON *pjson = NULL;
 
 	if (cjson == NULL) {
-		// const char *error_ptr = cJSON_GetErrorPtr();
-		// if (error_ptr != NULL)
-		// {
-		// 	fprintf(stderr, "Error before: %s\n", error_ptr);
-		// }
 		return NULL;
 	}
 
@@ -224,6 +241,31 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 		cnt->mbs = INT_MIN;
 	}
 
+	if(pjson = cJSON_GetObjectItem(root, "pi")){
+		cnt->pi = strdup(pjson->valuestring);
+
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ri") ){
+		cnt->ri = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ct")){
+		cnt->ct = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "lt")){
+		cnt->lt = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "et")){
+		cnt->et = strdup(pjson->valuestring);
+	}
+
+	if(pjson = cJSON_GetObjectItem(root, "st")){
+		cnt->st = pjson->valueint;
+	}
+	if(pjson = cJSON_GetObjectItem(root, "st")){
+		cnt->st = pjson->valueint;
+	}
+
+
 	return cnt;
 }
 
@@ -233,6 +275,7 @@ CIN* cjson_to_cin(cJSON *cjson) {
 	cJSON *root = NULL;
 	cJSON *rn = NULL;
 	cJSON *con = NULL;
+	cJSON *pjson = NULL;
 
 	const char *error_ptr = NULL;
 
@@ -259,6 +302,21 @@ CIN* cjson_to_cin(cJSON *cjson) {
 	remove_quotation_mark(cin->con);
 	cin->cs = strlen(cin->con);
 
+	if(pjson = cJSON_GetObjectItem(root, "pi")){
+		cin->pi = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ri") ){
+		cin->ri = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ct")){
+		cin->ct = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "lt")){
+		cin->lt = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "et")){
+		cin->et = strdup(pjson->valuestring);
+	}
 	return cin;
 }
 
@@ -535,7 +593,7 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	if(cjson == NULL){
 		return 0;
 	}
-
+	
 	root = cJSON_GetObjectItem(cjson, "m2m:grp");
 
 	rn = cJSON_GetObjectItem(root, "rn");
@@ -595,16 +653,34 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 		if(midx < mid_size){
 			pmid = cJSON_GetArrayItem(mid, i);
 			if(!isMinDup(grp->mid, midx, pmid->valuestring)){
-				logger("json-t", LOG_LEVEL_DEBUG, "adding %s to mid[%d]", pmid->valuestring, midx);
+				//logger("json-t", LOG_LEVEL_DEBUG, "adding %s to mid[%d]", pmid->valuestring, midx);
 				grp->mid[midx] = strdup(pmid->valuestring);
 				midx++;
 			}
 			else{
-				logger("json-t", LOG_LEVEL_DEBUG, "declining %s", pmid->valuestring);
+				//logger("json-t", LOG_LEVEL_DEBUG, "declining %s", pmid->valuestring);
 				grp->mid[i] = NULL;
 				grp->cnm--;
 			}
 		}
+	}
+	if(pjson = cJSON_GetObjectItem(root, "pi")){
+		grp->pi = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ri") ){
+		grp->ri = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "ct")){
+		grp->ct = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "lt")){
+		grp->lt = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "et")){
+		grp->et = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "mtv")){
+		grp->mtv = pjson->valueint;
 	}
 
 	return RSC_CREATED;
@@ -1468,8 +1544,15 @@ char *cjson_list_item_to_string(cJSON *key) {
 
 cJSON *string_to_cjson_list_item(char *string){
 	cJSON *acpi = cJSON_CreateArray();
-		
-	char *acpi_str = strtok(string, ",");
+	char *acpi_str = NULL;
+
+	if(string[0] == '['){
+		string[strlen(string) - 1] = '\0';
+		acpi_str = strtok(string, ",") + 1;
+	}else{
+		acpi_str = strtok(string, ",");
+	}
+
 	do {
 		cJSON_AddItemToArray(acpi, cJSON_CreateString(acpi_str));
 		acpi_str = strtok(NULL, ",");

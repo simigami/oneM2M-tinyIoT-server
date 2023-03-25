@@ -7,11 +7,11 @@ int close_dbp();
 
 int db_store_cse(CSE *cse_object);
 int db_store_ae(AE *ae_object);
-int db_store_cnt(RTNode* rtnode);
-int db_store_cin(RTNode* rtnode);
-int db_store_grp(RTNode* rtnode);
+int db_store_cnt(CNT* cnt_object);
+int db_store_cin(CIN* cin_object);
+int db_store_grp(GRP* grp_object);
 int db_store_sub(RTNode* rtnode);
-int db_store_acp(RTNode* rtnode);
+int db_store_acp(ACP *acp_object);
 
 CSE* db_get_cse();
 AE* db_get_ae(char *ri);
@@ -21,7 +21,7 @@ SUB* db_get_sub(char* ri);
 GRP* db_get_grp(char* rn);
 ACP* db_get_acp(char* ri);
 
-int db_delete_onem2m_resource(char *ri);
+int db_delete_onem2m_resource(RTNode *rtnode);
 int db_delete_sub(char* ri);
 int db_delete_acp(char* ri);
 int db_delete_grp(char* ri);
