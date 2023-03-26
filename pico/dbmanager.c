@@ -1635,7 +1635,6 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
             }
         }
         cJSON_AddItemToObject(root, "m2m:cin", json);
-        logger("DB", LOG_LEVEL_DEBUG, "%s", cJSON_PrintUnformatted(root));
         cin = cjson_to_cin(root);
         if(!head) {
             head = create_rtnode(cin,RT_CIN);
@@ -1653,4 +1652,77 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
 
     sqlite3_finalize(res); 
     return head;
+}
+
+cJSON* db_get_filter_criteria(FilterCriteria *fc) {
+
+    logger("DB", LOG_LEVEL_DEBUG, "call db_get_cin_rtnode_list");
+    char buf[256] = {0};
+    int rc = 0;
+    int cols = 0, bytes = 0, coltype = 0;
+    cJSON *json;
+    sqlite3_stmt *res = NULL;
+    char *colname = NULL;
+    char sql[1024] = {0};
+
+    strcat(sql, "SELECT uri FROM 'general' WHERE ");
+
+    if(fc->cra){
+        sprintf(buf, "ct > '%s' ", fc->cra);
+        strcat(sql, buf);
+        filterOptionStr(fc->fo, sql);
+    }
+    if(fc->crb){
+        sprintf(buf, "ct <= '%s' ", fc->crb);
+        strcat(sql, buf);
+        filterOptionStr(fc->fo, sql);
+    }
+
+    // if(fc->lbl){
+    //     sprintf(buf, "lbl='%s' ", fc->lbl);
+    //     strcat(sql, buf);
+    //     filterOptionStr(fc->fo, sql);
+    // }
+
+    if(fc->ty){
+        for(int i = 0 ; i < fc->tycnt ; i++){
+            sprintf(buf, " ty = %d OR", fc->ty[i]);
+            strcat(sql, buf);
+        }
+        sql[strlen(sql) -2] = '\0';
+        filterOptionStr(fc->fo, sql);
+    }
+
+    if(fc->fo == FO_AND){
+        sql[strlen(sql)- 4] = '\0';
+    }else if(fc->fo == FO_OR){
+        sql[strlen(sql) - 3] = '\0';
+    }
+    strcat(sql, ";");
+
+    logger("db", LOG_LEVEL_DEBUG, "SQL : %s", sql);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
+        return 0;
+    }
+    
+    json = cJSON_CreateArray();
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        bytes = sqlite3_column_bytes(res, 0);
+        logger("DB", LOG_LEVEL_DEBUG, "!");
+        if(bytes == 0){
+            cJSON_AddItemToArray(json, cJSON_CreateString("testuri"));
+        }else{
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, 0), bytes);
+            cJSON_AddItemToArray(json, cJSON_CreateString(buf));
+            rc = sqlite3_step(res);
+        }
+        rc = sqlite3_step(res);
+    }
+
+    sqlite3_finalize(res); 
+    return json;
 }

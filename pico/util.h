@@ -92,4 +92,5 @@ int get_number_from_cjson(cJSON *json);
 cJSON *qs_to_json(char* qs);
 cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo);
 cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl);
+void filterOptionStr(FilterOperation fo , char *sql);
 #endif

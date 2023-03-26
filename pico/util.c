@@ -338,6 +338,7 @@ char *resource_identifier(ResourceType ty, char *ct) {
 }
 
 void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
+	logger("UTIL", LOG_LEVEL_DEBUG, "call delete_cin_under_cnt_mni_mbs");
 	CNT *cnt = (CNT *) rtnode->obj;
 	if(cnt->cni <= cnt->mni && cnt->cbs <= cnt->mbs) return;
 
@@ -346,6 +347,7 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 
 	while((cnt->mni >= 0 && cnt->cni > cnt->mni) || (cnt->mbs >= 0 && cnt->cbs > cnt->mbs)) {
 		if(head) {
+			logger("UT", LOG_LEVEL_DEBUG, "%d", head->ty);
 			right = head->sibling_right;
 			db_delete_onem2m_resource(get_ri_rtnode(head));
 			cnt->cbs -= ((CIN *)head->obj)->cs;
@@ -1398,4 +1400,15 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 	}
 
 	return uril;
+}
+
+void filterOptionStr(FilterOperation fo , char *sql){
+	switch(fo){
+		case FO_AND:
+			strcat(sql, " AND ");
+			break;
+		case FO_OR:
+			strcat(sql, " OR ");
+			break;
+	}
 }

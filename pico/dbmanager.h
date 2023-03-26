@@ -35,6 +35,7 @@ RTNode* db_get_all_acp_rtnode();
 RTNode* db_get_all_grp_rtnode();
 
 RTNode* db_get_cin_rtnode_list(RTNode *rtnode);
+cJSON* db_get_filter_criteria(FilterCriteria *fc);
 
 #define DB_STR_MAX 65565
 #define DB_SEP ";"
