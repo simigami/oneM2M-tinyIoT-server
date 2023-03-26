@@ -713,7 +713,6 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 	cnt->cbs += sign*(cin->cs);
 	delete_cin_under_cnt_mni_mbs(cnt_rtnode);	
 	cnt->st++;
-	logger("o2t", LOG_LEVEL_DEBUG, "%s", get_ri_rtnode(cnt_rtnode));
 	db_delete_onem2m_resource(cnt_rtnode);
 	db_store_cnt(cnt);
 	return 1;

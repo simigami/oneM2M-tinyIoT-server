@@ -27,8 +27,6 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	char *fopt_buf = NULL;
 	strcpy(uri_array, o2pt->to);
 
-	logger("util-c", LOG_LEVEL_DEBUG, "%s", o2pt->to);
-
 	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
 	int index_start = 0, index_end = -1, fopt_cnt = -1;
 
@@ -963,7 +961,6 @@ int validate_grp(GRP *grp){
 			free(tStr);
 			tStr = NULL;
 		}else{
-			logger("util-t", LOG_LEVEL_DEBUG, "~!!!!");
 			return RSC_NOT_IMPLEMENTED;
 		}
 

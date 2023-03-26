@@ -1122,7 +1122,6 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
     }
 
     sprintf(sql, "DELETE FROM %s WHERE ri='%s';", tableName, get_ri_rtnode(rtnode));
-    logger("dbt", LOG_LEVEL_DEBUG, "sql : %s", sql);
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
@@ -1700,7 +1699,6 @@ cJSON* db_get_filter_criteria(FilterCriteria *fc) {
     }
     strcat(sql, ";");
 
-    logger("db", LOG_LEVEL_DEBUG, "SQL : %s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
@@ -1711,7 +1709,6 @@ cJSON* db_get_filter_criteria(FilterCriteria *fc) {
     rc = sqlite3_step(res);
     while(rc == SQLITE_ROW){
         bytes = sqlite3_column_bytes(res, 0);
-        logger("DB", LOG_LEVEL_DEBUG, "!");
         if(bytes == 0){
             cJSON_AddItemToArray(json, cJSON_CreateString("testuri"));
         }else{
