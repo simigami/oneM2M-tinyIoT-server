@@ -1756,8 +1756,12 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	cJSON *root = cJSON_CreateObject();
 	cJSON *uril = NULL;
 	int urilSize = 0;
+	if(!o2pt->fc){
+		logger("O2M", LOG_LEVEL_WARN, "Empty Filter Criteria");
+		return RSC_BAD_REQUEST;
+	}
 
-	uril = db_get_filter_criteria(o2pt->fc);
+	uril = db_get_filter_criteria(o2pt->to, o2pt->fc);
 	
 	urilSize = cJSON_GetArraySize(uril);
 	if(o2pt->fc->lim < urilSize - o2pt->fc->ofst){

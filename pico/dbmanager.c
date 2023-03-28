@@ -1881,7 +1881,7 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
     return head;
 }
 
-cJSON* db_get_filter_criteria(FilterCriteria *fc) {
+cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
 
     logger("DB", LOG_LEVEL_DEBUG, "call db_get_cin_rtnode_list");
     char buf[256] = {0};
@@ -1925,8 +1925,11 @@ cJSON* db_get_filter_criteria(FilterCriteria *fc) {
     }else if(fc->fo == FO_OR){
         sql[strlen(sql) - 3] = '\0';
     }
-    strcat(sql, ";");
 
+    sprintf(buf, " AND uri LIKE '%s/%%';", to);
+    strcat(sql, buf);
+
+    logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
@@ -1938,12 +1941,12 @@ cJSON* db_get_filter_criteria(FilterCriteria *fc) {
     while(rc == SQLITE_ROW){
         bytes = sqlite3_column_bytes(res, 0);
         if(bytes == 0){
-            cJSON_AddItemToArray(json, cJSON_CreateString("testuri"));
+            logger("DB", LOG_LEVEL_ERROR, "empty URI");
+            cJSON_AddItemToArray(json, cJSON_CreateString("Internal Server ERROR"));
         }else{
             memset(buf,0, 256);
             strncpy(buf, sqlite3_column_text(res, 0), bytes);
             cJSON_AddItemToArray(json, cJSON_CreateString(buf));
-            rc = sqlite3_step(res);
         }
         rc = sqlite3_step(res);
     }

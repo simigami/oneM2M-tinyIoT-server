@@ -24,7 +24,6 @@ bool isFCAttrValid(FilterCriteria *fc){
     if(fc->ofst < 0) return false;
 
     for(int i = 0 ; i < fc->tycnt ; i++){
-        logger("test", LOG_LEVEL_DEBUG, "%d", fc->ty[i]);
         if(fc->ty[i] < 0) return false;
     }
 
