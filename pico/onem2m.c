@@ -38,16 +38,18 @@ void init_cse(CSE* cse) {
 	strcpy(cse->csi,"/");
 	strcat(cse->csi,rn);
 	strcpy(cse->pi, "NULL");
+	cse->uri = strdup(rn);
 	
 	cse->ty = RT_CSE;
 	
 	free(ct); ct = NULL;
 }
 
-void init_ae(AE* ae, char *pi, char *origin) {
+void init_ae(AE* ae, RTNode *parent_rtnode, char *origin) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char ri[128] = {'\0'};
+	char *uri[128];
 
 	if(origin && strlen(origin) > 0) {
 		if(origin[0] != 'C') strcpy(ri, "C");
@@ -61,23 +63,19 @@ void init_ae(AE* ae, char *pi, char *origin) {
 		sprintf(ri, "%s%s%09d","CAE", ct, millsec);
 	}
 
-	if(!ae->rn) {
-		ae->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-		strcpy(ae->rn, ri);
-	}
+	if(!ae->rn) 
+		ae->rn = strdup(ri);
 	
-	ae->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	ae->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	ae->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	ae->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	ae->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	ae->aei = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	strcpy(ae->ri, ri);
-	strcpy(ae->pi, pi);
-	strcpy(ae->et, et);
-	strcpy(ae->ct, ct);
-	strcpy(ae->lt, ct);
-	strcpy(ae->aei, ri);
+	ae->ri = strdup(ri);
+	ae->pi = strdup(get_ri_rtnode(parent_rtnode));
+	ae->et = strdup(et);
+	ae->ct = strdup(ct);
+	ae->lt = strdup(ct);
+	ae->aei = strdup(ri);
+
+	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), ae->rn);
+	ae->uri = strdup(uri);
+
 	
 	ae->ty = RT_AE;
 	
@@ -85,65 +83,61 @@ void init_ae(AE* ae, char *pi, char *origin) {
 	free(et); et = NULL;
 }
 
-void init_cnt(CNT* cnt, char *pi) {
+void init_cnt(CNT* cnt, RTNode *parent_rtnode) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *ri = resource_identifier(RT_CNT, ct);
+	char uri[128] = {0};
 	
 	if(!cnt->rn) {
 		cnt->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 		strcpy(cnt->rn, ri);
 	}
 	
-	cnt->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	cnt->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	cnt->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	cnt->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	cnt->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	strcpy(cnt->ri, ri);
-	strcpy(cnt->pi, pi);
-	strcpy(cnt->et, et);
-	strcpy(cnt->ct, ct);
-	strcpy(cnt->lt, ct);
+	cnt->ri = strdup(ri);
+	cnt->pi = strdup(get_ri_rtnode(parent_rtnode));
+	cnt->et = strdup(et);
+	cnt->ct = strdup(ct);
+	cnt->lt = strdup(ct);
 	
 	cnt->ty = RT_CNT;
 	cnt->st = 0;
 	cnt->cni = 0;
 	cnt->cbs = 0;
+
+	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), cnt->rn);
+	cnt->uri = strdup(uri);
 	
 	free(ct); ct = NULL;
 	free(et); et = NULL;
 	free(ri); ri = NULL;
 }
 
-void init_cin(CIN* cin, char *pi) {
+void init_cin(CIN* cin, RTNode *parent_rtnode) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *ri = resource_identifier(RT_CIN, ct);
+	char uri[128] = {0};
 	
-	cin->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	cin->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	cin->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	cin->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	cin->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	cin->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	strcpy(cin->rn, ri);
-	strcpy(cin->ri, ri);
-	strcpy(cin->pi, pi);
-	strcpy(cin->et, et);
-	strcpy(cin->ct, ct);
-	strcpy(cin->lt, ct);
+	cin->rn = strdup(ri);
+	cin->ri = strdup(ri);
+	cin->pi - strdup(get_ri_rtnode(parent_rtnode));
+	cin->et = strdup(et);
+	cin->ct = strdup(ct);
+	cin->lt = strdup(ct);
 	
 	cin->ty = RT_CIN;
 	cin->st = 0;
 	cin->cs = strlen(cin->con);
+	sprintf(uri, "%s/%s",get_uri_rtnode(parent_rtnode), cin->rn);
+	cin->uri = strdup(uri);
 	
 	free(ct); ct = NULL;
 	free(et); et = NULL;
 	free(ri); ri = NULL;
 }
 
-void init_sub(SUB* sub, char *pi, char *uri) {
+void init_sub(SUB* sub, RTNode *parent_rtnode) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *ri = resource_identifier(RT_SUB, ct);
@@ -158,18 +152,17 @@ void init_sub(SUB* sub, char *pi, char *uri) {
 	}
 
 	sub->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	sub->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
 	sub->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
 	sub->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	sub->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	sub->sur = (char *)malloc((strlen(uri) + strlen(sub->rn) + 2) * sizeof(char));
 
-	sprintf(sub->sur, "/%s/%s",uri,sub->rn);
-	strcpy(sub->ri, ri);
-	strcpy(sub->pi, pi);
-	strcpy(sub->et, et);
-	strcpy(sub->ct, ct);
-	strcpy(sub->lt, ct);
+	sprintf(sub->sur, "/%s/%s", get_uri_rtnode(parent_rtnode), sub->rn);
+	sub->ri = strdup(ri);
+	sub->pi = strdup(get_ri_rtnode(parent_rtnode));
+	sub->ct = strdup(ct);
+	sub->et = strdup(et);
+	sub->lt = strdup(ct);
 	sub->ty = RT_SUB;
 	sub->nct = 0;
 
@@ -178,26 +171,25 @@ void init_sub(SUB* sub, char *pi, char *uri) {
 	free(ri); ri = NULL;
 }
 
-void init_acp(ACP* acp, char *pi) {
+void init_acp(ACP* acp, RTNode *parent_rtnode) {
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *ri = resource_identifier(RT_ACP, ct);
+	char uri[128] = {0};
 
 	if(!acp->rn) {
 		acp->rn = (char*)malloc((strlen(ri) + 1) * sizeof(char));
 		strcpy(acp->rn, ri);
 	}
 	
-	acp->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	acp->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	acp->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	acp->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	acp->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	strcpy(acp->ri, ri);
-	strcpy(acp->pi, pi);
-	strcpy(acp->et, et);
-	strcpy(acp->ct, ct);
-	strcpy(acp->lt, ct);
+	acp->ri = strdup(ri);
+	acp->pi = strdup(get_ri_rtnode(parent_rtnode));
+	acp->et = strdup(et);
+	acp->ct = strdup(ct);
+	acp->lt = strdup(ct);
+
+	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), acp->rn);
+	acp->uri = strdup(uri);
 	
 	acp->ty = RT_ACP;
 	
@@ -239,7 +231,7 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		api_prefix_invalid(o2pt);
 		return o2pt->rsc = RSC_BAD_REQUEST;
 	}
-	init_ae(ae, get_ri_rtnode(parent_rtnode), o2pt->fr);
+	init_ae(ae, parent_rtnode, o2pt->fr);
 	
 	int result = db_store_ae(ae);
 	if(result != 1) { 
@@ -274,7 +266,7 @@ int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		mni_mbs_invalid(o2pt, "mni"); free(cnt); cnt = NULL;
 		return o2pt->rsc;
 	}
-	init_cnt(cnt,get_ri_rtnode(parent_rtnode));
+	init_cnt(cnt,parent_rtnode);
 
 	int result = db_store_cnt(cnt);
 	if(result != 1) { 
@@ -305,7 +297,7 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		too_large_content_size_error(o2pt); free_cin(cin); cin = NULL;
 		return o2pt->rsc;
 	}
-	init_cin(cin,get_ri_rtnode(parent_rtnode));
+	init_cin(cin,parent_rtnode);
 
 	int result = db_store_cin(cin);
 	if(result != 1) { 
@@ -334,7 +326,7 @@ int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		no_mandatory_error(o2pt);
 		return o2pt->rsc;
 	}
-	init_sub(sub, get_ri_rtnode(parent_rtnode), o2pt->to);
+	init_sub(sub, parent_rtnode);
 	
 	int result = db_store_sub(sub);
 	if(result != 1) { 
@@ -361,7 +353,7 @@ int create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		no_mandatory_error(o2pt);
 		return o2pt->rsc;
 	}
-	init_acp(acp, get_ri_rtnode(parent_rtnode));
+	init_acp(acp, parent_rtnode);
 	
 	int result = db_store_acp(acp);
 	if(result != 1) { 
@@ -787,6 +779,7 @@ void free_cse(CSE *cse) {
 	if(cse->ri) free(cse->ri);
 	if(cse->csi) free(cse->csi);
 	if(cse->pi) free(cse->pi);
+	if(cse->uri) free(cse->uri);
 	free(cse); cse = NULL;
 }
 
@@ -802,6 +795,7 @@ void free_ae(AE *ae) {
 	if(ae->lbl) free(ae->lbl);
 	if(ae->srv) free(ae->srv);
 	if(ae->acpi) free(ae->acpi);
+	if(ae->uri) free(ae->uri);
 	free(ae); ae = NULL;
 }
 
@@ -814,6 +808,7 @@ void free_cnt(CNT *cnt) {
 	if(cnt->pi) free(cnt->pi);
 	if(cnt->acpi) free(cnt->acpi);
 	if(cnt->lbl) free(cnt->lbl);
+	if(cnt->uri) free(cnt->uri);
 	free(cnt); cnt = NULL;
 }
 
@@ -826,6 +821,7 @@ void free_cin(CIN* cin) {
 	if(cin->ri) free(cin->ri);
 	if(cin->pi) free(cin->pi);
 	if(cin->con) free(cin->con);
+	if(cin->uri) free(cin->uri);
 	free(cin); cin = NULL;
 }
 
@@ -838,6 +834,7 @@ void free_sub(SUB* sub) {
 	if(sub->pi) free(sub->pi);
 	if(sub->nu) free(sub->nu);
 	if(sub->net) free(sub->net);
+	if(sub->uri) free(sub->uri);
 	free(sub); sub = NULL;
 }
 
@@ -852,6 +849,7 @@ void free_acp(ACP* acp) {
 	if(acp->pv_acop) free(acp->pv_acop);
 	if(acp->pvs_acor) free(acp->pvs_acor);
 	if(acp->pvs_acop) free(acp->pvs_acop);
+	if(acp->uri) free(acp->uri);
 	free(acp); acp = NULL;
 }
 
@@ -864,8 +862,8 @@ void free_grp(GRP *grp) {
 	if(grp->lt) free(grp->lt);
 	if(grp->pi) free(grp->pi);
 	if(grp->acpi) free(grp->acpi);
+	if(grp->uri) free(grp->uri);
 
-	
 	if(grp->mid){
 		for(int i = 0 ; i < grp->cnm ; i++){
 			if(grp->mid[i]){
@@ -1102,27 +1100,27 @@ int check_origin() {
 */
 /* GROUP IMPLEMENTATION */
 
-void init_grp(GRP *grp, char *pi){
+void init_grp(GRP *grp, RTNode *parent_rtnode){
 	char *ct = get_local_time(0);
 	char *et = get_local_time(EXPIRE_TIME);
 	char *ri = resource_identifier(RT_GRP, ct);
+	char uri[128] = {0};
 
 	grp->ct = (char *) malloc((strlen(ct) + 1) * sizeof(char));
 	grp->et = (char *) malloc((strlen(et) + 1) * sizeof(char));
 	grp->ri = (char *) malloc((strlen(ri) + 1) * sizeof(char));
 	grp->lt = (char *) malloc((strlen(ri) + 1) * sizeof(char));
-	grp->pi = (char *) malloc((strlen(pi) + 1) * sizeof(char));
-
+	
+	if(!grp->rn) grp->rn = strdup(ri);
 	strcpy(grp->ct, ct);
 	strcpy(grp->et, et);
 	strcpy(grp->lt, ct);
 	strcpy(grp->ri, ri);
-	strcpy(grp->pi, pi);
+	grp->pi = strdup( get_ri_rtnode(parent_rtnode));
+
+	sprintf("%s/%s", get_uri_rtnode(parent_rtnode), grp->rn);
 
 	if(grp->csy == 0) grp->csy = CSY_ABANDON_MEMBER;
-
-
-	if(!grp->rn) grp->rn = strdup(ri);
 
 	free(ct); ct = NULL;
 	free(et); et = NULL;
@@ -1262,7 +1260,7 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		o2pt->rsc = rsc;
 		return rsc;
 	}
-	init_grp(grp, get_ri_rtnode(parent_rtnode));
+	init_grp(grp, parent_rtnode);
 	rsc = validate_grp(grp);
 	if(rsc >= 4000){
 		logger("O2M", LOG_LEVEL_DEBUG, "Group Validation failed");

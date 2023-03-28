@@ -147,9 +147,9 @@ int db_store_cse(CSE *cse_object){
     if (cse_object->csi == NULL) cse_object->csi = " ";
 
 
-    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, lt, ty) VALUES ('%s', '%s', '%s', '%s', '%s', %d);",
+    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, lt, ty, uri) VALUES ('%s', '%s', '%s', '%s', '%s', %d, '%s');",
                 cse_object->rn, cse_object->ri, cse_object->pi, cse_object->ct,
-                cse_object->lt, cse_object->ty);
+                cse_object->lt, cse_object->ty, cse_object->uri);
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
@@ -192,6 +192,10 @@ int db_store_ae(AE *ae_object){
   
     strcat(attrs, "ri,");
     sprintf(buf, "'%s',", ae_object->ri);
+    strcat(vals, buf);
+
+    strcat(attrs, "uri,");
+    sprintf(buf, "'%s',", ae_object->uri);
     strcat(vals, buf);
 
     if(ae_object->rn){
@@ -293,6 +297,11 @@ int db_store_cnt(CNT *cnt_object){
     strcat(attrs, "ri,");
     sprintf(buf, "'%s',", cnt_object->ri);
     strcat(vals, buf);
+
+    strcat(attrs, "uri,");
+    sprintf(buf, "'%s',", cnt_object->uri);
+    strcat(vals, buf);
+
     if(cnt_object->rn){
         strcat(attrs, "rn,");
         sprintf(buf, "'%s',", cnt_object->rn);
@@ -399,6 +408,10 @@ int db_store_cin(CIN *cin_object) {
     sprintf(buf, "'%s',", cin_object->ri);
     strcat(vals, buf);
 
+    strcat(attrs, "uri,");
+    sprintf(buf, "'%s',", cin_object->uri);
+    strcat(vals, buf);
+
     if(cin_object->rn){
         strcat(attrs, "rn,");
         sprintf(buf, "'%s',", cin_object->rn);
@@ -481,6 +494,10 @@ int db_store_grp(GRP *grp_object){
 
     strcat(attrs, "ri,");
     sprintf(buf, "'%s',", grp_object->ri);
+    strcat(vals, buf);
+
+    strcat(attrs, "uri,");
+    sprintf(buf, "'%s',", grp_object->uri);
     strcat(vals, buf);
 
     if(grp_object->rn){
@@ -739,6 +756,9 @@ CSE *db_get_cse(){
         }else if( !strcmp(colname, "csi") ){
             new_cse->csi = calloc(sizeof(char), bytes + 2);
             strncpy(new_cse->csi, sqlite3_column_text(res, col), bytes);
+        }else if( !strcmp(colname, "uri")){
+            new_cse->uri = calloc(sizeof(char), bytes + 2);
+            strncpy(new_cse->uri, sqlite3_column_text(res, col), bytes);
         }
     }
     new_cse->ty = RT_CSE;
@@ -1253,6 +1273,10 @@ int db_update_cnt(CNT *cnt_object){
     }
 
     return 1;
+}
+
+int db_update_acp(ACP *acp_object){
+    
 }
 
 int db_update_onem2m_resource(RTNode *rtnode){

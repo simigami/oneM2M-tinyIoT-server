@@ -122,6 +122,8 @@ AE* cjson_to_ae(cJSON *cjson) {
 	}
 	if(pjson = cJSON_GetObjectItem(root, "et")){
 		ae->et = strdup(pjson->valuestring);
+	}if(pjson = cJSON_GetObjectItem(root, "uri")){
+		ae->uri = strdup(pjson->valuestring);
 	}
 
 	ae->ty = RT_AE;
@@ -681,6 +683,9 @@ int cjson_to_grp(cJSON *cjson, GRP *grp){
 	}
 	if(pjson = cJSON_GetObjectItem(root, "mtv")){
 		grp->mtv = pjson->valueint;
+	}
+	if(pjson = cJSON_GetObjectItem(root, "uri")){
+		grp->uri = strdup(pjson->valuestring);
 	}
 
 	return RSC_CREATED;

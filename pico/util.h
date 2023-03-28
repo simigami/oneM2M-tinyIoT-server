@@ -33,6 +33,7 @@ char *get_lt_rtnode(RTNode *rtnode);
 int get_st_rtnode(RTNode *rtnode);
 int get_cs_rtnode(RTNode *rtnode);
 char *get_lbl_rtnode(RTNode *rtnode);
+char *get_uri_rtnode(RTNode *rtnode);
 
 //error
 void no_mandatory_error(oneM2MPrimitive *o2pt);

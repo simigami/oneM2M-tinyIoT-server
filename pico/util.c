@@ -1256,6 +1256,25 @@ int get_cs_rtnode(RTNode *rtnode){
 	return ((CIN *) rtnode->obj)->cs;
 }
 
+char *get_uri_rtnode(RTNode *rtnode){
+	switch(rtnode->ty){
+		case RT_CSE:
+			return ((CSE *) rtnode->obj)->uri;
+		case RT_AE:
+			return ((AE *) rtnode->obj)->uri;
+		case RT_CNT:
+			return ((CNT *) rtnode->obj)->uri;
+		case RT_CIN:
+			return ((CIN *) rtnode->obj)->uri;
+		case RT_ACP:
+			return ((ACP *) rtnode->obj)->uri;
+		case RT_SUB:
+			return ((SUB *) rtnode->obj)->uri;
+		case RT_GRP:
+			return ((GRP *) rtnode->obj)->uri;
+	}
+}
+
 int get_number_from_cjson(cJSON *json){
 	if(!json) return 0;
 

@@ -52,6 +52,7 @@ typedef struct {
 	char *pi;
 	char *csi;
 	ResourceType ty;
+	char *uri;
 } CSE;
 
 typedef struct {
@@ -68,6 +69,7 @@ typedef struct {
 	char *acpi;
 	ResourceType ty;
 	bool rr;
+	char *uri;
 } AE;
 
 typedef struct {
@@ -85,6 +87,7 @@ typedef struct {
 	int cbs;
 	int mni;
 	int mbs;
+	char *uri;
 } CNT;
 
 typedef struct {
@@ -98,6 +101,7 @@ typedef struct {
 	ResourceType ty;
 	int st;
 	int cs;
+	char *uri;
 } CIN;
 
 typedef struct {
@@ -112,6 +116,7 @@ typedef struct {
 	char *sur;
 	ResourceType ty;
 	int nct;
+	char *uri;
 } SUB;
 
 typedef struct {
@@ -125,6 +130,7 @@ typedef struct {
 	char *pv_acop;
 	char *pvs_acor;
 	char *pvs_acop;
+	char *uri;
 	ResourceType ty;
 } ACP;
 
@@ -145,6 +151,7 @@ typedef struct {
 	char **mid;
 	bool mtv;
 	ConsistencyStrategy csy;
+	char *uri;
 } GRP;
 
 //Resource Tree
@@ -312,12 +319,12 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 
 void init_cse(CSE* cse);
-void init_ae(AE* ae, char *pi, char *origin);
-void init_cnt(CNT* cnt, char *pi);
-void init_cin(CIN* cin, char *pi);
-void init_sub(SUB* sub, char *pi, char *uri);
-void init_acp(ACP* acp, char *pi);
-void init_grp(GRP* grp, char *pi);
+void init_ae(AE* ae, RTNode *parent_rtnode, char *origin);
+void init_cnt(CNT* cnt, RTNode *parent_rtnode);
+void init_cin(CIN* cin, RTNode *parent_rtnode);
+void init_sub(SUB* sub, RTNode *parent_rtnode);
+void init_acp(ACP* acp, RTNode *parent_rtnode);
+void init_grp(GRP* grp, RTNode *parent_rtnode);
 int set_ae_update(cJSON *m2m_ae, AE* after);
 int set_cnt_update(cJSON *m2m_cnt, CNT* after);
 int set_sub_update(cJSON *m2m_sub, SUB* after);
