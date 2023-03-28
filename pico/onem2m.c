@@ -459,8 +459,9 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	AE *ae = (AE*)target_rtnode->obj;
 
 	set_ae_update(m2m_ae, ae);
-	result = db_delete_onem2m_resource(target_rtnode);
-	result = db_store_ae(ae);
+	result = db_update_ae(ae);
+	// result = db_delete_onem2m_resource(target_rtnode);
+	// result = db_store_ae(ae);
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
@@ -497,8 +498,9 @@ int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	//set_rtnode_update(target_rtnode, after);
 	delete_cin_under_cnt_mni_mbs(target_rtnode);
 	cnt->st++;
-	result = db_delete_onem2m_resource(cnt->ri);
-	result = db_store_cnt(cnt);
+	result = db_update_cnt(cnt);
+	// result = db_delete_onem2m_resource(cnt->ri);
+	// result = db_store_cnt(cnt);
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(cnt);
@@ -713,8 +715,7 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 	cnt->cbs += sign*(cin->cs);
 	delete_cin_under_cnt_mni_mbs(cnt_rtnode);	
 	cnt->st++;
-	db_delete_onem2m_resource(cnt_rtnode);
-	db_store_cnt(cnt);
+	db_update_cnt(cnt);
 	return 1;
 }
 

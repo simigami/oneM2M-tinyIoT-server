@@ -21,6 +21,9 @@ SUB* db_get_sub(char* ri);
 GRP* db_get_grp(char* rn);
 ACP* db_get_acp(char* ri);
 
+int db_update_ae(AE *ae_object);
+int db_update_cnt(CNT *cnt_object);
+
 int db_delete_onem2m_resource(RTNode *rtnode);
 int db_delete_sub(char* ri);
 int db_delete_acp(char* ri);

@@ -1085,22 +1085,202 @@ ACP *db_get_acp(char *ri){
     return new_acp;   
 }
 
-int db_delete_onem2m_resource(RTNode *rtnode) {
-    logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",get_ri_rtnode(rtnode));
+int db_update_ae(AE *ae_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_update_ae");
+  //  AE *ae_object = (AE *) rtnode->obj;
+    char* blankspace = " ";
+    char *err_msg = NULL;
+    int rc = 0;
+    char attrs[128]={0}, vals[512]={0};
+    char buf[128] = {0};
     char sql[1024] = {0};
-    char *err_msg;
-    char *tableName = NULL;
-    int rc; 
 
-    sprintf(sql, "DELETE FROM general WHERE ri='%s';", get_ri_rtnode(rtnode));
+        // db handle
+    char rr[6] ="";
+
+    // if input == NULL
+    if (ae_object->ri == NULL) {
+        fprintf(stderr, "ri is NULL\n");
+        return -1;
+    }
+
+    if(ae_object->rr == false) strcpy(rr, "false");
+    else strcpy(rr, "true");
+
+    strcat(sql, "UPDATE general SET ");
+  
+ 
+    if(ae_object->rn){
+        sprintf(buf, "rn='%s', ", ae_object->rn);
+        strcat(sql, buf);
+    }
+    if(ae_object->lt){
+        sprintf(buf, "lt='%s', ", ae_object->lt);
+        strcat(sql, buf);
+    }
+    if(ae_object->et){
+        sprintf(buf, "et='%s', ", ae_object->et);
+        strcat(sql, buf);
+    }
+    if(ae_object->lbl){
+        sprintf(buf, "lbl='%s', ", ae_object->lbl);
+        strcat(sql, buf);
+    }
+    if(ae_object->acpi){
+        sprintf(buf, "acpi='%s',", ae_object->acpi);
+        strcat(sql, buf);
+    }
+    strcat(sql, "ty=2 ");
+    
+    sprintf(buf, "WHERE ri='%s'", ae_object->ri);
+    strcat(sql, buf);
+
+  
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from general/ msg : %s", err_msg);
-        sqlite3_close(db);
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
         return 0;
     }
 
+    sql[0] = '\0';
+
+    strcat(sql, "UPDATE ae SET ");
+
+    if(ae_object->api){
+        sprintf(buf, "api='%s',", ae_object->api);
+        strcat(sql, buf);
+    }
+    if(ae_object->aei){
+        sprintf(buf, "aei='%s',", ae_object->aei);
+        strcat(sql, buf);
+    }
+    if(ae_object->srv){
+        sprintf(buf, "srv='%s',", ae_object->srv);
+        strcat(sql, buf);
+    }
+    if(ae_object->rr){
+        sprintf(buf, "rr='%s',", rr);
+        strcat(sql, buf);
+    }
+
+    if(sql[strlen(sql) - 1] == ',')
+        sql[strlen(sql) -1] = '\0';
+
+    sprintf(buf, " WHERE ri='%s';", ae_object->ri);
+    strcat(sql, buf);
+      
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        return 0;
+    }
+    
+    return 1;
+}
+
+int db_update_cnt(CNT *cnt_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_update_cnt");
+    char sql[1024] = {0}, *err_msg = NULL;
+    int rc = 0;
+    char buf[256]={0};
+
+    if (cnt_object->ri == NULL) {
+        fprintf(stderr, "ri is NULL\n");
+        return -1;
+    }
+
+    strcat(sql, "UPDATE general SET ");
+
+    if(cnt_object->rn){
+        sprintf(buf, "rn='%s',", cnt_object->rn);
+        strcat(sql, buf);
+    }
+    
+    if(cnt_object->lbl){
+        sprintf(buf, "lbl='%s',", cnt_object->lbl);
+        strcat(sql, buf);
+    }
+    if(cnt_object->lt){
+        sprintf(buf, "lt='%s',", cnt_object->lt);
+        strcat(sql, buf);
+    }
+    if(cnt_object->et){
+        sprintf(buf, "et='%s',", cnt_object->et);
+        strcat(sql, buf);
+    }
+    if(cnt_object->acpi){
+        sprintf(buf, "acpi='%s',", cnt_object->acpi);
+        strcat(sql, buf);
+    }
+    sprintf(buf, "ty=%d WHERE ri='%s'", RT_CNT, cnt_object->ri);
+    strcat(sql, buf);
+
+
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %d", sql, err_msg);
+        return 0;
+    }
+
+    sprintf(sql, "UPDATE cnt SET ");
+    
+    if(cnt_object->mni >= 0){
+        sprintf(buf, "mni=%d,", cnt_object->mni);
+        strcat(sql, buf);
+    }
+    if(cnt_object->mbs >= 0){
+        sprintf(buf, "mbs=%d,", cnt_object->mbs);
+        strcat(sql, buf);
+    }
+    if(cnt_object->cni >= 0){
+        sprintf(buf, "cni=%d,", cnt_object->cni);
+        strcat(sql, buf);
+    }
+    if(cnt_object->cbs >= 0){
+        sprintf(buf, "cbs=%d,", cnt_object->cbs);
+        strcat(sql, buf);
+    }
+    if(sql[strlen(sql)-1] == ','){
+        sql[strlen(sql)-1] = '\0';
+    }   
+    sprintf(buf, " WHERE ri='%s';", cnt_object->ri);
+    strcat(sql, buf);
+
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        return 0;
+    }
+
+    return 1;
+}
+
+int db_update_onem2m_resource(RTNode *rtnode){
+    logger("DB", LOG_LEVEL_DEBUG, "Update [RI] %s", get_ri_rtnode(rtnode));
+    char sql[1024] = {0};
+    char *errmsg;
     switch(rtnode->ty){
+        case RT_AE:
+            break;
+        case RT_CNT:
+            break;
+        case RT_CIN:
+            break;
+        case RT_ACP:
+            break;
+        case RT_GRP:
+            break;
+        case RT_SUB:
+            break;
+    }
+    
+
+
+}
+
+char *get_table_name(ResourceType ty){
+    char * tableName = NULL;
+    switch(ty){
         case RT_AE:
             tableName = "ae";
             break;
@@ -1120,6 +1300,30 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
             tableName = "sub";
             break;
     }
+    return tableName;
+}
+
+int db_delete_onem2m_resource(RTNode *rtnode) {
+    logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",get_ri_rtnode(rtnode));
+    char sql[1024] = {0};
+    char *err_msg;
+    char *tableName = NULL;
+    int rc; 
+
+    tableName = get_table_name(rtnode->ty);
+    if(!tableName){
+        logger("DB", LOG_LEVEL_ERROR, "RTNode ty invalid");
+        return 0;
+    }
+
+    sprintf(sql, "DELETE FROM general WHERE ri='%s';", get_ri_rtnode(rtnode));
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from general/ msg : %s", err_msg);
+        sqlite3_close(db);
+        return 0;
+    }
+
 
     sprintf(sql, "DELETE FROM %s WHERE ri='%s';", tableName, get_ri_rtnode(rtnode));
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
