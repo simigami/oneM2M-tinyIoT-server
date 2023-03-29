@@ -354,29 +354,13 @@ void set_node_uri(RTNode* node);
 //etc
 int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
 
-/* check resource is apt to filter criteria */
-bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc);
-bool FC_isAptCra(char* fcCra, RTNode *rtnode);
-bool FC_isAptCrb(char *fcCrb, RTNode *rtnode);
-bool FC_isAptExa(char *fcExa, RTNode *rtnode);
-bool FC_isAptExb(char *fcExa, RTNode *rtnode);
-bool FC_isAptLbl(cJSON* fcLbl, RTNode *rtnode);
-bool FC_isAptMs(char *fcMs, RTNode *rtnode);
-bool FC_isAptUs(char *fcUs, RTNode *rtnode);
-bool FC_isAptStb(int fcStb, RTNode *rtnode);
-bool FC_isAptSts(int fcSts, RTNode *rtnode);
-bool FC_isAptTy(int *fcTy, int tycnt, int ty);
-bool FC_isAptChty(int *fcChty, int tycnt, int ty);
-bool FC_isAptPty(int *fcPty, int tycnt, int ty);
-bool FC_isAptSza(int fcSza, RTNode *rtnode);
-bool FC_isAptSzb(int fcSzb, RTNode *rtnode);
-bool FC_isAptOps(ACOP fcAcop, oneM2MPrimitive *o2pt, RTNode *rtnode);
-
 bool isValidFcAttr(char* attr);
 
 FilterCriteria *parseFilterCriteria(cJSON *fcjson);
 
 void free_fc(FilterCriteria *fc);
+bool do_uri_exist(cJSON* list, char *uri);
+cJSON *cjson_merge_arrays_by_operation(cJSON* arr1, cJSON* arr2, FilterOperation fo);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2

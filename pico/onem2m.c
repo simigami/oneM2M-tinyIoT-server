@@ -121,7 +121,7 @@ void init_cin(CIN* cin, RTNode *parent_rtnode) {
 	
 	cin->rn = strdup(ri);
 	cin->ri = strdup(ri);
-	cin->pi - strdup(get_ri_rtnode(parent_rtnode));
+	cin->pi = strdup(get_ri_rtnode(parent_rtnode));
 	cin->et = strdup(et);
 	cin->ct = strdup(ct);
 	cin->lt = strdup(ct);
@@ -1118,7 +1118,8 @@ void init_grp(GRP *grp, RTNode *parent_rtnode){
 	strcpy(grp->ri, ri);
 	grp->pi = strdup( get_ri_rtnode(parent_rtnode));
 
-	sprintf("%s/%s", get_uri_rtnode(parent_rtnode), grp->rn);
+	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), grp->rn);
+	grp->uri = strdup(uri);
 
 	if(grp->csy == 0) grp->csy = CSY_ABANDON_MEMBER;
 
@@ -1288,223 +1289,6 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 
 	//free_grp(grp); grp = NULL;
 	return rsc;
-}
-
-bool isResourceAptFC(RTNode *rtnode, FilterCriteria *fc){
-    void *obj;
-    int flag = 0;
-	RTNode *prtnode = NULL;
-	FilterOperation fo = fc->fo;
-    if(!rtnode || !fc) return false;
-
-	// check Created Time
-	if(fc->cra && fc->crb){
-		if(strcmp(fc->cra, fc->crb) >= 0 && fo == FO_AND) return false;
-	}
-    if(fc->cra){
-		if(!FC_isAptCra(fc->cra, rtnode)) {
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-    }
-	if(fc->crb){
-		if(!FC_isAptCrb(fc->crb, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	// check Last Modified
-	if(fc->ms && fc->us){
-		if(strcmp(fc->ms, fc->us) >= 0 && fo == FO_AND) return false;
-	}
-	if(fc->ms){
-		if(!FC_isAptMs(fc->ms, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-	if(fc->us){
-		if(!FC_isAptUs(fc->us, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	// check state tag
-	if(fc->stb && fc->sts){
-		if(fc->stb >= fc->sts && fo == FO_AND) 
-			return false;
-	}
-	if(fc->stb){
-		if(!FC_isAptStb(fc->stb, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-	if(fc->sts){
-		if(!FC_isAptSts(fc->sts, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	// check Expiration Time
-	if(fc->exa){
-		if(!FC_isAptExa(fc->exa, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-	
-	if(fc->exb){
-		if(!FC_isAptExb(fc->exb, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	// check label
-	if(fc->lbl){
-		if(!FC_isAptLbl(fc->lbl, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	if(fc->clbl){
-		if(!FC_isAptClbl(fc->clbl, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	if(fc->palb){
-		if(!FC_isAptPalb(fc->palb, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	// check TY
-    if(fc->tycnt > 0){
-        if(!FC_isAptTy(fc->ty, fc->tycnt, rtnode->ty)){
-            return false;
-		}else{
-			if(fo == FO_OR){
-				return true;
-			}
-		}
-    }
-	// check chty
-	if(fc->chtycnt > 0){
-		int flag = 0;
-		prtnode = rtnode->child;
-		if(!prtnode){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			while(prtnode){
-				if(FC_isAptChty(fc->chty, fc->chtycnt, prtnode->ty)){
-					flag = 1;
-					break;
-				}
-				prtnode = prtnode->sibling_right;
-			}
-			if(flag){
-				if(fo == FO_OR)
-					return true;
-			}else{
-				if(fo == FO_AND)
-					return false;
-			}
-		}
-		
-	}
-	// check pty
-	if(fc->ptycnt > 0){
-		if(!rtnode->parent){
-			if(fo == FO_AND)
-				return false;
-		}
-		else if(!FC_isAptChty(fc->pty, fc->ptycnt, rtnode->parent->ty)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	//check cs
-	if(fc->sza && fc->szb){
-		if(fc->sza >= fc->szb && fo == FO_AND){
-			return false;
-		}
-	}
-	if(fc->sza){
-		if(!FC_isAptSza(fc->sza, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-	if(fc->szb){
-		if(!FC_isAptSzb(fc->szb, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-	if(fc->ops){
-		if(!FC_isAptOps(fc->ops, fc->o2pt, rtnode)){
-			if(fo == FO_AND)
-				return false;
-		}else{
-			if(fo == FO_OR)
-				return true;
-		}
-	}
-
-    return true;
 }
 /*
 void update_sub(RTNode *pnode) {
@@ -1773,10 +1557,10 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		for(int i = o2pt->fc->lim ; i < urilSize; i++){
 			cJSON_DeleteItemFromArray(uril, o2pt->fc->lim);
 		}
+		o2pt->cnst = CS_PARTIAL_CONTENT;
+		o2pt->cnot = o2pt->fc->ofst + o2pt->fc->lim;
 	}
 	cJSON_AddItemToObject(root, "m2m:uril", uril);
-	o2pt->cnst = CS_PARTIAL_CONTENT;
-	o2pt->cnot = o2pt->fc->ofst + o2pt->fc->lim;
 
 	if(o2pt->pc)
 		free(o2pt->pc);

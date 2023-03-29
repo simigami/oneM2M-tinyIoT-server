@@ -1881,35 +1881,133 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
     return head;
 }
 
+/**
+ * get Latest/Oldest Content Instance
+ * Oldest Flag = 0, Latest flag = 1
+*/
+CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol){
+    char sql[1024] = {0}, buf[256] = {0};
+    char *orb = NULL, *colname;
+    int rc = 0;
+    int cols, bytes, coltype;
+    cJSON *json, *root;
+    sqlite3_stmt *res = NULL;
+
+    CIN *cin = calloc(1, sizeof(CIN));
+
+    switch(laol){
+        case 0:
+            orb = "DESC";
+            break;
+        case 1:
+            orb = "ASC";
+            break;
+        default:
+            logger("DB", LOG_LEVEL_DEBUG, "Invalid la ol flag");
+            return NULL;
+    }
+
+    sprintf(sql, "SELECT * from general, cin WHERE pi='%s' AND general.ri = cin.ri ORDER BY general.lt %s LIMIT 1;", get_ri_rtnode(parent_rtnode), orb);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
+
+    if(sqlite3_step(res) != SQLITE_ROW){
+        return 0;
+    }
+    cols = sqlite3_column_count(res);
+    json = cJSON_CreateObject();
+    root = cJSON_CreateObject();
+    
+    for(int col = 0 ; col < cols; col++){
+        
+        colname = sqlite3_column_name(res, col);
+        bytes = sqlite3_column_bytes(res, col);
+        coltype = sqlite3_column_type(res, col);
+
+        if(bytes == 0) continue;
+        switch(coltype){
+            case SQLITE_TEXT:
+                memset(buf,0, 256);
+                strncpy(buf, sqlite3_column_text(res, col), bytes);
+                cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                break;
+            case SQLITE_INTEGER:
+                cJSON_AddItemToObject(json, colname, cJSON_CreateNumber(sqlite3_column_int(res, col)));
+                break;
+        }
+    }
+    cJSON_AddItemToObject(root, "m2m:cin", json);
+    cin = cjson_to_cin(root);
+    cJSON_Delete(json);
+
+
+    sqlite3_finalize(res);
+    return cin;   
+
+}
+
 cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
 
     logger("DB", LOG_LEVEL_DEBUG, "call db_get_cin_rtnode_list");
     char buf[256] = {0};
     int rc = 0;
     int cols = 0, bytes = 0, coltype = 0;
-    cJSON *json;
+    cJSON *result = NULL, *json = NULL, *prtjson = NULL, *chjson = NULL, *tmp = NULL;
     sqlite3_stmt *res = NULL;
     char *colname = NULL;
     char sql[1024] = {0};
+    int jsize = 0, psize = 0 , chsize = 0;
 
     strcat(sql, "SELECT uri FROM 'general' WHERE ");
 
+    sprintf(buf, "uri LIKE '%s/%%' ", to);
+    strcat(sql, buf);
+    filterOptionStr(fc->fo, sql);
+
     if(fc->cra){
-        sprintf(buf, "ct > '%s' ", fc->cra);
+        sprintf(buf, "ct>'%s' ", fc->cra);
         strcat(sql, buf);
         filterOptionStr(fc->fo, sql);
     }
     if(fc->crb){
-        sprintf(buf, "ct <= '%s' ", fc->crb);
+        sprintf(buf, "ct<='%s' ", fc->crb);
+        strcat(sql, buf);
+        filterOptionStr(fc->fo, sql);
+    }
+    if(fc->exa){
+        sprintf(buf, "et>'%s' ", fc->exa);
+        strcat(sql, buf);
+        filterOptionStr(fc->fo, sql);
+    }
+    if(fc->exb){
+        sprintf(buf, "et<='%s' ", fc->exb);
         strcat(sql, buf);
         filterOptionStr(fc->fo, sql);
     }
 
-    // if(fc->lbl){
-    //     sprintf(buf, "lbl='%s' ", fc->lbl);
-    //     strcat(sql, buf);
-    //     filterOptionStr(fc->fo, sql);
-    // }
+    if(fc->ms){
+        sprintf(buf, "lt>'%s' ", fc->ms);
+        strcat(sql, buf);
+        filterOptionStr(fc->fo, sql);
+    }
+    if(fc->us){
+        sprintf(buf, "lt<='%s' ", fc->us);
+        strcat(sql, buf);
+        filterOptionStr(fc->fo, sql);
+    }
+
+    if(fc->lbl){
+        jsize = cJSON_GetArraySize(fc->lbl);
+        for(int i = 0 ; i < jsize ; i++){
+            sprintf(buf, "lbl='%s' OR ", fc->lbl);
+            strcat(sql, buf);
+        }
+        sql[strlen(sql)- 3] = '\0';
+        filterOptionStr(fc->fo, sql);
+    }
 
     if(fc->ty){
         for(int i = 0 ; i < fc->tycnt ; i++){
@@ -1925,9 +2023,7 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
     }else if(fc->fo == FO_OR){
         sql[strlen(sql) - 3] = '\0';
     }
-
-    sprintf(buf, " AND uri LIKE '%s/%%';", to);
-    strcat(sql, buf);
+    strcat(sql, ";");
 
     logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
@@ -1950,7 +2046,262 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
         }
         rc = sqlite3_step(res);
     }
-
     sqlite3_finalize(res); 
-    return json;
+
+    jsize = cJSON_GetArraySize(json);
+    if(fc->pty || fc->palb || fc->patr){
+        prtjson = db_get_parent_filter_criteria(to, fc);
+        psize = cJSON_GetArraySize(prtjson);
+        result = cjson_merge_arrays_by_operation(json, prtjson, fc->fo);
+    }
+    if(fc->chty || fc->clbl || fc->catr){
+        chjson = db_get_child_filter_criteria(to, fc);
+        chsize = cJSON_GetArraySize(chjson);
+        if(result){
+            tmp = cjson_merge_arrays_by_operation(result, chjson, fc->fo);
+            cJSON_Delete(result);
+            result = tmp;
+        }else{
+            result = cjson_merge_arrays_by_operation(json, chjson, fc->fo);
+        }
+    }
+    if(json)
+        cJSON_Delete(json);
+    if(prtjson)
+        cJSON_Delete(prtjson);
+    if(chjson)
+        cJSON_Delete(chjson);
+    
+    return result;
+}
+
+bool do_uri_exist(cJSON *list, char *uri){
+    char *ptr = NULL;
+    int lsize = cJSON_GetArraySize(list);
+    for(int i = 0 ; i < lsize ; i++ ){
+        ptr = cJSON_GetArrayItem(list, i)->valuestring;
+        if(!strcmp(ptr, uri)){
+            return true;
+        }
+    }
+    return false;
+}
+
+cJSON *cjson_merge_arrays_by_operation(cJSON* arr1, cJSON* arr2, FilterOperation fo){
+    cJSON *result = cJSON_CreateArray();
+    int ar1size, ar2size;
+    char buf[256] = {0};
+
+    ar1size = cJSON_GetArraySize(arr1);
+    ar2size = cJSON_GetArraySize(arr2);
+    switch(fo){
+        case FO_AND:
+            for(int i = 0 ; i < ar1size ; i++){ 
+                strcpy(buf, cJSON_GetArrayItem(arr1, i)->valuestring);
+                if( do_uri_exist(arr2, buf)){
+                    cJSON_AddItemToArray(result, cJSON_CreateString(buf));
+                }
+            }
+            break;
+        case FO_OR:
+            for(int i = 0 ; i < ar1size ; i++){ 
+                strcpy(buf, cJSON_GetArrayItem(arr1, i)->valuestring);
+                if(!do_uri_exist(result, buf)){
+                    cJSON_AddItemToArray(result, cJSON_CreateString(buf));
+                }
+            }
+            for(int i = 0 ; i < ar2size ; i++){ 
+                strcpy(buf, cJSON_GetArrayItem(arr2, i)->valuestring);
+                if(!do_uri_exist(result, buf)){
+                    cJSON_AddItemToArray(result, cJSON_CreateString(buf));
+                }
+            }
+            break;
+    }
+    return result;
+}
+
+cJSON *db_get_parent_filter_criteria(char *to, FilterCriteria *fc){
+    logger("DB", LOG_LEVEL_DEBUG, "call db_get_parent_filter_criteria");
+    char buf[256] = {0};
+    int rc = 0;
+    int cols = 0, bytes = 0, coltype = 0;
+    cJSON *json;
+    cJSON *chdjson;
+    sqlite3_stmt *res = NULL;
+    char *colname = NULL;
+    char sql[1024] = {0};
+    int jsize = 0;
+
+    sprintf(sql, "SELECT uri FROM 'general' WHERE uri LIKE '%s/%%' ", to);
+    filterOptionStr(fc->fo, sql);
+
+    if(fc->pty){
+        for(int i = 0 ; i < fc->ptycnt ; i++){
+            sprintf(buf, " ty = %d OR", fc->pty[i]);
+            strcat(sql, buf);
+        }
+        sql[strlen(sql) -2] = '\0';
+        filterOptionStr(fc->fo, sql);
+    }
+    
+    if(fc->palb){
+        jsize = cJSON_GetArraySize(fc->palb);
+        for(int i = 0 ; i < jsize ; i++){
+            sprintf(buf, "lbl='%s' OR ", cJSON_GetArrayItem(fc->palb, i));
+            strcat(sql, buf);
+        }
+        sql[strlen(sql)- 3] = '\0';
+        filterOptionStr(fc->fo, sql);
+    }
+
+    // if(fc->patr){ //TODO - patr
+    //     sprintf(buf, "%s LIKE %s",);
+    // }
+    
+    if(fc->fo == FO_AND){
+        sql[strlen(sql)- 4] = '\0';
+    }else if(fc->fo == FO_OR){
+        sql[strlen(sql) - 3] = '\0';
+    }
+
+    strcat(sql, ";");
+
+    logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
+        return 0;
+    }
+    json = cJSON_CreateArray();
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        bytes = sqlite3_column_bytes(res, 0);
+        if(bytes == 0){
+            logger("DB", LOG_LEVEL_ERROR, "empty URI");
+            cJSON_AddItemToArray(json, cJSON_CreateString("Internal Server ERROR"));
+        }else{
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, 0), bytes);
+            logger("DB", LOG_LEVEL_DEBUG, "p uri : %s", buf);
+            cJSON_AddItemToArray(json, cJSON_CreateString(buf));
+        }
+        rc = sqlite3_step(res);
+    }
+    sqlite3_finalize(res);
+
+    jsize = cJSON_GetArraySize(json);
+    chdjson = cJSON_CreateArray();
+
+    for(int i = 0 ; i < jsize ; i++){
+        sprintf(sql, "SELECT uri FROM general WHERE uri LIKE '%s/%%' AND uri NOT LIKE 'TinyIoT/testae_1/%%/%%';", 
+                        cJSON_GetArrayItem(json, i)->valuestring);
+        logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
+        if(rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL)){
+            logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
+            return 0;
+        }
+        rc = sqlite3_step(res);
+        while(rc == SQLITE_ROW){
+            bytes = sqlite3_column_bytes(res, 0);
+            if(bytes == 0){
+                logger("DB", LOG_LEVEL_ERROR, "empty URI");
+                cJSON_AddItemToArray(json, cJSON_CreateString("Internal Server ERROR"));
+            }else{
+                memset(buf,0, 256);
+                strncpy(buf, sqlite3_column_text(res, 0), bytes);
+                cJSON_AddItemToArray(chdjson, cJSON_CreateString(buf));
+            }
+            rc = sqlite3_step(res);
+        }
+        sqlite3_finalize(res);
+    }
+    cJSON_Delete(json);
+
+   
+    return chdjson;
+}
+
+cJSON *db_get_child_filter_criteria(char *to, FilterCriteria *fc){
+    logger("DB", LOG_LEVEL_DEBUG, "call db_get_child_filter_criteria");
+    char buf[256] = {0};
+    int rc = 0;
+    int cols = 0, bytes = 0, coltype = 0;
+    cJSON *json;
+    cJSON *ptrjson;
+    sqlite3_stmt *res = NULL;
+    char *turi = NULL, *cptr = NULL;
+    char sql[1024] = {0};
+    int jsize = 0;
+
+    strcat(sql, "SELECT uri FROM 'general' WHERE ");
+
+    if(fc->chty){
+        for(int i = 0 ; i < fc->chtycnt ; i++){
+            sprintf(buf, " ty = %d OR", fc->chty[i]);
+            strcat(sql, buf);
+        }
+        sql[strlen(sql) -2] = '\0';
+        filterOptionStr(fc->fo, sql);
+    }
+    
+    if(fc->clbl){
+        jsize = cJSON_GetArraySize(fc->clbl);
+        for(int i = 0 ; i < jsize ; i++){
+            sprintf(buf, "lbl='%s' OR ", cJSON_GetArrayItem(fc->clbl, i));
+            strcat(sql, buf);
+        }
+        sql[strlen(sql)- 3] = '\0';
+        filterOptionStr(fc->fo, sql);
+    }
+
+    // if(fc->catr){ //TODO - catr
+    //     sprintf(buf, "%s LIKE %s",);
+    // }
+
+    if(fc->fo == FO_AND){
+        sql[strlen(sql)- 4] = '\0';
+    }else if(fc->fo == FO_OR){
+        sql[strlen(sql) - 3] = '\0';
+    }
+
+    sprintf(buf, " AND uri LIKE '%s/%%';", to);
+    strcat(sql, buf);
+
+    logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
+        return 0;
+    }
+    json = cJSON_CreateArray();
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        bytes = sqlite3_column_bytes(res, 0);
+        if(bytes == 0){
+            logger("DB", LOG_LEVEL_ERROR, "empty URI");
+            cJSON_AddItemToArray(json, cJSON_CreateString("Internal Server ERROR"));
+        }else{
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, 0), bytes);
+            cJSON_AddItemToArray(json, cJSON_CreateString(buf));
+        }
+        rc = sqlite3_step(res);
+    }
+    sqlite3_finalize(res);
+
+    jsize = cJSON_GetArraySize(json);
+
+    ptrjson = cJSON_CreateArray();
+    for(int i = 0 ; i < jsize ; i++){
+        turi = strdup(cJSON_GetArrayItem(json, i)->valuestring); 
+        cptr = strrchr(turi, '/');
+        *cptr = '\0';
+        cJSON_AddItemToArray(ptrjson, cJSON_CreateString(turi));
+        free(turi);
+    }
+    cJSON_Delete(json);
+
+   
+    return ptrjson;
 }

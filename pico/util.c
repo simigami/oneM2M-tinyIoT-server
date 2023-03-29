@@ -137,31 +137,15 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 // }
 
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
+	logger("UTL", LOG_LEVEL_DEBUG, "latest oldest");
+	RTNode *cin_rtnode = NULL;
 	if(rtnode->ty == RT_CNT) {
-		RTNode *head = db_get_cin_rtnode_list(rtnode);
-		RTNode *cin = head;
-
-		if(cin) {
-			if(flag == 1) {
-				head = head->sibling_right;
-				cin->sibling_right = NULL;			
-			} else {
-				while(cin->sibling_right) cin = cin->sibling_right;
-				if(cin->sibling_left) {
-					cin->sibling_left->sibling_right = NULL;
-					cin->sibling_left = NULL;
-				}
-			}
-			if(head != cin) free_rtnode_list(head);
-			if(cin) {
-				cin->parent = rtnode;
-				return cin;
-			} else {
-				return NULL;
-			}
-		}
-		return NULL;
+		CIN *cin_object = db_get_cin_laol(rtnode, flag);
+		cin_rtnode = create_rtnode(cin_object, RT_CIN);
+		cin_rtnode->parent = rtnode;
 	}
+
+	return cin_rtnode;
 }
 
 int net_to_bit(char *net) {
@@ -347,7 +331,7 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 		if(head) {
 			logger("UT", LOG_LEVEL_DEBUG, "%d", head->ty);
 			right = head->sibling_right;
-			db_delete_onem2m_resource(get_ri_rtnode(head));
+			db_delete_onem2m_resource(head);
 			cnt->cbs -= ((CIN *)head->obj)->cs;
 			cnt->cni--;
 			free_rtnode(head);
@@ -1356,67 +1340,6 @@ int is_in_uril(cJSON *uril, char* new){
 	return result;
 }
 
-cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
-	
-	RTNode *prt = rtnode;
-	RTNode *trt = NULL;
-	RTNode *cinrtHead = NULL;
-	cJSON *uril = cJSON_CreateArray();
-	cJSON *curil = NULL;
-	cJSON *pjson = NULL;
-	char buf[512] = {0};
-	int curilSize = 0;
-
-	while(prt){
-		if(prt->ty == RT_CIN){
-			if(prt->sibling_right){
-				prt->sibling_right->parent = prt->parent;
-			}
-		}
-		// If resource is cnt, Construct RTNode of child cin and attach it
-		if(prt->ty == RT_CNT){
-			cinrtHead = trt = db_get_cin_rtnode_list(prt);
-			prt->child = cinrtHead;
-		}
-		//logger("util", LOG_LEVEL_DEBUG, "examining %s", get_rn_rtnode(prt));
-		// Check if resource satisfies filter
-		if(isResourceAptFC(prt, fc)){
-			if(fc->arp){
-				sprintf(buf, "%s/%s", get_rn_rtnode(prt), fc->arp);
-				trt = find_rtnode_by_uri(prt, buf);
-				if(trt) cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
-				buf[0] = '\0';
-			}else{
-				cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
-			}
-			
-		}
-
-		// Check child resources if available
-		if(fc->lvl - lvl > 0 && prt->child ){
-			curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
-
-			curilSize = cJSON_GetArraySize(curil);
-			for(int i = 0 ; i < curilSize ; i++){
-				pjson = cJSON_GetArrayItem(curil, i);
-				cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
-			}
-			cJSON_Delete(curil);
-			curil = NULL;
-			
-		}
-
-		// Remove attatched rtnode of CIN when available
-		if(cinrtHead){
-			free_rtnode_list(cinrtHead);
-			prt->child = NULL;
-		}
-		cinrtHead = NULL;
-		prt = prt->sibling_right;
-	}
-
-	return uril;
-}
 
 void filterOptionStr(FilterOperation fo , char *sql){
 	switch(fo){

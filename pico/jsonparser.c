@@ -245,7 +245,6 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 
 	if(pjson = cJSON_GetObjectItem(root, "pi")){
 		cnt->pi = strdup(pjson->valuestring);
-
 	}
 	if(pjson = cJSON_GetObjectItem(root, "ri") ){
 		cnt->ri = strdup(pjson->valuestring);
@@ -258,6 +257,9 @@ CNT* cjson_to_cnt(cJSON *cjson) {
 	}
 	if(pjson = cJSON_GetObjectItem(root, "et")){
 		cnt->et = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "uri")){
+		cnt->uri = strdup(pjson->valuestring);
 	}
 
 	if(pjson = cJSON_GetObjectItem(root, "st")){
@@ -304,6 +306,15 @@ CIN* cjson_to_cin(cJSON *cjson) {
 	remove_quotation_mark(cin->con);
 	cin->cs = strlen(cin->con);
 
+	if(pjson = cJSON_GetObjectItem(root, "rn")){
+		cin->rn = strdup(pjson->valuestring);
+	}
+	if(pjson = cJSON_GetObjectItem(root, "st")){
+		cin->st = pjson->valueint;
+	}
+	if(pjson = cJSON_GetObjectItem(root, "cs")){
+		cin->cs = pjson->valueint;
+	}
 	if(pjson = cJSON_GetObjectItem(root, "pi")){
 		cin->pi = strdup(pjson->valuestring);
 	}
@@ -319,6 +330,10 @@ CIN* cjson_to_cin(cJSON *cjson) {
 	if(pjson = cJSON_GetObjectItem(root, "et")){
 		cin->et = strdup(pjson->valuestring);
 	}
+	if(pjson = cJSON_GetObjectItem(root, "uri")){
+		cin->uri = strdup(pjson->valuestring);
+	}
+
 	return cin;
 }
 
