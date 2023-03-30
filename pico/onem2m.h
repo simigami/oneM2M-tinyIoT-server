@@ -361,7 +361,6 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson);
 void free_fc(FilterCriteria *fc);
 bool do_uri_exist(cJSON* list, char *uri);
 cJSON *cjson_merge_arrays_by_operation(cJSON* arr1, cJSON* arr2, FilterOperation fo);
-cJSON *db_get_resource_filter_criteria(FilterCriteria *fc, char *to);
 
 #define MAX_TREE_VIEWER_SIZE 65536
 #define EXPIRE_TIME -3600*24*365*2
