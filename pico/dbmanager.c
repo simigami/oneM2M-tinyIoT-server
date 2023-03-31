@@ -376,7 +376,7 @@ int db_store_cnt(CNT *cnt_object){
         sprintf(buf, "%d,", cnt_object->cbs);
         strcat(vals, buf);
     }
-    if(cnt_object->st){
+    if(cnt_object->st >= 0){
         strcat(attrs, "st,");
         sprintf(buf, "%d,", cnt_object->st);
         strcat(vals, buf);
@@ -550,22 +550,22 @@ int db_store_grp(GRP *grp_object){
     sprintf(buf, "'%s',", grp_object->ri);
     strcat(vals, buf);
 
-    if(grp_object->mt){
+    if(grp_object->mt >= 0){
         strcat(attrs, "mt,");
         sprintf(buf, "%d,", grp_object->mt);
         strcat(vals, buf);
     }
-    if(grp_object->cnm){
+    if(grp_object->cnm >= 0){
         strcat(attrs, "cnm,");
         sprintf(buf, "%d,", grp_object->cnm);
         strcat(vals, buf);
     }
-    if(grp_object->mnm){
+    if(grp_object->mnm >= 0){
         strcat(attrs, "mnm,");
         sprintf(buf, "%d,", grp_object->mnm);
         strcat(vals, buf);
     }
-    if(grp_object->mtv){
+    if(grp_object->mtv >= 0){
         strcat(attrs, "mtv,");
         sprintf(buf, "%d,", grp_object->mtv);
         strcat(vals, buf);
@@ -678,7 +678,7 @@ int db_store_sub(SUB *sub_object) {
         strcat(vals, buf);
     }
 
-    if(sub_object->nct){
+    if(sub_object->nct >= 0){
         strcat(attrs, "nct,");
         sprintf(buf, "%d,", sub_object->nct);
         strcat(vals, buf);
@@ -1331,7 +1331,7 @@ int db_update_cnt(CNT *cnt_object){
 
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %d", sql, err_msg);
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
         return 0;
     }
 
@@ -1345,7 +1345,7 @@ int db_update_cnt(CNT *cnt_object){
         sprintf(buf, "mbs=%d,", cnt_object->mbs);
         strcat(sql, buf);
     }
-    if(cnt_object->st){
+    if(cnt_object->st >= 0){
         sprintf(buf, "st=%d,", cnt_object->st);
         strcat(sql, buf);
     }
@@ -1486,38 +1486,29 @@ int db_update_grp(GRP *grp_object){
         return 0;
     }
 
-    sprintf(sql, "UPDATE grp SET ");
+    
+    sprintf(buf, "UPDATE grp SET mt=%d,cnm=%d,mnm=%d,mtv=%d,", 
+        grp_object->mt, grp_object->cnm, grp_object->mnm, grp_object->mtv);
+    strcat(sql, buf);
 
-    if(grp_object->mt){
-        sprintf(buf, "mt=%d,", grp_object->mt);
-        strcat(sql, buf);
-    }
-    if(grp_object->cnm){
-        sprintf(buf, "cnm=%d,", grp_object->cnm);
-        strcat(sql, buf);
-    }
-    if(grp_object->mnm){
-        sprintf(buf, "mnm=%d,", grp_object->mnm);
-        strcat(sql, buf);
-    }
-    if(grp_object->mtv){
-        sprintf(buf, "mtv=%d,", grp_object->mtv);
-        strcat(sql, buf);
-    }
     if(grp_object->csy){
         sprintf(buf, "csy=%d,", grp_object->csy);
         strcat(sql, buf);
     }
-    if(grp_object->cnm > 0){
-        sprintf(buf, "mid='");
-        for(int i = 0 ; i < grp_object->cnm ; i++){
-            strcat(buf, grp_object->mid[i]);
-            strcat(buf, ",");
-        }
-        buf[strlen(buf)-1] = '\'';
-        strcat(sql, buf);
-        strcat(sql, ",");
+    
+    sprintf(buf, "mid='");
+    for(int i = 0 ; i < grp_object->cnm ; i++){
+        strcat(buf, grp_object->mid[i]);
+        strcat(buf, ",");
     }
+    if(grp_object->cnm){
+        buf[strlen(buf)-1] = '\'';
+    }else{
+        strcat(buf, "'");
+    }
+    strcat(sql, buf);
+    strcat(sql, ",");
+    
 
     sql[strlen(sql)-1] = '\0';
     
@@ -2291,7 +2282,7 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
         filterOptionStr(fc->fo, sql);
     }
 
-    if(fc->sza){
+    if(fc->sza >= 0){
         sprintf(buf, " ri IN (SELECT ri FROM 'cin' WHERE cs >= %d) ", fc->sza);
         strcat(sql, buf);
         filterOptionStr(fc->fo, sql);
@@ -2309,7 +2300,7 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
         filterOptionStr(fc->fo, sql);
     }
 
-    if(fc->stb){
+    if(fc->stb >= 0){
         sprintf(buf, " ri IN (SELECT ri FROM 'cnt' WHERE st >= %d) ", fc->stb);
         strcat(sql, buf);
         filterOptionStr(fc->fo, sql);
