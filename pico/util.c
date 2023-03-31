@@ -1431,7 +1431,13 @@ char** http_split_uri(char *uri){
 }
 
 void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, int net) {
+	logger("UTIL", LOG_LEVEL_DEBUG, "notify_to_nu");
 	SUB *sub = (SUB *)sub_rtnode->obj;
+	int uri_len = 0, index = 0;
+	char *noti_json = cJSON_PrintUnformatted(noti_cjson);
+	char *p = NULL;
+	char port[10] = {'\0'};
+	NotiTarget *nt = NULL;
 	if(sub->net_bit <= 0) {
 		sub->net_bit = net_to_bit(sub->net);
 	}
@@ -1446,13 +1452,57 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 	char *noti_uri = strtok(nu, ",");
 
 	while(noti_uri) {
+		logger("UTIL", LOG_LEVEL_DEBUG, "noti_uri : %s", noti_uri);
+		index = 0;
+		nt = calloc(1, sizeof(NotiTarget));
+		uri_len = strlen(noti_uri);
+		p = noti_uri+7;
+
 		if(!strncmp(noti_uri, "http://", 7)) {
-			http_notify(o2pt, noti_cjson, noti_uri);		
-		} else if(!strncmp(noti_uri, "mqtt://", 7)) {
-			// mqtt notify logic
-			// noti_uri -> mqtt://~~~~~~
-			// noti_cjson -> payload cjson for notification
+			nt->prot = PROT_HTTP;
+		}else if(!strncmp(noti_uri, "mqtt://", 7)) {
+			nt->prot = PROT_MQTT;
+		}
+
+		while(noti_uri + uri_len > p && *p != ':' && *p != '/' && *p != '?'){
+			nt->host[index++] = *(p++);
+		}
+		if(noti_uri + uri_len > p && *p == ':') {
+			p++;
+			index = 0;
+			while(noti_uri + uri_len > p && *p != '/' && *p != '?'){
+				port[index++] = *(p++);
+			}
+			nt->port = atoi(port);
+		}
+		if(noti_uri + uri_len > p) {
+			strcpy(nt->target, p);
+			logger("t", LOG_LEVEL_DEBUG, "%s", nt->target);
+			p = strchr(nt->target, '?');
+			memset(p, 0, strlen(p));
+			// if(*p == '?') {
+			// 	sprintf(nt->target, "/%s", p);
+			// } else if(*p == '/') {
+			// 	strcpy(nt->target, p);
+			// }
+		} 
+
+		switch(nt->prot){
+			case PROT_HTTP:
+				if(!nt->port)
+					nt->port = 80;
+				if(nt->target[0] == '\0')
+					nt->target[0] = '/';
+				http_notify(o2pt, noti_json, nt);
+				break;
+			case PROT_MQTT:
+				if(!nt->port)
+					nt->port = 1883;
+				mqtt_notify(o2pt, noti_json, nt);
+				break;
 		}
 		noti_uri = strtok(NULL, ",");
 	}
+
+	free(noti_json);
 }

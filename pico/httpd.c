@@ -222,11 +222,10 @@ void respond(int slot) {
         }
         if(payload) normalize_payload();
         // bind clientfd to stdout, making it easier to write
-        int clientfd = clients[slot];
-        dup2(clientfd, STDOUT_FILENO);
-        close(clientfd);
+        
+        //dup2(clientfd, STDOUT_FILENO);
         // call router
-        handle_http_request();    
+        handle_http_request(slot);    
         // tidy up
         fflush(stdout);
         shutdown(STDOUT_FILENO, SHUT_WR);
@@ -248,7 +247,7 @@ Operation http_parse_operation(){
 	return op;
 }
 
-void handle_http_request() {
+void handle_http_request(int slotno) {
 	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
     cJSON *fcjson = NULL;
 	char *header = NULL;
@@ -304,7 +303,7 @@ void handle_http_request() {
         }
         cJSON_Delete(fcjson);
     }
-
+    o2pt->slotno = slotno;
 	route(o2pt);
     free_o2pt(o2pt);
 }
@@ -369,35 +368,11 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
     }
     sprintf(buf, "%s %s\n%s%s\n", HTTP_PROTOCOL_VERSION, status, DEFAULT_RESPONSE_HEADERS, response_headers);
     if(o2pt->pc) strcat(buf, o2pt->pc);
-    printf("%s",buf); 
+    write(clients[o2pt->slotno], buf, strlen(buf)); 
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
 }
 
-void http_notify(oneM2MPrimitive *o2pt, cJSON *noti_cjson, char *noti_uri) {
-    int uri_len = strlen(noti_uri);
-    char *p = noti_uri+7;
-    char host[1024] = {'\0'};
-    char target[1024] = "/\0";
-    char port[8] = "80";
-
-    int index = 0;
-    while(noti_uri + uri_len > p && *p != ':' && *p != '/' && *p != '?'){
-        host[index++] = *(p++);
-    }
-    if(noti_uri + uri_len > p && *p == ':') {
-        p++;
-        index = 0;
-        while(noti_uri + uri_len > p && *p != '/' && *p != '?'){
-            port[index++] = *(p++);
-        }
-    }
-    if(noti_uri + uri_len > p) {
-        if(*p == '?') {
-            sprintf(target, "/%s", p);
-        } else if(*p == '/') {
-            strcpy(target, p);
-        }
-    } 
+void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
 
     struct sockaddr_in serv_addr;
     int sock = socket(PF_INET, SOCK_STREAM, 0);
@@ -406,22 +381,21 @@ void http_notify(oneM2MPrimitive *o2pt, cJSON *noti_cjson, char *noti_uri) {
         return;
     }
 
-    char *noti_json = cJSON_PrintUnformatted(noti_cjson);
     char buffer[BUF_SIZE];
 
-    sprintf(buffer, "GET %s %s\r\n%s\r\n%s", target, HTTP_PROTOCOL_VERSION, DEFAULT_REQUEST_HEADERS, noti_json);
+    sprintf(buffer, "GET %s %s\r\n%s\r\n%s", nt->target, HTTP_PROTOCOL_VERSION, DEFAULT_REQUEST_HEADERS, noti_json);
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(host);
-    serv_addr.sin_port = htons(atoi(port));
+    serv_addr.sin_addr.s_addr = inet_addr(nt->host);
+    serv_addr.sin_port = htons(nt->port);
 
     if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
         logger("HTTP", LOG_LEVEL_ERROR, "connect error");
         return;
     }
+    logger("http", LOG_LEVEL_DEBUG, "%s", buffer);
 
     send(sock, buffer, sizeof(buffer), 0);
     close(sock);
-    free(noti_json);
 }

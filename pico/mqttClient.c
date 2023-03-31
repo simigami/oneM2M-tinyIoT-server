@@ -30,6 +30,7 @@
 
 #include "mqttClient.h"
 #include "onem2mTypes.h"
+#include "time.h"
 #include "logger.h"
 #include "util.h"
 
@@ -307,12 +308,13 @@ static int mqtt_net_connect(void *context, const char* host, word16 port,
     struct sockaddr_in addr;
     struct addrinfo *result = NULL;
     struct addrinfo hints;
+    struct timeval tv;
 
     if (pSockFd == NULL) {
         return MQTT_CODE_ERROR_BAD_ARG;
     }
 
-    (void)timeout_ms;
+    setup_timeout(&tv, 1000);
 
     /* get address */
     XMEMSET(&hints, 0, sizeof(hints));
@@ -354,7 +356,7 @@ static int mqtt_net_connect(void *context, const char* host, word16 port,
     if (sockFd < 0) {
         return MQTT_CODE_ERROR_NETWORK;
     }
-
+    setsockopt(sockFd, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
     /* Start connect */
     rc = connect(sockFd, (struct sockaddr*)&addr, sizeof(addr));
     if (rc < 0) {
@@ -514,6 +516,101 @@ static word16 mqtt_get_packetid(void)
     return ++mPacketIdLast;
 }
 
+int mqtt_notify(oneM2MPrimitive *o2pt, char* noti_json, NotiTarget *nt){
+    int rc = 0;
+    int sfd = 0;
+    MqttObject mqttObj;
+    MqttNet mNet;
+    MqttPublish mqttPub;
+    MqttClient notiClient;
+
+    char buf[1024] = {'\0'};
+    char topic[1024] = {'\0'};
+
+    char notiSbuf[1024], notiRbuf[1024];
+    
+    sprintf(buf, "/oneM2M/req/%s%s/json", CSE_BASE_RI, nt->target);
+    strcat(topic, buf);
+    logger("MQTT", LOG_LEVEL_DEBUG, "topic : %s", topic);
+
+    if(!strcmp(nt->host, MQTT_HOST)){
+        memcpy(&notiClient, &mClient, sizeof(MqttClient));
+        memcpy(&mNet, &mNetwork, sizeof(MqttNet));
+    }else{
+        memset(&mNet, 0, sizeof(mNet));
+        mNet.connect = mqtt_net_connect;
+        mNet.read = mqtt_net_read;
+        mNet.write = mqtt_net_write;
+        mNet.disconnect = mqtt_net_disconnect;
+        mNet.context = &sfd;
+        
+        rc = MqttClient_Init(&notiClient, &mNet, mqtt_message_cb,
+            notiSbuf, sizeof(notiSbuf), notiRbuf, sizeof(notiRbuf),
+            MQTT_CON_TIMEOUT_MS);
+        if (rc != MQTT_CODE_SUCCESS) {
+            goto exit;
+        }
+        logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Noti Init Success");
+
+        rc = MqttClient_NetConnect(&notiClient, nt->host, nt->port,
+            MQTT_CON_TIMEOUT_MS, MQTT_USE_TLS, mqtt_tls_cb);
+        if (rc != MQTT_CODE_SUCCESS) {
+            goto exit;
+        }
+        logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Network Connect Success: Host %s, Port %d, UseTLS %d",
+            MQTT_HOST, MQTT_PORT, MQTT_USE_TLS);
+
+        sprintf(buf, "%s_notify",MQTT_CLIENT_ID); // new client ID for notification
+        /* Send Connect and wait for Ack */
+        XMEMSET(&mqttObj, 0, sizeof(mqttObj));
+        mqttObj.connect.keep_alive_sec = MQTT_KEEP_ALIVE_SEC;
+        mqttObj.connect.client_id = strdup(buf);
+        mqttObj.connect.username = MQTT_USERNAME;
+        mqttObj.connect.password = MQTT_PASSWORD;
+        rc = MqttClient_Connect(&notiClient, &mqttObj.connect);
+        if (rc != MQTT_CODE_SUCCESS) {
+            goto exit;
+        }
+        logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Broker Connect Success: ClientID %s, Username %s, Password %s",
+            MQTT_CLIENT_ID,
+            (MQTT_USERNAME == NULL) ? "Null" : MQTT_USERNAME,
+            (MQTT_PASSWORD == NULL) ? "Null" : MQTT_PASSWORD);
+
+    }
+
+    
+    
+    XMEMSET(&mqttPub, 0, sizeof(MqttPublish));
+    mqttPub.retain = 0;
+    mqttPub.qos = MQTT_QOS;
+    mqttPub.topic_name = topic;
+    mqttPub.packet_id = mqtt_get_packetid();
+    mqttPub.buffer = strdup(noti_json);
+    mqttPub.total_len = XSTRLEN(noti_json);
+
+    logger(LOG_TAG, LOG_LEVEL_DEBUG, "MQTT Publish: Topic %s, Qos %d\n%s\n",
+        mqttPub.topic_name, mqttPub.qos, mqttPub.buffer);
+
+    do{
+        rc = MqttClient_Publish(&notiClient, &mqttPub);
+    } while(rc == MQTT_CODE_PUB_CONTINUE);
+
+    if(rc != MQTT_CODE_SUCCESS){
+        return rc;
+    }
+
+
+    exit:
+    if (rc != MQTT_CODE_SUCCESS) {
+        logger(LOG_TAG, LOG_LEVEL_ERROR, "MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
+    }
+    if(sfd > 0){
+        MqttClient_Disconnect(&notiClient);
+        MqttClient_DeInit(&notiClient);
+    }
+    return NULL;
+}
+
 /* Public Function */
 void *mqtt_serve(void)
 {
@@ -622,6 +719,7 @@ exit:
     free(respTopic);
     free(reg_reqTopic);
     free(reg_respTopic);
+    //MqttClient_Disconnect(&mClient);
     return NULL;
 }
 //#endif /* HAVE_SOCKET */

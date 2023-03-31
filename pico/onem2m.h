@@ -270,7 +270,16 @@ typedef struct _o{
 	ContentStatus cnst;
 	int cnot;
 	FilterCriteria *fc;
+	int slotno;
 }oneM2MPrimitive;
+
+typedef struct _n{
+	Protocol prot;
+	char host[1024];
+	int port;
+	char target[256];
+	char *noti_json;
+} NotiTarget;
 
 //onem2m resource
 int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode);

@@ -26,6 +26,7 @@ void stop_server(int sig);
 int terminate = 0;
 #ifdef ENABLE_MQTT
 pthread_t mqtt;
+int mqtt_thread_id;
 #endif
 
 int main(int c, char **v) {
@@ -38,7 +39,6 @@ int main(int c, char **v) {
 	init_server();
 	
 	#ifdef ENABLE_MQTT
-	int mqtt_thread_id;
 	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
 	if(mqtt_thread_id < 0){
 		fprintf(stderr, "MQTT thread create error\n");
