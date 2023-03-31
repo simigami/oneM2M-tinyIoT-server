@@ -428,7 +428,10 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int result;
 	AE *ae = (AE*)target_rtnode->obj;
 
-	set_ae_update(o2pt, m2m_ae, ae);
+	result = set_ae_update(o2pt, m2m_ae, ae);
+	if(result != 1) {
+		return o2pt->rsc;
+	}
 	result = db_update_ae(ae);
 	// result = db_delete_onem2m_resource(target_rtnode);
 	// result = db_store_ae(ae);
@@ -490,8 +493,7 @@ int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	
 	result = set_acp_update(o2pt, m2m_acp, acp);
 	if(result != 1) return result;
-	result = db_delete_acp(acp->ri);
-	result = db_store_acp(acp);
+	result = db_update_acp(acp);
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(acp);

@@ -73,7 +73,7 @@ int init_dbp(){
         return 0;
     }
 
-    strcpy(sql, "CREATE TABLE IF NOT EXISTS acp ( ri VARCHAR(40), pvacop VARCHAR(60), pvacor VARCHAR(60), pvsacop VARCHAR(60), pvsacor VARCHAR(60));");
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS acp ( ri VARCHAR(40), pvacop VARCHAR(60), pvacor VARCHAR(100), pvsacop VARCHAR(60), pvsacor VARCHAR(100));");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
@@ -1373,7 +1373,80 @@ int db_update_cnt(CNT *cnt_object){
 }
 
 int db_update_acp(ACP *acp_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_update_acp");
+    char sql[1024] = {0}, *err_msg = NULL;
+    int rc = 0;
+    char buf[256]={0};
+
+    if (acp_object->ri == NULL) {
+        fprintf(stderr, "ri is NULL\n");
+        return -1;
+    }
+
+
+    sprintf(sql, "UPDATE general SET ");
+
+    if(acp_object->rn){
+        sprintf(buf, "rn='%s',", acp_object->rn);
+        strcat(sql, buf);
+    }
+    if(acp_object->lt){
+        sprintf(buf, "lt='%s',", acp_object->lt);
+        strcat(sql, buf);
+    }
+    if(acp_object->et){
+        sprintf(buf, "et='%s',", acp_object->et);
+        strcat(sql, buf);
+    }
+    if(acp_object->lbl){
+        sprintf(buf, "lbl='%s',", acp_object->lbl);
+        strcat(sql, buf);
+    }
+
+    sprintf(buf, "ty=1 WHERE ri='%s';", acp_object->ri);
+    strcat(sql, buf);
+    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
+
+    sprintf(sql, "UPDATE acp SET ");
+
+    if(acp_object->pv_acop){
+        sprintf(buf, "pvacop='%s',", acp_object->pv_acop);
+        strcat(sql, buf);
+    }
+    if(acp_object->pv_acor){
+        sprintf(buf, "pvacor='%s',", acp_object->pv_acor);
+        strcat(sql, buf);
+    }
+    if(acp_object->pvs_acop){
+        sprintf(buf, "pvsacop='%s',", acp_object->pvs_acop);
+        strcat(sql, buf);
+    }
+    if(acp_object->pvs_acor){
+        sprintf(buf, "pvsacor='%s',", acp_object->pvs_acor);
+        strcat(sql, buf);
+    }
+
+
+    sql[strlen(sql)-1] = '\0';
     
+    sprintf(buf, " WHERE ri='%s';", acp_object->ri);
+    strcat(sql, buf);
+
+    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
+
+    return 1;
 }
 
 int db_update_grp(GRP *grp_object){
@@ -1538,6 +1611,26 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
         logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
         sqlite3_close(db);
         return 0;
+    }
+
+    if(rtnode->ty == RT_CNT){
+
+        sprintf(sql, "DELETE FROM cin WHERE ri IN (SELECT ri FROM general where uri LIKE '%s%%');", get_uri_rtnode(rtnode));
+        rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+        if(rc != SQLITE_OK){
+            logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
+            sqlite3_close(db);
+            return 0;
+        }
+        
+        sprintf(sql, "DELETE FROM general WHERE uri LIKE '%s%%';", get_uri_rtnode(rtnode));
+        rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+        if(rc != SQLITE_OK){
+            logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
+            sqlite3_close(db);
+            return 0;
+        }
+
     }
 
 
@@ -2144,7 +2237,8 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
     char sql[1024] = {0};
     int jsize = 0, psize = 0 , chsize = 0;
 
-    strcat(sql, "SELECT uri FROM 'general' WHERE ");
+    sprintf(buf, "SELECT uri FROM 'general' WHERE uri LIKE '%s/%%' AND ", to);
+    strcat(sql, buf);
 
     if(fc->cra){
         sprintf(buf, "ct>'%s' ", fc->cra);
@@ -2226,9 +2320,9 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
     }else if(fc->fo == FO_OR){
         sql[strlen(sql) - 3] = '\0';
     }
+    strcat(sql, ";");
 
-    sprintf(buf, "AND uri LIKE '%s/%%';", to);
-    strcat(sql, buf);
+    
 
     logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);

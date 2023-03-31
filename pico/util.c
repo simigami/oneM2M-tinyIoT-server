@@ -565,12 +565,13 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		parent_rtnode = parent_rtnode->parent;
 	}
 
+
 	if(!o2pt->fr) {
 		if(!(o2pt->op == OP_CREATE && o2pt->ty == RT_AE)) {
 			deny = true;
 		}
 	} else if(!strcmp(o2pt->fr, "CAdmin")) {
-		return 0;
+		return false;
 	} else if((parent_rtnode && strcmp(o2pt->fr, get_ri_rtnode(parent_rtnode)))) {
 		deny = true;
 	}
@@ -581,6 +582,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		if(get_acpi_rtnode(rtnode) || rtnode->ty == RT_ACP) {
 			deny = true;
 			if((get_acop(o2pt, rtnode) & acop) == acop) {
+				logger("ACP", LOG_LEVEL_DEBUG, "getacop : %d, acop : %d", get_acop(o2pt, rtnode), acop);
 				deny = false;
 			}
 		}
@@ -591,7 +593,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		return -1;
 	}
 
-	return 0;
+	return false;
 }
 
 int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
@@ -679,9 +681,10 @@ int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 			acop = strtok(NULL, ",");
 		}
 	}
-
-	if(acop) ret_acop = (ret_acop | atoi(acop));
-
+	logger("ACP", LOG_LEVEL_DEBUG, "acor :%s, origin : %s", acor, origin);
+	//if(acop) logger("ACP", LOG_LEVEL_DEBUG, "acop : %s", acop);
+	if(acor && acop) ret_acop = (ret_acop | atoi(acop));
+	logger("ACP", LOG_LEVEL_DEBUG, "retacop : %d", ret_acop);
 	return ret_acop;
 }
 

@@ -23,6 +23,7 @@ ACP* db_get_acp(char* ri);
 
 int db_update_ae(AE *ae_object);
 int db_update_cnt(CNT *cnt_object);
+int db_update_acp(ACP * acp_object);
 int db_update_grp(GRP *grp_object);
 
 int db_delete_onem2m_resource(RTNode *rtnode);
