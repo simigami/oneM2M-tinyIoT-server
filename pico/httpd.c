@@ -67,7 +67,8 @@ void serve_forever(const char *PORT) {
         clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
         if (clients[slot] < 0) {
             perror("accept() error");
-            exit(1);
+            //exit(1);
+            clients[slot] = -1;
         } else {
             pthread_t thread_id;
             pthread_create(&thread_id, NULL, respond_thread, (void*)&slots[slot]);
@@ -214,18 +215,17 @@ void respond(int slot) {
         t2 = request_header("Content-Length"); // and the related header if there is
         payload = t;
         payload_size = t2 ? atol(t2) : 0;
-        if(payload_size > 0 && payload == NULL) {
+        if(payload_size > 0 && (payload == NULL)) {
             flag = true;
-            payload = (char *)malloc(MAX_PAYLOAD_SIZE*sizeof(char));
+            payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
             recv(clients[slot], payload, MAX_PAYLOAD_SIZE, 0);
         }
         if(payload) normalize_payload();
         // bind clientfd to stdout, making it easier to write
-        int clientfd = clients[slot];
-        dup2(clientfd, STDOUT_FILENO);
-        close(clientfd);
+        
+        //dup2(clientfd, STDOUT_FILENO);
         // call router
-        handle_http_request();    
+        handle_http_request(slot);    
         // tidy up
         fflush(stdout);
         shutdown(STDOUT_FILENO, SHUT_WR);
@@ -247,7 +247,7 @@ Operation http_parse_operation(){
 	return op;
 }
 
-void handle_http_request() {
+void handle_http_request(int slotno) {
 	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
     cJSON *fcjson = NULL;
 	char *header = NULL;
@@ -283,6 +283,7 @@ void handle_http_request() {
 	o2pt->op = http_parse_operation();
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
 	o2pt->prot = PROT_HTTP;
+    o2pt->errFlag = false;
 
     if(qs && strlen(qs) > 0){
         fcjson = qs_to_json(qs);
@@ -302,7 +303,7 @@ void handle_http_request() {
         }
         cJSON_Delete(fcjson);
     }
-
+    o2pt->slotno = slotno;
 	route(o2pt);
     free_o2pt(o2pt);
 }
@@ -365,8 +366,36 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
         case 413: status = "413 Payload Too Large"; break;
         case 500: status = "500 Internal Server Error"; break;
     }
-    sprintf(buf, "%s %s\n%s%s\n", RESPONSE_PROTOCOL, status, DEFAULT_RESPONSE_HEADERS, response_headers);
+    sprintf(buf, "%s %s\n%s%s\n", HTTP_PROTOCOL_VERSION, status, DEFAULT_RESPONSE_HEADERS, response_headers);
     if(o2pt->pc) strcat(buf, o2pt->pc);
-    printf("%s",buf); 
+    write(clients[o2pt->slotno], buf, strlen(buf)); 
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
+}
+
+void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
+
+    struct sockaddr_in serv_addr;
+    int sock = socket(PF_INET, SOCK_STREAM, 0);
+    if(sock == -1) {
+        logger("HTTP", LOG_LEVEL_ERROR, "socket error");
+        return;
+    }
+
+    char buffer[BUF_SIZE];
+
+    sprintf(buffer, "GET %s %s\r\n%s\r\n%s", nt->target, HTTP_PROTOCOL_VERSION, DEFAULT_REQUEST_HEADERS, noti_json);
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(nt->host);
+    serv_addr.sin_port = htons(nt->port);
+
+    if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
+        logger("HTTP", LOG_LEVEL_ERROR, "connect error");
+        return;
+    }
+    logger("http", LOG_LEVEL_DEBUG, "%s", buffer);
+
+    send(sock, buffer, sizeof(buffer), 0);
+    close(sock);
 }

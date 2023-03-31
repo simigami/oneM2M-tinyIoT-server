@@ -21,16 +21,9 @@ char* notification_to_json(char *sur, int net, char *rep);
 char* rtnode_to_json(RTNode *node);
 char* acp_to_json(ACP *acp_object);
 char* discovery_to_json(char **result, int size);
-
-char* get_json_value_string(char *json, char *key);
-char* get_json_value_char(char *key, char *json);
-int get_json_value_int(char *key, char *json);
-int get_json_value_bool(char *key, char *json);
-char *get_json_value_list(char *key, char *json);
-char* get_json_value_list_v2(char *json, char *key);
-
-bool json_key_exist(char *json, char *key);
-char *cjson_list_item_to_string(cJSON *key);
-cJSON *string_to_cjson_list_item(char *string);
+char *cjson_string_list_item_to_string(cJSON *key);
+char *cjson_int_list_item_to_string(cJSON *key);
+cJSON *string_to_cjson_string_list_item(char *string);
+cJSON *string_to_cjson_int_list_item(char *string);
 
 #endif

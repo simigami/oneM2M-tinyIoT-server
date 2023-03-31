@@ -610,8 +610,8 @@ int db_store_grp(GRP *grp_object){
     return 1;
 }
 
-int db_store_sub(RTNode* rtnode){
-    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cnt");
+int db_store_sub(SUB *sub_object) {
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
     char* blankspace = " ";
     char *sql = NULL, *err_msg = NULL;
     int rc = 0;

@@ -26,8 +26,8 @@ void stop_server(int sig);
 int terminate = 0;
 #ifdef ENABLE_MQTT
 pthread_t mqtt;
+int mqtt_thread_id;
 #endif
-
 
 int main(int c, char **v) {
 	signal(SIGINT, stop_server);
@@ -39,7 +39,6 @@ int main(int c, char **v) {
 	init_server();
 	
 	#ifdef ENABLE_MQTT
-	int mqtt_thread_id;
 	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
 	if(mqtt_thread_id < 0){
 		fprintf(stderr, "MQTT thread create error\n");
@@ -87,6 +86,7 @@ void route(oneM2MPrimitive *o2pt) {
 	}
 
 	respond_to_client(o2pt);
+	if(o2pt->op != OP_DELETE && !o2pt->errFlag && target_rtnode) notify_onem2m_resource(o2pt, target_rtnode);
 	log_runtime(start);
 }
 

@@ -91,6 +91,9 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 
 	if(!target_uri) return NULL;
 
+	char ri[64];
+	strcpy(ri, target_uri);
+
 	char uri_array[64][MAX_URI_SIZE];
 	int index = -1;
 
@@ -120,21 +123,32 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
 		}
 	}
 
+	if(!rtnode) {
+		rtnode = find_rtnode_by_ri(cb, ri);
+	}
+
 	return rtnode;
 }
 
-// RTNode *find_rtnode_by_ri(RTNode *rtnode, char *ri) {
-// 	if(!strcmp(rtnode->ri, ri)) return rtnode;
+RTNode *find_rtnode_by_ri(RTNode *cb, char *ri){
+	RTNode *rtnode = cb;
+	RTNode *ret = NULL;
 
-// 	RTNode *ret = NULL;
+	while(rtnode) {
+		if(!strcmp(get_ri_rtnode(rtnode), ri)) {
+			return rtnode;
+		}
+		
+		ret = find_rtnode_by_ri(rtnode->child, ri);
+		if(ret) {
+			return ret;
+		}
+		rtnode = rtnode->sibling_right;
+	}
 
-// 	while(rtnode) {
-// 		ret = find_rtnode_by_uri(rtnode->child);
-// 		rtnode = rtnode->sibling_right;
-// 	}
+	return ret;
+}
 
-// 	return ret;
-// }
 
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 	logger("UTL", LOG_LEVEL_DEBUG, "latest oldest");
@@ -149,10 +163,10 @@ RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 }
 
 int net_to_bit(char *net) {
-	int netLen = strlen(net);
+	int net_size = strlen(net);
 	int ret = 0;
 
-	for(int i=0; i<netLen; i++) {
+	for(int i=0; i<net_size; i++) {
 		int exp = atoi(net+i);
 		if(exp > 0) ret = (ret | (int)pow(2, exp - 1));
 	}
@@ -249,7 +263,6 @@ char *get_local_time(int diff) {
 
 void set_o2pt_pc(oneM2MPrimitive *o2pt, char *pc, ...){
 	if(o2pt->pc) free(o2pt->pc);
-
 	o2pt->pc = (char *)malloc((strlen(pc) + 1) * sizeof(char));
 	strcpy(o2pt->pc, pc);
 }
@@ -293,9 +306,10 @@ ResourceType parse_object_type_cjson(cJSON *cjson) {
 }
 
 char *resource_identifier(ResourceType ty, char *ct) {
-	char *ri = (char *)calloc(24, sizeof(char));
+	char *ri = (char *)calloc(32, sizeof(char));
 
 	switch(ty) {
+		case RT_AE : strcpy(ri, "CAE"); break;
 		case RT_CNT : strcpy(ri, "3-"); break;
 		case RT_CIN : strcpy(ri, "4-"); break;
 		case RT_SUB : strcpy(ri, "23-"); break;
@@ -303,16 +317,17 @@ char *resource_identifier(ResourceType ty, char *ct) {
 		case RT_GRP : strcpy(ri, "9-"); break;
 	}
 
-	struct timespec specific_time;
-    //int millsec;
+	// struct timespec specific_time;
+    // int millsec;
 	static int n = 0;
+
 	char buf[32] = "\0";
 
-    //clock_gettime(CLOCK_REALTIME, &specific_time);
-    //millsec = floor(specific_time.tv_nsec/1.0e6);
+    // clock_gettime(CLOCK_REALTIME, &specific_time);
+    // millsec = floor(specific_time.tv_nsec/1.0e6);
 
 	sprintf(buf, "%s%04d",ct, n);
-	n = (n+1) % 10000;
+	n = (n + 1) % 10000;
 
 	strcat(ri, buf);
 
@@ -342,12 +357,6 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 	}
 
 	if(head) free_rtnode_list(head);
-}
-
-void too_large_content_size_error(oneM2MPrimitive *o2pt) {
-	logger("O2M", LOG_LEVEL_ERROR, "Too large content size");
-	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"too large content size\"}");
-	o2pt->rsc = RSC_NOT_ACCEPTABLE;
 }
 
 int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
@@ -505,6 +514,7 @@ RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 	RTNode *rtnode = list;
 	while(rtnode) {
 		RTNode *right = rtnode->sibling_right;
+
 		if(!strcmp(get_ri_rtnode(parent_rtnode), get_pi_rtnode(rtnode))) {
 			RTNode *left = rtnode->sibling_left;
 			
@@ -531,11 +541,8 @@ RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 }
 
 int check_payload_size(oneM2MPrimitive *o2pt) {
-
 	if(o2pt->pc && strlen(o2pt->pc) > MAX_PAYLOAD_SIZE) {
-		logger("UTIL", LOG_LEVEL_ERROR, "Request payload too large");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload is too large\"}");
-		o2pt->rsc = RSC_BAD_REQUEST;
+		handle_error(o2pt, RSC_BAD_REQUEST, "payload is too large");
 		return -1;
 	}
 	return 0;
@@ -543,19 +550,52 @@ int check_payload_size(oneM2MPrimitive *o2pt) {
 
 int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	if(!rtnode) {
-		logger("UTIL", LOG_LEVEL_ERROR, "URI is invalid");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"URI is invalid\"}");
-		o2pt->rsc = RSC_NOT_FOUND;
+		handle_error(o2pt, RSC_NOT_FOUND, "URI is invalid");
 		return -1;
 	} else {
 		return 0;
 	} 
 }
 
-int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
-	char *acpi = get_acpi_rtnode(rtnode);
-    if(!acpi) return ALL_ACOP;
+int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
+	bool deny = false;
 
+	RTNode *parent_rtnode = rtnode;
+
+	while(parent_rtnode && parent_rtnode->ty != RT_AE) {
+		parent_rtnode = parent_rtnode->parent;
+	}
+
+	if(!o2pt->fr) {
+		if(!(o2pt->op == OP_CREATE && o2pt->ty == RT_AE)) {
+			deny = true;
+		}
+	} else if(!strcmp(o2pt->fr, "CAdmin")) {
+		return 0;
+	} else if((parent_rtnode && strcmp(o2pt->fr, get_ri_rtnode(parent_rtnode)))) {
+		deny = true;
+	}
+  
+	if(rtnode->ty == RT_CIN) rtnode = rtnode->parent;
+
+	if(rtnode->ty != RT_CSE) {
+		if(get_acpi_rtnode(rtnode) || rtnode->ty == RT_ACP) {
+			deny = true;
+			if((get_acop(o2pt, rtnode) & acop) == acop) {
+				deny = false;
+			}
+		}
+	}
+
+	if(deny) {
+		handle_error(o2pt, RSC_ORIGINATOR_HAS_NO_PRIVILEGE, "originator has no privilege");
+		return -1;
+	}
+
+	return 0;
+}
+
+int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	char origin[64];
 	int acop = 0;
 	
@@ -573,11 +613,14 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		return acop;
 	}
 
+	char *acpi = get_acpi_rtnode(rtnode);
+    if(!acpi) return 0;
+
 	RTNode *cb = rtnode;
 	while(cb->parent) cb = cb->parent;
 	
 	int uri_cnt = 0;
-	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_PROPERRT_SIZE] = "\0";
+	char arr_acp_uri[512][1024] = {"\0", }, arr_acpi[MAX_ATTRIBUTE_SIZE] = "\0";
 	char *acp_uri = NULL;
 
 	strcpy(arr_acpi, acpi);
@@ -622,57 +665,25 @@ int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 		strcpy(arr_acop, acp->pv_acop);
 	}
 
+	int size = 0;
 	acor = strtok(arr_acor, ",");
-    acop = strtok(arr_acop, ",");
 
-	while(acor && acop) {
+	while(acor) {
 		if(!strcmp(acor, origin)) break;
 		acor = strtok(NULL, ",");
-        acop = strtok(NULL, ",");
+        size++;
+	}
+
+	if(acor) {
+		acop = strtok(arr_acop, ",");
+		for(int i=0; i<size; i++) {
+			acop = strtok(NULL, ",");
+		}
 	}
 
 	if(acop) ret_acop = (ret_acop | atoi(acop));
 
 	return ret_acop;
-}
-
-int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
-	bool deny = false;
-
-	RTNode *parent_rtnode = rtnode;
-
-	while(parent_rtnode && parent_rtnode->ty != RT_AE) {
-		parent_rtnode = parent_rtnode->parent;
-	}
-
-	if(!o2pt->fr) {
-		if(!(o2pt->op == OP_CREATE && o2pt->ty == RT_AE)) {
-			deny = true;
-		}
-	} else if(!strcmp(o2pt->fr, "CAdmin")) {
-		deny = false;
-	} else if((parent_rtnode && strcmp(o2pt->fr, get_ri_rtnode(parent_rtnode)))) {
-		deny = true;
-	}
-  
-	if(rtnode->ty == RT_CIN) rtnode = rtnode->parent;
-
-    ResourceType ty = rtnode->ty;
-
-    if(ty == RT_CNT || ty == RT_ACP || ty == RT_GRP || ty == RT_AE) {
-        if((get_acop(o2pt, rtnode) & acop) != acop) {
-            deny = true;
-        }
-    }
-
-	if(deny) {
-		logger("UTIL", LOG_LEVEL_ERROR, "Originator has no privilege");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"originator has no privilege.\"}");
-		o2pt->rsc = RSC_ORIGINATOR_HAS_NO_PRIVILEGE;
-		return -1;
-	}
-
-	return 0;
 }
 
 int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
@@ -714,9 +725,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	}
 
     if(flag) {
-        logger("UTIL", LOG_LEVEL_ERROR, "Attribute `rn` is duplicated");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is duplicated\"}");
-		o2pt->rsc = RSC_CONFLICT;
+		handle_error(o2pt, RSC_CONFLICT, "attribute `rn` is duplicated");
 		return -1;
     }
 
@@ -739,9 +748,7 @@ int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 
 	while(child) {
 		if(!strcmp(get_ri_rtnode(child), aei)) {
-			logger("UTIL", LOG_LEVEL_ERROR, "AE-ID is duplicated");
-			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `aei` is duplicated\"}");
-			o2pt->rsc = RSC_ORIGINATOR_HAS_ALREADY_REGISTERD;
+			handle_error(o2pt, RSC_ORIGINATOR_HAS_ALREADY_REGISTERD, "attribute `aei` is duplicated");
 			return -1;
 		}
 		child = child->sibling_right;
@@ -754,9 +761,7 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 	cJSON *cjson = o2pt->cjson_pc;
 	
 	if(cjson == NULL) {
-		logger("UTIL", LOG_LEVEL_ERROR, "Payload format is invalid");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"payload format is invalid\"}");
-		o2pt->rsc = RSC_BAD_REQUEST;
+		handle_error(o2pt, RSC_BAD_REQUEST, "payload format is invalid");
 		return -1;
 	}
 	return 0;
@@ -764,9 +769,7 @@ int check_payload_format(oneM2MPrimitive *o2pt) {
 
 int check_payload_empty(oneM2MPrimitive *o2pt) {
 	if(!o2pt->pc) {
-		logger("UTIL", LOG_LEVEL_ERROR, "Payload is empty");
-		set_o2pt_pc(o2pt,  "{\"m2m:dbg\": \"payload is empty\"}");
-		o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
+		handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "payload is empty");
 		return -1;
 	}
 	return 0;
@@ -791,9 +794,7 @@ int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty) {
 
 	for(int i=0; i<len_resource_name; i++) {
 		if(!is_rn_valid_char(resource_name[i])) {
-			logger("UTIL", LOG_LEVEL_ERROR, "Resource name is invalid");
-			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `rn` is invalid\"}");
-			o2pt->rsc = RSC_BAD_REQUEST;
+			handle_error(o2pt, RSC_BAD_REQUEST, "attribute `rn` is invalid");
 			return -1;
 		}
 	}
@@ -807,9 +808,7 @@ bool is_rn_valid_char(char c) {
 
 int check_resource_type_equal(oneM2MPrimitive *o2pt) {	
 	if(o2pt->ty != parse_object_type_cjson(o2pt->cjson_pc)) {
-		logger("UTIL", LOG_LEVEL_ERROR, "Resource type is invalid");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type is invalid\"}");
-		o2pt->rsc = RSC_BAD_REQUEST;
+		handle_error(o2pt, RSC_BAD_REQUEST, "resource type is invalid");
 		return -1;
 	}
 	return 0;
@@ -817,48 +816,19 @@ int check_resource_type_equal(oneM2MPrimitive *o2pt) {
 
 int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 	if(o2pt->ty == RT_MIXED) {
-		logger("UTIL", LOG_LEVEL_ERROR, "Resource type is invalid");
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"resource type is invalid\"}");
-		o2pt->rsc = RSC_BAD_REQUEST;
+		handle_error(o2pt, RSC_BAD_REQUEST, "resource type is invalid");
 		return -1;
 	}
 	return 0;
 }
 
 void handle_error(oneM2MPrimitive *o2pt, int rsc, char *err){
-	logger("UTIL", LOG_LEVEL_INFO, err);
+	logger("UTIL", LOG_LEVEL_ERROR, err);
 	o2pt->rsc = rsc;
-	set_o2pt_pc(o2pt, err);
-}
-
-void child_type_error(oneM2MPrimitive *o2pt){
-	logger("UTIL", LOG_LEVEL_ERROR, "Child type is invalid");
-	set_o2pt_pc(o2pt,"{\"m2m:dbg\": \"child can not be created under the type of parent\"}");
-	o2pt->rsc = RSC_INVALID_CHILD_RESOURCETYPE;
-}
-
-void no_mandatory_error(oneM2MPrimitive *o2pt){
-	logger("UTIL", LOG_LEVEL_ERROR, "Insufficient mandatory attribute(s)");
-	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"insufficient mandatory attribute(s)\"}");
-	o2pt->rsc = RSC_CONTENTS_UNACCEPTABLE;
-}
-
-void api_prefix_invalid(oneM2MPrimitive *o2pt) {
-	logger("UTIL", LOG_LEVEL_ERROR, "attribute `api` prefix is invalid");
-	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `api` prefix is invalid\"}");
-	o2pt->rsc = RSC_BAD_REQUEST;
-}
-
-void mni_mbs_invalid(oneM2MPrimitive *o2pt, char *attribute) {
-	logger("UTIL", LOG_LEVEL_ERROR, "attribute `%s` is invalid", attribute);
-	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"attribute `%s` is invalid\"}", attribute);
-	o2pt->rsc = RSC_BAD_REQUEST;
-}
-
-void db_store_fail(oneM2MPrimitive *o2pt) {
-	logger("UTIL", LOG_LEVEL_ERROR, "DB store fail");
-	set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"DB store fail\"}");
-	o2pt->rsc = RSC_INTERNAL_SERVER_ERROR;
+	o2pt->errFlag = true;
+	char pc[MAX_PAYLOAD_SIZE];
+	sprintf(pc, "{\"m2m:dbg\": \"%s\"}", err);
+	set_o2pt_pc(o2pt, pc);
 }
 
 bool isUriFopt(char *str){
@@ -1350,4 +1320,131 @@ void filterOptionStr(FilterOperation fo , char *sql){
 			strcat(sql, " OR ");
 			break;
 	}
+
+	return uril;
+}
+
+bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi) {
+	bool ret = true;
+
+	int acpi_size = cJSON_GetArraySize(acpi);
+
+	for(int i=0; i<acpi_size; i++) {
+		char *acp_uri = cJSON_GetArrayItem(acpi, i)->valuestring;
+		RTNode *acp_rtnode = find_rtnode_by_uri(rt->cb, acp_uri);
+		if(!acp_rtnode) {
+			ret = false;
+			handle_error(o2pt, RSC_NOT_FOUND, "resource `acp` does not found");
+			break;
+		} else {
+			if((get_acop_origin(o2pt->fr, acp_rtnode, 1) & ACOP_UPDATE) != ACOP_UPDATE) {
+				ret = false;
+				handle_error(o2pt, RSC_ORIGINATOR_HAS_NO_PRIVILEGE, "originator has no privilege");
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
+char** http_split_uri(char *uri){
+	char **ret = (char **)malloc(3 * sizeof(char *));
+	char host[MAX_URI_SIZE] = {'\0'};
+	char remain[MAX_URI_SIZE] = {'\0'};
+	char port[8];
+
+	int index = 0;
+	int uri_size = strlen(uri);
+
+	char *p = strstr(uri, "http://");
+
+	if(p) {
+		p = p+7;
+		while(p < uri + uri_size && p != ':') {
+			host[index++] = *(p++);
+		}
+		p = p+1;
+		index = 0;
+		while(p < uri + uri_size && p != '/' && p != '?') {
+			port[index++] = *(p++);
+		}
+	}
+}
+
+void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, int net) {
+	logger("UTIL", LOG_LEVEL_DEBUG, "notify_to_nu");
+	SUB *sub = (SUB *)sub_rtnode->obj;
+	int uri_len = 0, index = 0;
+	char *noti_json = cJSON_PrintUnformatted(noti_cjson);
+	char *p = NULL;
+	char port[10] = {'\0'};
+	NotiTarget *nt = NULL;
+	if(sub->net_bit <= 0) {
+		sub->net_bit = net_to_bit(sub->net);
+	}
+	int net_bit = (int)pow(2, net-1);
+	if(sub->net_bit & net_bit != net_bit) {
+		return;
+	}
+
+	char nu[4096];
+	strcpy(nu, sub->nu);
+
+	char *noti_uri = strtok(nu, ",");
+
+	while(noti_uri) {
+		logger("UTIL", LOG_LEVEL_DEBUG, "noti_uri : %s", noti_uri);
+		index = 0;
+		nt = calloc(1, sizeof(NotiTarget));
+		uri_len = strlen(noti_uri);
+		p = noti_uri+7;
+
+		if(!strncmp(noti_uri, "http://", 7)) {
+			nt->prot = PROT_HTTP;
+		}else if(!strncmp(noti_uri, "mqtt://", 7)) {
+			nt->prot = PROT_MQTT;
+		}
+
+		while(noti_uri + uri_len > p && *p != ':' && *p != '/' && *p != '?'){
+			nt->host[index++] = *(p++);
+		}
+		if(noti_uri + uri_len > p && *p == ':') {
+			p++;
+			index = 0;
+			while(noti_uri + uri_len > p && *p != '/' && *p != '?'){
+				port[index++] = *(p++);
+			}
+			nt->port = atoi(port);
+		}
+		if(noti_uri + uri_len > p) {
+			strcpy(nt->target, p);
+			logger("t", LOG_LEVEL_DEBUG, "%s", nt->target);
+			p = strchr(nt->target, '?');
+			memset(p, 0, strlen(p));
+			// if(*p == '?') {
+			// 	sprintf(nt->target, "/%s", p);
+			// } else if(*p == '/') {
+			// 	strcpy(nt->target, p);
+			// }
+		} 
+
+		switch(nt->prot){
+			case PROT_HTTP:
+				if(!nt->port)
+					nt->port = 80;
+				if(nt->target[0] == '\0')
+					nt->target[0] = '/';
+				http_notify(o2pt, noti_json, nt);
+				break;
+			case PROT_MQTT:
+				if(!nt->port)
+					nt->port = 1883;
+				mqtt_notify(o2pt, noti_json, nt);
+				break;
+		}
+		noti_uri = strtok(NULL, ",");
+	}
+
+	free(noti_json);
 }
