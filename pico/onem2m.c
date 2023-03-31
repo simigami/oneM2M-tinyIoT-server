@@ -66,13 +66,11 @@ void init_ae(AE* ae, RTNode *parent_rtnode, char *origin) {
 	}
 
 	if(!ae->rn) 
-		ae->rn = strdup(ri);
+		ae->rn = strdup(ae->ri);
 	
 	ae->pi = strdup(get_ri_rtnode(parent_rtnode));
-	ae->et = strdup(et);
-	ae->ct = strdup(ct);
-	ae->lt = strdup(ct);
-	ae->aei = strdup(ri);
+	ae->lt = strdup(ae->ct);
+	ae->aei = strdup(ae->ri);
 
 	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), ae->rn);
 	ae->uri = strdup(uri);
@@ -102,24 +100,6 @@ void init_cnt(CNT* cnt, RTNode *parent_rtnode) {
 
 	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), cnt->rn);
 	cnt->uri = strdup(uri);
-	
-	free(ct); ct = NULL;
-	free(et); et = NULL;
-	free(ri); ri = NULL;
-}
-
-void init_cin(CIN* cin, RTNode *parent_rtnode) {
-	char *ct = get_local_time(0);
-	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(RT_CIN, ct);
-	char uri[256] = {0};
-	
-	cin->rn = strdup(ri);
-	cin->ri = strdup(ri);
-	cin->pi = strdup(get_ri_rtnode(parent_rtnode));
-	cin->et = strdup(et);
-	cin->ct = strdup(ct);
-	cin->lt = strdup(ct);
 }
 
 void init_cin(CIN* cin, RTNode *parent_rtnode) {
@@ -137,19 +117,10 @@ void init_cin(CIN* cin, RTNode *parent_rtnode) {
 	cin->cs = strlen(cin->con);
 	sprintf(uri, "%s/%s",get_uri_rtnode(parent_rtnode), cin->rn);
 	cin->uri = strdup(uri);
-	
-	free(ct); ct = NULL;
-	free(et); et = NULL;
-	free(ri); ri = NULL;
 }
 
 void init_sub(SUB* sub, RTNode *parent_rtnode) {
-	char *ct = get_local_time(0);
-	char *et = get_local_time(EXPIRE_TIME);
-	char *ri = resource_identifier(RT_SUB, ct);
-}
-
-void init_sub(SUB* sub, char *pi, char *uri) {
+	char uri[256] = {0};
 	sub->ct = get_local_time(0);
 	sub->et = get_local_time(DEFAULT_EXPIRE_TIME);
 	sub->ri = resource_identifier(RT_SUB, sub->ct);
@@ -164,32 +135,20 @@ void init_sub(SUB* sub, char *pi, char *uri) {
 		strcpy(sub->net,"1");
 	}
 
-	sub->ri = (char*)malloc((strlen(ri) + 1) * sizeof(char));
-	sub->et = (char*)malloc((strlen(et) + 1) * sizeof(char));
-	sub->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	sub->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
-	sub->sur = (char *)malloc((strlen(uri) + strlen(sub->rn) + 2) * sizeof(char));
-
-	sprintf(sub->sur, "/%s/%s", get_uri_rtnode(parent_rtnode), sub->rn);
-	sub->ri = strdup(ri);
+	sprintf(uri, "/%s/%s", get_uri_rtnode(parent_rtnode), sub->rn);
 	sub->pi = strdup(get_ri_rtnode(parent_rtnode));
-	sub->ct = strdup(ct);
-	sub->et = strdup(et);
-	sub->lt = strdup(ct);
-	sub->pi = (char*)malloc((strlen(pi) + 1) * sizeof(char));
-	sub->lt = (char*)malloc((strlen(sub->ct) + 1) * sizeof(char));
-	sub->sur = (char *)malloc((strlen(uri) + strlen(sub->rn) + 3) * sizeof(char));
+	sub->lt = strdup(sub->ct);
 
-	sprintf(sub->sur, "/%s/%s",uri,sub->rn);
-	strcpy(sub->pi, pi);
-	strcpy(sub->lt, sub->ct);
+	sub->sur = strdup(uri);
+	sub->uri = strdup(uri);
+
 	sub->ty = RT_SUB;
 	sub->nct = 0;
 }
 
 void init_acp(ACP* acp, RTNode *parent_rtnode) {
 	char *ct = get_local_time(0);
-	char *et = get_local_time(EXPIRE_TIME);
+	char *et = get_local_time(DEFAULT_EXPIRE_TIME);
 	char *ri = resource_identifier(RT_ACP, ct);
 	char uri[128] = {0};
 
@@ -469,7 +428,7 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int result;
 	AE *ae = (AE*)target_rtnode->obj;
 
-	set_ae_update(m2m_ae, ae);
+	set_ae_update(o2pt, m2m_ae, ae);
 	result = db_update_ae(ae);
 	// result = db_delete_onem2m_resource(target_rtnode);
 	// result = db_store_ae(ae);
@@ -777,13 +736,13 @@ int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag) {
 		update_cnt_cin(rtnode->parent, rtnode,-1);
 		break;
 	case RT_SUB :
-		db_delete_sub(((SUB *)rtnode->obj)->ri);
+		db_delete_sub(get_ri_rtnode(rtnode));
 		break;
 	case RT_ACP :
-		db_delete_acp(((ACP *)rtnode->obj)->ri);
+		db_delete_acp(get_ri_rtnode(rtnode));
 		break;
 	case RT_GRP:
-		db_delete_grp(((GRP *)rtnode->obj)->ri);
+		db_delete_grp(get_ri_rtnode(rtnode));
 		break;
 	}
 
@@ -1049,14 +1008,10 @@ int set_grp_update(oneM2MPrimitive *o2pt, cJSON *m2m_grp, GRP* grp){
 	grp->mtv = false;
 
 	if(acpi){
-		if(grp->acpi) 
-			free(grp->acpi);
 		grp->acpi = cjson_string_list_item_to_string(acpi);
 	}
 
 	if(et) {
-		if(grp->et)
-			free(grp->et);
 		grp->et = strdup(et->valuestring);
 	}
 
@@ -1124,28 +1079,33 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		}
 	}
 
-	GRP *after = db_get_grp(get_ri_rtnode(target_rtnode));
-	if(!after){
-		logger("O2M", LOG_LEVEL_ERROR, "Internal server Error");
-		return RSC_INTERNAL_SERVER_ERROR;
-	}
+	GRP *new_grp = db_get_grp(get_ri_rtnode(target_rtnode));
+	
 	int result;
-	if( (o2pt->rsc = set_grp_update(o2pt, m2m_grp, grp)) >= 4000){
+	if( (o2pt->rsc = set_grp_update(o2pt, m2m_grp, new_grp)) >= 4000){
 		return o2pt->rsc;
 	}
-	grp->mtv = false;
-	if( (rsc = validate_grp(grp))  >= 4000){
+	new_grp->mtv = false;
+	if( (rsc = validate_grp(new_grp))  >= 4000){
 		o2pt->rsc = rsc;
 		return rsc;
 	}
 
-	result = db_delete_grp(grp->ri);
-	result = db_store_grp(grp);
+	result = db_update_grp(new_grp);
+	if(!result){
+		logger("O2M", LOG_LEVEL_ERROR, "DB update Failed");
+		free_grp(new_grp);
+		return RSC_INTERNAL_SERVER_ERROR;
+	}
+
 	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = grp_to_json(grp);
+	o2pt->pc = grp_to_json(new_grp);
+
 	o2pt->rsc = RSC_UPDATED;
-	if(target_rtnode->obj)
+	if(target_rtnode->obj){
 		free_grp((GRP *) target_rtnode->obj);
+		target_rtnode->obj = new_grp;
+	}
 
 	return RSC_UPDATED;
 }
@@ -1193,7 +1153,7 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	return rsc;
 }
 
-void update_sub(RTNode *pnode) {
+int update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	char invalid_key[][8] = {"ty", "pi", "ri", "rn", "ct"};
 	cJSON *m2m_sub = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:sub");
 	int invalid_key_size = sizeof(invalid_key)/(8*sizeof(char));

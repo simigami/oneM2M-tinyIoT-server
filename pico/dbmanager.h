@@ -10,7 +10,7 @@ int db_store_ae(AE *ae_object);
 int db_store_cnt(CNT* cnt_object);
 int db_store_cin(CIN* cin_object);
 int db_store_grp(GRP* grp_object);
-int db_store_sub(RTNode* rtnode);
+int db_store_sub(SUB* sub_object);
 int db_store_acp(ACP *acp_object);
 
 CSE* db_get_cse();
@@ -18,11 +18,12 @@ AE* db_get_ae(char *ri);
 CNT* db_get_cnt(char *ri);
 CIN* db_get_cin(char *ri);
 SUB* db_get_sub(char* ri);
-GRP* db_get_grp(char* rn);
+GRP* db_get_grp(char* ri);
 ACP* db_get_acp(char* ri);
 
 int db_update_ae(AE *ae_object);
 int db_update_cnt(CNT *cnt_object);
+int db_update_grp(GRP *grp_object);
 
 int db_delete_onem2m_resource(RTNode *rtnode);
 int db_delete_sub(char* ri);

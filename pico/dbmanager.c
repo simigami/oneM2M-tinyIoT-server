@@ -84,7 +84,7 @@ int init_dbp(){
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS sub ( \
         ri VARCHAR(40), enc VARCHAR(45), exc VARCHAR(45), nu VARCHAR(200), gpi VARCHAR(45), nfu VARCAHR(45), bn VARCHAR(45), rl VARCHAR(45), \
-        psn VARCHAR(45), pn VARCAHR(45), nsp VARCHAR(45), ln VARCHAR(45), nct VARCHAR(45), net VARCHAR(45), cr VARCHAR(45), su VARCHAR(45));");
+        sur VARCHAR(200), nct VARCHAR(45), net VARCHAR(45), cr VARCHAR(45), su VARCHAR(45));");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
@@ -580,7 +580,7 @@ int db_store_grp(GRP *grp_object){
     // change mid to str
     char strbuf[128] = {0};
     if(grp_object->mid && grp_object->cnm > 0) {
-        sprintf(strbuf, "'[%s", grp_object->mid[0]);
+        sprintf(strbuf, "'%s", grp_object->mid[0]);
         strcat(vals, strbuf);
         for(int i = 1 ; i < grp_object->cnm; i++){
             if(grp_object->mid[i]){
@@ -589,9 +589,9 @@ int db_store_grp(GRP *grp_object){
             }else
                 break;
         }
-        strcat(vals, "]',");
+        strcat(vals, "',");
     }else{
-        strcat(vals, "'[]',");
+        strcat(vals, "'',");
     }
 
     attrs[strlen(attrs) - 1] = '\0';
@@ -612,31 +612,56 @@ int db_store_grp(GRP *grp_object){
 
 int db_store_sub(SUB *sub_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
-    char* blankspace = " ";
-    char *sql = NULL, *err_msg = NULL;
+    char sql[1024], *err_msg = NULL;
+    char attrs[256] = {0}, vals[256] = {0};
+    char buf[256];
     int rc = 0;
-
-    SUB *sub_object = (SUB *)rtnode->obj;
     
     // if input == NULL
     if (sub_object->ri == NULL) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
-    if (sub_object->rn == NULL) sub_object->rn = blankspace;
-    if (sub_object->ri == NULL) sub_object->ri = blankspace;
-    if (sub_object->nu == NULL) sub_object->nu = blankspace;
-    if (sub_object->net == NULL) sub_object->net = blankspace;
-    if (sub_object->ct == NULL) sub_object->ct = blankspace;
-    if (sub_object->et == NULL) sub_object->et = blankspace;
-    if (sub_object->lt == NULL) sub_object->lt = blankspace;
-    if (sub_object->ty == '\0') sub_object->ty = 23;
-    if (sub_object->sur == NULL) sub_object->sur = blankspace;    
 
-    sql = malloc(sizeof(char) * 1024);
+    strcat(attrs, "ri,");
+    sprintf(buf, "'%s',", sub_object->ri);
+    strcat(vals, buf);
 
-    sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
-              sub_object->rn, sub_object->ri, sub_object->pi, sub_object->ct, sub_object->et, sub_object->lt, rtnode->uri, sub_object->ty );
+    strcat(attrs, "uri,");
+    sprintf(buf, "'%s',", sub_object->uri);
+    strcat(vals, buf);
+
+    if(sub_object->rn){
+        strcat(attrs, "rn,");
+        sprintf(buf, "'%s',", sub_object->rn);
+        strcat(vals, buf);
+    }
+    if(sub_object->pi){
+        strcat(attrs, "pi,");
+        sprintf(buf, "'%s',", sub_object->pi);
+        strcat(vals, buf);
+    }
+    if(sub_object->ct){
+        strcat(attrs, "ct,");
+        sprintf(buf, "'%s',", sub_object->ct);
+        strcat(vals, buf);
+    }
+    if(sub_object->lt){
+        strcat(attrs, "lt,");
+        sprintf(buf, "'%s',", sub_object->lt);
+        strcat(vals, buf);
+    }
+    if(sub_object->et){
+        strcat(attrs, "et,");
+        sprintf(buf, "'%s',", sub_object->et);
+        strcat(vals, buf);
+    }
+    strcat(attrs, "ty");
+    sprintf(buf, "%d", RT_GRP);
+    strcat(vals, buf);
+
+
+    sprintf(sql, "INSERT INTO general (%s) VALUES(%s);", attrs, vals);
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
@@ -644,33 +669,51 @@ int db_store_sub(SUB *sub_object) {
         return 0;
     }
 
-    sprintf(sql, "INSERT INTO sub (ri, pi, nu, nct, net, sur) VALUES('%s', '%s', '%s', %d, '%s', '%s');",
-               sub_object->ri, sub_object->pi, sub_object->nu, sub_object->nct, sub_object->net, sub_object->sur);
+    memset(attrs, 0, sizeof(attrs));
+    memset(vals, 0, sizeof(vals));
+
+    if(sub_object->nu){
+        strcat(attrs, "nu,");
+        sprintf(buf, "'%s',", sub_object->nu);
+        strcat(vals, buf);
+    }
+
+    if(sub_object->nct){
+        strcat(attrs, "nct,");
+        sprintf(buf, "%d,", sub_object->nct);
+        strcat(vals, buf);
+    }
+    if(sub_object->net){
+        strcat(attrs, "net,");
+        sprintf(buf, "'%s',", sub_object->net);
+        strcat(vals, buf);
+    }
+    if(sub_object->sur){
+        strcat(attrs, "sur,");
+        sprintf(buf, "'%s',", sub_object->sur);
+        strcat(vals, buf);
+    }
+
+    strcat(attrs, "ri");
+    sprintf(buf, "'%s'", sub_object->ri);
+    strcat(vals, buf);
+
+
+    sprintf(sql, "INSERT INTO sub (%s) VALUES(%s);", attrs, vals);
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
         free(sql);
         return 0;
     }
-    
-    if (sub_object->rn == blankspace) sub_object->rn = NULL;
-    if (sub_object->ri == blankspace) sub_object->ri = NULL;
-    if (sub_object->nu == blankspace) sub_object->nu = NULL;
-    if (sub_object->net == blankspace) sub_object->net = NULL;
-    if (sub_object->ct == blankspace) sub_object->ct = NULL;
-    if (sub_object->et == blankspace) sub_object->et = NULL;
-    if (sub_object->lt == blankspace) sub_object->lt = NULL;
-    if (sub_object->ty == '\0') sub_object->ty = 23;
-    if (sub_object->sur == blankspace) sub_object->sur = NULL; 
-
-    free(sql);
     return 1;
 }
 
 int db_store_acp(ACP *acp_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_acp");
-    char* blankspace = " ";
-    char *sql = NULL, *err_msg = NULL;
+    char sql[1024], *err_msg = NULL;
+    char attrs[256] = {0}, vals[256] = {0};
+    char buf[256];
     int rc = 0;
 
     // if input == NULL
@@ -678,18 +721,45 @@ int db_store_acp(ACP *acp_object) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
-    if (acp_object->rn == NULL) acp_object->rn = blankspace;
-    if (acp_object->pi == NULL) acp_object->pi = blankspace;
-    if (acp_object->ct == NULL) acp_object->ct = blankspace;
-    if (acp_object->lt == NULL) acp_object->lt = blankspace;
-    if (acp_object->et == NULL) acp_object->et = blankspace;
-    if (acp_object->pv_acor == NULL) acp_object->pv_acor = blankspace;       
-    if (acp_object->pv_acop == NULL) acp_object->pv_acop = blankspace; 
-    if (acp_object->pvs_acop == NULL) acp_object->pvs_acor = blankspace; 
-    if (acp_object->pvs_acop == NULL) acp_object->pvs_acop = blankspace; 
+    
+    strcat(attrs, "ri,");
+    sprintf(buf, "'%s',", acp_object->ri);
+    strcat(vals, buf);
 
-   sprintf(sql, "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d);",
-              acp_object->rn, acp_object->ri, acp_object->pi, acp_object->ct, acp_object->et, acp_object->lt, "", acp_object->ty );
+    strcat(attrs, "uri,");
+    sprintf(buf, "'%s',", acp_object->uri);
+    strcat(vals, buf);
+
+    if(acp_object->rn){
+        strcat(attrs, "rn,");
+        sprintf(buf, "'%s',", acp_object->rn);
+        strcat(vals, buf);
+    }
+    if(acp_object->pi){
+        strcat(attrs, "pi,");
+        sprintf(buf, "'%s',", acp_object->pi);
+        strcat(vals, buf);
+    }
+    if(acp_object->ct){
+        strcat(attrs, "ct,");
+        sprintf(buf, "'%s',", acp_object->ct);
+        strcat(vals, buf);
+    }
+    if(acp_object->lt){
+        strcat(attrs, "lt,");
+        sprintf(buf, "'%s',", acp_object->lt);
+        strcat(vals, buf);
+    }
+    if(acp_object->et){
+        strcat(attrs, "et,");
+        sprintf(buf, "'%s',", acp_object->et);
+        strcat(vals, buf);
+    }
+    strcat(attrs, "ty");
+    sprintf(buf, "%d", RT_ACP);
+    strcat(vals, buf);
+
+   sprintf(sql, "INSERT INTO general (%s) VALUES(%s);", attrs, vals);
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
@@ -697,8 +767,35 @@ int db_store_acp(ACP *acp_object) {
         return 0;
     }
 
-    sprintf(sql, "INSERT INTO acp (ri, pvacop, pvacor, pvsacop, pvsacor) VALUES('%s', '%s', '%s', '%s', '%s');",
-               acp_object->ri, acp_object->pv_acop, acp_object->pv_acor, acp_object->pvs_acop, acp_object->pvs_acor);
+    memset(attrs, 0, sizeof(attrs));
+    memset(vals, 0, sizeof(vals));
+
+    if(acp_object->pv_acop){
+        strcat(attrs, "pvacop,");
+        sprintf(buf, "'%s',", acp_object->pv_acop);
+        strcat(vals, buf);
+    }
+    if(acp_object->pv_acor){
+        strcat(attrs, "pvacor,");
+        sprintf(buf, "'%s',", acp_object->pv_acor);
+        strcat(vals, buf);
+    }
+    if(acp_object->pvs_acop){
+        strcat(attrs, "pvsacop,");
+        sprintf(buf, "'%s',", acp_object->pvs_acop);
+        strcat(vals, buf);
+    }
+    if(acp_object->pvs_acor){
+        strcat(attrs, "pvsacor,");
+        sprintf(buf, "'%s',", acp_object->pvs_acop);
+        strcat(vals, buf);
+    }
+
+    strcat(attrs, "ri");
+    sprintf(buf, "'%s'", acp_object->ri);
+    strcat(vals, buf);
+
+    sprintf(sql, "INSERT INTO acp (%s) VALUES(%s);", attrs, vals);
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
@@ -706,15 +803,6 @@ int db_store_acp(ACP *acp_object) {
         return 0;
     }
 
-    if (acp_object->rn == blankspace) acp_object->rn = NULL;
-    if (acp_object->pi == blankspace) acp_object->pi = NULL;
-    if (acp_object->ct == blankspace) acp_object->ct = NULL;
-    if (acp_object->lt == blankspace) acp_object->lt = NULL;
-    if (acp_object->et == blankspace) acp_object->et = NULL;
-    if (acp_object->pv_acor == blankspace) acp_object->pv_acor = NULL;       
-    if (acp_object->pv_acop == blankspace) acp_object->pv_acop = NULL; 
-    if (acp_object->pvs_acop == blankspace) acp_object->pvs_acor = NULL; 
-    if (acp_object->pvs_acop == blankspace) acp_object->pvs_acop = NULL; 
     return 1;
 }
 
@@ -1037,8 +1125,8 @@ GRP *db_get_grp(char *ri){
             case SQLITE_TEXT:
                 memset(buf, 0, 256);
                 strncpy(buf, sqlite3_column_text(res, col), bytes);
-                if(buf[0] == '['){
-                    cJSON_AddItemToObject(json, colname, string_to_cjson_list_item(buf));
+                if(!strcmp(colname, "mid")){
+                    cJSON_AddItemToObject(json, colname, string_to_cjson_string_list_item(buf));
                 }else{
                     cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
                 }
@@ -1286,6 +1374,92 @@ int db_update_cnt(CNT *cnt_object){
 
 int db_update_acp(ACP *acp_object){
     
+}
+
+int db_update_grp(GRP *grp_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_update_grp");
+    char sql[1024] = {0}, *err_msg = NULL;
+    int rc = 0;
+    char buf[256]={0};
+
+    if (grp_object->ri == NULL) {
+        fprintf(stderr, "ri is NULL\n");
+        return -1;
+    }
+
+
+    sprintf(sql, "UPDATE general SET ");
+
+    if(grp_object->rn){
+        sprintf(buf, "rn='%s',", grp_object->rn);
+        strcat(sql, buf);
+    }
+    if(grp_object->lt){
+        sprintf(buf, "lt='%s',", grp_object->lt);
+        strcat(sql, buf);
+    }
+    if(grp_object->et){
+        sprintf(buf, "et='%s',", grp_object->et);
+        strcat(sql, buf);
+    }
+
+    sprintf(buf, "ty=9 WHERE ri='%s';", grp_object->ri);
+    strcat(sql, buf);
+    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
+
+    sprintf(sql, "UPDATE grp SET ");
+
+    if(grp_object->mt){
+        sprintf(buf, "mt=%d,", grp_object->mt);
+        strcat(sql, buf);
+    }
+    if(grp_object->cnm){
+        sprintf(buf, "cnm=%d,", grp_object->cnm);
+        strcat(sql, buf);
+    }
+    if(grp_object->mnm){
+        sprintf(buf, "mnm=%d,", grp_object->mnm);
+        strcat(sql, buf);
+    }
+    if(grp_object->mtv){
+        sprintf(buf, "mtv=%d,", grp_object->mtv);
+        strcat(sql, buf);
+    }
+    if(grp_object->csy){
+        sprintf(buf, "csy=%d,", grp_object->csy);
+        strcat(sql, buf);
+    }
+    if(grp_object->cnm > 0){
+        sprintf(buf, "mid='");
+        for(int i = 0 ; i < grp_object->cnm ; i++){
+            strcat(buf, grp_object->mid[i]);
+            strcat(buf, ",");
+        }
+        buf[strlen(buf)-1] = '\'';
+        strcat(sql, buf);
+        strcat(sql, ",");
+    }
+
+    sql[strlen(sql)-1] = '\0';
+    
+    sprintf(buf, " WHERE ri='%s';", grp_object->ri);
+    strcat(sql, buf);
+
+    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        free(sql);
+        return 0;
+    }
+
+    return 1;
 }
 
 int db_update_onem2m_resource(RTNode *rtnode){
@@ -1652,12 +1826,11 @@ RTNode *db_get_all_sub_rtnode(){
 
     RTNode* head = NULL, *rtnode = NULL;
     rc = sqlite3_step(res);
-    cols = sqlite3_column_count(res);
 
     while(rc == SQLITE_ROW){
         json = cJSON_CreateObject();
         root = cJSON_CreateObject();
-        
+        cols = sqlite3_column_count(res);
         SUB* sub = NULL;
         for(int col = 0 ; col < cols; col++){
             
@@ -1688,6 +1861,7 @@ RTNode *db_get_all_sub_rtnode(){
             rtnode = rtnode->sibling_right;
         }   
         cJSON_Delete(root);
+        root = NULL;
         rc = sqlite3_step(res);
     }
 
@@ -1794,7 +1968,7 @@ RTNode *db_get_all_grp_rtnode(){
                     memset(buf, 0, 256);
                     strncpy(buf, sqlite3_column_text(res, col), bytes);
                     if(buf[0] == '['){
-                        cJSON_AddItemToObject(json, colname, string_to_cjson_list_item(buf));
+                        cJSON_AddItemToObject(json, colname, string_to_cjson_string_list_item(buf));
                     }else{
                         cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
                     }
@@ -1808,7 +1982,7 @@ RTNode *db_get_all_grp_rtnode(){
         cjson_to_grp(root, grp);
         
         if(!head) {
-            head = create_rtnode(grp,RT_GRP);
+            head = create_rtnode(grp, RT_GRP);
             rtnode = head;
         } else {
             rtnode->sibling_right = create_rtnode(grp, RT_GRP);
@@ -1902,7 +2076,7 @@ CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol){
     cJSON *json, *root;
     sqlite3_stmt *res = NULL;
 
-    CIN *cin = calloc(1, sizeof(CIN));
+    CIN *cin = NULL;
 
     switch(laol){
         case 0:
@@ -1950,7 +2124,7 @@ CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol){
     }
     cJSON_AddItemToObject(root, "m2m:cin", json);
     cin = cjson_to_cin(root);
-    cJSON_Delete(json);
+    cJSON_Delete(root);
 
 
     sqlite3_finalize(res);
@@ -2047,7 +2221,13 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
         filterOptionStr(fc->fo, sql);
     }
 
-    sprintf(buf, "1 AND uri LIKE '%s/%%';", to);
+    if(fc->fo == FO_AND){
+        sql[strlen(sql) - 4] = '\0';
+    }else if(fc->fo == FO_OR){
+        sql[strlen(sql) - 3] = '\0';
+    }
+
+    sprintf(buf, "AND uri LIKE '%s/%%';", to);
     strcat(sql, buf);
 
     logger("DB", LOG_LEVEL_DEBUG, "%s", sql);

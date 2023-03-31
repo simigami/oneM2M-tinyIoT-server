@@ -514,7 +514,6 @@ RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 	RTNode *rtnode = list;
 	while(rtnode) {
 		RTNode *right = rtnode->sibling_right;
-
 		if(!strcmp(get_ri_rtnode(parent_rtnode), get_pi_rtnode(rtnode))) {
 			RTNode *left = rtnode->sibling_left;
 			
@@ -1320,8 +1319,6 @@ void filterOptionStr(FilterOperation fo , char *sql){
 			strcat(sql, " OR ");
 			break;
 	}
-
-	return uril;
 }
 
 bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi) {
