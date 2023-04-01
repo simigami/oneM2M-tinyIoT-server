@@ -225,7 +225,7 @@ int db_store_ae(AE *ae_object){
     }
     if(ae_object->lbl){
         strcat(attrs, "lbl,");
-        sprintf(buf, "'%s',", ae_object->lbl);
+        sprintf(buf, "',%s,',", ae_object->lbl);
         strcat(vals, buf);
     }
     if(ae_object->acpi){
@@ -310,7 +310,7 @@ int db_store_cnt(CNT *cnt_object){
     
     if(cnt_object->lbl){
         strcat(attrs, "lbl,");
-        sprintf(buf, "'%s',", cnt_object->lbl);
+        sprintf(buf, "',%s,',", cnt_object->lbl);
         strcat(vals, buf);
     }
     if(cnt_object->pi){
@@ -893,6 +893,7 @@ AE *db_get_ae(char *ri){
         colname = sqlite3_column_name(res, col);
         bytes = sqlite3_column_bytes(res, col);
         coltype = sqlite3_column_type(res, col);
+        if(bytes == 0) continue;
 
         if(!strcmp(colname, "rr")){
             if(!strncmp(sqlite3_column_text(res, col), "true", 4)){
@@ -901,9 +902,13 @@ AE *db_get_ae(char *ri){
                 cJSON_AddItemToObject(json, colname, cJSON_CreateBool(false));
             }
             continue;
+        }else if(!strcmp(colname, "lbl")){
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            cJSON_AddItemToObject(json, "lbl", cJSON_CreateString(buf+1));
+            continue;
         }
 
-        if(bytes == 0) continue;
         switch(coltype){
             case SQLITE_TEXT:
                 memset(buf,0, 256);
@@ -959,6 +964,14 @@ CNT *db_get_cnt(char *ri){
         coltype = sqlite3_column_type(res, col);
 
         if(bytes == 0) continue;
+
+        if(!strcmp(colname, "lbl")){
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            cJSON_AddItemToObject(json, "lbl", cJSON_CreateString(buf+1));
+            continue;
+        }
+
         switch(coltype){
             case SQLITE_TEXT:
                 memset(buf,0, 256);
@@ -1179,6 +1192,15 @@ ACP *db_get_acp(char *ri){
         coltype = sqlite3_column_type(res, col);
 
         if(bytes == 0) continue;
+
+
+        if(!strcmp(colname, "lbl")){
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            cJSON_AddItemToObject(json, "lbl", cJSON_CreateString(buf+1));
+            continue;
+        }
+
         switch(coltype){
             case SQLITE_TEXT:
                 memset(buf,0, 256);
@@ -1236,7 +1258,7 @@ int db_update_ae(AE *ae_object){
         strcat(sql, buf);
     }
     if(ae_object->lbl){
-        sprintf(buf, "lbl='%s', ", ae_object->lbl);
+        sprintf(buf, "lbl=',%s,', ", ae_object->lbl);
         strcat(sql, buf);
     }
     if(ae_object->acpi){
@@ -1310,7 +1332,7 @@ int db_update_cnt(CNT *cnt_object){
     }
     
     if(cnt_object->lbl){
-        sprintf(buf, "lbl='%s',", cnt_object->lbl);
+        sprintf(buf, "lbl=',%s,',", cnt_object->lbl);
         strcat(sql, buf);
     }
     if(cnt_object->lt){
@@ -1399,7 +1421,7 @@ int db_update_acp(ACP *acp_object){
         strcat(sql, buf);
     }
     if(acp_object->lbl){
-        sprintf(buf, "lbl='%s',", acp_object->lbl);
+        sprintf(buf, "lbl=',%s,',", acp_object->lbl);
         strcat(sql, buf);
     }
 
@@ -2266,7 +2288,7 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
     if(fc->lbl){
         jsize = cJSON_GetArraySize(fc->lbl);
         for(int i = 0 ; i < jsize ; i++){
-            sprintf(buf, "lbl='%s' OR ", cJSON_GetArrayItem(fc->lbl, i)->valuestring);
+            sprintf(buf, "lbl LIKE '%%,%s,%%' OR ", cJSON_GetArrayItem(fc->lbl, i)->valuestring);
             strcat(sql, buf);
         }
         sql[strlen(sql)- 3] = '\0';
@@ -2282,7 +2304,7 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
         filterOptionStr(fc->fo, sql);
     }
 
-    if(fc->sza >= 0){
+    if(fc->sza){
         sprintf(buf, " ri IN (SELECT ri FROM 'cin' WHERE cs >= %d) ", fc->sza);
         strcat(sql, buf);
         filterOptionStr(fc->fo, sql);
@@ -2300,7 +2322,7 @@ cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
         filterOptionStr(fc->fo, sql);
     }
 
-    if(fc->stb >= 0){
+    if(fc->stb){
         sprintf(buf, " ri IN (SELECT ri FROM 'cnt' WHERE st >= %d) ", fc->stb);
         strcat(sql, buf);
         filterOptionStr(fc->fo, sql);
@@ -2444,7 +2466,7 @@ cJSON *db_get_parent_filter_criteria(char *to, FilterCriteria *fc){
     if(fc->palb){
         jsize = cJSON_GetArraySize(fc->palb);
         for(int i = 0 ; i < jsize ; i++){
-            sprintf(buf, "lbl='%s' OR ", cJSON_GetArrayItem(fc->palb, i)->valuestring);
+            sprintf(buf, "lbl LIKE '%%,%s,%%' OR ", cJSON_GetArrayItem(fc->palb, i)->valuestring);
             strcat(sql, buf);
         }
         sql[strlen(sql)- 3] = '\0';
@@ -2543,7 +2565,7 @@ cJSON *db_get_child_filter_criteria(char *to, FilterCriteria *fc){
     if(fc->clbl){
         jsize = cJSON_GetArraySize(fc->clbl);
         for(int i = 0 ; i < jsize ; i++){
-            sprintf(buf, "lbl='%s' OR ", cJSON_GetArrayItem(fc->clbl, i)->valuestring);
+            sprintf(buf, "lbl LIKE '%%,%s,%%' OR ", cJSON_GetArrayItem(fc->clbl, i)->valuestring);
             strcat(sql, buf);
         }
         sql[strlen(sql)- 3] = '\0';
