@@ -1,5 +1,6 @@
 #ifndef __dbmanager_H__
 #define __dbmanager_H__
+#include "config.h"
 #include "onem2m.h"
 
 int init_dbp();
@@ -21,10 +22,12 @@ SUB* db_get_sub(char* ri);
 GRP* db_get_grp(char* ri);
 ACP* db_get_acp(char* ri);
 
+#ifdef SQLITE_DB
 int db_update_ae(AE *ae_object);
 int db_update_cnt(CNT *cnt_object);
 int db_update_acp(ACP * acp_object);
 int db_update_grp(GRP *grp_object);
+#endif
 
 int db_delete_onem2m_resource(RTNode *rtnode);
 int db_delete_sub(char* ri);

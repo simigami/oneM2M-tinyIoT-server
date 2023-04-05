@@ -326,7 +326,6 @@ SUB* cjson_to_sub(cJSON *cjson) {
 	pjson = cJSON_GetObjectItem(root, "pi");
 	if(pjson){
 		sub->pi = strdup(pjson->valuestring);
-		logger("js", LOG_LEVEL_DEBUG, "%s", sub->pi);
 	}
 	pjson = cJSON_GetObjectItem(root, "ri");
 	if(pjson){

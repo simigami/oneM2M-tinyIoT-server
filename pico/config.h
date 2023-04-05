@@ -15,6 +15,11 @@
 #define MAX_TREE_VIEWER_SIZE 65536
 #define DEFAULT_EXPIRE_TIME -3600*24*365*2
 
+// DB Settings
+/* Select which Databas to use. */
+//#define BERKELEY_DB
+#define SQLITE_DB
+
 // Group Settings
 #define CONSISTENCY_POLICY SET_MIXED
 
