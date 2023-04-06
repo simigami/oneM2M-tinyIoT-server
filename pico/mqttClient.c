@@ -529,8 +529,8 @@ int mqtt_notify(oneM2MPrimitive *o2pt, char* noti_json, NotiTarget *nt){
 
     char notiSbuf[1024], notiRbuf[1024];
     
-    sprintf(buf, "/oneM2M/req/%s%s/json", CSE_BASE_RI, nt->target);
-    strcat(topic, buf);
+    sprintf(topic, "%s", nt->target);
+    strcat(topic, "/json");
     logger("MQTT", LOG_LEVEL_DEBUG, "topic : %s", topic);
 
     if(!strcmp(nt->host, MQTT_HOST)){

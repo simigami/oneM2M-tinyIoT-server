@@ -1,7 +1,7 @@
 CC=gcc
 RELCFLAGS = -g
 
-LIBS = -lpthread -lcurl -lm
+LIBS = -lpthread -lcurl -lm -ldb
 
 SRCS = main.c onem2m.c cJSON.c httpd.c dbmanager.c jsonparser.c mqttClient.c logger.c util.c filterCriteria.c wolfmqtt/mqtt_client.c wolfmqtt/mqtt_packet.c wolfmqtt/mqtt_socket.c sqlite/sqlite3.c
 

@@ -2,6 +2,7 @@
 #define __UTIL_H__
 #include "onem2mTypes.h"
 #include "onem2m.h"
+#include "config.h"
 #include "cJSON.h"
 
 void init_server();
@@ -83,4 +84,9 @@ int get_number_from_cjson(cJSON *json);
 cJSON *qs_to_json(char* qs);
 cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo);
 void filterOptionStr(FilterOperation fo , char *sql);
+
+#ifdef BERKELEY_DB
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl);
+#endif
+
 #endif

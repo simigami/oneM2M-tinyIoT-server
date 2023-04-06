@@ -432,10 +432,12 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(result != 1) {
 		return o2pt->rsc;
 	}
+	#ifdef SQLITE_DB
 	result = db_update_ae(ae);
-	// result = db_delete_onem2m_resource(target_rtnode);
-	// result = db_store_ae(ae);
-	
+	#else
+	result = db_delete_onem2m_resource(target_rtnode);
+	result = db_store_ae(ae);
+	#endif
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = ae_to_json(ae);
 	o2pt->rsc = RSC_UPDATED;
@@ -468,10 +470,12 @@ int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	//set_rtnode_update(target_rtnode, after);
 	delete_cin_under_cnt_mni_mbs(target_rtnode);
 	cnt->st++;
+	#ifdef SQLITE_DB
 	result = db_update_cnt(cnt);
-	// result = db_delete_onem2m_resource(cnt->ri);
-	// result = db_store_cnt(cnt);
-	
+	#else
+	result = db_delete_onem2m_resource(target_rtnode);
+	result = db_store_cnt(cnt);
+	#endif
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cnt_to_json(cnt);
 	o2pt->rsc = RSC_UPDATED;
@@ -493,7 +497,13 @@ int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	
 	result = set_acp_update(o2pt, m2m_acp, acp);
 	if(result != 1) return result;
+	
+	#ifdef SQLITE_DB
 	result = db_update_acp(acp);
+	#else
+	result = db_delete_onem2m_resource(target_rtnode);
+	result = db_store_acp(acp);
+	#endif
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(acp);
@@ -704,7 +714,13 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 	cnt->cbs += sign*(cin->cs);
 	delete_cin_under_cnt_mni_mbs(cnt_rtnode);	
 	cnt->st++;
+	#ifdef SQLITE_DB
 	db_update_cnt(cnt);
+	#else
+	db_delete_onem2m_resource(cnt_rtnode);
+	db_store_cnt(cnt);
+	#endif
+
 	return 1;
 }
 
@@ -1092,8 +1108,12 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		o2pt->rsc = rsc;
 		return rsc;
 	}
-
+	#ifdef SQLITE_DB
 	result = db_update_grp(new_grp);
+	#else
+	result = db_delete_grp(new_grp->ri);
+	result = db_store_grp(new_grp);
+	#endif
 	if(!result){
 		logger("O2M", LOG_LEVEL_ERROR, "DB update Failed");
 		free_grp(new_grp);
@@ -1415,7 +1435,19 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		return RSC_BAD_REQUEST;
 	}
 
+	#ifdef SQLITE_DB
 	uril = db_get_filter_criteria(o2pt->to, o2pt->fc);
+	#else
+	RTNode *pn = NULL;
+	o2pt->fc->o2pt = o2pt;
+	if(target_rtnode->ty == RT_CNT){
+		target_rtnode->child = pn = db_get_cin_rtnode_list(target_rtnode);
+		pn->parent = target_rtnode;	
+	}else{
+		pn = target_rtnode->child;
+	}
+	uril = fc_scan_resource_tree(pn, o2pt->fc, 1);
+	#endif
 	
 	urilSize = cJSON_GetArraySize(uril);
 	if(o2pt->fc->lim < urilSize - o2pt->fc->ofst){

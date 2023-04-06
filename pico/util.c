@@ -153,11 +153,38 @@ RTNode *find_rtnode_by_ri(RTNode *cb, char *ri){
 RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
 	logger("UTL", LOG_LEVEL_DEBUG, "latest oldest");
 	RTNode *cin_rtnode = NULL;
+	#ifdef SQLITE_DB
 	if(rtnode->ty == RT_CNT) {
 		CIN *cin_object = db_get_cin_laol(rtnode, flag);
 		cin_rtnode = create_rtnode(cin_object, RT_CIN);
 		cin_rtnode->parent = rtnode;
 	}
+	#else 
+	if(rtnode->ty == RT_CNT) {
+		RTNode *head = db_get_cin_rtnode_list(rtnode);
+		RTNode *cin_rtnode = head;
+
+		if(cin_rtnode) {
+			if(flag == 1) {
+				head = head->sibling_right;
+				cin_rtnode->sibling_right = NULL;			
+			} else {
+				while(cin_rtnode->sibling_right) cin_rtnode = cin_rtnode->sibling_right;
+				if(cin_rtnode->sibling_left) {
+					cin_rtnode->sibling_left->sibling_right = NULL;
+					cin_rtnode->sibling_left = NULL;
+				}
+			}
+			if(head != cin_rtnode) free_rtnode_list(head);
+			if(cin_rtnode) {
+				return cin_rtnode;
+			} else {
+				return NULL;
+			}
+		}
+		return NULL;
+	}
+	#endif
 
 	return cin_rtnode;
 }
@@ -1448,3 +1475,65 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 
 	free(noti_json);
 }
+
+#ifndef SQLITE_DB
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
+	
+	RTNode *prt = rtnode;
+	RTNode *trt = NULL;
+	RTNode *cinrtHead = NULL;
+	cJSON *uril = cJSON_CreateArray();
+	cJSON *curil = NULL;
+	cJSON *pjson = NULL;
+	char buf[512] = {0};
+	int curilSize = 0;
+	while(prt){
+		if(prt->ty == RT_CIN){
+			if(prt->sibling_right){
+				prt->sibling_right->parent = prt->parent;
+			}
+		}
+		// If resource is cnt, Construct RTNode of child cin and attach it
+		if(prt->ty == RT_CNT){
+			cinrtHead = trt = db_get_cin_rtnode_list(prt);
+			prt->child = cinrtHead;
+		}
+		// Check if resource satisfies filter
+		if(isResourceAptFC(prt, fc)){
+			if(fc->arp){
+				sprintf(buf, "%s/%s", get_rn_rtnode(prt), fc->arp);
+				trt = find_rtnode_by_uri(prt, buf);
+				if(trt) cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
+				buf[0] = '\0';
+			}else{
+				cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
+			}
+			
+		}
+
+		// Check child resources if available
+		if(fc->lvl - lvl > 0 && prt->child ){
+			curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
+
+			curilSize = cJSON_GetArraySize(curil);
+			for(int i = 0 ; i < curilSize ; i++){
+				pjson = cJSON_GetArrayItem(curil, i);
+				cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
+			}
+			cJSON_Delete(curil);
+			curil = NULL;
+			
+		}
+
+		// Remove attatched rtnode of CIN when available
+		if(cinrtHead){
+			free_rtnode_list(cinrtHead);
+			prt->child = NULL;
+		}
+		cinrtHead = NULL;
+		prt = prt->sibling_right;
+	}
+
+	return uril;
+}
+#endif

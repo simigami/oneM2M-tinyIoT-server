@@ -19,6 +19,46 @@ DB *resourceDBp;
 DB *subDBp;
 DB *grpDBp;
 DB *acpDBp;
+
+/*DB CREATE*/
+DB* DB_CREATE_(DB *dbp){
+    int ret;
+
+    ret = db_create(&dbp, NULL, 0);
+    if (ret) {
+        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
+        fprintf(stderr, "File ERROR\n");
+        return NULL;
+    }
+    return dbp;
+}
+
+/*DB Open*/
+int DB_OPEN(DB* dbp, char* DATABASE){
+    int ret;
+
+    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
+    if (ret) {
+        dbp->err(dbp, ret, "%s", DATABASE);
+        fprintf(stderr, "DB Open ERROR\n");
+        return 0;
+    }
+    return 1;
+}
+
+/*DB Get Cursor*/
+DBC *DB_GET_CURSOR(DB *dbp){
+    DBC *dbcp;
+    int ret;
+    
+    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
+        dbp->err(dbp, ret, "DB->cursor");
+        fprintf(stderr, "Cursor ERROR");
+        return NULL;
+    }
+    return dbcp;
+}
+
 #endif
 
 /* DB init */
@@ -1365,7 +1405,7 @@ CSE *db_get_cse(){
     memset(&data, 0, sizeof(data));
 
     while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, ri, key.size) == 0) {
+        if (strncmp(key.data, "5-", 4) == 0) {
             flag=true;
             new_cse= calloc(1,sizeof(CSE));
             // ri = key
@@ -2858,46 +2898,6 @@ char *get_table_name(ResourceType ty){
     }
     return tableName;
 }
-
-#else
-/*DB CREATE*/
-DB* DB_CREATE_(DB *dbp){
-    int ret;
-
-    ret = db_create(&dbp, NULL, 0);
-    if (ret) {
-        fprintf(stderr, "db_create : %s\n", db_strerror(ret));
-        fprintf(stderr, "File ERROR\n");
-        return NULL;
-    }
-    return dbp;
-}
-
-/*DB Open*/
-int DB_OPEN(DB* dbp, char* DATABASE){
-    int ret;
-
-    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
-    if (ret) {
-        dbp->err(dbp, ret, "%s", DATABASE);
-        fprintf(stderr, "DB Open ERROR\n");
-        return 0;
-    }
-    return 1;
-}
-
-/*DB Get Cursor*/
-DBC *DB_GET_CURSOR(DB *dbp){
-    DBC *dbcp;
-    int ret;
-    
-    if ((ret = dbp->cursor(dbp, NULL, &dbcp, 0)) != 0) {
-        dbp->err(dbp, ret, "DB->cursor");
-        fprintf(stderr, "Cursor ERROR");
-        return NULL;
-    }
-    return dbcp;
-}
 #endif
 
 // int db_update_onem2m_resource(RTNode *rtnode){
@@ -3357,6 +3357,7 @@ RTNode *db_get_all_ae_rtnode(){
 
     sqlite3_finalize(res); 
     #else
+    char *TYPE = "2-";
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -3372,7 +3373,7 @@ RTNode *db_get_all_ae_rtnode(){
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 1) == 0){
+        if (strncmp(key.data, TYPE , 2) == 0){
             AE* ae = db_get_ae((char*)key.data);
 
             if(!head) {
@@ -3652,6 +3653,7 @@ RTNode *db_get_all_acp_rtnode(){
     DBC* dbcp;
     DBT key, data;
     int ret;
+    char *TYPE = "1-";
 
     //dbp = DB_CREATE_(dbp);
     //DB_OPEN(DATABASE);
@@ -3909,11 +3911,14 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
     return head;
 }
 
+#ifdef SQLITE_DB
 /**
  * get Latest/Oldest Content Instance
  * Oldest Flag = 0, Latest flag = 1
 */
 CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol){
+    CIN *cin = NULL;
+
     char sql[1024] = {0}, buf[256] = {0};
     char *orb = NULL, *colname;
     int rc = 0;
@@ -3921,7 +3926,6 @@ CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol){
     cJSON *json, *root;
     sqlite3_stmt *res = NULL;
 
-    CIN *cin = NULL;
 
     switch(laol){
         case 0:
@@ -3976,7 +3980,6 @@ CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol){
     return cin;   
 
 }
-
 cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc) {
 
     logger("DB", LOG_LEVEL_DEBUG, "call db_get_filter_criteria");
@@ -4361,3 +4364,5 @@ cJSON *db_get_child_filter_criteria(char *to, FilterCriteria *fc){
    
     return ptrjson;
 }
+
+#endif

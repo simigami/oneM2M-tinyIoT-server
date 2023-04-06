@@ -43,10 +43,12 @@ RTNode* db_get_all_acp_rtnode();
 RTNode* db_get_all_grp_rtnode();
 
 RTNode* db_get_cin_rtnode_list(RTNode *rtnode);
+#ifdef SQLQITE_DB
 CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol);
 cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc);
 cJSON *db_get_parent_filter_criteria(char *to, FilterCriteria *fc);
 cJSON *db_get_child_filter_criteria(char *to, FilterCriteria *fc);
+#endif
 
 #define DB_STR_MAX 65565
 #define DB_SEP ";"
