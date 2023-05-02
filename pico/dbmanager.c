@@ -272,8 +272,7 @@ int db_store_cse(CSE *cse_object){
     if (cse_object->lt == NULL) cse_object->lt = " ";
     if (cse_object->csi == NULL) cse_object->csi = " ";
 
-    //dbp = DB_CREATE_(dbp);
-    //DB_OPEN(DATABASE);
+
     dbcp = DB_GET_CURSOR(resourceDBp);
     
     /* key and data must initialize */
@@ -298,6 +297,7 @@ int db_store_cse(CSE *cse_object){
 
     /* DB close */
     dbcp->close(dbcp);
+    
     #endif
     
     return 1;
@@ -1102,7 +1102,7 @@ int db_store_acp(ACP *acp_object) {
     return 1;
 }
 
-CSE *db_get_cse(){
+CSE *db_get_cse(char *ri){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_get_cse");
     CSE* new_cse= NULL;
     #ifdef SQLITE_DB
@@ -1170,9 +1170,8 @@ CSE *db_get_cse(){
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
     memset(&data, 0, sizeof(data));
-
     while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, "5-", 4) == 0) {
+        if (strncmp(key.data, ri, key.size) == 0) {
             flag=true;
             new_cse= calloc(1,sizeof(CSE));
             // ri = key
@@ -2994,6 +2993,7 @@ RTNode* db_get_all_cse() {
     dbcp0->close(dbcp0);
     RTNode* head = NULL, *rtnode = NULL;
 
+            logger("DB", LOG_LEVEL_DEBUG, "%d", cse);
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, TYPE , 2) == 0){
             CSE* cse = db_get_cse((char*)key.data);
@@ -3086,7 +3086,7 @@ RTNode *db_get_all_ae_rtnode(){
 
     sqlite3_finalize(res); 
     #else
-    char *TYPE = "2-";
+    char *TYPE = "C";
     DBC* dbcp;
     DBT key, data;
     int ret;
@@ -3102,7 +3102,8 @@ RTNode *db_get_all_ae_rtnode(){
     RTNode* head = NULL, *rtnode = NULL;
 
     while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
-        if (strncmp(key.data, TYPE , 2) == 0){
+        
+        if (strncmp(key.data, TYPE , 1) == 0){
             AE* ae = db_get_ae((char*)key.data);
 
             if(!head) {

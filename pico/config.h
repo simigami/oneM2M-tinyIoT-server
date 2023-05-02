@@ -16,7 +16,7 @@
 #define DEFAULT_EXPIRE_TIME -3600*24*365*2
 
 // DB Settings
-/* Select which Databas to use. */
+/* Select which Database to use. */
 #define BERKELEY_DB
 //#define SQLITE_DB
 

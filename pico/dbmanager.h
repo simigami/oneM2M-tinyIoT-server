@@ -18,7 +18,7 @@ int db_store_grp(GRP* grp_object);
 int db_store_sub(SUB* sub_object);
 int db_store_acp(ACP *acp_object);
 
-CSE* db_get_cse();
+CSE* db_get_cse(char *ri);
 AE* db_get_ae(char *ri);
 CNT* db_get_cnt(char *ri);
 CIN* db_get_cin(char *ri);
