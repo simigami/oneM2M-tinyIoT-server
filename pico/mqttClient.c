@@ -529,8 +529,7 @@ int mqtt_notify(oneM2MPrimitive *o2pt, char* noti_json, NotiTarget *nt){
 
     char notiSbuf[1024], notiRbuf[1024];
     
-    sprintf(buf, "/oneM2M/req/%s%s/json", CSE_BASE_RI, nt->target);
-    strcat(topic, buf);
+    sprintf(topic, "%s", nt->target + 1);
     logger("MQTT", LOG_LEVEL_DEBUG, "topic : %s", topic);
 
     if(!strcmp(nt->host, MQTT_HOST)){
@@ -614,6 +613,7 @@ int mqtt_notify(oneM2MPrimitive *o2pt, char* noti_json, NotiTarget *nt){
 /* Public Function */
 void *mqtt_serve(void)
 {
+    int pingc = 0;
     int rc = 0;
     MqttObject mqttObj;
     MqttTopic topics[4];
@@ -695,15 +695,17 @@ void *mqtt_serve(void)
 
     /* Wait for messages */
     while (!terminate) {
-        rc = MqttClient_WaitMessage_ex(&mClient, &mqttObj, MQTT_CMD_TIMEOUT_MS);
-
+        rc = MqttClient_WaitMessage_ex(&mClient, &mqttObj, 3000);
+        pingc += 3000;
         if (rc == MQTT_CODE_ERROR_TIMEOUT) {
             /* send keep-alive ping */
-            rc = MqttClient_Ping_ex(&mClient, &mqttObj.ping);
-            if (terminate || rc != MQTT_CODE_SUCCESS) {
+            if(pingc >= MQTT_CMD_TIMEOUT_MS){
+                rc = MqttClient_Ping_ex(&mClient, &mqttObj.ping);
+                pingc = 0;
+                if (rc != MQTT_CODE_SUCCESS) {
                 break;
-            }
-            //logger(LOG_TAG, LOG_LEVEL_INFO, "MQTT Keep-Alive Ping");
+                }
+            }  
         }
         else if (rc != MQTT_CODE_SUCCESS) {
             break;
@@ -711,7 +713,7 @@ void *mqtt_serve(void)
     }
 
 exit:
-    if (rc != MQTT_CODE_SUCCESS) {
+    if (!terminate && rc != MQTT_CODE_SUCCESS) {
         logger(LOG_TAG, LOG_LEVEL_ERROR, "MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
     }
 

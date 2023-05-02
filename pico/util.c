@@ -149,9 +149,19 @@ RTNode *find_rtnode_by_ri(RTNode *cb, char *ri){
 	return ret;
 }
 
-RTNode *find_latest_oldest(RTNode* parent_rtnode, int flag) {
-	if(parent_rtnode->ty == RT_CNT) {
-		RTNode *head = db_get_cin_rtnode_list(parent_rtnode);
+
+RTNode *find_latest_oldest(RTNode* rtnode, int flag) {
+	logger("UTL", LOG_LEVEL_DEBUG, "latest oldest");
+	RTNode *cin_rtnode = NULL;
+	#ifdef SQLITE_DB
+	if(rtnode->ty == RT_CNT) {
+		CIN *cin_object = db_get_cin_laol(rtnode, flag);
+		cin_rtnode = create_rtnode(cin_object, RT_CIN);
+		cin_rtnode->parent = rtnode;
+	}
+	#else 
+	if(rtnode->ty == RT_CNT) {
+		RTNode *head = db_get_cin_rtnode_list(rtnode);
 		RTNode *cin_rtnode = head;
 
 		if(cin_rtnode) {
@@ -174,6 +184,9 @@ RTNode *find_latest_oldest(RTNode* parent_rtnode, int flag) {
 		}
 		return NULL;
 	}
+	#endif
+
+	return cin_rtnode;
 }
 
 int net_to_bit(char *net) {
@@ -216,10 +229,13 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 			child->sibling_left = node;
 		}
 	}
+
+	#ifdef BERKELEY_DB
 	child->uri = malloc(strlen(parent->uri) + strlen(get_rn_rtnode(child)) + 2);
 	strcpy(child->uri, parent->uri);
 	strcat(child->uri, "/");
 	strcat(child->uri, get_rn_rtnode(child));
+	#endif
 
 	return 1;
 }
@@ -251,8 +267,11 @@ ResourceType http_parse_object_type() {
 char *get_local_time(int diff) {
 	time_t t = time(NULL) - diff;
 	struct tm tm = *localtime(&t);
+	struct timespec specific_time;
+    //int millsec;
+    clock_gettime(0, &specific_time);
 	
-	char year[5], mon[3], day[3], hour[3], minute[3], sec[3]; 
+	char year[5], mon[3], day[3], hour[3], minute[3], sec[3], millsec[7]; 
 	
 	sprintf(year,"%d", tm.tm_year+1900);
 	sprintf(mon,"%02d",tm.tm_mon+1);
@@ -260,8 +279,9 @@ char *get_local_time(int diff) {
 	sprintf(hour,"%02d",tm.tm_hour);
 	sprintf(minute,"%02d",tm.tm_min);
 	sprintf(sec,"%02d",tm.tm_sec);
+	sprintf(millsec, "%06d", (int) floor(specific_time.tv_nsec/1.0e6));
 	
-	char* local_time = (char*)malloc(16 * sizeof(char));
+	char* local_time = (char*)malloc(24 * sizeof(char));
 	
 	*local_time = '\0';
 	strcat(local_time,year);
@@ -271,6 +291,7 @@ char *get_local_time(int diff) {
 	strcat(local_time,hour);
 	strcat(local_time,minute);
 	strcat(local_time,sec);
+	strcat(local_time,millsec);
 	
 	return local_time;
 }
@@ -349,6 +370,7 @@ char *resource_identifier(ResourceType ty, char *ct) {
 }
 
 void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
+	logger("UTIL", LOG_LEVEL_DEBUG, "call delete_cin_under_cnt_mni_mbs");
 	CNT *cnt = (CNT *) rtnode->obj;
 	if(cnt->cni <= cnt->mni && cnt->cbs <= cnt->mbs) return;
 
@@ -357,8 +379,9 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 
 	while((cnt->mni >= 0 && cnt->cni > cnt->mni) || (cnt->mbs >= 0 && cnt->cbs > cnt->mbs)) {
 		if(head) {
+			logger("UT", LOG_LEVEL_DEBUG, "%d", head->ty);
 			right = head->sibling_right;
-			db_delete_onem2m_resource(get_ri_rtnode(head));
+			db_delete_onem2m_resource(head);
 			cnt->cbs -= ((CIN *)head->obj)->cs;
 			cnt->cni--;
 			free_rtnode(head);
@@ -487,61 +510,45 @@ void init_resource_tree(){
 	RTNode *rtnode_list = (RTNode *)calloc(1,sizeof(RTNode));
 	RTNode *tail = rtnode_list;
 	
-	if(access("./RESOURCE.db", 0) != -1) {
-		RTNode* ae_list = db_get_all_ae_rtnode();
-		tail->sibling_right = ae_list;
-		if(ae_list) ae_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
+	RTNode* ae_list = db_get_all_ae_rtnode();
+	tail->sibling_right = ae_list;
+	if(ae_list) ae_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 
-		RTNode* cnt_list = db_get_all_cnt_rtnode();
-		tail->sibling_right = cnt_list;
-		if(cnt_list) cnt_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "RESOURCE.db does not exist");
-	}
+	RTNode* cnt_list = db_get_all_cnt_rtnode();
+	tail->sibling_right = cnt_list;
+	if(cnt_list) cnt_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 	
-	if(access("./SUB.db", 0) != -1) {
-		RTNode* sub_list = db_get_all_sub_rtnode();
-		tail->sibling_right = sub_list;
-		if(sub_list) sub_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "SUB.db does not exist");
-	}
 
-	if(access("./ACP.db", 0) != -1) {
-		RTNode* acp_list = db_get_all_acp_rtnode();
-		tail->sibling_right = acp_list;
-		if(acp_list) acp_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "ACP.db does not exist");
-	}
+	RTNode* sub_list = db_get_all_sub_rtnode();
+	tail->sibling_right = sub_list;
+	if(sub_list) sub_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 
-	if(access("./GROUP.db", 0) != -1) {
-		RTNode* grp_list = db_get_all_grp_rtnode();
-		tail->sibling_right = grp_list;
-		if(grp_list) grp_list->sibling_left = tail;
-		while(tail->sibling_right) tail = tail->sibling_right;
-	} else {
-		logger("MAIN", LOG_LEVEL_DEBUG, "GROUP.db does not exist");
-	}
+
+	RTNode* acp_list = db_get_all_acp_rtnode();
+	tail->sibling_right = acp_list;
+	if(acp_list) acp_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
+
+	RTNode* grp_list = db_get_all_grp_rtnode();
+	tail->sibling_right = grp_list;
+	if(grp_list) grp_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 	
 	RTNode *temp = rtnode_list;
 	rtnode_list = rtnode_list->sibling_right;
 	if(rtnode_list) rtnode_list->sibling_left = NULL;
 	free_rtnode(temp);
-	
+	temp = NULL;
 	if(rtnode_list) restruct_resource_tree(rt->cb, rtnode_list);
 }
 
 RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 	RTNode *rtnode = list;
-	
 	while(rtnode) {
 		RTNode *right = rtnode->sibling_right;
-
 		if(!strcmp(get_ri_rtnode(parent_rtnode), get_pi_rtnode(rtnode))) {
 			RTNode *left = rtnode->sibling_left;
 			
@@ -593,12 +600,13 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		parent_rtnode = parent_rtnode->parent;
 	}
 
+
 	if(!o2pt->fr) {
 		if(!(o2pt->op == OP_CREATE && o2pt->ty == RT_AE)) {
 			deny = true;
 		}
 	} else if(!strcmp(o2pt->fr, "CAdmin")) {
-		return 0;
+		return false;
 	} else if((parent_rtnode && strcmp(o2pt->fr, get_ri_rtnode(parent_rtnode)))) {
 		deny = true;
 	}
@@ -609,6 +617,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		if(get_acpi_rtnode(rtnode) || rtnode->ty == RT_ACP) {
 			deny = true;
 			if((get_acop(o2pt, rtnode) & acop) == acop) {
+				logger("ACP", LOG_LEVEL_DEBUG, "getacop : %d, acop : %d", get_acop(o2pt, rtnode), acop);
 				deny = false;
 			}
 		}
@@ -619,7 +628,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 		return -1;
 	}
 
-	return 0;
+	return false;
 }
 
 int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
@@ -707,9 +716,10 @@ int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 			acop = strtok(NULL, ",");
 		}
 	}
-
-	if(acop) ret_acop = (ret_acop | atoi(acop));
-
+	logger("ACP", LOG_LEVEL_DEBUG, "acor :%s, origin : %s", acor, origin);
+	//if(acop) logger("ACP", LOG_LEVEL_DEBUG, "acop : %s", acop);
+	if(acor && acop) ret_acop = (ret_acop | atoi(acop));
+	logger("ACP", LOG_LEVEL_DEBUG, "retacop : %d", ret_acop);
 	return ret_acop;
 }
 
@@ -903,7 +913,6 @@ int validate_grp(GRP *grp){
 		isLocalResource = true;
 		if(strlen(mid) >= 2 && mid[0] == '/' && mid[1] != '/'){
 			tStr = strdup(mid);
-			logger("util-t", LOG_LEVEL_DEBUG, "%s",tStr);
 			strtok(tStr, "/");
 			p = strtok(NULL, "/");
 			if( strcmp(p, CSE_BASE_NAME) != 0){
@@ -943,7 +952,6 @@ int validate_grp(GRP *grp){
 			free(tStr);
 			tStr = NULL;
 		}else{
-			logger("util-t", LOG_LEVEL_DEBUG, "~!!!!");
 			return RSC_NOT_IMPLEMENTED;
 		}
 
@@ -987,7 +995,7 @@ void remove_mid(char **mid, int idx, int cnm){
 	for(int i = idx ; i < cnm-1; i++){
 		mid[i] = mid[i+1];
 	}
-	if(mid[cnm-1]) free(mid[cnm-1]);
+	//if(mid[cnm-1]) free(mid[cnm-1]);
 	mid[cnm-1] = NULL;
 	if(idx != cnm-1) free(del);
 	del = NULL;
@@ -1239,6 +1247,25 @@ int get_cs_rtnode(RTNode *rtnode){
 	return ((CIN *) rtnode->obj)->cs;
 }
 
+char *get_uri_rtnode(RTNode *rtnode){
+	switch(rtnode->ty){
+		case RT_CSE:
+			return ((CSE *) rtnode->obj)->uri;
+		case RT_AE:
+			return ((AE *) rtnode->obj)->uri;
+		case RT_CNT:
+			return ((CNT *) rtnode->obj)->uri;
+		case RT_CIN:
+			return ((CIN *) rtnode->obj)->uri;
+		case RT_ACP:
+			return ((ACP *) rtnode->obj)->uri;
+		case RT_SUB:
+			return ((SUB *) rtnode->obj)->uri;
+		case RT_GRP:
+			return ((GRP *) rtnode->obj)->uri;
+	}
+}
+
 int get_number_from_cjson(cJSON *json){
 	if(!json) return 0;
 
@@ -1320,66 +1347,16 @@ int is_in_uril(cJSON *uril, char* new){
 	return result;
 }
 
-cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
-	
-	RTNode *prt = rtnode;
-	RTNode *trt = NULL;
-	RTNode *cinrtHead = NULL;
-	cJSON *uril = cJSON_CreateArray();
-	cJSON *curil = NULL;
-	cJSON *pjson = NULL;
-	char buf[512] = {0};
-	int curilSize = 0;
 
-	while(prt){
-		if(prt->ty == RT_CIN){
-			if(prt->sibling_right){
-				prt->sibling_right->parent = prt->parent;
-			}
-		}
-		// If resource is cnt, Construct RTNode of child cin and attach it
-		if(prt->ty == RT_CNT){
-			cinrtHead = trt = db_get_cin_rtnode_list(prt);
-			prt->child = cinrtHead;
-		}
-		//logger("util", LOG_LEVEL_DEBUG, "examining %s", get_rn_rtnode(prt));
-		// Check if resource satisfies filter
-		if(isResourceAptFC(prt, fc)){
-			if(fc->arp){
-				sprintf(buf, "%s/%s", get_rn_rtnode(prt), fc->arp);
-				trt = find_rtnode_by_uri(prt, buf);
-				if(trt) cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
-				buf[0] = '\0';
-			}else{
-				cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
-			}
-			
-		}
-
-		// Check child resources if available
-		if(fc->lvl - lvl > 0 && prt->child ){
-			curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
-
-			curilSize = cJSON_GetArraySize(curil);
-			for(int i = 0 ; i < curilSize ; i++){
-				pjson = cJSON_GetArrayItem(curil, i);
-				cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
-			}
-			cJSON_Delete(curil);
-			curil = NULL;
-			
-		}
-
-		// Remove attatched rtnode of CIN when available
-		if(cinrtHead){
-			free_rtnode_list(cinrtHead);
-			prt->child = NULL;
-		}
-		cinrtHead = NULL;
-		prt = prt->sibling_right;
+void filterOptionStr(FilterOperation fo , char *sql){
+	switch(fo){
+		case FO_AND:
+			strcat(sql, " AND ");
+			break;
+		case FO_OR:
+			strcat(sql, " OR ");
+			break;
 	}
-
-	return uril;
 }
 
 bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi) {
@@ -1438,6 +1415,9 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 	char *p = NULL;
 	char port[10] = {'\0'};
 	NotiTarget *nt = NULL;
+
+	logger("NOTI", LOG_LEVEL_DEBUG, "%d, %s", sub->net_bit, sub->net);
+
 	if(sub->net_bit <= 0) {
 		sub->net_bit = net_to_bit(sub->net);
 	}
@@ -1477,7 +1457,7 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 		}
 		if(noti_uri + uri_len > p) {
 			strcpy(nt->target, p);
-			logger("t", LOG_LEVEL_DEBUG, "%s", nt->target);
+			logger("UTIL", LOG_LEVEL_DEBUG, "%s", nt->target);
 			p = strchr(nt->target, '?');
 			memset(p, 0, strlen(p));
 			// if(*p == '?') {
@@ -1502,7 +1482,71 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 				break;
 		}
 		noti_uri = strtok(NULL, ",");
+		free(nt);
+		nt = NULL;
 	}
 
 	free(noti_json);
 }
+
+#ifndef SQLITE_DB
+cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
+	
+	RTNode *prt = rtnode;
+	RTNode *trt = NULL;
+	RTNode *cinrtHead = NULL;
+	cJSON *uril = cJSON_CreateArray();
+	cJSON *curil = NULL;
+	cJSON *pjson = NULL;
+	char buf[512] = {0};
+	int curilSize = 0;
+	while(prt){
+		if(prt->ty == RT_CIN){
+			if(prt->sibling_right){
+				prt->sibling_right->parent = prt->parent;
+			}
+		}
+		// If resource is cnt, Construct RTNode of child cin and attach it
+		if(prt->ty == RT_CNT){
+			cinrtHead = trt = db_get_cin_rtnode_list(prt);
+			prt->child = cinrtHead;
+		}
+		// Check if resource satisfies filter
+		if(isResourceAptFC(prt, fc)){
+			if(fc->arp){
+				sprintf(buf, "%s/%s", get_rn_rtnode(prt), fc->arp);
+				trt = find_rtnode_by_uri(prt, buf);
+				if(trt) cJSON_AddItemToArray(uril, cJSON_CreateString(trt->uri));
+				buf[0] = '\0';
+			}else{
+				cJSON_AddItemToArray(uril, cJSON_CreateString(prt->uri));
+			}
+			
+		}
+
+		// Check child resources if available
+		if(fc->lvl - lvl > 0 && prt->child ){
+			curil = fc_scan_resource_tree(prt->child, fc, lvl+1);
+
+			curilSize = cJSON_GetArraySize(curil);
+			for(int i = 0 ; i < curilSize ; i++){
+				pjson = cJSON_GetArrayItem(curil, i);
+				cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->valuestring));
+			}
+			cJSON_Delete(curil);
+			curil = NULL;
+			
+		}
+
+		// Remove attatched rtnode of CIN when available
+		if(cinrtHead){
+			free_rtnode_list(cinrtHead);
+			prt->child = NULL;
+		}
+		cinrtHead = NULL;
+		prt = prt->sibling_right;
+	}
+
+	return uril;
+}
+#endif
