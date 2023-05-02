@@ -260,8 +260,64 @@ CIN* cjson_to_cin(cJSON *cjson) {
 	if(pjson = cJSON_GetObjectItem(root, "uri")){
 		cin->uri = strdup(pjson->valuestring);
 	}
+	cin->ty = RT_CIN;
 
 	return cin;
+}
+
+SUB *cjson_to_sub_db(cJSON *cjson){
+	cJSON *root = NULL;
+	cJSON *pjson = NULL;
+
+	root = cJSON_GetObjectItem(cjson, "m2m:sub");
+	if(!root) return NULL;
+
+	SUB *sub = (SUB *) calloc(1, sizeof(SUB));
+
+	pjson = cJSON_GetObjectItem(root, "nu");
+	if(pjson){
+		sub->nu = strdup(pjson->valuestring);
+	}
+	pjson = cJSON_GetObjectItem(root, "net");
+	if(pjson){
+		sub->net = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "nct");
+	if(pjson){
+		sub->nct = pjson->valueint;
+	}
+	pjson = cJSON_GetObjectItem(root, "pi");
+	if(pjson){
+		sub->pi = strdup(pjson->valuestring);
+	}
+	pjson = cJSON_GetObjectItem(root, "ri");
+	if(pjson){
+		sub->ri = strdup(pjson->valuestring);
+	}
+	pjson = cJSON_GetObjectItem(root, "ct");
+	if(pjson){
+		sub->ct = strdup(pjson->valuestring);
+	}
+	pjson = cJSON_GetObjectItem(root, "et");
+	if(pjson){
+		sub->et= strdup(pjson->valuestring);
+	}
+	pjson = cJSON_GetObjectItem(root, "lt");
+	if(pjson){
+		sub->lt = strdup(pjson->valuestring);
+	}
+	pjson = cJSON_GetObjectItem(root, "uri");
+	if(pjson){
+		sub->uri = strdup(pjson->valuestring);
+	}
+	pjson = cJSON_GetObjectItem(root, "sur");
+	if(pjson){
+		sub->sur = strdup(pjson->valuestring);
+	}
+
+	return sub;
+
 }
 
 SUB* cjson_to_sub(cJSON *cjson) {
@@ -347,6 +403,11 @@ SUB* cjson_to_sub(cJSON *cjson) {
 	if(pjson){
 		sub->uri = strdup(pjson->valuestring);
 	}
+	pjson = cJSON_GetObjectItem(root, "sur");
+	if(pjson){
+		sub->sur = strdup(pjson->valuestring);
+	}
+
 	sub->ty = RT_SUB;
 
 	return sub;

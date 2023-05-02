@@ -37,7 +37,7 @@ DB* DB_CREATE_(DB *dbp){
 int DB_OPEN(DB* dbp, char* DATABASE){
     int ret;
 
-    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
+    ret = dbp->open(dbp, NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0644);
     if (ret) {
         dbp->err(dbp, ret, "%s", DATABASE);
         fprintf(stderr, "DB Open ERROR\n");
@@ -197,12 +197,9 @@ int init_dbp(){
     DB_OPEN(grpDBp, "GROUP.db");
     DB_OPEN(acpDBp, "ACP.db");
 
-    return 1;
     #endif
     return 1;
 }
-
-
 
 
 int close_dbp(){
@@ -215,7 +212,6 @@ int close_dbp(){
     subDBp->close(subDBp, 0);
     grpDBp->close(grpDBp, 0);
     acpDBp->close(acpDBp, 0);
-    return 1;
     #endif
     return 1;
 }
@@ -313,12 +309,14 @@ int db_store_ae(AE *ae_object){
     #ifdef SQLITE_DB
     char *err_msg = NULL;
     int rc = 0;
-    char attrs[128]={0}, vals[512]={0};
-    char buf[128] = {0};
-    char sql[1024] = {0};
+    //char sql[1024] = {0};
+    char *sql;
+    sqlite3_stmt *res;
 
         // db handle
     char rr[6] ="";
+
+    sql = "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, acpi, lbl, ty) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     // if input == NULL
     if (ae_object->ri == NULL) {
@@ -329,95 +327,49 @@ int db_store_ae(AE *ae_object){
     if(ae_object->rr == false) strcpy(rr, "false");
     else strcpy(rr, "true");
 
-  
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", ae_object->ri);
-    strcat(vals, buf);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
-    strcat(attrs, "uri,");
-    sprintf(buf, "'%s',", ae_object->uri);
-    strcat(vals, buf);
-
-    if(ae_object->rn){
-        strcat(attrs, "rn,");
-        sprintf(buf, "'%s',", ae_object->rn);
-        strcat(vals, buf);
-    }
-    if(ae_object->pi){
-        strcat(attrs, "pi,");
-        sprintf(buf, "'%s',", ae_object->pi);
-        strcat(vals, buf);
-    }
-    if(ae_object->ct){
-        strcat(attrs, "ct,");
-        sprintf(buf, "'%s',", ae_object->ct);
-        strcat(vals, buf);
-    }
-    if(ae_object->lt){
-        strcat(attrs, "lt,");
-        sprintf(buf, "'%s',", ae_object->lt);
-        strcat(vals, buf);
-    }
-    if(ae_object->et){
-        strcat(attrs, "et,");
-        sprintf(buf, "'%s',", ae_object->et);
-        strcat(vals, buf);
-    }
-    if(ae_object->lbl){
-        strcat(attrs, "lbl,");
-        sprintf(buf, "',%s,',", ae_object->lbl);
-        strcat(vals, buf);
-    }
-    if(ae_object->acpi){
-        strcat(attrs, "acpi,");
-        sprintf(buf, "'%s',", ae_object->acpi);
-        strcat(vals, buf);
-    }
-    strcat(attrs, "ty");
-    sprintf(buf, "%d", ae_object->ty);
-    strcat(vals, buf);
-
-
-    sprintf(sql, "INSERT INTO general (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
         return 0;
     }
 
-    attrs[0] = '\0';
-    vals[0] = '\0';
+    db_test_and_set_bind_text(res, 1, ae_object->rn);
+    sqlite3_bind_text(res, 2, ae_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 3, ae_object->pi);
+    db_test_and_set_bind_text(res, 4, ae_object->ct);
+    db_test_and_set_bind_text(res, 5, ae_object->et);
+    db_test_and_set_bind_text(res, 6, ae_object->lt);
+    db_test_and_set_bind_text(res, 7, ae_object->uri);
+    db_test_and_set_bind_text(res, 8, ae_object->acpi);
+    db_test_and_set_bind_text(res, 9, ae_object->lbl);
+    db_test_and_set_bind_int(res, 10, RT_AE);
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", ae_object->ri);
-    strcat(vals, buf);
-
-    if(ae_object->api){
-        strcat(attrs, "api,");
-        sprintf(buf, "'%s',", ae_object->api);
-        strcat(vals, buf);
-    }
-    if(ae_object->aei){
-        strcat(attrs, "aei,");
-        sprintf(buf, "'%s',", ae_object->aei);
-        strcat(vals, buf);
-    }
-    if(ae_object->srv){
-        strcat(attrs, "srv,");
-        sprintf(buf, "'%s',", ae_object->srv);
-        strcat(vals, buf);
-    }
-    
-    strcat(attrs, "rr");
-    sprintf(buf, "'%s'", rr);
-    strcat(vals, buf);
-
-    sprintf(sql, "INSERT INTO ae (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
         return 0;
     }
+    sqlite3_finalize(res);
+
+
+    sql = "INSERT INTO ae (ri, api, aei, rr, srv) VALUES(?, ?, ?, ?, ?);";
+    sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    sqlite3_bind_text(res, 1, ae_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 2, ae_object->api);
+    db_test_and_set_bind_text(res, 3, ae_object->aei);
+    db_test_and_set_bind_text(res, 4, rr);
+    db_test_and_set_bind_text(res, 5, ae_object->srv);
+
+
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg2 : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(res);
 
     #else
     char* blankspace = " ";
@@ -501,7 +453,8 @@ int db_store_cnt(CNT *cnt_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_cnt");
 
     #ifdef SQLITE_DB
-    char sql[1024] = {0}, *err_msg = NULL;
+    sqlite3_stmt *res;
+    char *sql, *err_msg = NULL;
     int rc = 0;
     char attrs[128]={0}, vals[512]={0}, buf[256]={0};
 
@@ -510,102 +463,57 @@ int db_store_cnt(CNT *cnt_object){
         return -1;
     }
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", cnt_object->ri);
-    strcat(vals, buf);
+    sql = "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, acpi, lbl, ty) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    strcat(attrs, "uri,");
-    sprintf(buf, "'%s',", cnt_object->uri);
-    strcat(vals, buf);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
-    if(cnt_object->rn){
-        strcat(attrs, "rn,");
-        sprintf(buf, "'%s',", cnt_object->rn);
-        strcat(vals, buf);
-    }
-    
-    if(cnt_object->lbl){
-        strcat(attrs, "lbl,");
-        sprintf(buf, "',%s,',", cnt_object->lbl);
-        strcat(vals, buf);
-    }
-    if(cnt_object->pi){
-        strcat(attrs, "pi,");
-        sprintf(buf, "'%s',", cnt_object->pi);
-        strcat(vals, buf);
-    }
-    if(cnt_object->ct){
-        strcat(attrs, "ct,");
-        sprintf(buf, "'%s',", cnt_object->ct);
-        strcat(vals, buf);
-    }
-    if(cnt_object->lt){
-        strcat(attrs, "lt,");
-        sprintf(buf, "'%s',", cnt_object->lt);
-        strcat(vals, buf);
-    }
-    if(cnt_object->et){
-        strcat(attrs, "et,");
-        sprintf(buf, "'%s',", cnt_object->et);
-        strcat(vals, buf);
-    }
-    if(cnt_object->acpi){
-        strcat(attrs, "acpi,");
-        sprintf(buf, "'%s',", cnt_object->acpi);
-        strcat(vals, buf);
-    }
-    strcat(attrs, "ty");
-    sprintf(buf, "%d", RT_CNT);
-    strcat(vals, buf);
-
-    sprintf(sql, "INSERT INTO general (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %d", sql, err_msg);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
         return 0;
     }
 
-    attrs[0] = '\0';
-    vals[0] = '\0';
+    db_test_and_set_bind_text(res, 1, cnt_object->rn);
+    sqlite3_bind_text(res, 2, cnt_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 3, cnt_object->pi);
+    db_test_and_set_bind_text(res, 4, cnt_object->ct);
+    db_test_and_set_bind_text(res, 5, cnt_object->et);
+    db_test_and_set_bind_text(res, 6, cnt_object->lt);
+    db_test_and_set_bind_text(res, 7, cnt_object->uri);
+    db_test_and_set_bind_text(res, 8, cnt_object->acpi);
+    db_test_and_set_bind_text(res, 9, cnt_object->lbl);
+    db_test_and_set_bind_int(res, 10, RT_CNT);
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", cnt_object->ri);
-    strcat(vals, buf);
-    
-    if(cnt_object->mni >= 0){
-        strcat(attrs, "mni,");
-        sprintf(buf, "%d,", cnt_object->mni);
-        strcat(vals, buf);
-    }
-    if(cnt_object->mbs >= 0){
-        strcat(attrs, "mbs,");
-        sprintf(buf, "%d,", cnt_object->mbs);
-        strcat(vals, buf);
-    }
-    if(cnt_object->cni >= 0){
-        strcat(attrs, "cni,");
-        sprintf(buf, "%d,", cnt_object->cni);
-        strcat(vals, buf);
-    }
-    if(cnt_object->cbs >= 0){
-        strcat(attrs, "cbs,");
-        sprintf(buf, "%d,", cnt_object->cbs);
-        strcat(vals, buf);
-    }
-    if(cnt_object->st >= 0){
-        strcat(attrs, "st,");
-        sprintf(buf, "%d,", cnt_object->st);
-        strcat(vals, buf);
-    }
-    attrs[strlen(attrs)-1] = '\0';
-    vals[strlen(vals)-1] = '\0';
-    
-    sprintf(sql, "INSERT INTO cnt (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
         return 0;
     }
+    sqlite3_finalize(res);
+
+    sql = "INSERT INTO cnt (ri, mni, mbs, cni, cbs, st) VALUES(?, ?, ?, ?, ?, ?);";
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+
+    sqlite3_bind_text(res, 1, cnt_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_int(res, 2, cnt_object->mni);
+    db_test_and_set_bind_int(res, 3, cnt_object->mbs);
+    db_test_and_set_bind_int(res, 4, cnt_object->cni);
+    db_test_and_set_bind_int(res, 5, cnt_object->cbs);
+    db_test_and_set_bind_int(res, 6, cnt_object->st);
+    
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(res);
+
+
     #else
     char* blankspace = " ";
 
@@ -654,6 +562,8 @@ int db_store_cnt(CNT *cnt_object){
     if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
         resourceDBp->err(resourceDBp, ret, "db->cursor");
 
+    logger("DB", LOG_LEVEL_DEBUG, "%d", ret);
+
     /* DB close */
     dbcp->close(dbcp);
     //dbp->close(dbp, 0); 
@@ -675,9 +585,8 @@ int db_store_cin(CIN *cin_object) {
     
     #ifdef SQLITE_DB
     char *sql = NULL, *err_msg = NULL;
-    char attrs[256] = {0}, vals[1024] = {0};
-    char buf[256] = {0};
     int rc = 0;
+    sqlite3_stmt *res;
     
     // if input == NULL
     if (cin_object->ri == NULL) {
@@ -686,78 +595,51 @@ int db_store_cin(CIN *cin_object) {
     }
 
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", cin_object->ri);
-    strcat(vals, buf);
+    sql = "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES(?, ?, ?, ?, ?, ?, ?, ?);";
 
-    strcat(attrs, "uri,");
-    sprintf(buf, "'%s',", cin_object->uri);
-    strcat(vals, buf);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
-    if(cin_object->rn){
-        strcat(attrs, "rn,");
-        sprintf(buf, "'%s',", cin_object->rn);
-        strcat(vals, buf);
-    }
-    if(cin_object->pi){
-        strcat(attrs, "pi,");
-        sprintf(buf, "'%s',", cin_object->pi);
-        strcat(vals, buf);
-    }
-    if(cin_object->ct){
-        strcat(attrs, "ct,");
-        sprintf(buf, "'%s',", cin_object->ct);
-        strcat(vals, buf);
-    }
-    if(cin_object->lt){
-        strcat(attrs, "lt,");
-        sprintf(buf, "'%s',", cin_object->lt);
-        strcat(vals, buf);
-    }
-    if(cin_object->et){
-        strcat(attrs, "et,");
-        sprintf(buf, "'%s',", cin_object->et);
-        strcat(vals, buf);
-    }
-    strcat(attrs, "ty");
-    sprintf(buf, "%d", cin_object->ty);
-    strcat(vals, buf);
-
-    
-    sql = malloc(sizeof(char) * 1024);
-
-    sprintf(sql, "INSERT INTO general (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
         return 0;
     }
-    attrs[0] = '\0';
-    vals[0] = '\0';
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", cin_object->ri);
-    strcat(vals, buf);
+    db_test_and_set_bind_text(res, 1, cin_object->rn);
+    sqlite3_bind_text(res, 2, cin_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 3, cin_object->pi);
+    db_test_and_set_bind_text(res, 4, cin_object->ct);
+    db_test_and_set_bind_text(res, 5, cin_object->et);
+    db_test_and_set_bind_text(res, 6, cin_object->lt);
+    db_test_and_set_bind_text(res, 7, cin_object->uri);
+    db_test_and_set_bind_int(res, 8, RT_CIN);
 
-    strcat(attrs, "cs,");
-    sprintf(buf, "%d,", cin_object->cs);
-    strcat(vals, buf);
-
-    if(cin_object->con){
-        strcat(attrs, "con,");
-        sprintf(buf, "'%s',", cin_object->con);
-        strcat(vals, buf);
-    }
-
-    attrs[strlen(attrs)-1] = '\0';
-    vals[strlen(vals) - 1] = '\0';
-
-    sprintf(sql, "INSERT INTO cin (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg); 
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
         return 0;
     }
+    sqlite3_finalize(res);
+
+    sql = "INSERT INTO cin (ri, cs, con) VALUES(?, ?, ?);";
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+
+    sqlite3_bind_text(res, 1, cin_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_int(res, 2, cin_object->cs);
+    db_test_and_set_bind_text(res, 3, cin_object->con);
+
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(res);
+
     #else
         // db handle
     DBC* dbcp;
@@ -820,125 +702,78 @@ int db_store_grp(GRP *grp_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_grp");
 
     #ifdef SQLITE_DB
-    char sql[1024] = {0}, *err_msg = NULL;
-    char attrs[128] = {0}, vals[512] = {0};
-    char buf[256] = {0};
+    char *sql, *err_msg = NULL;
     int rc = 0;
+    sqlite3_stmt *res = NULL;
 
     if(grp_object->ri == NULL){
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", grp_object->ri);
-    strcat(vals, buf);
+    sql = "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, acpi, ty) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    strcat(attrs, "uri,");
-    sprintf(buf, "'%s',", grp_object->uri);
-    strcat(vals, buf);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
-    if(grp_object->rn){
-        strcat(attrs, "rn,");
-        sprintf(buf, "'%s',", grp_object->rn);
-        strcat(vals, buf);
-    }
-    if(grp_object->pi){
-        strcat(attrs, "pi,");
-        sprintf(buf, "'%s',", grp_object->pi);
-        strcat(vals, buf);
-    }
-    if(grp_object->ct){
-        strcat(attrs, "ct,");
-        sprintf(buf, "'%s',", grp_object->ct);
-        strcat(vals, buf);
-    }
-    if(grp_object->lt){
-        strcat(attrs, "lt,");
-        sprintf(buf, "'%s',", grp_object->lt);
-        strcat(vals, buf);
-    }
-    if(grp_object->et){
-        strcat(attrs, "et,");
-        sprintf(buf, "'%s',", grp_object->et);
-        strcat(vals, buf);
-    }
-    strcat(attrs, "ty");
-    sprintf(buf, "%d", RT_GRP);
-    strcat(vals, buf);
-
-
-    sprintf(sql, "INSERT INTO general (%s) VALUES(%s);",attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
         return 0;
     }
 
-    attrs[0] = '\0';
-    vals[0] = '\0';
+    db_test_and_set_bind_text(res, 1, grp_object->rn);
+    sqlite3_bind_text(res, 2, grp_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 3, grp_object->pi);
+    db_test_and_set_bind_text(res, 4, grp_object->ct);
+    db_test_and_set_bind_text(res, 5, grp_object->et);
+    db_test_and_set_bind_text(res, 6, grp_object->lt);
+    db_test_and_set_bind_text(res, 7, grp_object->uri);
+    db_test_and_set_bind_text(res, 8, grp_object->acpi);
+    db_test_and_set_bind_int(res, 9, RT_GRP);
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", grp_object->ri);
-    strcat(vals, buf);
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_finalize(res);
 
-    if(grp_object->mt >= 0){
-        strcat(attrs, "mt,");
-        sprintf(buf, "%d,", grp_object->mt);
-        strcat(vals, buf);
-    }
-    if(grp_object->cnm >= 0){
-        strcat(attrs, "cnm,");
-        sprintf(buf, "%d,", grp_object->cnm);
-        strcat(vals, buf);
-    }
-    if(grp_object->mnm >= 0){
-        strcat(attrs, "mnm,");
-        sprintf(buf, "%d,", grp_object->mnm);
-        strcat(vals, buf);
-    }
-    if(grp_object->mtv >= 0){
-        strcat(attrs, "mtv,");
-        sprintf(buf, "%d,", grp_object->mtv);
-        strcat(vals, buf);
-    }
-    if(grp_object->csy){
-        strcat(attrs, "csy,");
-        sprintf(buf, "%d,", grp_object->csy);
-        strcat(vals, buf);
-    }
+    sql = "INSERT INTO grp(ri, mt, cnm, mnm, mtv, csy, mid) VALUES(?,?,?,?,?,?,?);";
 
-    strcat(attrs, "mid,");
-    // change mid to str
-    char strbuf[128] = {0};
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_bind_text(res, 1, grp_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_int(res, 2, grp_object->mt);
+    db_test_and_set_bind_int(res, 3, grp_object->cnm);
+    db_test_and_set_bind_int(res, 4, grp_object->mnm);
+    db_test_and_set_bind_int(res, 5, grp_object->mtv);
+    db_test_and_set_bind_int(res, 6, grp_object->csy);
+
+    //change mid to str
+    char strbuf[256] = {0};
     if(grp_object->mid && grp_object->cnm > 0) {
-        sprintf(strbuf, "'%s", grp_object->mid[0]);
-        strcat(vals, strbuf);
-        for(int i = 1 ; i < grp_object->cnm; i++){
+        for(int i = 0 ; i < grp_object->cnm; i++){
             if(grp_object->mid[i]){
-                sprintf(strbuf, ",%s", grp_object->mid[i]);
-                strcat(vals, strbuf);
+                strcat(strbuf, grp_object->mid[i]);
+                strcat(strbuf, ",");
             }else
                 break;
         }
-        strcat(vals, "',");
+        sqlite3_bind_text(res, 7, strbuf, -1, NULL);
     }else{
-        strcat(vals, "'',");
+        sqlite3_bind_null(res, 7);
     }
 
-    attrs[strlen(attrs) - 1] = '\0';
-    vals[strlen(vals) - 1] = '\0';
-    
-
-    sprintf(sql, "INSERT INTO grp (%s) VALUES(%s);", attrs, vals);
-    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
         return 0;
     }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(res);
     #else
     char *bs = " ";
 
@@ -1011,10 +846,9 @@ int db_store_grp(GRP *grp_object){
 int db_store_sub(SUB *sub_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_sub");
     #ifdef SQLITE_DB
-    char sql[1024], *err_msg = NULL;
-    char attrs[256] = {0}, vals[256] = {0};
-    char buf[256];
+    char *sql, *err_msg = NULL;
     int rc = 0;
+    sqlite3_stmt *res;
     
     // if input == NULL
     if (sub_object->ri == NULL) {
@@ -1022,89 +856,52 @@ int db_store_sub(SUB *sub_object) {
         return -1;
     }
 
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", sub_object->ri);
-    strcat(vals, buf);
+    sql = "INSERT INTO general (rn, ri, pi, ct, et, lt, uri, ty) VALUES(?, ?, ?, ?, ?, ?, ?, ?);";
 
-    strcat(attrs, "uri,");
-    sprintf(buf, "'%s',", sub_object->uri);
-    strcat(vals, buf);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
-    if(sub_object->rn){
-        strcat(attrs, "rn,");
-        sprintf(buf, "'%s',", sub_object->rn);
-        strcat(vals, buf);
-    }
-    if(sub_object->pi){
-        strcat(attrs, "pi,");
-        sprintf(buf, "'%s',", sub_object->pi);
-        strcat(vals, buf);
-    }
-    if(sub_object->ct){
-        strcat(attrs, "ct,");
-        sprintf(buf, "'%s',", sub_object->ct);
-        strcat(vals, buf);
-    }
-    if(sub_object->lt){
-        strcat(attrs, "lt,");
-        sprintf(buf, "'%s',", sub_object->lt);
-        strcat(vals, buf);
-    }
-    if(sub_object->et){
-        strcat(attrs, "et,");
-        sprintf(buf, "'%s',", sub_object->et);
-        strcat(vals, buf);
-    }
-    strcat(attrs, "ty");
-    sprintf(buf, "%d", RT_GRP);
-    strcat(vals, buf);
-
-
-    sprintf(sql, "INSERT INTO general (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
         return 0;
     }
 
-    memset(attrs, 0, sizeof(attrs));
-    memset(vals, 0, sizeof(vals));
+    db_test_and_set_bind_text(res, 1, sub_object->rn);
+    sqlite3_bind_text(res, 2, sub_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 3, sub_object->pi);
+    db_test_and_set_bind_text(res, 4, sub_object->ct);
+    db_test_and_set_bind_text(res, 5, sub_object->et);
+    db_test_and_set_bind_text(res, 6, sub_object->lt);
+    db_test_and_set_bind_text(res, 7, sub_object->uri);
+    db_test_and_set_bind_int(res, 8, RT_SUB);
 
-    if(sub_object->nu){
-        strcat(attrs, "nu,");
-        sprintf(buf, "'%s',", sub_object->nu);
-        strcat(vals, buf);
-    }
-
-    if(sub_object->nct >= 0){
-        strcat(attrs, "nct,");
-        sprintf(buf, "%d,", sub_object->nct);
-        strcat(vals, buf);
-    }
-    if(sub_object->net){
-        strcat(attrs, "net,");
-        sprintf(buf, "'%s',", sub_object->net);
-        strcat(vals, buf);
-    }
-    if(sub_object->sur){
-        strcat(attrs, "sur,");
-        sprintf(buf, "'%s',", sub_object->sur);
-        strcat(vals, buf);
-    }
-
-    strcat(attrs, "ri");
-    sprintf(buf, "'%s'", sub_object->ri);
-    strcat(vals, buf);
-
-
-    sprintf(sql, "INSERT INTO sub (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
         return 0;
     }
+    sqlite3_finalize(res);
+
+
+    sql = "INSERT INTO sub (ri, nu, nct, net, sur) VALUES(?, ?, ?, ?, ?);";
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_bind_text(res, 1, sub_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 2, sub_object->nu);
+    db_test_and_set_bind_int(res, 3, sub_object->nct);
+    db_test_and_set_bind_text(res, 4, sub_object->net);
+    db_test_and_set_bind_text(res, 5, sub_object->sur);
+    
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(res);
 
     #else
     char* blankspace = " ";
@@ -1173,97 +970,67 @@ int db_store_acp(ACP *acp_object) {
     logger("DB", LOG_LEVEL_DEBUG, "Call db_store_acp");
 
     #ifdef SQLITE_DB
-    char sql[1024], *err_msg = NULL;
+    char *sql, *err_msg = NULL;
     char attrs[256] = {0}, vals[256] = {0};
     char buf[256];
     int rc = 0;
+    sqlite3_stmt *res;
 
     // if input == NULL
     if (acp_object->ri == NULL) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
+
+    sql = "INSERT INTO general (rn, ri, pi, ct, et, lt, lbl, uri, ty) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+
+    db_test_and_set_bind_text(res, 1, acp_object->rn);
+    sqlite3_bind_text(res, 2, acp_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 3, acp_object->pi);
+    db_test_and_set_bind_text(res, 4, acp_object->ct);
+    db_test_and_set_bind_text(res, 5, acp_object->et);
+    db_test_and_set_bind_text(res, 6, acp_object->lt);
+    db_test_and_set_bind_text(res, 7, acp_object->lbl);
+    db_test_and_set_bind_text(res, 8, acp_object->uri);
+    db_test_and_set_bind_int(res, 9, RT_ACP);
+
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    sqlite3_finalize(res);
     
-    strcat(attrs, "ri,");
-    sprintf(buf, "'%s',", acp_object->ri);
-    strcat(vals, buf);
 
-    strcat(attrs, "uri,");
-    sprintf(buf, "'%s',", acp_object->uri);
-    strcat(vals, buf);
-
-    if(acp_object->rn){
-        strcat(attrs, "rn,");
-        sprintf(buf, "'%s',", acp_object->rn);
-        strcat(vals, buf);
-    }
-    if(acp_object->pi){
-        strcat(attrs, "pi,");
-        sprintf(buf, "'%s',", acp_object->pi);
-        strcat(vals, buf);
-    }
-    if(acp_object->ct){
-        strcat(attrs, "ct,");
-        sprintf(buf, "'%s',", acp_object->ct);
-        strcat(vals, buf);
-    }
-    if(acp_object->lt){
-        strcat(attrs, "lt,");
-        sprintf(buf, "'%s',", acp_object->lt);
-        strcat(vals, buf);
-    }
-    if(acp_object->et){
-        strcat(attrs, "et,");
-        sprintf(buf, "'%s',", acp_object->et);
-        strcat(vals, buf);
-    }
-    strcat(attrs, "ty");
-    sprintf(buf, "%d", RT_ACP);
-    strcat(vals, buf);
-
-   sprintf(sql, "INSERT INTO general (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+    sql = "INSERT INTO acp (ri, pvacop, pvacor, pvsacop, pvsacor) VALUES(?, ?, ?, ?, ?);";
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
         return 0;
     }
 
-    memset(attrs, 0, sizeof(attrs));
-    memset(vals, 0, sizeof(vals));
+    sqlite3_bind_text(res, 1, acp_object->ri, -1, SQLITE_STATIC);
+    db_test_and_set_bind_text(res, 2, acp_object->pv_acop);
+    db_test_and_set_bind_text(res, 3, acp_object->pv_acor);
+    db_test_and_set_bind_text(res, 4, acp_object->pvs_acop);
+    db_test_and_set_bind_text(res, 5, acp_object->pvs_acor);
 
-    if(acp_object->pv_acop){
-        strcat(attrs, "pvacop,");
-        sprintf(buf, "'%s',", acp_object->pv_acop);
-        strcat(vals, buf);
-    }
-    if(acp_object->pv_acor){
-        strcat(attrs, "pvacor,");
-        sprintf(buf, "'%s',", acp_object->pv_acor);
-        strcat(vals, buf);
-    }
-    if(acp_object->pvs_acop){
-        strcat(attrs, "pvsacop,");
-        sprintf(buf, "'%s',", acp_object->pvs_acop);
-        strcat(vals, buf);
-    }
-    if(acp_object->pvs_acor){
-        strcat(attrs, "pvsacor,");
-        sprintf(buf, "'%s',", acp_object->pvs_acop);
-        strcat(vals, buf);
-    }
-
-    strcat(attrs, "ri");
-    sprintf(buf, "'%s'", acp_object->ri);
-    strcat(vals, buf);
-
-    sprintf(sql, "INSERT INTO acp (%s) VALUES(%s);", attrs, vals);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+    rc = sqlite3_step(res);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Insert msg : %s", sqlite3_errmsg(db));
         return 0;
     }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(res);
+
     #else
     char* blankspace = " ";
 
@@ -2050,10 +1817,12 @@ SUB *db_get_sub(char *ri){
     sqlite3_stmt *res;
     cJSON *json = NULL, *root = NULL;
     char *colname = NULL;
-    char sql[1024] = {0}, buf[256] = {0};
+    char *sql, buf[256] = {0};
 
-    sprintf(sql, "SELECT * FROM general, sub WHERE general.ri='%s' and sub.ri='%s';", ri, ri);
+    sql = "SELECT * FROM general, sub WHERE general.ri=? and sub.ri=?;";
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    sqlite3_bind_text(res, 1, ri, -1, NULL);
+    sqlite3_bind_text(res, 2, ri, -1, NULL);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed select");
         return 0;
@@ -2085,7 +1854,7 @@ SUB *db_get_sub(char *ri){
         }
     }
     cJSON_AddItemToObject(root, "m2m:sub", json);
-    new_sub = cjson_to_sub(root);
+    new_sub = cjson_to_sub_db(root);
     cJSON_Delete(root);
 
     sqlite3_finalize(res);
@@ -2372,7 +2141,7 @@ ACP *db_get_acp(char *ri){
     sprintf(sql, "SELECT * FROM general, acp WHERE general.ri='%s' and acp.ri='%s';", ri, ri);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare");
         return 0;
     }
 
@@ -2554,7 +2323,8 @@ int db_update_ae(AE *ae_object){
     int rc = 0;
     char attrs[128]={0}, vals[512]={0};
     char buf[128] = {0};
-    char sql[1024] = {0};
+    char *sql;
+    sqlite3_stmt *stmt;
 
         // db handle
     char rr[6] ="";
@@ -2568,81 +2338,65 @@ int db_update_ae(AE *ae_object){
     if(ae_object->rr == false) strcpy(rr, "false");
     else strcpy(rr, "true");
 
-    strcat(sql, "UPDATE general SET ");
-  
- 
-    if(ae_object->rn){
-        sprintf(buf, "rn='%s', ", ae_object->rn);
-        strcat(sql, buf);
-    }
-    if(ae_object->lt){
-        sprintf(buf, "lt='%s', ", ae_object->lt);
-        strcat(sql, buf);
-    }
-    if(ae_object->et){
-        sprintf(buf, "et='%s', ", ae_object->et);
-        strcat(sql, buf);
-    }
-    if(ae_object->lbl){
-        sprintf(buf, "lbl=',%s,', ", ae_object->lbl);
-        strcat(sql, buf);
-    }
-    if(ae_object->acpi){
-        sprintf(buf, "acpi='%s',", ae_object->acpi);
-        strcat(sql, buf);
-    }
-    strcat(sql, "ty=2 ");
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
+
+    sql = "UPDATE general SET rn=?, lt=?, et=?, lbl=?, acpi=? WHERE ri=?";
     
-    sprintf(buf, "WHERE ri='%s'", ae_object->ri);
-    strcat(sql, buf);
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare");
+        return 0;
+    }
 
+    db_test_and_set_bind_text(stmt, 1, ae_object->rn);
+    db_test_and_set_bind_text(stmt, 2, ae_object->lt);
+    db_test_and_set_bind_text(stmt, 3, ae_object->et);
+    db_test_and_set_bind_text(stmt, 4, ae_object->lbl);
+    db_test_and_set_bind_text(stmt, 5, ae_object->acpi);
+    db_test_and_set_bind_text(stmt, 6, ae_object->ri);
+    
   
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
         return 0;
     }
 
-    sql[0] = '\0';
+    sqlite3_finalize(stmt);
 
-    strcat(sql, "UPDATE ae SET ");
+    sql = "UPDATE ae SET api=?, aei=?, srv=?, rr=? WHERE ri=?";
 
-    if(ae_object->api){
-        sprintf(buf, "api='%s',", ae_object->api);
-        strcat(sql, buf);
-    }
-    if(ae_object->aei){
-        sprintf(buf, "aei='%s',", ae_object->aei);
-        strcat(sql, buf);
-    }
-    if(ae_object->srv){
-        sprintf(buf, "srv='%s',", ae_object->srv);
-        strcat(sql, buf);
-    }
-    if(ae_object->rr){
-        sprintf(buf, "rr='%s',", rr);
-        strcat(sql, buf);
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed prepare");
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
     }
 
-    if(sql[strlen(sql) - 1] == ',')
-        sql[strlen(sql) -1] = '\0';
-
-    sprintf(buf, " WHERE ri='%s';", ae_object->ri);
-    strcat(sql, buf);
+    db_test_and_set_bind_text(stmt, 1, ae_object->api);
+    db_test_and_set_bind_text(stmt, 2, ae_object->aei);
+    db_test_and_set_bind_text(stmt, 3, ae_object->srv);
+    db_test_and_set_bind_text(stmt, 4, rr);
+    db_test_and_set_bind_text(stmt, 5, ae_object->ri);
       
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
         return 0;
     }
+
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(stmt);
     
     return 1;
 }
 
 int db_update_cnt(CNT *cnt_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_update_cnt");
-    char sql[1024] = {0}, *err_msg = NULL;
+    char *sql, *err_msg = NULL;
     int rc = 0;
+    sqlite3_stmt *stmt;
     char buf[256]={0};
 
     if (cnt_object->ri == NULL) {
@@ -2650,226 +2404,186 @@ int db_update_cnt(CNT *cnt_object){
         return -1;
     }
 
-    strcat(sql, "UPDATE general SET ");
-
-    if(cnt_object->rn){
-        sprintf(buf, "rn='%s',", cnt_object->rn);
-        strcat(sql, buf);
-    }
-    
-    if(cnt_object->lbl){
-        sprintf(buf, "lbl=',%s,',", cnt_object->lbl);
-        strcat(sql, buf);
-    }
-    if(cnt_object->lt){
-        sprintf(buf, "lt='%s',", cnt_object->lt);
-        strcat(sql, buf);
-    }
-    if(cnt_object->et){
-        sprintf(buf, "et='%s',", cnt_object->et);
-        strcat(sql, buf);
-    }
-    if(cnt_object->acpi){
-        sprintf(buf, "acpi='%s',", cnt_object->acpi);
-        strcat(sql, buf);
-    }
-    sprintf(buf, "ty=%d WHERE ri='%s'", RT_CNT, cnt_object->ri);
-    strcat(sql, buf);
-
-
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
+    sql = "UPDATE general SET rn=?, lbl=?, lt=?, et=?, acpi=? WHERE ri=?";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
         return 0;
     }
 
-    sprintf(sql, "UPDATE cnt SET ");
-    
-    if(cnt_object->mni >= 0){
-        sprintf(buf, "mni=%d,", cnt_object->mni);
-        strcat(sql, buf);
-    }
-    if(cnt_object->mbs >= 0){
-        sprintf(buf, "mbs=%d,", cnt_object->mbs);
-        strcat(sql, buf);
-    }
-    if(cnt_object->st >= 0){
-        sprintf(buf, "st=%d,", cnt_object->st);
-        strcat(sql, buf);
-    }
-    if(cnt_object->cni >= 0){
-        sprintf(buf, "cni=%d,", cnt_object->cni);
-        strcat(sql, buf);
-    }
-    if(cnt_object->cbs >= 0){
-        sprintf(buf, "cbs=%d,", cnt_object->cbs);
-        strcat(sql, buf);
-    }
-    if(sql[strlen(sql)-1] == ','){
-        sql[strlen(sql)-1] = '\0';
-    }   
-    sprintf(buf, " WHERE ri='%s';", cnt_object->ri);
-    strcat(sql, buf);
+    db_test_and_set_bind_text(stmt, 1, cnt_object->rn);
+    db_test_and_set_bind_text(stmt, 2, cnt_object->lbl);
+    db_test_and_set_bind_text(stmt, 3, cnt_object->lt);
+    db_test_and_set_bind_text(stmt, 4, cnt_object->et);
+    db_test_and_set_bind_text(stmt, 5, cnt_object->acpi);
+    db_test_and_set_bind_text(stmt, 6, cnt_object->ri);
 
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed UPDATE SQL: %s, msg : %s", sql, err_msg);
         return 0;
     }
+
+    sqlite3_finalize(stmt);
+
+    sql = "UPDATE cnt SET mni=?, mbs=?, st=?, cni=?, cbs=? WHERE ri=?;";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        return 0;
+    }
+    db_test_and_set_bind_int(stmt, 1, cnt_object->mni);
+    db_test_and_set_bind_int(stmt, 2, cnt_object->mbs);
+    db_test_and_set_bind_int(stmt, 3, cnt_object->st);
+    db_test_and_set_bind_int(stmt, 4, cnt_object->cni);
+    db_test_and_set_bind_int(stmt, 5, cnt_object->cbs);
+    db_test_and_set_bind_text(stmt, 6, cnt_object->ri);
+
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed UPDATE SQL: %s, msg : %s", sql, err_msg);
+        return 0;
+    }
+
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(stmt);
 
     return 1;
 }
 
 int db_update_acp(ACP *acp_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_update_acp");
-    char sql[1024] = {0}, *err_msg = NULL;
+    char *sql, *err_msg = NULL;
     int rc = 0;
     char buf[256]={0};
+    sqlite3_stmt *stmt;
 
     if (acp_object->ri == NULL) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
 
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
-    sprintf(sql, "UPDATE general SET ");
-
-    if(acp_object->rn){
-        sprintf(buf, "rn='%s',", acp_object->rn);
-        strcat(sql, buf);
-    }
-    if(acp_object->lt){
-        sprintf(buf, "lt='%s',", acp_object->lt);
-        strcat(sql, buf);
-    }
-    if(acp_object->et){
-        sprintf(buf, "et='%s',", acp_object->et);
-        strcat(sql, buf);
-    }
-    if(acp_object->lbl){
-        sprintf(buf, "lbl=',%s,',", acp_object->lbl);
-        strcat(sql, buf);
-    }
-
-    sprintf(buf, "ty=1 WHERE ri='%s';", acp_object->ri);
-    strcat(sql, buf);
-    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    sql = "UPDATE general SET rn=?, lt=?, et=?, lbl=? WHERE ri=?;";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
         return 0;
     }
 
-    sprintf(sql, "UPDATE acp SET ");
+    db_test_and_set_bind_text(stmt, 1, acp_object->rn);
+    db_test_and_set_bind_text(stmt, 2, acp_object->lt);
+    db_test_and_set_bind_text(stmt, 3, acp_object->et);
+    db_test_and_set_bind_text(stmt, 4, acp_object->lbl);
+    db_test_and_set_bind_text(stmt, 5, acp_object->ri);
 
-    if(acp_object->pv_acop){
-        sprintf(buf, "pvacop='%s',", acp_object->pv_acop);
-        strcat(sql, buf);
-    }
-    if(acp_object->pv_acor){
-        sprintf(buf, "pvacor='%s',", acp_object->pv_acor);
-        strcat(sql, buf);
-    }
-    if(acp_object->pvs_acop){
-        sprintf(buf, "pvsacop='%s',", acp_object->pvs_acop);
-        strcat(sql, buf);
-    }
-    if(acp_object->pvs_acor){
-        sprintf(buf, "pvsacor='%s',", acp_object->pvs_acor);
-        strcat(sql, buf);
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
     }
 
-
-    sql[strlen(sql)-1] = '\0';
+    sqlite3_finalize(stmt);
     
-    sprintf(buf, " WHERE ri='%s';", acp_object->ri);
-    strcat(sql, buf);
+    sql = "UPDATE acp SET pvacop=?, pvacor=?, pvsacop=?, pvsacor=? WHERE ri=?;";
 
-    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
         return 0;
     }
+
+    db_test_and_set_bind_text(stmt, 1, acp_object->pv_acop);
+    db_test_and_set_bind_text(stmt, 2, acp_object->pv_acor);
+    db_test_and_set_bind_text(stmt, 3, acp_object->pvs_acop);
+    db_test_and_set_bind_text(stmt, 4, acp_object->pvs_acor);
+    db_test_and_set_bind_text(stmt, 5, acp_object->ri);
+
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(stmt);
 
     return 1;
 }
 
 int db_update_grp(GRP *grp_object){
     logger("DB", LOG_LEVEL_DEBUG, "Call db_update_grp");
-    char sql[1024] = {0}, *err_msg = NULL;
+    char *sql, *err_msg = NULL;
     int rc = 0;
     char buf[256]={0};
+    sqlite3_stmt *stmt;
 
     if (grp_object->ri == NULL) {
         fprintf(stderr, "ri is NULL\n");
         return -1;
     }
 
-
-    sprintf(sql, "UPDATE general SET ");
-
-    if(grp_object->rn){
-        sprintf(buf, "rn='%s',", grp_object->rn);
-        strcat(sql, buf);
-    }
-    if(grp_object->lt){
-        sprintf(buf, "lt='%s',", grp_object->lt);
-        strcat(sql, buf);
-    }
-    if(grp_object->et){
-        sprintf(buf, "et='%s',", grp_object->et);
-        strcat(sql, buf);
-    }
-
-    sprintf(buf, "ty=9 WHERE ri='%s';", grp_object->ri);
-    strcat(sql, buf);
-    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
-        return 0;
-    }
-
-    
-    sprintf(buf, "UPDATE grp SET mt=%d,cnm=%d,mnm=%d,mtv=%d,", 
-        grp_object->mt, grp_object->cnm, grp_object->mnm, grp_object->mtv);
-    strcat(sql, buf);
-
-    if(grp_object->csy){
-        sprintf(buf, "csy=%d,", grp_object->csy);
-        strcat(sql, buf);
-    }
-    
-    sprintf(buf, "mid='");
     for(int i = 0 ; i < grp_object->cnm ; i++){
         strcat(buf, grp_object->mid[i]);
         strcat(buf, ",");
     }
-    if(grp_object->cnm){
-        buf[strlen(buf)-1] = '\'';
-    }else{
-        strcat(buf, "'");
-    }
-    strcat(sql, buf);
-    strcat(sql, ",");
-    
+    buf[strlen(buf)-1] = '\0';
 
-    sql[strlen(sql)-1] = '\0';
-    
-    sprintf(buf, " WHERE ri='%s';", grp_object->ri);
-    strcat(sql, buf);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
-    logger("DB-t", LOG_LEVEL_DEBUG, "sql : %s", sql);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    sql = "UPDATE general SET rn=?, lt=?, et=? WHERE ri=?;";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
-        free(sql);
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
         return 0;
     }
+
+    db_test_and_set_bind_text(stmt, 1, grp_object->rn);
+    db_test_and_set_bind_text(stmt, 2, grp_object->lt);
+    db_test_and_set_bind_text(stmt, 3, grp_object->et);
+    db_test_and_set_bind_text(stmt, 4, grp_object->ri);
+
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+
+    sqlite3_finalize(stmt);
+
+    sql = "UPDATE grp SET mt=?, cnm=?, mnm=?, mtv=?, csy=?, mid=? WHERE ri=?;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+    
+    db_test_and_set_bind_int(stmt, 1, grp_object->mt);
+    db_test_and_set_bind_int(stmt, 2, grp_object->cnm);
+    db_test_and_set_bind_int(stmt, 3, grp_object->mnm);
+    db_test_and_set_bind_int(stmt, 4, grp_object->mtv);
+    db_test_and_set_bind_int(stmt, 5, grp_object->csy);
+    db_test_and_set_bind_text(stmt, 6, buf);
+    db_test_and_set_bind_text(stmt, 7, grp_object->ri);
+    
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(stmt);
 
     return 1;
 }
@@ -2898,6 +2612,21 @@ char *get_table_name(ResourceType ty){
     }
     return tableName;
 }
+
+void db_test_and_set_bind_text(sqlite3_stmt *stmt, int index, char* context){
+    if(context)
+        sqlite3_bind_text(stmt, index, context, -1, SQLITE_STATIC);
+    else
+        sqlite3_bind_null(stmt, index);
+}
+
+void db_test_and_set_bind_int(sqlite3_stmt *stmt, int index, int value){
+    if(value >= 0)
+        sqlite3_bind_int(stmt, index, value);
+    else   
+        sqlite3_bind_null(stmt, index);
+}
+
 #endif
 
 // int db_update_onem2m_resource(RTNode *rtnode){
@@ -3537,7 +3266,7 @@ RTNode *db_get_all_sub_rtnode(){
             }
         }
         cJSON_AddItemToObject(root, "m2m:sub", json);
-        sub = cjson_to_sub(root);
+        sub = cjson_to_sub_db(root);
         if(!head) {
             head = create_rtnode(sub,RT_SUB);
             rtnode = head;
@@ -3805,14 +3534,15 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
     cJSON *json, *root;
     sqlite3_stmt *res = NULL;
     char *colname = NULL;
-    char sql[1024] = {0};
+    char *sql;
 
-    sprintf(sql, "SELECT * FROM 'general', 'cin' WHERE general.pi='%s' AND general.ri=cin.ri;", pi);
+    sql = "SELECT * FROM 'general', 'cin' WHERE general.pi=? AND general.ri=cin.ri ORDER BY ct ASC;";
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
         return 0;
     }
+    sqlite3_bind_text(res, 1, pi, -1, NULL);
     
         
     RTNode* head = NULL, *rtnode = NULL;
@@ -3975,6 +3705,7 @@ CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol){
     cin = cjson_to_cin(root);
     cJSON_Delete(root);
 
+    logger("DB", LOG_LEVEL_DEBUG, "%s", cin->ri);
 
     sqlite3_finalize(res);
     return cin;   

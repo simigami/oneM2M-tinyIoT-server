@@ -3,6 +3,10 @@
 #include "config.h"
 #include "onem2m.h"
 
+#ifdef SQLITE_DB
+#include "sqlite/sqlite3.h"
+#endif
+
 int init_dbp();
 int close_dbp();
 
@@ -43,11 +47,14 @@ RTNode* db_get_all_acp_rtnode();
 RTNode* db_get_all_grp_rtnode();
 
 RTNode* db_get_cin_rtnode_list(RTNode *rtnode);
-#ifdef SQLQITE_DB
+#ifdef SQLITE_DB
 CIN *db_get_cin_laol(RTNode *parent_rtnode, int laol);
 cJSON* db_get_filter_criteria(char *to, FilterCriteria *fc);
 cJSON *db_get_parent_filter_criteria(char *to, FilterCriteria *fc);
 cJSON *db_get_child_filter_criteria(char *to, FilterCriteria *fc);
+
+void db_test_and_set_bind_text(sqlite3_stmt *stmt, int index, char* context);
+void db_test_and_set_bind_int(sqlite3_stmt *stmt, int index, int value);
 #endif
 
 #define DB_STR_MAX 65565

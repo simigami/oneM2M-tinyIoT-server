@@ -229,10 +229,13 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 			child->sibling_left = node;
 		}
 	}
+
+	#ifdef BERKELEY_DB
 	child->uri = malloc(strlen(parent->uri) + strlen(get_rn_rtnode(child)) + 2);
 	strcpy(child->uri, parent->uri);
 	strcat(child->uri, "/");
 	strcat(child->uri, get_rn_rtnode(child));
+	#endif
 
 	return 1;
 }
@@ -264,8 +267,11 @@ ResourceType http_parse_object_type() {
 char *get_local_time(int diff) {
 	time_t t = time(NULL) - diff;
 	struct tm tm = *localtime(&t);
+	struct timespec specific_time;
+    //int millsec;
+    clock_gettime(0, &specific_time);
 	
-	char year[5], mon[3], day[3], hour[3], minute[3], sec[3]; 
+	char year[5], mon[3], day[3], hour[3], minute[3], sec[3], millsec[7]; 
 	
 	sprintf(year,"%d", tm.tm_year+1900);
 	sprintf(mon,"%02d",tm.tm_mon+1);
@@ -273,8 +279,9 @@ char *get_local_time(int diff) {
 	sprintf(hour,"%02d",tm.tm_hour);
 	sprintf(minute,"%02d",tm.tm_min);
 	sprintf(sec,"%02d",tm.tm_sec);
+	sprintf(millsec, "%06d", (int) floor(specific_time.tv_nsec/1.0e6));
 	
-	char* local_time = (char*)malloc(16 * sizeof(char));
+	char* local_time = (char*)malloc(24 * sizeof(char));
 	
 	*local_time = '\0';
 	strcat(local_time,year);
@@ -284,6 +291,7 @@ char *get_local_time(int diff) {
 	strcat(local_time,hour);
 	strcat(local_time,minute);
 	strcat(local_time,sec);
+	strcat(local_time,millsec);
 	
 	return local_time;
 }
@@ -987,7 +995,7 @@ void remove_mid(char **mid, int idx, int cnm){
 	for(int i = idx ; i < cnm-1; i++){
 		mid[i] = mid[i+1];
 	}
-	if(mid[cnm-1]) free(mid[cnm-1]);
+	//if(mid[cnm-1]) free(mid[cnm-1]);
 	mid[cnm-1] = NULL;
 	if(idx != cnm-1) free(del);
 	del = NULL;
@@ -1407,6 +1415,9 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 	char *p = NULL;
 	char port[10] = {'\0'};
 	NotiTarget *nt = NULL;
+
+	logger("NOTI", LOG_LEVEL_DEBUG, "%d, %s", sub->net_bit, sub->net);
+
 	if(sub->net_bit <= 0) {
 		sub->net_bit = net_to_bit(sub->net);
 	}
@@ -1446,7 +1457,7 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 		}
 		if(noti_uri + uri_len > p) {
 			strcpy(nt->target, p);
-			logger("t", LOG_LEVEL_DEBUG, "%s", nt->target);
+			logger("UTIL", LOG_LEVEL_DEBUG, "%s", nt->target);
 			p = strchr(nt->target, '?');
 			memset(p, 0, strlen(p));
 			// if(*p == '?') {
@@ -1471,6 +1482,8 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 				break;
 		}
 		noti_uri = strtok(NULL, ",");
+		free(nt);
+		nt = NULL;
 	}
 
 	free(noti_json);

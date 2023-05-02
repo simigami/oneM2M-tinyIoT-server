@@ -1040,7 +1040,7 @@ int set_grp_update(oneM2MPrimitive *o2pt, cJSON *m2m_grp, GRP* grp){
 		if(mnm->valueint < grp->cnm){
 			return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
 		}
-		grp->mnm = mnm->valueint;
+		//grp->mnm = mnm->valueint;
 		
 	}
 
@@ -1057,6 +1057,9 @@ int set_grp_update(oneM2MPrimitive *o2pt, cJSON *m2m_grp, GRP* grp){
 
 			grp->mid[i] = NULL;
 		}
+		if(mnm)
+			grp->mnm = mnm->valueint; // change mnm to new value if valid;
+
 		for(int i = 0 ; i < grp->mnm; i++){
 			
 			if(i < mid_size){
