@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-#include <curl/curl.h>
 #include <math.h>
 #include <ctype.h>
 #include <malloc.h>
