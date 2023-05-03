@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <malloc.h>
 #include <sys/timeb.h>
+#include <limits.h>
 #include "onem2m.h"
 #include "dbmanager.h"
 #include "jsonparser.h"
