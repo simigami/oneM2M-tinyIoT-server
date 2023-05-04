@@ -1474,11 +1474,13 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 					nt->target[0] = '/';
 				http_notify(o2pt, noti_json, nt);
 				break;
+			#ifdef MQTT_ENABLE
 			case PROT_MQTT:
 				if(!nt->port)
 					nt->port = 1883;
 				mqtt_notify(o2pt, noti_json, nt);
 				break;
+			#endif
 		}
 		noti_uri = strtok(NULL, ",");
 		free(nt);
