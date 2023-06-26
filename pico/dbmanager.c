@@ -2647,7 +2647,45 @@ void db_test_and_set_bind_int(sqlite3_stmt *stmt, int index, int value){
 //             break;
 //     }
 // }
+int db_delete_child_cin(RTNode *rtnode){
+    DBC* dbcp;
+    DBT key, data;
 
+	int ret=0;
+    char* result = NULL;
+    char* ri = get_ri_rtnode(rtnode);
+
+    dbcp = DB_GET_CURSOR(resourceDBp);
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    while((ret = dbcp->get(dbcp, &key, &data, DB_NEXT))==0)
+    {
+        result = strstr((char*)data.data, ri);
+
+        if(result != NULL)
+        {
+            ret = dbcp->del(dbcp, 0);
+            if(ret!=0)
+            {
+                break;
+            }
+        }
+        else
+        {
+
+        }
+    }
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    if(ret != DB_NOTFOUND && ret != 0)
+    {
+        fprintf(stderr, "Error occurred while iterating through the DB\n");
+        return 1;
+    }
+    return 0;
+}
 int db_delete_onem2m_resource(RTNode *rtnode) {
     logger("DB", LOG_LEVEL_DEBUG, "Delete [RI] %s",get_ri_rtnode(rtnode));
 

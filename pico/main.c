@@ -23,15 +23,26 @@ ResourceTree *rt;
 void route(oneM2MPrimitive *o2pt);
 void stop_server(int sig);
 
+char* PORT;
 int terminate = 0;
+int mqtt_error_flag = 0;
 #ifdef ENABLE_MQTT
 pthread_t mqtt;
 int mqtt_thread_id;
 #endif
 
-int main(int c, char **v) {
+int main(int argc, char **argv) {
 	signal(SIGINT, stop_server);
 	
+	if(argc >= 3 && strcmp(argv[1], "-p")==0)
+	{
+		PORT = argv[2];
+	}
+	else
+	{
+		PORT = "3000";
+	}
+
 	if(!init_dbp()){
 		logger("MAIN", LOG_LEVEL_ERROR, "DB Error");
 		return 0;
@@ -40,13 +51,21 @@ int main(int c, char **v) {
 	
 	#ifdef ENABLE_MQTT
 	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
+
+	pthread_join(mqtt, NULL);
+
+	if(mqtt_error_flag){
+		fprintf(stderr, "MQTT Broker Error -> Make Server Terminate\n");
+		stop_server(SIGINT);
+	}
+
 	if(mqtt_thread_id < 0){
 		fprintf(stderr, "MQTT thread create error\n");
 		return 0;
 	}
 	#endif
 
-	serve_forever(SERVER_PORT); // main oneM2M operation logic in void route()    
+	serve_forever(PORT); // main oneM2M operation logic in void route()    
 
 	return 0;
 }

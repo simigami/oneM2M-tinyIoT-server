@@ -38,6 +38,7 @@
 
 /* thread signal */
 extern int terminate;
+extern int mqtt_error_flag;
 
 /* Local Variables */
 static MqttClient mClient;
@@ -713,6 +714,8 @@ void *mqtt_serve(void)
     }
 
 exit:
+    mqtt_error_flag = 1;
+    
     if (!terminate && rc != MQTT_CODE_SUCCESS) {
         logger(LOG_TAG, LOG_LEVEL_ERROR, "MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
     }

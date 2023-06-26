@@ -747,6 +747,7 @@ int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag) {
 	switch(rtnode->ty) {
 	case RT_AE : 
 	case RT_CNT : 
+		db_delete_child_cin(rtnode);
 		db_delete_onem2m_resource(rtnode); 
 		break;
 	case RT_CIN :

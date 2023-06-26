@@ -25,7 +25,7 @@
 
 
 // MQTT Settings
-#define ENABLE_MQTT
+//#define ENABLE_MQTT
 
 #ifdef ENABLE_MQTT
 #define MQTT_HOST            "127.0.0.1"
