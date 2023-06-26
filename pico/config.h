@@ -17,8 +17,8 @@
 
 // DB Settings
 /* Select which Database to use. */
-#define BERKELEY_DB
-//#define SQLITE_DB
+//#define BERKELEY_DB
+#define SQLITE_DB
 
 // Group Settings
 #define CONSISTENCY_POLICY SET_MIXED

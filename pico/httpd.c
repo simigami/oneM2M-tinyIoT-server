@@ -243,6 +243,7 @@ Operation http_parse_operation(){
 	else if(strcmp(method, "GET") == 0) op = OP_RETRIEVE;
 	else if (strcmp(method, "PUT") == 0) op = OP_UPDATE;
 	else if (strcmp(method, "DELETE") == 0) op = OP_DELETE;
+    else if (strcmp(method, "OPTIONS") == 0) op = OP_OPTIONS;
 
 	return op;
 }
@@ -282,6 +283,12 @@ void handle_http_request(int slotno) {
 
 	o2pt->op = http_parse_operation();
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
+    else if(o2pt->op == OP_OPTIONS){
+        o2pt->rsc = RSC_OK;
+        http_respond_to_client(o2pt);
+        free_o2pt(o2pt);
+        return;
+    }
 	o2pt->prot = PROT_HTTP;
     o2pt->errFlag = false;
 

@@ -34,9 +34,9 @@ bool isFCAttrValid(FilterCriteria *fc){
 }
 
 bool isValidFcAttr(char* attr){
-    char *fcAttr[32] = {
+    char *fcAttr[33] = {
     "crb", "cra", "ms", "us", "sts", "stb", "exb", "exa", "lbl","clbl", "palb", "lbq", "ty", "chty", "pty", "sza", "szb", "cty", 
-    "atr", "catr", "patr", "fu", "lim", "smf", "fo", "cfs", "cfq", "lvl", "ofst", "arp", "gq", "ops"};
+    "atr", "catr", "patr", "fu", "lim", "smf", "fo", "cfs", "cfq", "lvl", "ofst", "arp", "gq", "ops", "la"};
 
     for(int i = 0 ; i < 32 ; i++){
         if(!strcmp(attr, fcAttr[i])) return true;
