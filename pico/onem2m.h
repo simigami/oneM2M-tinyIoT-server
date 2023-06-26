@@ -270,7 +270,6 @@ typedef struct _o{
 	int rsc;
 	int ty;
 	char *origin;
-	char *req_type;
 	bool isFopt;
 	char *fopt;
 	bool errFlag;

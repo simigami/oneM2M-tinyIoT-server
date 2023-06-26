@@ -29,13 +29,18 @@ pthread_t mqtt;
 int mqtt_thread_id;
 #endif
 
-int main(int c, char **v) {
+int main(int argc, char **argv) {
 	signal(SIGINT, stop_server);
-	
+	char *PORT = SERVER_PORT;
 	if(!init_dbp()){
 		logger("MAIN", LOG_LEVEL_ERROR, "DB Error");
 		return 0;
 	}
+
+	if(argc >= 3 && !strcmp(argv[1], "-p")){
+		PORT = argv[2];
+	}
+
 	init_server();
 	
 	#ifdef ENABLE_MQTT
@@ -46,7 +51,14 @@ int main(int c, char **v) {
 	}
 	#endif
 
-	serve_forever(SERVER_PORT); // main oneM2M operation logic in void route()    
+	serve_forever(PORT); // main oneM2M operation logic in void route()    
+
+	#ifdef ENABLE_MQTT
+	pthread_join(mqtt, NULL);
+	if(terminate){
+		return 0;
+	}
+	#endif
 
 	return 0;
 }
@@ -85,7 +97,7 @@ void route(oneM2MPrimitive *o2pt) {
 		}
 	}
 
-	respond_to_client(o2pt);
+	//respond_to_client(o2pt);
 	if(o2pt->op != OP_DELETE && !o2pt->errFlag && target_rtnode) notify_onem2m_resource(o2pt, target_rtnode);
 	log_runtime(start);
 }
@@ -131,9 +143,7 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 void stop_server(int sig){
 	logger("MAIN", LOG_LEVEL_INFO, "Shutting down server...");
 	#ifdef ENABLE_MQTT
-	terminate = 1;
-	logger("MAIN", LOG_LEVEL_INFO, "Waiting for MQTT Client to shut down...");
-	pthread_join(mqtt, NULL);
+	pthread_kill(mqtt, SIGINT);
 	#endif
 	logger("MAIN", LOG_LEVEL_INFO, "Closing DB...");
 	close_dbp();

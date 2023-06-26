@@ -14,7 +14,7 @@
 #include "cJSON.h"
 #include "config.h"
 
-int mqtt_respond_to_client(oneM2MPrimitive *o2pt);
+int mqtt_respond_to_client(oneM2MPrimitive *o2pt, char* req_type);
 int mqtt_notify(oneM2MPrimitive *o2pt, char* noti_json, NotiTarget *nt);
 
 void idToMqttClientId(char *id);

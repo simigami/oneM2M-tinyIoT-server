@@ -311,7 +311,11 @@ void handle_http_request(int slotno) {
         cJSON_Delete(fcjson);
     }
     o2pt->slotno = slotno;
+    pthread_mutex_trylock(&mutex_lock);
 	route(o2pt);
+    pthread_mutex_unlock(&mutex_lock);
+    
+    http_respond_to_client(o2pt);
     free_o2pt(o2pt);
 }
 

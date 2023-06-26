@@ -23,6 +23,7 @@
 
 //#define WOLFMQTT_MULTITHREAD true
 #include "config.h"
+#include <signal.h>
 
 #ifdef ENABLE_MQTT
 
@@ -181,7 +182,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
                 free(o2pt->pc);
             o2pt->pc = strdup("{\"m2m:dbg\": \"Invalid FilterCriteria\"}");
             o2pt->rsc = RSC_BAD_REQUEST;
-            mqtt_respond_to_client(o2pt);
+            mqtt_respond_to_client(o2pt, req_type);
             goto exit;
 
         }else{
@@ -201,11 +202,12 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         o2pt->rsc = RSC_UNSUPPORTED_MEDIATYPE;
     
         o2pt->pc = "{\"m2m:dbg\": \"Unsupported media type for content-type: 5\"}";
-        mqtt_respond_to_client(o2pt);
+        mqtt_respond_to_client(o2pt, req_type);
     }else{
         pthread_mutex_trylock(&mutex_lock);
         route(o2pt);
         pthread_mutex_unlock(&mutex_lock);
+        mqtt_respond_to_client(o2pt, req_type);
     }
 
     /* Free allocated memories */
@@ -223,7 +225,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     return MQTT_CODE_SUCCESS;
 }
 
-int mqtt_respond_to_client(oneM2MPrimitive *o2pt){
+int mqtt_respond_to_client(oneM2MPrimitive *o2pt, char* req_type){
     MqttPublish mqttPub;
     char *respTopic;
     cJSON *json;
@@ -717,11 +719,13 @@ exit:
         logger(LOG_TAG, LOG_LEVEL_ERROR, "MQTT Error %d: %s", rc, MqttClient_ReturnCodeToString(rc));
     }
 
+    terminate = 1;
     free(reqTopic);
     free(respTopic);
     free(reg_reqTopic);
     free(reg_respTopic);
     //MqttClient_Disconnect(&mClient);
+    raise(SIGINT);
     return NULL;
 }
 //#endif /* HAVE_SOCKET */
