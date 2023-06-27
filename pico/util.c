@@ -474,13 +474,13 @@ void log_runtime(double start) {
 
 
 void init_server() {
-	if(SERVER_TYPE == MN_CSE){
-		logger("UTIL", LOG_LEVEL_DEBUG, "MN-CSE");
+	// if(SERVER_TYPE == MN_CSE){
+	// 	logger("UTIL", LOG_LEVEL_DEBUG, "MN-CSE");
 		
 		
-	} else if(SERVER_TYPE == IN_CSE){
-		logger("UTIL", LOG_LEVEL_DEBUG, "IN-CSE");
-	}
+	// } else if(SERVER_TYPE == IN_CSE){
+	// 	logger("UTIL", LOG_LEVEL_DEBUG, "IN-CSE");
+	// }
 
 	rt = (ResourceTree *)calloc(1, sizeof(rt));
 	
