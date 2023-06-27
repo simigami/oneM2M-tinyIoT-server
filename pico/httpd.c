@@ -285,7 +285,7 @@ void handle_http_request(int slotno) {
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
     else if(o2pt->op == OP_OPTIONS){
         o2pt->rsc = RSC_OK;
-        http_respond_to_client(o2pt);
+        http_respond_to_client(o2pt, slotno);
         free_o2pt(o2pt);
         return;
     }
@@ -299,7 +299,7 @@ void handle_http_request(int slotno) {
                 free(o2pt->pc);
             o2pt->pc = strdup("{\"m2m:dbg\": \"Invalid FilterCriteria\"}");
             o2pt->rsc = RSC_BAD_REQUEST;
-            http_respond_to_client(o2pt);
+            http_respond_to_client(o2pt, slotno);
             cJSON_Delete(fcjson);
             free_o2pt(o2pt);
             return;
@@ -310,12 +310,11 @@ void handle_http_request(int slotno) {
         }
         cJSON_Delete(fcjson);
     }
-    o2pt->slotno = slotno;
     pthread_mutex_trylock(&mutex_lock);
 	route(o2pt);
     pthread_mutex_unlock(&mutex_lock);
     
-    http_respond_to_client(o2pt);
+    http_respond_to_client(o2pt, slotno);
     free_o2pt(o2pt);
 }
 
@@ -341,7 +340,7 @@ void normalize_payload() {
 	payload[index] = '\0';
 }
 
-void http_respond_to_client(oneM2MPrimitive *o2pt) {
+void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno) {
     int status_code = rsc_to_http_status(o2pt->rsc);
     char content_length[64];
     char rsc[64];
@@ -379,7 +378,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt) {
     }
     sprintf(buf, "%s %s\n%s%s\n", HTTP_PROTOCOL_VERSION, status, DEFAULT_RESPONSE_HEADERS, response_headers);
     if(o2pt->pc) strcat(buf, o2pt->pc);
-    write(clients[o2pt->slotno], buf, strlen(buf)); 
+    write(clients[slotno], buf, strlen(buf)); 
     logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
 }
 
@@ -410,3 +409,4 @@ void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
     send(sock, buffer, sizeof(buffer), 0);
     close(sock);
 }
+

@@ -309,19 +309,6 @@ int is_json_valid_char(char c){
 	return (('!' <= c && c <= '~') || c == ' ');
 }
 
-void respond_to_client(oneM2MPrimitive *o2pt) {
-	switch(o2pt->prot) {
-		case PROT_HTTP:
-			http_respond_to_client(o2pt); 
-			break;
-		#ifdef ENABLE_MQTT
-		case PROT_MQTT:
-			mqtt_respond_to_client(o2pt);
-			break;
-		#endif
-	}
-}
-
 ResourceType parse_object_type_cjson(cJSON *cjson) {
 	ResourceType ty;
 
@@ -487,6 +474,14 @@ void log_runtime(double start) {
 
 
 void init_server() {
+	if(SERVER_TYPE == MN_CSE){
+		logger("UTIL", LOG_LEVEL_DEBUG, "MN-CSE");
+		
+		
+	} else if(SERVER_TYPE == IN_CSE){
+		logger("UTIL", LOG_LEVEL_DEBUG, "IN-CSE");
+	}
+
 	rt = (ResourceTree *)calloc(1, sizeof(rt));
 	
 	CSE *cse;
@@ -743,7 +738,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	if(rn) {
 		char *resource_name = rn->valuestring;
 		while(child) {
-			if(!strcmp(get_rn_rtnode(child), resource_name)) {
+			if(get_rn_rtnode(child) && !strcmp(get_rn_rtnode(child), resource_name)) {
                 flag = true; 
                 break;
 			}
@@ -1054,8 +1049,6 @@ void free_o2pt(oneM2MPrimitive *o2pt){
 		free(o2pt->fr);
 	if(o2pt->to)
 		free(o2pt->to);
-	if(o2pt->req_type)
-		free(o2pt->req_type);
 	if(o2pt->fc)
 		free_fc(o2pt->fc);
 	if(o2pt->fopt)
@@ -1079,7 +1072,6 @@ void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src){
 	if(src->origin) (*dest)->origin = strdup(src->origin);
 	if(src->pc) (*dest)->pc = strdup(src->pc);
 	if(src->cjson_pc) (*dest)->cjson_pc = cJSON_Parse((*dest)->pc);
-	if(src->req_type) (*dest)->req_type = strdup(src->req_type);
 	if(src->rvi) (*dest)->rvi = strdup(src->rvi);
 	if(src->fopt) (*dest)->fopt = strdup(src->fopt);
 	(*dest)->ty = src->ty;
@@ -1087,7 +1079,8 @@ void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src){
 	(*dest)->isFopt = src->isFopt;
 	(*dest)->prot = src->prot;
 	(*dest)->rsc = src->rsc;
-
+	(*dest)->cnot = src->cnot;
+	(*dest)->fc = src->fc;
 }
 
 
@@ -1458,7 +1451,8 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 			strcpy(nt->target, p);
 			logger("UTIL", LOG_LEVEL_DEBUG, "%s", nt->target);
 			p = strchr(nt->target, '?');
-			memset(p, 0, strlen(p));
+			if(p)
+				memset(p, 0, strlen(p));
 			// if(*p == '?') {
 			// 	sprintf(nt->target, "/%s", p);
 			// } else if(*p == '/') {
@@ -1474,7 +1468,7 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 					nt->target[0] = '/';
 				http_notify(o2pt, noti_json, nt);
 				break;
-			#ifdef MQTT_ENABLE
+			#ifdef ENABLE_MQTT
 			case PROT_MQTT:
 				if(!nt->port)
 					nt->port = 1883;
@@ -1550,4 +1544,13 @@ cJSON *fc_scan_resource_tree(RTNode *rtnode, FilterCriteria *fc, int lvl){
 
 	return uril;
 }
+#endif
+
+
+#if SERVER_TYPE == MN_CSE
+bool isCSEAvailable(){
+
+	return true;
+}
+
 #endif

@@ -1161,6 +1161,11 @@ char *cjson_string_list_item_to_string(cJSON *key) {
 		else {
 			char item_str[MAX_ATTRIBUTE_SIZE] = { '\0' };
 			for (int i = 0; i < item_size; i++) {
+				if(cJSON_GetArrayItem(key, i)->valuestring == NULL){
+					return NULL;
+				}
+				// TODO - if int value should convert to string.
+				
 				if (isspace(cJSON_GetArrayItem(key, i)->valuestring[0]) || (cJSON_GetArrayItem(key, i)->valuestring[0] == 0)) {
 					return NULL;
 				}

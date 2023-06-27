@@ -55,7 +55,6 @@ void db_store_fail(oneM2MPrimitive *o2pt);
 char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
 void delete_cin_under_cnt_mni_mbs(RTNode *rtnode);
-void respond_to_client(oneM2MPrimitive *o2pt);
 int net_to_bit(char *net);
 int get_acop(oneM2MPrimitive *o2pt, RTNode *node);
 int get_acop_origin(char *origin, RTNode *acp, int flag);

@@ -20,7 +20,7 @@ char *request_header(const char *name);
 void set_response_header(char *key, char *value, char *response_headers);
 void normalize_payload();
 Operation http_parse_operation();
-void http_respond_to_client(oneM2MPrimitive *o2pt);
+void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno);
 void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt);
 
 typedef struct {

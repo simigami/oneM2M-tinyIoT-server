@@ -73,7 +73,6 @@ void route(oneM2MPrimitive *o2pt) {
 
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
-		respond_to_client(o2pt);
 		log_runtime(start);
 		return;
 	}
@@ -81,7 +80,6 @@ void route(oneM2MPrimitive *o2pt) {
 	if(o2pt->fc && o2pt->fc->fu != FU_DISCOVERY){
 		o2pt->rsc = RSC_BAD_REQUEST;
 		set_o2pt_pc(o2pt, "{\"m2m:dbg\":\"Only Filter Usage Discovery Supported\"}");
-		respond_to_client(o2pt);
 		log_runtime(start);
 		return;
 	}
@@ -97,7 +95,6 @@ void route(oneM2MPrimitive *o2pt) {
 		}
 	}
 
-	//respond_to_client(o2pt);
 	if(o2pt->op != OP_DELETE && !o2pt->errFlag && target_rtnode) notify_onem2m_resource(o2pt, target_rtnode);
 	log_runtime(start);
 }
@@ -112,23 +109,29 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	switch(o2pt->op) {
 		
 		case OP_CREATE:	
-			rsc = create_onem2m_resource(o2pt, target_rtnode); break;
+			rsc = create_onem2m_resource(o2pt, target_rtnode); 
+			break;
 		
 		case OP_RETRIEVE:
-			rsc = retrieve_onem2m_resource(o2pt, target_rtnode); break;
+			rsc = retrieve_onem2m_resource(o2pt, target_rtnode); 
+			break;
 			
 		case OP_UPDATE: 
-			rsc = update_onem2m_resource(o2pt, target_rtnode); break;
+			rsc = update_onem2m_resource(o2pt, target_rtnode); 
+			break;
 			
 		case OP_DELETE:
-			rsc = delete_onem2m_resource(o2pt, target_rtnode); break;
+			rsc = delete_onem2m_resource(o2pt, target_rtnode); 
+			break;
 
 		case OP_VIEWER:
-			rsc = tree_viewer_api(o2pt, target_rtnode); break;
+			rsc = tree_viewer_api(o2pt, target_rtnode); 
+			break;
 		
-		//case OP_OPTIONS:
-			//respond_to_client(200, "{\"m2m:dbg\": \"response about options method\"}", "2000");
-			//break;
+		case OP_OPTIONS:
+			rsc = RSC_OK;
+			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"response about options method\"}");
+			break;
 		case OP_DISCOVERY:
 			rsc = discover_onem2m_resource(o2pt, target_rtnode); break;
 
