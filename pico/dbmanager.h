@@ -57,6 +57,10 @@ void db_test_and_set_bind_text(sqlite3_stmt *stmt, int index, char* context);
 void db_test_and_set_bind_int(sqlite3_stmt *stmt, int index, int value);
 #endif
 
+#ifdef BERKELEY_DB
+int db_delete_child_cin(RTNode *rtnode)
+#endif
+
 #define DB_STR_MAX 65565
 #define DB_SEP ";"
 

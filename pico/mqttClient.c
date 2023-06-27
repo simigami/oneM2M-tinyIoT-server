@@ -138,8 +138,6 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     o2pt->origin = strdup(originator);
     MqttClientIdToId(o2pt->origin);
 
-    o2pt->req_type = strdup(req_type);
-
     /* fill primitives */
     pjson = cJSON_GetObjectItem(json, "op");
     if(!pjson) return invalidRequest();
@@ -238,7 +236,7 @@ int mqtt_respond_to_client(oneM2MPrimitive *o2pt, char* req_type){
 
     idToMqttClientId(o2pt->origin);
 
-    if( !strcmp(o2pt->req_type, "req") ){
+    if( !strcmp(req_type, "req") ){
         sprintf(respTopic, "%s/oneM2M/resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_RI);
     }else{
         sprintf(respTopic, "%s/oneM2M/reg_resp/%s/%s/json", topicPrefix, o2pt->origin, CSE_BASE_RI);
