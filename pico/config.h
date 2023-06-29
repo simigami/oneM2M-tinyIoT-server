@@ -2,9 +2,17 @@
 #define __CONFIG_H__
 #include "logger.h"
 
+#define SERVER_TYPE IN_CSE
+
 #define SERVER_PORT "3000"
 #define CSE_BASE_NAME "TinyIoT"
 #define CSE_BASE_RI "tinyiot"
+
+#if SERVER_TYPE == MN_CSE
+#define REMOTE_CSE_ID "in-cse"
+#define REMOTE_CSE_HOST ""
+#define REMOTE_CSE_PORT ""
+#endif
 
 #define MONO_THREAD 1 // 0 → multi-thread, 1 → mono-thread
 

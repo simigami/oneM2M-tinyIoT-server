@@ -391,14 +391,23 @@ void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
         return;
     }
 
-    char buffer[BUF_SIZE];
+    http_send_get_request(nt->host, nt->port, nt->target, DEFAULT_REQUEST_HEADERS, "", noti_json);
+}
 
-    sprintf(buffer, "GET %s %s\r\n%s\r\n%s", nt->target, HTTP_PROTOCOL_VERSION, DEFAULT_REQUEST_HEADERS, noti_json);
+void http_send_get_request(char *host, char *port, char *uri, char *header, char *qs, char *data){
+    struct sockaddr_in serv_addr;
+    int sock = socket(PF_INET, SOCK_STREAM, 0);
+    if(sock == -1) {
+        logger("HTTP", LOG_LEVEL_ERROR, "socket error");
+        return;
+    }
+    char buffer[BUF_SIZE];
+    sprintf(buffer, "GET %s%s %s\r\n%s\r\n%s", uri, qs, HTTP_PROTOCOL_VERSION, header, data);
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(nt->host);
-    serv_addr.sin_port = htons(nt->port);
+    serv_addr.sin_addr.s_addr = inet_addr(host);
+    serv_addr.sin_port = htons(atoi(port));
 
     if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
         logger("HTTP", LOG_LEVEL_ERROR, "connect error");
@@ -409,4 +418,3 @@ void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
     send(sock, buffer, sizeof(buffer), 0);
     close(sock);
 }
-

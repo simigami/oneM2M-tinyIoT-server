@@ -32,6 +32,8 @@ header_t *request_headers(void);
 // user shall implement this function
 void handle_http_request(int slotno);
 
+void http_send_get_request(char *host, char *port, char *uri, char *header, char *qs, char *data);
+
 // Response
 #define HTTP_PROTOCOL_VERSION "HTTP/1.1"
 #define DEFAULT_RESPONSE_HEADERS "Connection: Close\nAccept: application/json\nContent-Type: application/json; charset=utf-8\nAccess-Control-Allow-Origin: *\nAccess-Control-Allow-Headers: Accept, Accept-Language, Content-Language, Content-Type, X-M2M-Origin, X-M2M-RI, X-M2M-RVI\nAccess-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS\nAccess-Control-Request-Methods: GET, PUT, POST, DELETE, OPTIONS\n"

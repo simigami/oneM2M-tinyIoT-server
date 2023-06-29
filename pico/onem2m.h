@@ -150,6 +150,27 @@ typedef struct {
 	char *uri;
 } GRP;
 
+typedef struct{
+	char *rn;
+	char *pi;
+	char *ri;
+	char *ct;
+	char *lt;
+	char *et;
+	char *lbl;
+	char *acpi;
+
+	CSEType cst;
+	char *csi;
+	char *srt;
+	char *poa;
+	char *cb;
+
+	bool rr;
+	char srv;
+
+} CSR;
+
 //Resource Tree
 typedef struct RTNode {
 	struct RTNode *parent;

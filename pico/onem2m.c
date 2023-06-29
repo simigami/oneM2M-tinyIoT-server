@@ -46,6 +46,8 @@ void init_cse(CSE* cse) {
 	free(ct); ct = NULL;
 }
 
+
+
 void init_ae(AE* ae, RTNode *parent_rtnode, char *origin) {
 	int origin_size;
 	char *uri[128];
@@ -181,6 +183,18 @@ RTNode* create_rtnode(void *obj, ResourceType ty){
 	rtnode->sibling_right = NULL;
 	
 	return rtnode;
+}
+
+int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	int e = check_rn_invalid(o2pt, RT_CSE);
+
+	if(parent_rtnode->ty != RT_CSE) {
+		handle_error(o2pt, RSC_INVALID_CHILD_RESOURCETYPE, "child type is invalid");
+		return o2pt->rsc;
+	}
+	
+	o2pt->to = REMOTE_CSE_ID;
+	o2pt->fr = CSE_BASE_RI;
 }
 
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -1244,6 +1258,11 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	case RT_GRP:
 		logger("O2M", LOG_LEVEL_INFO, "Create GRP");
 		rsc = create_grp(o2pt, parent_rtnode);
+		break;
+
+	case RT_CSR:
+		logger("O2M", LOG_LEVEL_INFO, "Create CSR");
+		rsc = create_csr(o2pt, parent_rtnode);
 		break;
 
 	case RT_MIXED :

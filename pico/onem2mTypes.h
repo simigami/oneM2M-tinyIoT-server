@@ -3,6 +3,11 @@
 
 #include <stdbool.h>
 
+typedef enum {
+	IN_CSE = 0,
+	MN_CSE = 1,
+	ASN_CSE = 2
+} CSEType;
 
 typedef enum {
     RSC_ACCEPTED									= 1000,
