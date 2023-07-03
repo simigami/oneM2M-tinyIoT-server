@@ -36,6 +36,7 @@ int get_st_rtnode(RTNode *rtnode);
 int get_cs_rtnode(RTNode *rtnode);
 char *get_lbl_rtnode(RTNode *rtnode);
 char *get_uri_rtnode(RTNode *rtnode);
+cJSON *getResource(cJSON *root, ResourceType ty);
 
 //error
 int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop);

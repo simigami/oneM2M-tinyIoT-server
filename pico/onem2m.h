@@ -19,7 +19,8 @@ typedef enum {
 	OP_DELETE,
 	OP_VIEWER = 1000,
 	OP_OPTIONS,
-	OP_DISCOVERY
+	OP_DISCOVERY,
+	OP_FORWARDING
 }Operation;
 
 typedef enum {
@@ -162,12 +163,15 @@ typedef struct{
 
 	CSEType cst;
 	char *csi;
-	char *srt;
 	char *poa;
 	char *cb;
+	char *nl;
 
 	bool rr;
 	char srv;
+
+	char *uri;
+	ResourceType ty;
 
 } CSR;
 
@@ -318,6 +322,7 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);

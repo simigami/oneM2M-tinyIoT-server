@@ -277,20 +277,36 @@ void handle_http_request(int slotno) {
 	} 
 
 	if(uri) {
-		o2pt->to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
-		strcpy(o2pt->to, uri+1);
+        if(strncmp(uri, "/~/", 3) == 0) {
+            o2pt->op = OP_FORWARDING;
+            o2pt->to = (char *)malloc((strlen(uri) + strlen(CSE_BASE_NAME) + 1) * sizeof(char));
+            strcpy(o2pt->to, CSE_BASE_NAME);
+            strcat(o2pt->to, "/");
+            strcat(o2pt->to, uri+3);
+        }else{
+            o2pt->to = (char *)malloc((strlen(uri) + 1) * sizeof(char));
+            strcpy(o2pt->to, uri+1);
+        }
+        logger("HTTP", LOG_LEVEL_DEBUG, "to: %s", o2pt->to);
 	} 
 
-	o2pt->op = http_parse_operation();
+    if(!o2pt->op){
+        o2pt->op = http_parse_operation();
+    }
+
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type();
     else if(o2pt->op == OP_OPTIONS){
         o2pt->rsc = RSC_OK;
         http_respond_to_client(o2pt, slotno);
         free_o2pt(o2pt);
         return;
+    }else if(o2pt->op == OP_FORWARDING){
+        o2pt->pc = strdup(buf[slotno]);
     }
 	o2pt->prot = PROT_HTTP;
     o2pt->errFlag = false;
+
+    
 
     if(qs && strlen(qs) > 0){
         fcjson = qs_to_json(qs);
@@ -346,6 +362,15 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno) {
     char rsc[64];
     char cnst[32], ot[32];
     char response_headers[2048] = {'\0'};
+    char buf[BUF_SIZE] = {'\0'};
+    char *status;
+
+    if(o2pt->op == OP_FORWARDING && o2pt->rsc != RSC_TARGET_NOT_REACHABLE){
+        sprintf(buf, "%s", o2pt->pc);
+        write(clients[slotno], buf, strlen(buf)); 
+        logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf);
+        return;
+    }
 
     sprintf(content_length, "%ld", o2pt->pc ? strlen(o2pt->pc) : 0);
     sprintf(rsc, "%d", o2pt->rsc);
@@ -361,9 +386,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno) {
         set_response_header("X-M2M-CNOT", ot, response_headers);
     }
 
-    char buf[BUF_SIZE] = {'\0'};
-
-    char *status;
+   
 
     switch(status_code) {
         case 200: status = "200 OK"; break;
@@ -417,4 +440,44 @@ void http_send_get_request(char *host, char *port, char *uri, char *header, char
 
     send(sock, buffer, sizeof(buffer), 0);
     close(sock);
+}
+
+void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port){
+    struct sockaddr_in serv_addr;
+    int sock = socket(PF_INET, SOCK_STREAM, 0);
+    if(sock == -1) {
+        logger("HTTP", LOG_LEVEL_ERROR, "socket error");
+        return;
+    }
+    char *response = (char *)malloc(sizeof(char) * BUF_SIZE);
+    char buffer[BUF_SIZE];
+    sprintf(buffer, "%s", o2pt->pc);
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(host);
+    serv_addr.sin_port = htons(atoi(port));
+
+    if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
+        logger("HTTP", LOG_LEVEL_ERROR, "connect error");
+        o2pt->rsc = RSC_TARGET_NOT_REACHABLE;
+        free(o2pt->pc);
+        o2pt->pc = NULL;
+        return;
+    }
+    logger("http", LOG_LEVEL_DEBUG, "%s", buffer);
+
+    send(sock, buffer, sizeof(buffer), 0);
+
+    do {
+        memset(buffer, 0, sizeof(buffer));
+        recv(sock, buffer, sizeof(buffer), 0);
+        logger("http", LOG_LEVEL_DEBUG, "%s", buffer);
+    } while(strstr(buffer, "\r\n\r\n") == NULL);
+    
+    memcpy(response, buffer, sizeof(buffer));
+    close(sock);
+    if(o2pt->pc) free(o2pt->pc);
+    o2pt->pc = response;
+    return;
 }

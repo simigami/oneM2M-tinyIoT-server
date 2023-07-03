@@ -91,6 +91,17 @@ int init_dbp(){
         return 0;
     }
 
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS csr ( \
+        ri VARCHAR(200), cst VARCHAR(45), poa VARCHAR(200), cb VARCHAR(200), csi VARCHAR(200), mei VARCHAR(45), \
+        tri VARCHAR(45), rr INT, nl VARCHAR(45), srv VARCHAR(45));");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
     strcpy(sql, "CREATE TABLE IF NOT EXISTS ae ( \
         ri VARCHAR(40), api VARCHAR(45), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45));");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
@@ -301,6 +312,138 @@ int db_store_cse(CSE *cse_object){
     #endif
     
     return 1;
+}
+
+int db_store_csr(CSR *csr_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_store_csr");
+
+     if (csr_object->ri == NULL) {
+        fprintf(stderr, "ri is NULL\n");
+        return -1;
+    }
+
+    #ifdef SQLITE_DB
+    int rc = 0;
+    char *sql, *err_msg = NULL;
+    sqlite3_stmt *res;
+
+    sql = "INSERT INTO general (rn, ri, pi, ct, et, lt, ty, uri) VALUES(?, ?, ?, ?, ?, ?, ?, ?);";
+
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return 0;
+    }
+    logger("DB", LOG_LEVEL_DEBUG, "uri: %s", csr_object->uri);
+
+    db_test_and_set_bind_text(res, 1, csr_object->rn);
+    db_test_and_set_bind_text(res, 2, csr_object->ri);
+    db_test_and_set_bind_text(res, 3, csr_object->pi);
+    db_test_and_set_bind_text(res, 4, csr_object->ct);
+    db_test_and_set_bind_text(res, 5, csr_object->et);
+    db_test_and_set_bind_text(res, 6, csr_object->lt);
+    db_test_and_set_bind_int(res, 7, csr_object->ty);
+    db_test_and_set_bind_text(res, 8, csr_object->uri);
+
+    rc = sqlite3_step(res);
+    if (rc != SQLITE_DONE) {
+        logger("DB", LOG_LEVEL_ERROR, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        return 0;
+    }
+
+    sqlite3_finalize(res);
+
+    sql = "INSERT INTO csr (ri, cb, cst, csi, srv, poa, nl, rr) VALUES(?, ?, ?, ?, ?, ?, ?, ?);";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+
+    if( rc != SQLITE_OK ){
+        logger("DB", LOG_LEVEL_ERROR, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return 0;
+    }
+
+    db_test_and_set_bind_text(res, 1, csr_object->ri);
+    db_test_and_set_bind_text(res, 2, csr_object->cb);
+    db_test_and_set_bind_int(res, 3, csr_object->cst);
+    db_test_and_set_bind_text(res, 4, csr_object->csi);
+    db_test_and_set_bind_text(res, 5, csr_object->srv);
+    db_test_and_set_bind_text(res, 6, csr_object->poa);
+    db_test_and_set_bind_text(res, 7, csr_object->nl);
+
+    if(csr_object->rr){
+        db_test_and_set_bind_int(res, 8, 1);
+    }else{
+        db_test_and_set_bind_int(res, 8, 0);
+    }
+    
+    rc = sqlite3_step(res);
+    if (rc != SQLITE_DONE) {
+        logger("DB", LOG_LEVEL_ERROR, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        return 0;
+    }
+
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(res);
+    #else
+    char *blankspace = " ";
+    DBC* dbcp;
+    int ret;        // template value
+
+    DBT key_ri;
+    DBT data;  // storving key and real data
+
+    char rr[6] = {0};
+
+    if (csr_object->rn == NULL) ae_object->rn = blankspace;
+    if (csr_object->pi == NULL) ae_object->pi = blankspace;
+    if (csr_object->ct == NULL) ae_object->ct = blankspace;
+    if (csr_object->et == NULL) ae_object->et = blankspace;
+    if (csr_object->lt == NULL) ae_object->lt = blankspace;
+    if (csr_object->csi == NULL) ae_object->csi = blankspace;
+    if (csr_object->srt == NULL) ae_object->srt = blankspace;
+    if (csr_object->poa == NULL) ae_object->poa = blankspace;
+    if (csr_object->nl == NULL) ae_object->nl = blankspace;
+    if (csr_object->rr == false) strcpy(rr, "false");
+    else strcpy(rr, "true");
+
+    dbcp = DB_GET_CURSOR(resourceDBp);
+    
+    /* key and data must initialize */
+    memset(&key_ri, 0, sizeof(DBT));
+    memset(&data, 0, sizeof(DBT));
+
+    /* set key */
+    key_ri.data = csr_object->ri;
+    key_ri.size = strlen(csr_object->ri) + 1;
+
+    /* set data */
+    char str[DB_STR_MAX] = {0};
+
+    sprintf(str, "%s;%s;%s;%d;%s;%s;%s;%d;%s;%s;%s;%s;%s;%s;%s", csr_object->ri, csr_object->rn, csr_object->pi, csr_object->ty, csr_object->ct, csr_object->lt, 
+    csr_object->et, csr_object->cst, csr_object->csi, csr_object->cb, csr_object->srt, csr_object->poa, csr_object->nl, csr_object->srv, rr);
+
+    data.data = str;
+    data.size = strlen(str) + 1;
+
+    if ((ret = dbcp->put(dbcp, &key_ri, &data, DB_KEYLAST)) != 0)
+        resourceDBp->err(resourceDBp, ret, "db->cursor");
+
+    /* DB close */
+    dbcp->close(dbcp);
+
+    if(csr_object->ri == blankspace) csr_object->ri = NULL;
+    if(csr_object->pi == blankspace) csr_object->pi = NULL;
+    if(csr_object->ct == blankspace) csr_object->ct = NULL;
+    if(csr_object->et == blankspace) csr_object->et = NULL;
+    if(csr_object->lt == blankspace) csr_object->lt = NULL;
+    if(csr_object->csi == blankspace) csr_object->csi = NULL;
+    if(csr_object->srt == blankspace) csr_object->srt = NULL;
+    if(csr_object->poa == blankspace) csr_object->poa = NULL;
+    if(csr_object->nl == blankspace) csr_object->nl = NULL;
+    #endif
 }
 
 int db_store_ae(AE *ae_object){
@@ -1243,6 +1386,212 @@ CSE *db_get_cse(char *ri){
     #endif
 
     return new_cse;
+}
+
+CSR *db_get_csr(char *ri){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_csr");
+    CSR* new_csr = NULL;
+
+    #ifdef SQLITE_DB
+     //struct to return
+    int rc = 0;
+    int cols = 0;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    cJSON *json = NULL, *root = NULL;
+    int bytes = 0, coltype = 0;
+    char sql[1024] = {0}, buf[256] = {0};
+
+    json = cJSON_CreateObject();
+    root = cJSON_CreateObject();
+    
+    for(int col = 0 ; col < cols; col++){
+        
+        colname = sqlite3_column_name(res, col);
+        bytes = sqlite3_column_bytes(res, col);
+        coltype = sqlite3_column_type(res, col);
+        if(bytes == 0) continue;
+
+        if(!strcmp(colname, "rr")){
+            if(sqlite3_column_int(res, col) == 1){
+                cJSON_AddItemToObject(json, colname, cJSON_CreateBool(true));
+            }else{
+                cJSON_AddItemToObject(json, colname, cJSON_CreateBool(false));
+            }
+            continue;
+        }else if(!strcmp(colname, "lbl")){
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            cJSON_AddItemToObject(json, "lbl", cJSON_CreateString(buf+1));
+            continue;
+        }
+
+        switch(coltype){
+            case SQLITE_TEXT:
+                memset(buf,0, 256);
+                strncpy(buf, sqlite3_column_text(res, col), bytes);
+                cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                break;
+            case SQLITE_INTEGER:
+                cJSON_AddItemToObject(json, colname, cJSON_CreateNumber(sqlite3_column_int(res, col)));
+                break;
+        }
+    }
+    cJSON_AddItemToObject(root, "m2m:csr", json);
+    new_csr = cjson_to_csr(root);
+    cJSON_Delete(root);
+
+    sqlite3_finalize(res);
+    #else
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+
+    bool flag = false;
+    int idx = 0;
+    
+    //dbp = DB_CREATE_(dbp);
+    // DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, ri, key.size) == 0) {
+            new_csr = calloc(1,sizeof(AE));
+            flag=true;
+            // ri = key
+            new_csr->ri = malloc((key.size+1)*sizeof(char));
+            strcpy(new_csr->ri, key.data);
+
+            char *ptr = strtok((char*)data.data,DB_SEP);  //split first string
+            while (ptr != NULL) { // Split to end of next string
+                switch (idx) {
+                case 0:
+                    if(strcmp(ptr," ")==0) new_csr->rn=NULL; //data is NULL
+                    else{
+                        new_csr->rn = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->rn, ptr);
+                    }
+                    idx++;
+                    break;
+                case 1:
+                    if(strcmp(ptr," ")==0) new_csr->pi=NULL; //data is NULL
+                    else{
+                    new_csr->pi = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_csr->pi, ptr);
+                    }
+                    idx++;
+                    break;
+                case 2:
+                    if(strcmp(ptr,"0")==0) new_csr->ty=0;
+                    else new_csr->ty = atoi(ptr);
+
+                    idx++;
+                    break;
+                case 3:
+                    if(strcmp(ptr," ")==0) new_csr->ct=NULL; //data is NULL
+                    else{
+                        new_csr->ct = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->ct, ptr);
+                    }
+                    idx++;
+                    break;
+                case 4:
+                    if(strcmp(ptr," ")==0) new_csr->lt=NULL; //data is NULL
+                    else{                
+                        new_csr->lt = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->lt, ptr);
+                    }
+                    idx++;
+                    break;                
+                case 5:
+                    if(strcmp(ptr," ")==0) new_csr->et=NULL; //data is NULL
+                    else{                
+                        new_csr->et = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->et, ptr);
+                    }
+                    idx++;
+                    break;      
+                case 6:
+                    if(strcmp(ptr," ")==0) new_csr->cst=NULL; //data is NULL
+                    else{                
+                        new_csr->cst = atoi(ptr);
+                    }
+                    idx++;
+                    break;      
+                case 7:
+                    if(strcmp(ptr," ")==0) new_csr->csi=NULL; //data is NULL
+                    else{                
+                        new_csr->cs
+                        new_csr->csi = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->csi, ptr);
+                    }
+                    idx++;
+                    break;
+                case 8:
+                    if(strcmp(ptr," ")==0) new_csr->cb=NULL; //data is NULL
+                    else{                
+                        new_csr->cb = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->cb, ptr);
+                    }
+                    idx++;
+                    break;
+                case 9:
+                    if(strcmp(ptr," ")==0) new_csr->srt=NULL; //data is NULL
+                    else{                
+                        new_csr->srt = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->srt, ptr);
+                    }
+                    idx++;
+                    break;
+                if(strcmp(ptr," ")==0) new_ae->lbl=NULL; //data is NULL
+                else{                
+                    new_ae->lbl = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->lbl, ptr);
+                }
+                    idx++;
+                    break;
+                case 10:
+                if(strcmp(ptr," ")==0) new_ae->srv=NULL; //data is NULL
+                else{                
+                    new_ae->srv = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->srv, ptr);
+                }            
+                    idx++;
+                    break; 
+                case 11:
+                if(strcmp(ptr," ")==0) new_ae->acpi=NULL; //data is NULL
+                else{                
+                    new_ae->acpi = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->acpi, ptr);
+                }            
+                    idx++;
+                    break;
+                case 12:
+                if(strcmp(ptr," ")==0) new_ae->origin=NULL; //data is NULL
+                else{                
+                    new_ae->origin = malloc((strlen(ptr) + 1) * sizeof(char));
+                    strcpy(new_ae->origin, ptr);
+                }            
+                    idx++;
+                    break;                                     
+                default:
+                    idx=-1;
+                }
+                
+                ptr = strtok(NULL, DB_SEP); //The delimiter is ,
+            }
+        }
+    }
+
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    #endif
+    return new_csr;        
 }
 
 AE *db_get_ae(char *ri){
@@ -3052,6 +3401,116 @@ RTNode* db_get_all_cse() {
     /* Cursors must be closed */
     if (dbcp != NULL)
         dbcp->close(dbcp);
+    #endif
+    return head;
+}
+
+RTNode *db_get_all_csr_rtnode(){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_csr_rtnode");
+
+    #ifdef SQLITE_DB
+    int rc = 0;
+    int cols = 0;
+    int coltype = 0, bytes = 0;
+    cJSON *json, *root;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
+    char buf[256] = {0};
+
+    sprintf(sql, "SELECT * FROM general, csr WHERE general.ri = csr.ri;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
+
+    RTNode* head = NULL, *rtnode = NULL;
+
+    rc = sqlite3_step(res);
+    cols = sqlite3_column_count(res);
+    while(rc == SQLITE_ROW){
+        json = cJSON_CreateObject();
+        root = cJSON_CreateObject();
+        
+        CSR* csr = NULL;
+        for(int col = 0 ; col < cols; col++){
+            
+            colname = sqlite3_column_name(res, col);
+            bytes = sqlite3_column_bytes(res, col);
+            coltype = sqlite3_column_type(res, col);
+            if(!strcmp(colname, "rr")){
+                if(!strncmp(sqlite3_column_text(res, col), "true", 4)){
+                    cJSON_AddItemToObject(json, colname, cJSON_CreateBool(true));
+                }else{
+                    cJSON_AddItemToObject(json, colname, cJSON_CreateBool(false));
+                }
+                continue;
+            }
+
+            if(bytes == 0) continue;
+            switch(coltype){
+                case SQLITE_TEXT:
+                    memset(buf, 0, 256);
+                    strncpy(buf, sqlite3_column_text(res, col), bytes);
+                    cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                    break;
+                case SQLITE_INTEGER:
+                    cJSON_AddItemToObject(json, colname, cJSON_CreateNumber(sqlite3_column_int(res, col)));
+                    break;
+            }
+        }
+        cJSON_AddItemToObject(root, "m2m:csr", json);
+        csr = cjson_to_csr(root);
+        if(!head) {
+            head = create_rtnode(csr,RT_CSR);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(csr, RT_CSR);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+        }  
+        cJSON_Delete(root); 
+        rc = sqlite3_step(res);   
+    }
+    sqlite3_finalize(res);
+
+    #else
+    const char* TYPE = "16-";
+    BC* dbcp;
+    DBT key, data;
+    int ret;
+
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN(DATABASE);
+    dbcp = DB_GET_CURSOR(resourceDBp);
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    RTNode* head = NULL, *rtnode = NULL;
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        
+        if (strncmp(key.data, TYPE , 1) == 0){
+            CSR* csr = db_get_csr((char*)key.data);
+
+            if(!head) {
+                head = create_rtnode(csr,RT_CSR);
+                rtnode = head;
+            } else {
+                rtnode->sibling_right = create_rtnode(csr,RT_CSR);
+                rtnode->sibling_right->sibling_left = rtnode;
+                rtnode = rtnode->sibling_right;
+            }      
+        }
+    }
+
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+
     #endif
     return head;
 }

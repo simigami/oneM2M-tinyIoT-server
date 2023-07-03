@@ -255,6 +255,7 @@ ResourceType http_parse_object_type() {
 	case 4 : ty = RT_CIN; break;
 	case 5 : ty = RT_CSE; break;
 	case 9 : ty = RT_GRP; break;
+	case 16: ty = RT_CSR; break;
 	case 23 : ty = RT_SUB; break;
 	default : ty = RT_MIXED; break;
 	}
@@ -321,6 +322,7 @@ ResourceType parse_object_type_cjson(cJSON *cjson) {
 	else if(cJSON_GetObjectItem(cjson, "m2m:sub")) ty = RT_SUB;
 	else if(cJSON_GetObjectItem(cjson, "m2m:grp")) ty = RT_GRP;
 	else if(cJSON_GetObjectItem(cjson, "m2m:acp")) ty = RT_ACP;
+	else if(cJSON_GetObjectItem(cjson, "m2m:csr")) ty = RT_CSR;
 	else ty = RT_MIXED;
 	
 	return ty;
@@ -336,6 +338,7 @@ char *resource_identifier(ResourceType ty, char *ct) {
 		case RT_SUB : strcpy(ri, "23-"); break;
 		case RT_ACP : strcpy(ri, "1-"); break;
 		case RT_GRP : strcpy(ri, "9-"); break;
+		case RT_CSR : strcpy(ri, "16-"); break; 
 	}
 
 	// struct timespec specific_time;
@@ -474,13 +477,16 @@ void log_runtime(double start) {
 
 
 void init_server() {
-	// if(SERVER_TYPE == MN_CSE){
-	// 	logger("UTIL", LOG_LEVEL_DEBUG, "MN-CSE");
+	if(SERVER_TYPE == MN_CSE){
+		logger("UTIL", LOG_LEVEL_DEBUG, "MN-CSE");
+		// oneM2MPrimitive csr;
+		// create_csr(&csr);
 		
-		
-	// } else if(SERVER_TYPE == IN_CSE){
-	// 	logger("UTIL", LOG_LEVEL_DEBUG, "IN-CSE");
-	// }
+		// http_send_get_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, "/", DEFAULT_REQUEST_HEADERS, "", "");
+
+	} else if(SERVER_TYPE == IN_CSE){
+		logger("UTIL", LOG_LEVEL_DEBUG, "IN-CSE");
+	}
 
 	rt = (ResourceTree *)calloc(1, sizeof(rt));
 	
@@ -503,6 +509,11 @@ void init_server() {
 void init_resource_tree(){
 	RTNode *rtnode_list = (RTNode *)calloc(1,sizeof(RTNode));
 	RTNode *tail = rtnode_list;
+
+	RTNode* csr_list = db_get_all_csr_rtnode();
+	tail->sibling_right = csr_list;
+	if(csr_list) csr_list->sibling_left = tail;
+	while(tail->sibling_right) tail = tail->sibling_right;
 	
 	RTNode* ae_list = db_get_all_ae_rtnode();
 	tail->sibling_right = ae_list;
@@ -722,14 +733,7 @@ int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	cJSON *root = o2pt->cjson_pc;
 	cJSON *resource, *rn;
 
-	switch(o2pt->ty) {
-		case RT_AE: resource = cJSON_GetObjectItem(root, "m2m:ae"); break;
-		case RT_CNT: resource = cJSON_GetObjectItem(root, "m2m:cnt"); break;
-		case RT_CIN: resource = cJSON_GetObjectItem(root, "m2m:cin"); break;
-		case RT_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
-		case RT_GRP: resource = cJSON_GetObjectItem(root, "m2m:grp"); break;
-		case RT_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
-	}
+	resource = getResource(root, o2pt->ty);
 
 	RTNode *child = rtnode->child;
     bool flag = false;
@@ -810,13 +814,7 @@ int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty) {
 	cJSON *root = o2pt->cjson_pc;
 	cJSON *resource, *rn;
 
-	switch(ty) {
-		case RT_AE: resource = cJSON_GetObjectItem(root, "m2m:ae"); break;
-		case RT_CNT: resource = cJSON_GetObjectItem(root, "m2m:cnt"); break;
-		case RT_SUB: resource = cJSON_GetObjectItem(root, "m2m:sub"); break;
-		case RT_ACP: resource = cJSON_GetObjectItem(root, "m2m:acp"); break;
-		case RT_GRP: resource = cJSON_GetObjectItem(root, "m2m:grp"); break;
-	}
+	resource = getResource(root, ty);
 
 	rn = cJSON_GetObjectItem(resource, "rn");
 	if(!rn) return 0;
@@ -1012,6 +1010,7 @@ int rsc_to_http_status(int rsc){
 			return 403;
 
 		case RSC_INTERNAL_SERVER_ERROR:
+		case RSC_TARGET_NOT_REACHABLE:
 			return 500;
 
 		default:
@@ -1106,6 +1105,7 @@ char *get_pi_rtnode(RTNode *rtnode) {
 		case RT_SUB: pi = ((SUB *)rtnode->obj)->pi; break;
 		case RT_ACP: pi = ((ACP *)rtnode->obj)->pi; break;
 		case RT_GRP: pi = ((GRP *)rtnode->obj)->pi; break;
+		case RT_CSR: pi = ((CSR *)rtnode->obj)->pi; break;
 	}
 
 	return pi;
@@ -1122,6 +1122,7 @@ char *get_ri_rtnode(RTNode *rtnode) {
 		case RT_SUB: ri = ((SUB *)rtnode->obj)->ri; break;
 		case RT_ACP: ri = ((ACP *)rtnode->obj)->ri; break;
 		case RT_GRP: ri = ((GRP *)rtnode->obj)->ri; break;
+		case RT_CSR: ri = ((CSR *)rtnode->obj)->ri; break;
 	}
 
 	return ri;
@@ -1138,6 +1139,7 @@ char *get_rn_rtnode(RTNode *rtnode) {
 		case RT_SUB: rn = ((SUB *)rtnode->obj)->rn; break;
 		case RT_ACP: rn = ((ACP *)rtnode->obj)->rn; break;
 		case RT_GRP: rn = ((GRP *)rtnode->obj)->rn; break;
+		case RT_CSR: rn = ((CSR *)rtnode->obj)->rn; break;
 	}
 
 	return rn;
@@ -1169,6 +1171,7 @@ char *get_ct_rtnode(RTNode *rtnode){
 		case RT_SUB: ct = ((SUB *)rtnode->obj)->ct; break;
 		case RT_ACP: ct = ((ACP *)rtnode->obj)->ct; break;
 		case RT_GRP: ct = ((GRP *)rtnode->obj)->ct; break;
+		case RT_CSR: ct = ((CSR *)rtnode->obj)->ct; break;
 	}
 
 	return ct;
@@ -1184,6 +1187,7 @@ char *get_et_rtnode(RTNode *rtnode){
 		case RT_SUB: et = ((SUB *)rtnode->obj)->et; break;
 		case RT_ACP: et = ((ACP *)rtnode->obj)->et; break;
 		case RT_GRP: et = ((GRP *)rtnode->obj)->et; break;
+		case RT_CSR: et = ((CSR *)rtnode->obj)->et; break;
 	}
 
 	return et;
@@ -1199,6 +1203,7 @@ char *get_lt_rtnode(RTNode *rtnode){
 		case RT_SUB: lt = ((SUB *)rtnode->obj)->lt; break;
 		case RT_ACP: lt = ((ACP *)rtnode->obj)->lt; break;
 		case RT_GRP: lt = ((GRP *)rtnode->obj)->lt; break;
+		case RT_CSR: lt = ((CSR *)rtnode->obj)->lt; break;
 	}
 
 	return lt;
@@ -1255,6 +1260,29 @@ char *get_uri_rtnode(RTNode *rtnode){
 			return ((SUB *) rtnode->obj)->uri;
 		case RT_GRP:
 			return ((GRP *) rtnode->obj)->uri;
+		case RT_CSR:
+			return ((CSR *) rtnode->obj)->uri;
+	}
+}
+
+cJSON *getResource(cJSON *root, ResourceType ty){
+	switch(ty){
+		case RT_CSE:
+			return cJSON_GetObjectItem(root, "m2m:cse");
+		case RT_AE:
+			return cJSON_GetObjectItem(root, "m2m:ae");
+		case RT_CNT:
+			return cJSON_GetObjectItem(root, "m2m:cnt");
+		case RT_CIN:
+			return cJSON_GetObjectItem(root, "m2m:cin");
+		case RT_ACP:
+			return cJSON_GetObjectItem(root, "m2m:acp");
+		case RT_SUB:
+			return cJSON_GetObjectItem(root, "m2m:sub");
+		case RT_GRP:
+			return cJSON_GetObjectItem(root, "m2m:grp");
+		case RT_CSR:
+			return cJSON_GetObjectItem(root, "m2m:csr");
 	}
 }
 

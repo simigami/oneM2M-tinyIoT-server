@@ -22,6 +22,7 @@ void normalize_payload();
 Operation http_parse_operation();
 void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno);
 void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt);
+void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port);
 
 typedef struct {
   char *name, *value;

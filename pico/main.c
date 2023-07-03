@@ -133,7 +133,12 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			set_o2pt_pc(o2pt, "{\"m2m:dbg\": \"response about options method\"}");
 			break;
 		case OP_DISCOVERY:
-			rsc = discover_onem2m_resource(o2pt, target_rtnode); break;
+			rsc = discover_onem2m_resource(o2pt, target_rtnode); 
+			break;
+		
+		case OP_FORWARDING:
+			rsc = forwarding_onem2m_resource(o2pt, target_rtnode);
+			break;
 
 		default:
 			handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "{\"m2m:dbg\": \"internal server error\"}");

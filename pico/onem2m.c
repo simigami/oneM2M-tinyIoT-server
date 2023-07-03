@@ -46,7 +46,30 @@ void init_cse(CSE* cse) {
 	free(ct); ct = NULL;
 }
 
+void init_csr(CSR* csr, RTNode *parent_rtnode){
+	char *ct = get_local_time(0);
+	
 
+	//logger("CSR", LOG_LEVEL_INFO, "CSR CT : %s", ct);
+	
+	csr->ri = resource_identifier(RT_CSR, ct);
+
+	csr->ct = strdup(ct);
+	csr->lt = strdup(ct);
+	if(!csr->rn){
+		csr->rn = (char*)malloc((strlen(csr->csi) + 1) * sizeof(char));
+		strcpy(csr->rn, csr->csi);
+	}
+
+	csr->pi = strdup(get_ri_rtnode(parent_rtnode));
+
+	csr->uri = (char*)malloc((strlen(get_uri_rtnode(parent_rtnode)) + strlen(csr->rn) + 2) * sizeof(char));
+	sprintf(csr->uri, "%s/%s", get_uri_rtnode(parent_rtnode), csr->rn);
+	
+	csr->ty = RT_CSR;
+	
+	free(ct); ct = NULL;
+}
 
 void init_ae(AE* ae, RTNode *parent_rtnode, char *origin) {
 	int origin_size;
@@ -186,15 +209,39 @@ RTNode* create_rtnode(void *obj, ResourceType ty){
 }
 
 int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	int e = check_rn_invalid(o2pt, RT_CSE);
+	int e = check_rn_invalid(o2pt, RT_CSR);
+	if(e == -1) return o2pt->rsc;
 
 	if(parent_rtnode->ty != RT_CSE) {
 		handle_error(o2pt, RSC_INVALID_CHILD_RESOURCETYPE, "child type is invalid");
 		return o2pt->rsc;
 	}
 	
-	o2pt->to = REMOTE_CSE_ID;
-	o2pt->fr = CSE_BASE_RI;
+	CSR* csr = cjson_to_csr(o2pt->cjson_pc);
+
+	if(!csr) {
+		handle_error(o2pt, RSC_CONTENTS_UNACCEPTABLE, "insufficient mandatory attribute(s)");
+		return RSC_CONTENTS_UNACCEPTABLE;
+	}
+
+	init_csr(csr, parent_rtnode);
+	logger("O2", LOG_LEVEL_DEBUG, "%s", parent_rtnode->uri);
+
+	int result = db_store_csr(csr);
+	if(result == -1) {
+		handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "database error");
+		return RSC_INTERNAL_SERVER_ERROR;
+	}
+
+	RTNode* rtnode = create_rtnode(csr, RT_CSR);
+	add_child_resource_tree(parent_rtnode, rtnode);
+	if(o2pt->pc){
+		free(o2pt->pc);
+		o2pt->pc = NULL;
+	}
+	o2pt->pc = csr_to_json(csr);
+	o2pt->rsc = RSC_CREATED;
+	return RSC_CREATED;
 }
 
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
@@ -1555,4 +1602,34 @@ int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	cJSON_Delete(noti_cjson);
 
 	return 1;
+}
+
+int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	char *host = NULL;
+	char *port = NULL;
+	if(target_rtnode->ty != RT_CSR){
+		logger("O2M", LOG_LEVEL_ERROR, "target_rtnode is not CSR");
+		return;
+	}
+
+	CSR *csr = (CSR *)target_rtnode->obj;
+
+	if(strncmp(csr->poa, "http://", 7) == 0){
+		host = csr->poa + 7;
+		port = strchr(host, ':');
+		if(port){
+			*port = '\0';
+			port++;
+		}else{
+			port = "80";
+		}
+		http_forwarding(o2pt, host, port);
+	}else if (strncmp(csr->poa, "mqtt://", 7) == 0){
+		host = csr->poa + 7;
+		port = strchr(host, ':');
+		if(port){
+			*port = '\0';
+			port++;
+		}
+	}
 }

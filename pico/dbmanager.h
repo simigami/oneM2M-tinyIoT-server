@@ -17,6 +17,7 @@ int db_store_cin(CIN* cin_object);
 int db_store_grp(GRP* grp_object);
 int db_store_sub(SUB* sub_object);
 int db_store_acp(ACP *acp_object);
+int db_store_csr(CSR *csr_object);
 
 CSE* db_get_cse(char *ri);
 AE* db_get_ae(char *ri);
@@ -39,6 +40,7 @@ int db_delete_acp(char* ri);
 int db_delete_grp(char* ri);
 
 RTNode* db_get_all_cse();
+RTNode* db_get_all_csr_rtnode();
 RTNode* db_get_all_ae_rtnode();
 RTNode* db_get_all_cnt_rtnode();
 RTNode* db_get_all_cin();

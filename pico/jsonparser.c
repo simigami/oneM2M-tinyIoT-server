@@ -22,6 +22,102 @@ void remove_quotation_mark(char *s){
 	s[index] = '\0';
 }
 
+CSR* cjson_to_csr(cJSON *cjson){
+	cJSON *root = NULL;
+	cJSON *csr = NULL;
+	cJSON *pjson = NULL;
+
+	if(cjson == NULL){
+		return NULL;
+	}
+
+	root = cJSON_GetObjectItem(cjson, "m2m:csr");
+	if(!root) return NULL;
+
+	CSR *c = (CSR *)calloc(1,sizeof(CSR));
+
+	// acpi (optional)
+	pjson = cJSON_GetObjectItem(root, "acpi");
+	if(pjson != NULL && pjson->valuestring[0] != 0 && !isspace(pjson->valuestring[0])){
+		c->acpi = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "csi");
+	if(pjson){
+		c->csi = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "rr");
+	if(pjson){
+		c->rr = cJSON_IsTrue(pjson);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "cb");
+	if(pjson){
+		c->cb = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "cst");
+	if(pjson){
+		c->cst = pjson->valueint;
+	}
+
+	pjson = cJSON_GetObjectItem(root, "srv");
+	if(pjson){
+		c->srv = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "poa");
+	if(pjson){
+		c->poa =  strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "nl");
+	if(pjson){
+		c->nl = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "lbl");
+	if(pjson){
+		c->lbl = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "et");
+	if(pjson){
+		c->et = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "lt");
+	if(pjson){
+		c->lt = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "ct");
+	if(pjson){
+		c->ct = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "ri");
+	if(pjson){
+		c->ri = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "pi");
+	if(pjson){
+		c->pi = strdup(pjson->valuestring);
+	}
+
+	pjson = cJSON_GetObjectItem(root, "rn");
+	if(pjson){
+		c->rn = strdup(pjson->valuestring);
+	}
+
+	c->ty = RT_CSR;
+	
+
+	return c;
+}
+
 AE* cjson_to_ae(cJSON *cjson) {
 	cJSON *root = NULL;
 	cJSON *api = NULL;
@@ -1146,6 +1242,33 @@ char *grp_to_json(GRP *grp_object){
 
 	cJSON_Delete(root);
 
+	return json;
+}
+
+char *csr_to_json(CSR *csr_object){
+	char *json = NULL;
+	cJSON *root;
+	cJSON *csr;
+	cJSON *pjson;
+
+	root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "m2m:csr", csr = cJSON_CreateObject());
+	cJSON_AddStringToObject(csr, "ri", csr_object->ri);
+	cJSON_AddStringToObject(csr, "pi", csr_object->pi);
+	cJSON_AddStringToObject(csr, "rn", csr_object->rn);
+	cJSON_AddStringToObject(csr, "ct", csr_object->ct);
+	cJSON_AddStringToObject(csr, "lt", csr_object->lt);
+	cJSON_AddStringToObject(csr, "et", csr_object->et);
+
+	//cJSON_AddStringToObject(csr, "lbl", csr_object->lbl);
+	cJSON_AddStringToObject(csr, "csi", csr_object->csi);
+	cJSON_AddStringToObject(csr, "srv", csr_object->srv);
+	cJSON_AddStringToObject(csr, "poa", csr_object->poa);
+	cJSON_AddStringToObject(csr, "cb", csr_object->cb);
+	cJSON_AddBoolToObject(csr, "rr", csr_object->rr);
+
+	json = cJSON_PrintUnformatted(root);
+	cJSON_Delete(root);
 	return json;
 }
 

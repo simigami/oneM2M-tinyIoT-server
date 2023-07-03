@@ -10,7 +10,9 @@ CIN* cjson_to_cin(cJSON *cjson);
 SUB* cjson_to_sub(cJSON *cjson);
 SUB* cjson_to_sub_db(cJSON *cjson);
 ACP* cjson_to_acp(cJSON *cjson);
+CSR* cjson_to_csr(cJSON *cjson);
 int cjson_to_grp(cJSON *cjson, GRP *grp);
+
 
 char* cse_to_json(CSE* cse_object);
 char* ae_to_json(AE* ae_object);
@@ -18,6 +20,7 @@ char* cnt_to_json(CNT* cnt_object);
 char* cin_to_json(CIN* cin_object);
 char* sub_to_json(SUB *sub_object);
 char *grp_to_json(GRP *grp_object);
+char *csr_to_json(CSR *csr_object);
 char* notification_to_json(char *sur, int net, char *rep);
 char* rtnode_to_json(RTNode *node);
 char* acp_to_json(ACP *acp_object);
