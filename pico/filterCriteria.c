@@ -218,6 +218,11 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
     if(pjson){
         fc->ops = get_number_from_cjson(pjson);
     }
+
+    pjson = cJSON_GetObjectItem(fcjson, "la");
+    if(pjson){
+        fc->la = get_number_from_cjson(pjson);
+    }
     
     if(!isFCAttrValid(fc)){ // TODO - If rcn == 11(discovery result references) fu must be 1
         free_fc(fc);

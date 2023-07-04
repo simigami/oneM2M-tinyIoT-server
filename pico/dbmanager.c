@@ -3440,7 +3440,7 @@ RTNode *db_get_all_csr_rtnode(){
             bytes = sqlite3_column_bytes(res, col);
             coltype = sqlite3_column_type(res, col);
             if(!strcmp(colname, "rr")){
-                if(!strncmp(sqlite3_column_text(res, col), "true", 4)){
+                if(sqlite3_column_int(res, col) == 1){
                     cJSON_AddItemToObject(json, colname, cJSON_CreateBool(true));
                 }else{
                     cJSON_AddItemToObject(json, colname, cJSON_CreateBool(false));

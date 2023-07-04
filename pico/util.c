@@ -398,8 +398,9 @@ int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node) {
 	
 	int cinSize = 1;
 	
-	char *la = strstr(qs,"la=");
-	if(la) cinSize = atoi(la+3);
+	//char *la = strstr(qs,"la=");
+	//if(la) cinSize = atoi(la+3);
+	cinSize = o2pt->fc->la;
 	
 	logger("O2M", LOG_LEVEL_DEBUG,"Latest CIN Size : %d\n", cinSize);
 	

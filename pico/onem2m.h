@@ -278,6 +278,8 @@ typedef struct {
     char* gq;
     /*Operations*/
     ACOP ops;
+
+	int la;
     
     struct _o *o2pt;
 } FilterCriteria;

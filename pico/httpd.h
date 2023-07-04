@@ -6,13 +6,22 @@
 #include "onem2m.h"
 
 // Client request
-extern char *method, // "GET" or "POST"
-    *uri,            // "/index.html" things before '?'
-    *qs,             // "a=1&b=2" things after  '?'
-    *prot,           // "HTTP/1.1"
-    *payload;        // for POST
+// extern char *method, // "GET" or "POST"
+//     *uri,            // "/index.html" things before '?'
+//     *qs,             // "a=1&b=2" things after  '?'
+//     *prot,           // "HTTP/1.1"
+//     *payload;        // for POST
 
-extern int payload_size;
+// extern int payload_size;
+
+typedef struct _request {
+    char *method;
+    char *uri;
+    char *qs;
+    char *prot;
+    char *payload;
+    int payload_size;
+} HTTPRequest;
 
 typedef struct {
   char *name, *value;
@@ -23,8 +32,8 @@ static header_t reqhdr[17] = {{"\0", "\0"}};
 void serve_forever(const char *PORT);
 char *request_header(header_t *h, const char *name);
 void set_response_header(char *key, char *value, char *response_headers);
-void normalize_payload();
-Operation http_parse_operation();
+void normalize_payload(char *body);
+Operation http_parse_operation(char *method);
 void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno);
 void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt);
 void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, CSR* csr);
@@ -32,7 +41,7 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, CSR* csr);
 header_t *request_headers(void);
 
 // user shall implement this function
-void handle_http_request(int slotno);
+void handle_http_request(HTTPRequest *req, int slotno);
 
 void http_send_get_request(char *host, char *port, char *uri, char *header, char *qs, char *data);
 
