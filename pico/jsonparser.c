@@ -39,7 +39,7 @@ CSR* cjson_to_csr(cJSON *cjson){
 	// acpi (optional)
 	pjson = cJSON_GetObjectItem(root, "acpi");
 	if(pjson != NULL && pjson->valuestring[0] != 0 && !isspace(pjson->valuestring[0])){
-		c->acpi = strdup(pjson->valuestring);
+		c->acpi = string_to_cjson_string_list_item(pjson->valuestring);
 	}
 
 	pjson = cJSON_GetObjectItem(root, "csi");
@@ -68,8 +68,10 @@ CSR* cjson_to_csr(cJSON *cjson){
 	}
 
 	pjson = cJSON_GetObjectItem(root, "poa");
-	if(pjson){
+	if(cJSON_IsString(pjson)){
 		c->poa =  strdup(pjson->valuestring);
+	}else{
+		c->poa = cjson_string_list_item_to_string(pjson);
 	}
 
 	pjson = cJSON_GetObjectItem(root, "nl");
@@ -1263,7 +1265,7 @@ char *csr_to_json(CSR *csr_object){
 	//cJSON_AddStringToObject(csr, "lbl", csr_object->lbl);
 	cJSON_AddStringToObject(csr, "csi", csr_object->csi);
 	cJSON_AddStringToObject(csr, "srv", csr_object->srv);
-	cJSON_AddStringToObject(csr, "poa", csr_object->poa);
+	cJSON_AddItemToObject(csr, "poa", string_to_cjson_string_list_item(csr_object->poa));
 	cJSON_AddStringToObject(csr, "cb", csr_object->cb);
 	cJSON_AddBoolToObject(csr, "rr", csr_object->rr);
 

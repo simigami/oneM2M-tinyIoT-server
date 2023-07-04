@@ -290,18 +290,17 @@ typedef struct _o{
 	char *rvi;
 	char *pc;
 	Operation op;
-	Protocol prot;
 	cJSON *cjson_pc;
 	int rsc;
 	int ty;
 	char *origin;
 	bool isFopt;
+	bool isForwarding;
 	char *fopt;
 	bool errFlag;
 	ContentStatus cnst;
 	int cnot;
 	FilterCriteria *fc;
-	int slotno;
 }oneM2MPrimitive;
 
 typedef struct _n{

@@ -422,6 +422,15 @@ int retrieve_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	return RSC_OK;
 }
 
+int retrieve_csr(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	CSR* csr = (CSR *)target_rtnode->obj;
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = csr_to_json(csr);
+	o2pt->rsc = RSC_OK;
+	//free_csr(gcsr); gcsr = NULL;
+	return RSC_OK;
+}
+
 int retrieve_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	AE* ae = (AE *)target_rtnode->obj;
 	if(o2pt->pc) free(o2pt->pc);
@@ -1361,6 +1370,10 @@ int retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 		logger("O2M", LOG_LEVEL_INFO, "Retrieve ACP");
 		rsc = retrieve_acp(o2pt, target_rtnode);			
 		break;
+	case RT_CSR:
+		logger("O2M", LOG_LEVEL_INFO, "Retrieve CSR");
+		rsc = retrieve_csr(o2pt, target_rtnode);			
+		break;
 	}	
 
 	return rsc;
@@ -1613,23 +1626,29 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	}
 
 	CSR *csr = (CSR *)target_rtnode->obj;
-
-	if(strncmp(csr->poa, "http://", 7) == 0){
-		host = csr->poa + 7;
-		port = strchr(host, ':');
-		if(port){
-			*port = '\0';
-			port++;
-		}else{
-			port = "80";
+	char *poa_list = strdup(csr->poa);
+	char *ptr = strtok(poa_list, ",");
+	while(ptr){
+		if(strncmp(ptr, "http://", 7) == 0){
+			host = ptr + 7;
+			port = strchr(host, ':');
+			if(port){
+				*port = '\0';
+				port++;
+			}else{
+				port = "80";
+			}
+			http_forwarding(o2pt, host, port, csr);
+		}else if (strncmp(ptr, "mqtt://", 7) == 0){
+			host = ptr + 7;
+			port = strchr(host, ':');
+			if(port){
+				*port = '\0';
+				port++;
+			}
 		}
-		http_forwarding(o2pt, host, port);
-	}else if (strncmp(csr->poa, "mqtt://", 7) == 0){
-		host = csr->poa + 7;
-		port = strchr(host, ':');
-		if(port){
-			*port = '\0';
-			port++;
-		}
+		ptr = strtok(NULL, ",");
 	}
+
+	free(poa_list);	
 }

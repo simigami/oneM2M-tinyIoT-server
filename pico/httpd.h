@@ -14,20 +14,21 @@ extern char *method, // "GET" or "POST"
 
 extern int payload_size;
 
+typedef struct {
+  char *name, *value;
+} header_t;
+static header_t reqhdr[17] = {{"\0", "\0"}};
+
 // Server control functions
 void serve_forever(const char *PORT);
-char *request_header(const char *name);
+char *request_header(header_t *h, const char *name);
 void set_response_header(char *key, char *value, char *response_headers);
 void normalize_payload();
 Operation http_parse_operation();
 void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno);
 void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt);
-void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port);
+void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, CSR* csr);
 
-typedef struct {
-  char *name, *value;
-} header_t;
-static header_t reqhdr[17] = {{"\0", "\0"}};
 header_t *request_headers(void);
 
 // user shall implement this function

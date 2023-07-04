@@ -134,7 +134,6 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     }
 
     /* type mqtt */
-    o2pt->prot = PROT_MQTT;
     o2pt->origin = strdup(originator);
     MqttClientIdToId(o2pt->origin);
 

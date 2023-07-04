@@ -240,7 +240,7 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 }
 
 ResourceType http_parse_object_type() {
-	char *content_type = request_header("Content-Type");
+	char *content_type = request_header(request_headers(), "Content-Type");
 	if(!content_type) return RT_MIXED;
 	char *str_ty = strstr(content_type, "ty=");
 	if(!str_ty) return RT_MIXED;
@@ -1003,6 +1003,7 @@ int rsc_to_http_status(int rsc){
 			return 201;
 
 		case RSC_BAD_REQUEST:
+		case RSC_NOT_FOUND:
 		case RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED:
 			return 400;
 		
@@ -1076,7 +1077,6 @@ void o2ptcpy(oneM2MPrimitive **dest, oneM2MPrimitive *src){
 	(*dest)->ty = src->ty;
 	(*dest)->op = src->op;
 	(*dest)->isFopt = src->isFopt;
-	(*dest)->prot = src->prot;
 	(*dest)->rsc = src->rsc;
 	(*dest)->cnot = src->cnot;
 	(*dest)->fc = src->fc;

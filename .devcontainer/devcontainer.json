@@ -19,7 +19,7 @@
 	// "customizations": {},
 	"customizations": {
 		"vscode": {
-			"extensions": ["ms-vscode.cpptools-extension-pack", "eamodio.gitlens", "github.copilot-nightly", "github.copilot-chat"]
+			"extensions": ["ms-vscode.cpptools-extension-pack", "eamodio.gitlens", "github.copilot", "github.copilot-chat"]
 		}
 	}
 

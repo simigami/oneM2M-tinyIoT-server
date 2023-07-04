@@ -106,6 +106,11 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		return o2pt->rsc = rsc = RSC_BAD_REQUEST;
 	}
 
+	if(o2pt->isForwarding){
+		rsc = forwarding_onem2m_resource(o2pt, target_rtnode);
+		return rsc;
+	}
+
 	switch(o2pt->op) {
 		
 		case OP_CREATE:	
@@ -135,11 +140,7 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		case OP_DISCOVERY:
 			rsc = discover_onem2m_resource(o2pt, target_rtnode); 
 			break;
-		
-		case OP_FORWARDING:
-			rsc = forwarding_onem2m_resource(o2pt, target_rtnode);
-			break;
-
+	
 		default:
 			handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "{\"m2m:dbg\": \"internal server error\"}");
 			return RSC_INTERNAL_SERVER_ERROR;
