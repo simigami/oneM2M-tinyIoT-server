@@ -14,6 +14,9 @@
 
 // extern int payload_size;
 
+typedef struct {
+  char *name, *value;
+} header_t;
 typedef struct _request {
     char *method;
     char *uri;
@@ -21,12 +24,11 @@ typedef struct _request {
     char *prot;
     char *payload;
     int payload_size;
+    header_t *headers;
 } HTTPRequest;
 
-typedef struct {
-  char *name, *value;
-} header_t;
-static header_t reqhdr[17] = {{"\0", "\0"}};
+
+//static header_t reqhdr[17] = {{"\0", "\0"}};
 
 // Server control functions
 void serve_forever(const char *PORT);
@@ -37,8 +39,6 @@ Operation http_parse_operation(char *method);
 void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno);
 void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt);
 void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, CSR* csr);
-
-header_t *request_headers(void);
 
 // user shall implement this function
 void handle_http_request(HTTPRequest *req, int slotno);

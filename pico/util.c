@@ -239,8 +239,8 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 	return 1;
 }
 
-ResourceType http_parse_object_type() {
-	char *content_type = request_header(request_headers(), "Content-Type");
+ResourceType http_parse_object_type(header_t *headers) {
+	char *content_type = request_header(headers, "Content-Type");
 	if(!content_type) return RT_MIXED;
 	char *str_ty = strstr(content_type, "ty=");
 	if(!str_ty) return RT_MIXED;

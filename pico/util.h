@@ -4,6 +4,7 @@
 #include "onem2m.h"
 #include "config.h"
 #include "cJSON.h"
+#include "httpd.h"
 
 void init_server();
 
@@ -67,7 +68,7 @@ bool is_rn_valid_char(char c);
 int validate_grp(GRP *grp);
 bool isMinDup(char **mid, int idx, char *new_mid);
 
-ResourceType http_parse_object_type();
+ResourceType http_parse_object_type(header_t *headers);
 ResourceType parse_object_type_cjson(cJSON *cjson);
 
 bool isFopt(char *str);
