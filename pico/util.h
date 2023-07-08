@@ -51,6 +51,7 @@ int check_payload_size(oneM2MPrimitive *o2pt);
 int check_payload_format(oneM2MPrimitive *o2pt);
 int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty);
 bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi);
+int check_csi_duplicate(char *new_csi, RTNode *rtnode);
 void db_store_fail(oneM2MPrimitive *o2pt);
 
 //etc

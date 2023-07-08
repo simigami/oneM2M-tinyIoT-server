@@ -152,7 +152,7 @@ typedef struct {
 } GRP;
 
 typedef struct{
-	char *rn;
+	char *rn; //resource name
 	char *pi;
 	char *ri;
 	char *ct;
@@ -162,7 +162,7 @@ typedef struct{
 	char *acpi;
 
 	CSEType cst;
-	char *csi;
+	char *csi; //cse-id
 	char *poa;
 	char *cb;
 	char *nl;

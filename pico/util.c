@@ -793,6 +793,21 @@ int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	return 0;
 }
 
+int check_csi_duplicate(char *new_csi, RTNode *rtnode) {
+	if(!rtnode || new_csi == NULL) return 0;
+
+	RTNode *child = rtnode->child;
+
+	while(child) {
+		if(!strcmp(get_ri_rtnode(child), new_csi)) {
+			return -1;
+		}
+		child = child->sibling_right;
+	}
+
+	return 0;
+}
+
 int check_payload_format(oneM2MPrimitive *o2pt) {
 	cJSON *cjson = o2pt->cjson_pc;
 	

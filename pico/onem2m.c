@@ -216,6 +216,11 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		handle_error(o2pt, RSC_INVALID_CHILD_RESOURCETYPE, "child type is invalid");
 		return o2pt->rsc;
 	}
+
+	if(SERVER_TYPE == ASN_CSE){
+		handle_error(o2pt, RSC_OPERATION_NOT_ALLOWED, "operation not allowed");
+		return o2pt->rsc;
+	}
 	
 	CSR* csr = cjson_to_csr(o2pt->cjson_pc);
 
@@ -223,6 +228,16 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		handle_error(o2pt, RSC_CONTENTS_UNACCEPTABLE, "insufficient mandatory attribute(s)");
 		return RSC_CONTENTS_UNACCEPTABLE;
 	}
+
+	if(csr->csi == NULL){
+		csr->csi = strdup(o2pt->fr);
+	}
+
+	if(check_csi_duplicate(csr->csi, parent_rtnode) == -1){
+		handle_error(o2pt, RSC_ORIGINATOR_HAS_ALREADY_REGISTERD, "originator has already registered");
+		return o2pt->rsc;
+	}
+
 
 	init_csr(csr, parent_rtnode);
 	logger("O2", LOG_LEVEL_DEBUG, "%s", parent_rtnode->uri);
@@ -241,6 +256,8 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	}
 	o2pt->pc = csr_to_json(csr);
 	o2pt->rsc = RSC_CREATED;
+
+	//TODO: update descendent cse if update is needed
 	return RSC_CREATED;
 }
 
@@ -868,6 +885,23 @@ void free_cse(CSE *cse) {
 	if(cse->pi) free(cse->pi);
 	if(cse->uri) free(cse->uri);
 	free(cse); cse = NULL;
+}
+
+void free_csr(CSR *csr){
+	if(csr->ct) free(csr->ct);
+	if(csr->lt) free(csr->lt);
+	if(csr->rn) free(csr->rn);
+	if(csr->ri) free(csr->ri);
+	if(csr->csi) free(csr->csi);
+	if(csr->lbl) free(csr->lbl);
+	if(csr->poa) free(csr->poa);
+	if(csr->cb) free(csr->cb);
+	if(csr->srv) free(csr->srv);
+	if(csr->nl) free(csr->nl);
+	if(csr->uri) free(csr->uri);
+
+	free(csr);
+	csr = NULL;
 }
 
 void free_ae(AE *ae) {
@@ -1646,6 +1680,7 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 				*port = '\0';
 				port++;
 			}
+			mqtt_forwarding(o2pt, host, port, csr);
 		}
 		ptr = strtok(NULL, ",");
 	}
