@@ -38,6 +38,7 @@ int db_delete_onem2m_resource(RTNode *rtnode);
 int db_delete_sub(char* ri);
 int db_delete_acp(char* ri);
 int db_delete_grp(char* ri);
+int db_delete_csr(char* ri);
 
 RTNode* db_get_all_cse();
 RTNode* db_get_all_csr_rtnode();

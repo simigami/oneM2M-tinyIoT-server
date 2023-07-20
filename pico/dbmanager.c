@@ -3298,6 +3298,62 @@ int db_delete_grp(char* ri) {
     return 1;
 }
 
+int db_delete_csr(char *ri){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_csr");
+    #ifdef SQLITE_DB
+    char sql[1024] = {0};
+    char *err_msg;
+    int rc; 
+
+    sprintf(sql, "DELETE FROM csr WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
+    }
+
+    sprintf(sql, "DELETE FROM general WHERE ri='%s';", ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
+        sqlite3_close(db);
+        return 0;
+    }
+    #else
+    DBC* dbcp;
+    DBT key, data;
+    int ret;
+    int flag = 0;
+
+    //dbp = DB_CREATE_(dbp);
+    //DB_OPEN( database);
+    dbcp = DB_GET_CURSOR(csrDBp);
+
+    /* Initialize the key/data return pair. */
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    while ((ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
+        if (strncmp(key.data, ri, key.size) == 0) {
+            flag = 1;
+            dbcp->del(dbcp, 0);
+            break;
+        }
+    }
+    if (flag == 0) {
+        fprintf(stderr, "Not Found\n");
+        return -1;
+    }
+
+    /* Cursors must be closed */
+    if (dbcp != NULL)
+        dbcp->close(dbcp);
+    #endif
+
+    return 1;
+}
+
 RTNode* db_get_all_cse() {
     fprintf(stderr,"\x1b[92m[Get All CSE]\x1b[0m\n");
     #ifdef SQLITE_DB

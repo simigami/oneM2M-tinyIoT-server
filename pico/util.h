@@ -24,6 +24,7 @@ void init_resource_tree();
 int add_child_resource_tree(RTNode *parent, RTNode *child);
 RTNode *find_rtnode_by_uri(RTNode *cb, char *node_uri);
 RTNode *find_rtnode_by_ri(RTNode *cb, char *ri);
+RTNode *find_csr_rtnode_by_uri(RTNode *cb, char *target_uri);
 RTNode* find_latest_oldest(RTNode* node, int flag);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 char *get_ri_rtnode(RTNode *rtnode);
@@ -69,7 +70,7 @@ bool is_rn_valid_char(char c);
 int validate_grp(GRP *grp);
 bool isMinDup(char **mid, int idx, char *new_mid);
 
-ResourceType http_parse_object_type(header_t *headers);
+ResourceType http_parse_object_type(header_t *headers, int cnt);
 ResourceType parse_object_type_cjson(cJSON *cjson);
 
 bool isFopt(char *str);

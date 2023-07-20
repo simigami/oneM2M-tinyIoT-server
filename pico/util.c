@@ -24,6 +24,17 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
 	char *fopt_buf = NULL;
+
+	if(!strncmp(o2pt->to, "~/", 2)){
+        if(!strncmp(o2pt->to + 2, CSE_BASE_RI, strlen(CSE_BASE_RI))){
+            char *temp = strdup(o2pt->to + 2 + strlen(CSE_BASE_RI) + 1);
+            free(o2pt->to);
+            o2pt->to = temp;
+        }else{
+            o2pt->isForwarding = true;
+        }
+    }
+
 	strcpy(uri_array, o2pt->to);
 
 	char uri_strtok[64][MAX_URI_SIZE] = {"\0", };
@@ -75,12 +86,42 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 		strcat(uri_array,"/"); 
 		strcat(uri_array,uri_strtok[i]);
 	}
-	RTNode* rtnode = find_rtnode_by_uri(cb, uri_array);
+
+	RTNode * rtnode = NULL;
+	if(o2pt->isForwarding){
+		rtnode = find_csr_rtnode_by_uri(cb, uri_array);
+	}else{
+		rtnode = find_rtnode_by_uri(cb, uri_array);
+	}
+
 	
 	if(rtnode && !o2pt->isFopt && latest_oldest_flag != -1) rtnode = find_latest_oldest(rtnode, latest_oldest_flag);
 
 	if(index_start == 1) o2pt->op = OP_VIEWER;
 
+	return rtnode;
+}
+
+RTNode *find_csr_rtnode_by_uri(RTNode *cb, char *uri){
+	RTNode *rtnode = cb->child, *parent_rtnode = NULL;
+	char *target_uri = strtok(uri+3, "/");
+	target_uri -= 1;
+
+	if(!target_uri) return NULL;
+
+
+	logger("O2M", LOG_LEVEL_DEBUG, "target_uri : %s", target_uri);
+
+
+	while(rtnode) {
+		if(rtnode->ty != RT_CSR){
+			rtnode = rtnode->sibling_right;
+			continue;
+		}
+		if(rtnode->obj && !strcmp(((CSR *) rtnode->obj)->csi, target_uri)) break;
+		rtnode = rtnode->sibling_right;
+	}
+	
 	return rtnode;
 }
 
@@ -239,8 +280,8 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 	return 1;
 }
 
-ResourceType http_parse_object_type(header_t *headers) {
-	char *content_type = request_header(headers, "Content-Type");
+ResourceType http_parse_object_type(header_t *headers, int cnt) {
+	char *content_type = request_header(headers, cnt, "Content-Type");
 	if(!content_type) return RT_MIXED;
 	char *str_ty = strstr(content_type, "ty=");
 	if(!str_ty) return RT_MIXED;

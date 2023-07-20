@@ -11,6 +11,8 @@
 #include "config.h"
 #include "util.h"
 
+extern char *PORT;
+
 void remove_quotation_mark(char *s){
 	int len = strlen(s);
 	int index = 0;
@@ -64,7 +66,11 @@ CSR* cjson_to_csr(cJSON *cjson){
 
 	pjson = cJSON_GetObjectItem(root, "srv");
 	if(pjson){
-		c->srv = strdup(pjson->valuestring);
+		if(cJSON_IsArray(pjson)){
+			c->srv = cjson_string_list_item_to_string(pjson);
+		}else{
+			c->srv = strdup(pjson->valuestring);
+		}		
 	}
 
 	pjson = cJSON_GetObjectItem(root, "poa");
@@ -839,6 +845,7 @@ char* rtnode_to_json(RTNode *rtnode) {
 
 char* cse_to_json(CSE* cse_object) {
 	char *json = NULL;
+	char *poa = NULL;
 
 	cJSON *root = NULL;
 	cJSON *cse = NULL;
@@ -853,7 +860,18 @@ char* cse_to_json(CSE* cse_object) {
 	cJSON_AddStringToObject(cse, "rn", cse_object->rn);
 	cJSON_AddStringToObject(cse, "lt", cse_object->lt);
 	cJSON_AddStringToObject(cse, "csi", cse_object->csi);
-
+	cJSON_AddNumberToObject(cse, "cst", SERVER_TYPE);
+	cJSON_AddBoolToObject(cse, "rr", true);
+	poa = malloc(32);
+	if(!strcmp(PORT, "80")){
+		sprintf(poa, "http://%s", SERVER_HOST);
+	}else{
+		sprintf(poa, "http://%s:%s", SERVER_HOST, PORT);
+	}
+	cJSON *poaArray = cJSON_CreateArray();
+	cJSON_AddItemToArray(poaArray, cJSON_CreateString(poa));
+	cJSON_AddItemToObject(cse, "poa",  poaArray);
+	free(poa);
 	json = cJSON_PrintUnformatted(root);
 
 	cJSON_Delete(root);
@@ -1264,7 +1282,7 @@ char *csr_to_json(CSR *csr_object){
 
 	//cJSON_AddStringToObject(csr, "lbl", csr_object->lbl);
 	cJSON_AddStringToObject(csr, "csi", csr_object->csi);
-	cJSON_AddStringToObject(csr, "srv", csr_object->srv);
+	cJSON_AddItemToObject(csr, "srv", string_to_cjson_string_list_item(csr_object->srv));
 	cJSON_AddItemToObject(csr, "poa", string_to_cjson_string_list_item(csr_object->poa));
 	cJSON_AddStringToObject(csr, "cb", csr_object->cb);
 	cJSON_AddBoolToObject(csr, "rr", csr_object->rr);

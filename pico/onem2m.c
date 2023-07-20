@@ -30,15 +30,15 @@ void init_cse(CSE* cse) {
 	cse->ct = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	cse->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	cse->csi = (char*)malloc((strlen(rn) + 2) * sizeof(char));
-	cse->pi = (char*)malloc((strlen("NULL") + 1) * sizeof(char));
+	cse->pi = (char*)malloc((strlen("") + 1) * sizeof(char));
 	
 	strcpy(cse->ri, ri);
 	strcpy(cse->rn, rn);
 	strcpy(cse->ct, ct);
 	strcpy(cse->lt, ct);
 	strcpy(cse->csi,"/");
-	strcat(cse->csi,rn);
-	strcpy(cse->pi, "NULL");
+	strcat(cse->csi, ri);
+	strcpy(cse->pi, "");
 	cse->uri = strdup(rn);
 	
 	cse->ty = RT_CSE;
@@ -852,6 +852,8 @@ int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag) {
 	case RT_GRP:
 		db_delete_grp(get_ri_rtnode(rtnode));
 		break;
+	case RT_CSR:
+		db_delete_csr(get_ri_rtnode(rtnode));
 	}
 
 	notify_onem2m_resource(o2pt, rtnode);
@@ -1652,11 +1654,13 @@ int notify_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 }
 
 int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
+	logger("O2M", LOG_LEVEL_DEBUG, "Forwarding Resource");
 	char *host = NULL;
 	char *port = NULL;
+	logger("O2M", LOG_LEVEL_DEBUG, "target_rtnode->ty : %d", target_rtnode->ty);
 	if(target_rtnode->ty != RT_CSR){
 		logger("O2M", LOG_LEVEL_ERROR, "target_rtnode is not CSR");
-		return;
+		return o2pt->rsc = RSC_NOT_FOUND;
 	}
 
 	CSR *csr = (CSR *)target_rtnode->obj;

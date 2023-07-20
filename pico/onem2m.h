@@ -168,7 +168,7 @@ typedef struct{
 	char *nl;
 
 	bool rr;
-	char srv;
+	char *srv;
 
 	char *uri;
 	ResourceType ty;

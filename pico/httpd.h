@@ -15,7 +15,8 @@
 // extern int payload_size;
 
 typedef struct {
-  char *name, *value;
+  char *name; 
+  char *value;
 } header_t;
 typedef struct _request {
     char *method;
@@ -25,6 +26,7 @@ typedef struct _request {
     char *payload;
     int payload_size;
     header_t *headers;
+    int header_count;
 } HTTPRequest;
 
 
@@ -32,7 +34,7 @@ typedef struct _request {
 
 // Server control functions
 void serve_forever(const char *PORT);
-char *request_header(header_t *h, const char *name);
+char *request_header(header_t *h, int cnt, const char *name);
 void set_response_header(char *key, char *value, char *response_headers);
 void normalize_payload(char *body);
 Operation http_parse_operation(char *method);

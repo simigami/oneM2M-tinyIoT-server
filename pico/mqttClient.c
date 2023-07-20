@@ -146,7 +146,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     pjson = cJSON_GetObjectItem(json, "to");
     if(!pjson) return invalidRequest();
-    o2pt->to = strdup(pjson->valuestring);
+    o2pt->to = strdup(pjson->valuestring+1);
 
     pjson = cJSON_GetObjectItem(json, "fr");
     if(!pjson) return invalidRequest();
@@ -191,6 +191,16 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
     /* initialize */
     o2pt->fopt = NULL;
     o2pt->isFopt = false;
+
+    // if(!strncmp(o2pt->to, "/~/", 3)){
+    //     if(!strncmp(o2pt->to + 3, CSE_BASE_RI, strlen(CSE_BASE_RI))){
+    //         char *temp = strdup(o2pt->to + 3 + strlen(CSE_BASE_RI) + 1);
+    //         free(o2pt->to);
+    //         o2pt->to = temp;
+    //     }else{
+    //         o2pt->isForwarding = true;
+    //     }
+    // }
 
     /* supported content type : json*/
     if(strcmp(contentType, "json")){

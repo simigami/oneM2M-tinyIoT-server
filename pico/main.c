@@ -22,7 +22,7 @@
 ResourceTree *rt;
 void route(oneM2MPrimitive *o2pt);
 void stop_server(int sig);
-
+char *PORT = SERVER_PORT;
 int terminate = 0;
 #ifdef ENABLE_MQTT
 pthread_t mqtt;
@@ -31,7 +31,6 @@ int mqtt_thread_id;
 
 int main(int argc, char **argv) {
 	signal(SIGINT, stop_server);
-	char *PORT = SERVER_PORT;
 	if(!init_dbp()){
 		logger("MAIN", LOG_LEVEL_ERROR, "DB Error");
 		return 0;
@@ -70,7 +69,6 @@ void route(oneM2MPrimitive *o2pt) {
     start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
 	RTNode* target_rtnode = parse_uri(o2pt, rt->cb);
 	int e = result_parse_uri(o2pt, target_rtnode);
-
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
 		log_runtime(start);

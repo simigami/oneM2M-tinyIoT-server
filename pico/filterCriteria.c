@@ -38,7 +38,7 @@ bool isValidFcAttr(char* attr){
     "crb", "cra", "ms", "us", "sts", "stb", "exb", "exa", "lbl","clbl", "palb", "lbq", "ty", "chty", "pty", "sza", "szb", "cty", 
     "atr", "catr", "patr", "fu", "lim", "smf", "fo", "cfs", "cfq", "lvl", "ofst", "arp", "gq", "ops", "la"};
 
-    for(int i = 0 ; i < 32 ; i++){
+    for(int i = 0 ; i < 33 ; i++){
         if(!strcmp(attr, fcAttr[i])) return true;
     }
     return false;
@@ -223,7 +223,7 @@ FilterCriteria *parseFilterCriteria(cJSON *fcjson){
     if(pjson){
         fc->la = get_number_from_cjson(pjson);
     }
-    
+
     if(!isFCAttrValid(fc)){ // TODO - If rcn == 11(discovery result references) fu must be 1
         free_fc(fc);
         return NULL;
