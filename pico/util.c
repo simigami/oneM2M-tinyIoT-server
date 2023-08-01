@@ -409,7 +409,6 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 
 	while((cnt->mni >= 0 && cnt->cni > cnt->mni) || (cnt->mbs >= 0 && cnt->cbs > cnt->mbs)) {
 		if(head) {
-			logger("UT", LOG_LEVEL_DEBUG, "%d", head->ty);
 			right = head->sibling_right;
 			db_delete_onem2m_resource(head);
 			cnt->cbs -= ((CIN *)head->obj)->cs;
@@ -849,6 +848,30 @@ int check_csi_duplicate(char *new_csi, RTNode *rtnode) {
 	return 0;
 }
 
+int check_aei_invalid(oneM2MPrimitive *o2pt) {
+	logger("UTIL", LOG_LEVEL_DEBUG, "call check_aei_invalid");
+	char *aei = o2pt->fr;
+	logger("UTIL", LOG_LEVEL_DEBUG, "aei : %s", aei);
+	if(!aei || strlen(aei) == 0) return 0;
+	cJSON *cjson = string_to_cjson_string_list_item(ALLOW_AE_ORIGIN);
+
+	int size = cJSON_GetArraySize(cjson);
+	for(int i=0; i<size; i++) {
+		cJSON *item = cJSON_GetArrayItem(cjson, i);
+		char *origin = strdup(item->valuestring);
+		logger("UTIL", LOG_LEVEL_DEBUG, "origin : %s", origin);
+		if(origin[strlen(origin)-1] == '*') {
+			if(!strncmp(aei, origin, strlen(origin)-1)) return 0;
+		} else if(!strcmp(origin, aei)) return 0;
+
+		free(origin); origin = NULL;
+	}
+	o2pt->rsc = RSC_BAD_REQUEST;
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = strdup("{\"m2m:dbg\":\"originator is invalid\"}");
+	return -1;
+}
+
 int check_payload_format(oneM2MPrimitive *o2pt) {
 	cJSON *cjson = o2pt->cjson_pc;
 	
@@ -1153,7 +1176,6 @@ void free_all_resource(RTNode *rtnode){
 
 char *get_pi_rtnode(RTNode *rtnode) {
 	char *pi = NULL;
-	
 	switch(rtnode->ty) {
 		case RT_CSE: pi = ((CSE *)rtnode->obj)->pi; break;
 		case RT_AE: pi = ((AE *)rtnode->obj)->pi; break;
@@ -1170,7 +1192,7 @@ char *get_pi_rtnode(RTNode *rtnode) {
 
 char *get_ri_rtnode(RTNode *rtnode) {
 	char *ri = NULL;
-	
+	logger("UTIL", LOG_LEVEL_DEBUG, "get_ri_rtnode : %d", rtnode->ty);
 	switch(rtnode->ty) {
 		case RT_CSE: ri = ((CSE *)rtnode->obj)->ri; break;
 		case RT_AE: ri = ((AE *)rtnode->obj)->ri; break;

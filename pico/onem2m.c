@@ -31,6 +31,8 @@ void init_cse(CSE* cse) {
 	cse->lt = (char*)malloc((strlen(ct) + 1) * sizeof(char));
 	cse->csi = (char*)malloc((strlen(rn) + 2) * sizeof(char));
 	cse->pi = (char*)malloc((strlen("") + 1) * sizeof(char));
+	cse->srt = strdup("1,2,3,4,5,9,16");
+	cse->srv = strdup("2a");
 	
 	strcpy(cse->ri, ri);
 	strcpy(cse->rn, rn);
@@ -49,9 +51,6 @@ void init_cse(CSE* cse) {
 void init_csr(CSR* csr, RTNode *parent_rtnode){
 	char *ct = get_local_time(0);
 	
-
-	//logger("CSR", LOG_LEVEL_INFO, "CSR CT : %s", ct);
-	
 	csr->ri = resource_identifier(RT_CSR, ct);
 
 	csr->ct = strdup(ct);
@@ -63,7 +62,8 @@ void init_csr(CSR* csr, RTNode *parent_rtnode){
 
 	csr->pi = strdup(get_ri_rtnode(parent_rtnode));
 
-	csr->uri = (char*)malloc((strlen(get_uri_rtnode(parent_rtnode)) + strlen(csr->rn) + 2) * sizeof(char));
+	logger("O2", LOG_LEVEL_DEBUG, "%s/%s", parent_rtnode->uri, csr->rn);
+	csr->uri = (char*) malloc( (strlen(parent_rtnode->uri) + strlen(csr->rn) + 2) * sizeof(char));
 	sprintf(csr->uri, "%s/%s", get_uri_rtnode(parent_rtnode), csr->rn);
 	
 	csr->ty = RT_CSR;
@@ -79,13 +79,9 @@ void init_ae(AE* ae, RTNode *parent_rtnode, char *origin) {
 	ae->et = get_local_time(DEFAULT_EXPIRE_TIME);
 
 	if(origin && (origin_size = strlen(origin)) > 0) {
-		if(origin[0] != 'C') {
-			// need rejection logic
-			ae->ri = resource_identifier(RT_AE, ae->ct); // temporary logic
-		} else {
-			ae->ri = (char *)malloc(sizeof(char) * (origin_size + 1));
-			strcpy(ae->ri, origin);
-		}
+		ae->ri = (char *)malloc(sizeof(char) * (origin_size + 1));
+		strcpy(ae->ri, origin);
+
 	} else {
 		ae->ri = resource_identifier(RT_AE, ae->ct);
 	}
@@ -239,8 +235,8 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	}
 
 
+	logger("O2", LOG_LEVEL_DEBUG, "%s/%s", parent_rtnode->uri, csr->rn);
 	init_csr(csr, parent_rtnode);
-	logger("O2", LOG_LEVEL_DEBUG, "%s", parent_rtnode->uri);
 
 	int result = db_store_csr(csr);
 	if(result == -1) {
@@ -264,6 +260,7 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int e = check_aei_duplicate(o2pt, parent_rtnode);
 	if(e != -1) e = check_rn_invalid(o2pt, RT_AE);
+	if(e != -1) e = check_aei_invalid(o2pt);
 	if(e == -1) return o2pt->rsc;
 
 	if(parent_rtnode->ty != RT_CSE) {
@@ -299,12 +296,23 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 }
 
 int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
+	cJSON *cr = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:cnt");
 	if(parent_rtnode->ty != RT_CNT && parent_rtnode->ty != RT_AE && parent_rtnode->ty != RT_CSE) {
 		handle_error(o2pt, RSC_INVALID_CHILD_RESOURCETYPE, "child type is invalid");
 		return RSC_INVALID_CHILD_RESOURCETYPE;
 	}
 
 	CNT* cnt = cjson_to_cnt(o2pt->cjson_pc);
+	
+	//TODO Fix this
+	if(cr = cJSON_GetObjectItem(cr, "cr")){
+		if(cr->type == cJSON_NULL){
+			cnt->cr = strdup(o2pt->fr);
+		}else{
+			handle_error(o2pt, RSC_BAD_REQUEST, "creator attribute with arbitary value is not allowed");
+			return o2pt->rsc;
+		}
+	}
 
 	if(!cnt) {
 		handle_error(o2pt, RSC_CONTENTS_UNACCEPTABLE, "insufficient mandatory attribute(s)");
@@ -320,6 +328,9 @@ int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return o2pt->rsc;
 	}
 	init_cnt(cnt,parent_rtnode);
+	if(cnt->cr != NULL){
+		cnt->cr = strdup(o2pt->fr);
+	}
 
 	int result = db_store_cnt(cnt);
 	if(result != 1) { 
@@ -532,9 +543,9 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 }
 
 int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
-	char invalid_key[][8] = {"ty", "pi", "ri", "rn", "ct"};
+	char invalid_key[][9] = {"ty", "pi", "ri", "rn", "ct", "cr"};
 	cJSON *m2m_cnt = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:cnt");
-	int invalid_key_size = sizeof(invalid_key)/(8*sizeof(char));
+	int invalid_key_size = sizeof(invalid_key)/(9*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
 		if(cJSON_GetObjectItem(m2m_cnt, invalid_key[i])) {
 			handle_error(o2pt, RSC_BAD_REQUEST, "unsupported attribute on update");
@@ -594,6 +605,35 @@ int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = acp_to_json(acp);
+	o2pt->rsc = RSC_UPDATED;
+	return RSC_UPDATED;
+}
+
+int update_csr(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
+	char invalid_key[][8] = {"ty", "pi", "ri", "rn", "ct"};
+	cJSON *m2m_csr = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:csr");
+	int invalid_key_size = sizeof(invalid_key)/(8*sizeof(char));
+	for(int i=0; i<invalid_key_size; i++) {
+		if(cJSON_GetObjectItem(m2m_csr, invalid_key[i])) {
+			handle_error(o2pt, RSC_BAD_REQUEST, "unsupported attribute on update");
+			return RSC_BAD_REQUEST;
+		}
+	}
+	CSR* csr = (CSR *)target_rtnode->obj;
+	int result;
+	
+	result = set_csr_update(o2pt, m2m_csr, csr);
+	if(result != 1) return result;
+	
+	#ifdef SQLITE_DB
+	result = db_update_csr(csr);
+	#else
+	result = db_delete_onem2m_resource(target_rtnode);
+	result = db_store_csr(csr);
+	#endif
+	
+	if(o2pt->pc) free(o2pt->pc);
+	o2pt->pc = csr_to_json(csr);
 	o2pt->rsc = RSC_UPDATED;
 	return RSC_UPDATED;
 }
@@ -725,7 +765,14 @@ int set_acp_update(oneM2MPrimitive *o2pt, cJSON *m2m_acp, ACP* acp) {
 							strcat(pvs_acop_str, ",");
 						}
 					}
+					logger("O2", LOG_LEVEL_DEBUG, "pvs_acor_str: %s", pvs_acor_str);
+					if(i < acr_size - 1) {
+						strcat(pvs_acor_str, ",");
+						strcat(pvs_acop_str, ",");
+					}
 				}
+
+				
 			}
 		}
 		if(pvs_acor_str[0] != '\0' && pvs_acop_str[0] != '\0') {
@@ -775,6 +822,10 @@ int set_acp_update(oneM2MPrimitive *o2pt, cJSON *m2m_acp, ACP* acp) {
 							strcat(pv_acop_str, ",");
 						}
 					}
+					if(i < acr_size - 1) {
+						strcat(pvs_acor_str, ",");
+						strcat(pvs_acop_str, ",");
+					}
 				}
 			}
 		}
@@ -791,6 +842,48 @@ int set_acp_update(oneM2MPrimitive *o2pt, cJSON *m2m_acp, ACP* acp) {
 	if(acp->lt) free(acp->lt);
 	acp->lt = get_local_time(0);
 
+	return 1;
+}
+
+int set_csr_update(oneM2MPrimitive *o2pt, cJSON *m2m_csr, CSR* csr){
+	cJSON *lbl = cJSON_GetObjectItem(m2m_csr, "lbl");
+	cJSON *acpi = cJSON_GetObjectItem(m2m_csr, "acpi");
+	cJSON *poa = cJSON_GetObjectItem(m2m_csr, "poa");
+	cJSON *csi = cJSON_GetObjectItem(m2m_csr, "csi");
+	cJSON *cb = cJSON_GetObjectItem(m2m_csr, "cb");
+	cJSON *et = cJSON_GetObjectItem(m2m_csr, "et");
+
+	if(et) {
+		if(csr->et) free(csr->et);
+		csr->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
+		strcpy(csr->et, et->valuestring);
+	}
+
+	if(acpi) {
+		if(csr->acpi) free(csr->acpi);
+		csr->acpi = cjson_string_list_item_to_string(acpi);
+	}
+
+	if(lbl) {
+		if(csr->lbl) free(csr->lbl);
+		csr->lbl = cjson_string_list_item_to_string(lbl);
+	}
+
+	if(poa) {
+		if(csr->poa) free(csr->poa);
+		csr->poa = cjson_string_list_item_to_string(poa);
+	}
+
+	if(csi) {
+		if(csr->csi) free(csr->csi);
+		csr->csi = cjson_string_list_item_to_string(csi);
+	}
+
+	if(cb) {
+		if(csr->cb) free(csr->cb);
+		csr->cb = cjson_string_list_item_to_string(cb);
+	}
+	
 	return 1;
 }
 
@@ -813,14 +906,14 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 
 int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	logger("O2M", LOG_LEVEL_INFO, "Delete oneM2M resource");
-	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT || target_rtnode->ty == RT_GRP) {
-		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
-			return o2pt->rsc;
-		}
-	}
 	if(target_rtnode->ty == RT_CSE) {
 		handle_error(o2pt, RSC_OPERATION_NOT_ALLOWED, "CSE can not be deleted");
 		return RSC_OPERATION_NOT_ALLOWED;
+	}
+	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT || target_rtnode->ty == RT_GRP || target_rtnode->ty == RT_ACP) {
+		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
+			return o2pt->rsc;
+		}
 	}
 	delete_rtnode_and_db_data(o2pt, target_rtnode,1);
 	target_rtnode = NULL;
@@ -1676,7 +1769,7 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			}else{
 				port = "80";
 			}
-			http_forwarding(o2pt, host, port, csr);
+			http_forwarding(o2pt, host, port);
 		}else if (strncmp(ptr, "mqtt://", 7) == 0){
 			host = ptr + 7;
 			port = strchr(host, ':');

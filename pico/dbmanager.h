@@ -32,6 +32,7 @@ int db_update_ae(AE *ae_object);
 int db_update_cnt(CNT *cnt_object);
 int db_update_acp(ACP * acp_object);
 int db_update_grp(GRP *grp_object);
+int db_update_csr(CSR *csr_object);
 #endif
 
 int db_delete_onem2m_resource(RTNode *rtnode);
@@ -61,7 +62,7 @@ void db_test_and_set_bind_int(sqlite3_stmt *stmt, int index, int value);
 #endif
 
 #ifdef BERKELEY_DB
-int db_delete_child_cin(RTNode *rtnode)
+int db_delete_child_cin(RTNode *rtnode);
 #endif
 
 #define DB_STR_MAX 65565

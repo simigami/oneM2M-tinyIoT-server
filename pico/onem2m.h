@@ -45,6 +45,9 @@ typedef struct {
 	char *ri;
 	char *pi;
 	char *csi;
+	char *srt;
+	char *srv;
+
 	ResourceType ty;
 	char *uri;
 } CSE;
@@ -60,6 +63,7 @@ typedef struct {
 	char *aei;
 	char *lbl;
 	char *srv;
+	char *poa;
 	char *acpi;
 	char *origin;
 	ResourceType ty;
@@ -82,6 +86,7 @@ typedef struct {
 	int cbs;
 	int mni;
 	int mbs;
+	char *cr;
 	char *uri;
 } CNT;
 

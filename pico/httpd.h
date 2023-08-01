@@ -40,12 +40,12 @@ void normalize_payload(char *body);
 Operation http_parse_operation(char *method);
 void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno);
 void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt);
-void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, CSR* csr);
+void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port);
 
 // user shall implement this function
 void handle_http_request(HTTPRequest *req, int slotno);
 
-void http_send_get_request(char *host, char *port, char *uri, char *header, char *qs, char *data);
+void http_send_get_request(char *host, int port, char *uri, char *header, char *qs, char *data);
 
 // Response
 #define HTTP_PROTOCOL_VERSION "HTTP/1.1"

@@ -415,7 +415,7 @@ void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
     http_send_get_request(nt->host, nt->port, nt->target, DEFAULT_REQUEST_HEADERS, "", noti_json);
 }
 
-void http_send_get_request(char *host, char *port, char *uri, char *header, char *qs, char *data){
+void http_send_get_request(char *host, int port, char *uri, char *header, char *qs, char *data){
     struct sockaddr_in serv_addr;
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     if(sock == -1) {
@@ -428,7 +428,7 @@ void http_send_get_request(char *host, char *port, char *uri, char *header, char
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr(host);
-    serv_addr.sin_port = htons(atoi(port));
+    serv_addr.sin_port = htons(port);
 
     if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
         logger("HTTP", LOG_LEVEL_ERROR, "connect error");
@@ -440,7 +440,7 @@ void http_send_get_request(char *host, char *port, char *uri, char *header, char
     close(sock);
 }
 
-void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, CSR* csr){
+void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port){
     struct sockaddr_in serv_addr;
     char *method = NULL;
     logger("HTTP", LOG_LEVEL_DEBUG, "o2pt->op : %d", o2pt->op);

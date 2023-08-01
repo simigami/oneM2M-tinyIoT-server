@@ -256,8 +256,8 @@ int db_store_cse(CSE *cse_object){
         return 0;
     }
 
-    sprintf(sql, "INSERT INTO cb (ri, csi) VALUES('%s', '%s');",
-                cse_object->ri, cse_object->csi);
+    sprintf(sql, "INSERT INTO cb (ri, csi, srt, srv) VALUES('%s', '%s', '%s', '%s');",
+                cse_object->ri, cse_object->csi, cse_object->srt, cse_object->srv);
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
@@ -277,7 +277,6 @@ int db_store_cse(CSE *cse_object){
         return -1;
     }
     if (cse_object->rn == NULL) cse_object->rn = " ";
-    if (cse_object->pi == NULL) cse_object->pi = " ";
     if (cse_object->ty == '\0') cse_object->ty = 0;
     if (cse_object->ct == NULL) cse_object->ct = " ";
     if (cse_object->lt == NULL) cse_object->lt = " ";
@@ -297,8 +296,8 @@ int db_store_cse(CSE *cse_object){
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
     sprintf(str, "%s;%s;%d;%s;%s;%s",
-            cse_object->rn,cse_object->pi,cse_object->ty,cse_object->ct,cse_object->lt,cse_object->csi);
-
+            cse_object->rn," ",cse_object->ty,cse_object->ct,cse_object->lt,cse_object->csi);
+    logger("DB", LOG_LEVEL_DEBUG, "str: %s", str);
     data.data = str;
     data.size = strlen(str) + 1;
 
@@ -397,20 +396,19 @@ int db_store_csr(CSR *csr_object){
 
     char rr[6] = {0};
 
-    if (csr_object->rn == NULL) ae_object->rn = blankspace;
-    if (csr_object->pi == NULL) ae_object->pi = blankspace;
-    if (csr_object->ct == NULL) ae_object->ct = blankspace;
-    if (csr_object->et == NULL) ae_object->et = blankspace;
-    if (csr_object->lt == NULL) ae_object->lt = blankspace;
-    if (csr_object->csi == NULL) ae_object->csi = blankspace;
-    if (csr_object->srt == NULL) ae_object->srt = blankspace;
-    if (csr_object->poa == NULL) ae_object->poa = blankspace;
-    if (csr_object->nl == NULL) ae_object->nl = blankspace;
+    if (csr_object->rn == NULL) csr_object->rn = blankspace;
+    if (csr_object->pi == NULL) csr_object->pi = blankspace;
+    if (csr_object->ct == NULL) csr_object->ct = blankspace;
+    if (csr_object->et == NULL) csr_object->et = blankspace;
+    if (csr_object->lt == NULL) csr_object->lt = blankspace;
+    if (csr_object->csi == NULL) csr_object->csi = blankspace;
+    if (csr_object->srv == NULL) csr_object->srv = blankspace;
+    if (csr_object->poa == NULL) csr_object->poa = blankspace;
+    if (csr_object->nl == NULL) csr_object->nl = blankspace;
     if (csr_object->rr == false) strcpy(rr, "false");
     else strcpy(rr, "true");
 
     dbcp = DB_GET_CURSOR(resourceDBp);
-    
     /* key and data must initialize */
     memset(&key_ri, 0, sizeof(DBT));
     memset(&data, 0, sizeof(DBT));
@@ -423,7 +421,7 @@ int db_store_csr(CSR *csr_object){
     char str[DB_STR_MAX] = {0};
 
     sprintf(str, "%s;%s;%s;%d;%s;%s;%s;%d;%s;%s;%s;%s;%s;%s;%s", csr_object->ri, csr_object->rn, csr_object->pi, csr_object->ty, csr_object->ct, csr_object->lt, 
-    csr_object->et, csr_object->cst, csr_object->csi, csr_object->cb, csr_object->srt, csr_object->poa, csr_object->nl, csr_object->srv, rr);
+    csr_object->et, csr_object->cst, csr_object->csi, csr_object->cb, csr_object->srv, csr_object->poa, csr_object->nl, csr_object->srv, rr);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -440,7 +438,7 @@ int db_store_csr(CSR *csr_object){
     if(csr_object->et == blankspace) csr_object->et = NULL;
     if(csr_object->lt == blankspace) csr_object->lt = NULL;
     if(csr_object->csi == blankspace) csr_object->csi = NULL;
-    if(csr_object->srt == blankspace) csr_object->srt = NULL;
+    if(csr_object->srv == blankspace) csr_object->srv = NULL;
     if(csr_object->poa == blankspace) csr_object->poa = NULL;
     if(csr_object->nl == blankspace) csr_object->nl = NULL;
     #endif
@@ -634,7 +632,7 @@ int db_store_cnt(CNT *cnt_object){
     }
     sqlite3_finalize(res);
 
-    sql = "INSERT INTO cnt (ri, mni, mbs, cni, cbs, st) VALUES(?, ?, ?, ?, ?, ?);";
+    sql = "INSERT INTO cnt (ri, mni, mbs, cni, cbs, st, cr) VALUES(?, ?, ?, ?, ?, ?, ?);";
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     if( rc != SQLITE_OK ){
         logger("DB", LOG_LEVEL_ERROR, "Failed prepare msg : %s", sqlite3_errmsg(db));
@@ -647,6 +645,7 @@ int db_store_cnt(CNT *cnt_object){
     db_test_and_set_bind_int(res, 4, cnt_object->cni);
     db_test_and_set_bind_int(res, 5, cnt_object->cbs);
     db_test_and_set_bind_int(res, 6, cnt_object->st);
+    db_test_and_set_bind_text(res, 7, cnt_object->cr);
     
     rc = sqlite3_step(res);
     if(rc != SQLITE_DONE){
@@ -679,6 +678,7 @@ int db_store_cnt(CNT *cnt_object){
     if (cnt_object->et == NULL) cnt_object->et = blankspace;
     if (cnt_object->acpi == NULL) cnt_object->acpi = blankspace;
     if (cnt_object->lbl == NULL) cnt_object->lbl = blankspace;
+    if (cnt_object->cr == NULL) cnt_object->cr = blankspace;
 
     ////dbp = DB_CREATE_(dbp);
     //DB_OPEN(DATABASE);
@@ -694,9 +694,9 @@ int db_store_cnt(CNT *cnt_object){
 
     /* List data excluding 'ri' as strings using delimiters. */
     char str[DB_STR_MAX]= "\0";
-    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d;%d;%d",
+    sprintf(str, "%s;%s;%d;%s;%s;%s;%s;%s;%d;%d;%d;%d;%d;%s",
             cnt_object->rn,cnt_object->pi,cnt_object->ty,cnt_object->ct,cnt_object->lt,cnt_object->et,
-            cnt_object->lbl,cnt_object->acpi,cnt_object->cbs,cnt_object->cni,cnt_object->st,cnt_object->mni,cnt_object->mbs);
+            cnt_object->lbl,cnt_object->acpi,cnt_object->cbs,cnt_object->cni,cnt_object->st,cnt_object->mni,cnt_object->mbs, cnt_object->cr);
 
     data.data = str;
     data.size = strlen(str) + 1;
@@ -718,6 +718,7 @@ int db_store_cnt(CNT *cnt_object){
     if (cnt_object->et == blankspace) cnt_object->et = NULL;
     if (cnt_object->acpi == blankspace) cnt_object->acpi = NULL;
     if (cnt_object->lbl == blankspace) cnt_object->lbl = NULL;
+    if (cnt_object->cr == blankspace) cnt_object->cr = NULL;
     #endif
 
     return 1;
@@ -1252,8 +1253,11 @@ CSE *db_get_cse(char *ri){
     int rc = 0;
     int cols = 0;
     sqlite3_stmt *res;
-    char *colname;
-    int bytes = 0;
+    char buf[256] = {0};
+
+    char *colname = NULL;
+    cJSON *json = NULL, *root = NULL;
+    int bytes = 0, coltype = 0;
 
     rc = sqlite3_prepare_v2(db, "SELECT * FROM general, cb WHERE general.ri = cb.ri;", -1, &res, NULL);
     if(rc != SQLITE_OK){
@@ -1266,34 +1270,29 @@ CSE *db_get_cse(char *ri){
     }
     cols = sqlite3_column_count(res);
     new_cse = calloc(1, sizeof(CSE));
+    json = cJSON_CreateObject();
+    root = cJSON_CreateObject();
+    
     for(int col = 0 ; col < cols; col++){
+        
         colname = sqlite3_column_name(res, col);
-        if( (bytes = sqlite3_column_bytes(res, col)) == 0)
-            continue;
+        bytes = sqlite3_column_bytes(res, col);
+        coltype = sqlite3_column_type(res, col);
+        if(bytes == 0) continue;
 
-        if(!strcmp(colname, "rn") ){
-            new_cse->rn = calloc(sizeof(char), bytes + 2);
-            strncpy(new_cse->rn, sqlite3_column_text(res, col), bytes);
-        }else if( !strcmp(colname, "ri") ){
-            new_cse->ri = calloc(sizeof(char), bytes + 2);
-            strncpy(new_cse->ri, sqlite3_column_text(res, col), bytes);
-        }else if( !strcmp(colname, "pi") ){
-            new_cse->pi = calloc(sizeof(char), bytes + 2);
-            strncpy(new_cse->pi, sqlite3_column_text(res, col), bytes);
-        }else if( !strcmp(colname, "ct") ){
-            new_cse->ct = calloc(sizeof(char), bytes + 2);
-            strncpy(new_cse->ct, sqlite3_column_text(res, col), bytes);
-        }else if( !strcmp(colname, "lt") ){
-            new_cse->lt = calloc(sizeof(char), bytes + 2);
-            strncpy(new_cse->lt, sqlite3_column_text(res, col), bytes);
-        }else if( !strcmp(colname, "csi") ){
-            new_cse->csi = calloc(sizeof(char), bytes + 2);
-            strncpy(new_cse->csi, sqlite3_column_text(res, col), bytes);
-        }else if( !strcmp(colname, "uri")){
-            new_cse->uri = calloc(sizeof(char), bytes + 2);
-            strncpy(new_cse->uri, sqlite3_column_text(res, col), bytes);
+        switch(coltype){
+            case SQLITE_TEXT:
+                memset(buf,0, 256);
+                strncpy(buf, sqlite3_column_text(res, col), bytes);
+                cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                break;
+            case SQLITE_INTEGER:
+                cJSON_AddItemToObject(json, colname, cJSON_CreateNumber(sqlite3_column_int(res, col)));
+                break;
         }
     }
+    cJSON_AddItemToObject(root, "m2m:cb", json);
+    new_cse = cjson_to_cse(root);
     new_cse->ty = RT_CSE;
     
 
@@ -1334,7 +1333,7 @@ CSE *db_get_cse(char *ri){
                     idx++;
                     break;
                 case 1:
-                    if(strcmp(ptr," ")==0) new_cse->pi=NULL; //data is NULL
+                    if(strcmp(ptr," ")==0) new_cse->pi=strdup(""); //data is NULL
                     else{
                         new_cse->pi = malloc((strlen(ptr)+1)*sizeof(char));
                         strcpy(new_cse->pi, ptr);
@@ -1364,15 +1363,14 @@ CSE *db_get_cse(char *ri){
                     idx++;
                     break;                
                 case 5:
-                if(strcmp(ptr," ")==0) new_cse->csi=NULL;
-                else{
-                    new_cse->csi = malloc((strlen(ptr)+1)*sizeof(char));
-                    strcpy(new_cse->csi, ptr);
-                }
+                    if(strcmp(ptr," ")==0) new_cse->csi=NULL;
+                    else{
+                        new_cse->csi = malloc((strlen(ptr)+1)*sizeof(char));
+                        strcpy(new_cse->csi, ptr);
+                    }
                     idx++;
                     break;             
-                default:
-                    idx=-1;
+
                 }
                 
                 ptr = strtok(NULL, DB_SEP); //The delimiter is ,
@@ -1516,7 +1514,7 @@ CSR *db_get_csr(char *ri){
                     idx++;
                     break;      
                 case 6:
-                    if(strcmp(ptr," ")==0) new_csr->cst=NULL; //data is NULL
+                    if(strcmp(ptr," ")==0) new_csr->cst=0; //data is NULL
                     else{                
                         new_csr->cst = atoi(ptr);
                     }
@@ -1525,7 +1523,6 @@ CSR *db_get_csr(char *ri){
                 case 7:
                     if(strcmp(ptr," ")==0) new_csr->csi=NULL; //data is NULL
                     else{                
-                        new_csr->cs
                         new_csr->csi = malloc((strlen(ptr) + 1) * sizeof(char));
                         strcpy(new_csr->csi, ptr);
                     }
@@ -1540,48 +1537,34 @@ CSR *db_get_csr(char *ri){
                     idx++;
                     break;
                 case 9:
-                    if(strcmp(ptr," ")==0) new_csr->srt=NULL; //data is NULL
+                    if(strcmp(ptr," ")==0) new_csr->srv=NULL; //data is NULL
                     else{                
-                        new_csr->srt = malloc((strlen(ptr) + 1) * sizeof(char));
-                        strcpy(new_csr->srt, ptr);
+                        new_csr->srv = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->srv, ptr);
                     }
                     idx++;
                     break;
-                if(strcmp(ptr," ")==0) new_ae->lbl=NULL; //data is NULL
-                else{                
-                    new_ae->lbl = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->lbl, ptr);
-                }
+                case 10:
+                    if(strcmp(ptr," ")==0) new_csr->poa=NULL; //data is NULL
+                    else{                
+                        new_csr->poa = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->poa, ptr);
+                    }
                     idx++;
                     break;
-                case 10:
-                if(strcmp(ptr," ")==0) new_ae->srv=NULL; //data is NULL
-                else{                
-                    new_ae->srv = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->srv, ptr);
-                }            
-                    idx++;
-                    break; 
                 case 11:
-                if(strcmp(ptr," ")==0) new_ae->acpi=NULL; //data is NULL
-                else{                
-                    new_ae->acpi = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->acpi, ptr);
-                }            
+                    if(strcmp(ptr," ")==0) new_csr->nl=NULL; //data is NULL
+                    else{                
+                        new_csr->nl = malloc((strlen(ptr) + 1) * sizeof(char));
+                        strcpy(new_csr->nl, ptr);
+                    }            
                     idx++;
                     break;
                 case 12:
-                if(strcmp(ptr," ")==0) new_ae->origin=NULL; //data is NULL
-                else{                
-                    new_ae->origin = malloc((strlen(ptr) + 1) * sizeof(char));
-                    strcpy(new_ae->origin, ptr);
-                }            
-                    idx++;
-                    break;                                     
-                default:
-                    idx=-1;
+                    if(strcmp(ptr,"true")==0) new_csr->rr = true;
+                    else new_csr->rr = false;
+                    break;
                 }
-                
                 ptr = strtok(NULL, DB_SEP); //The delimiter is ,
             }
         }
@@ -1675,7 +1658,6 @@ AE *db_get_ae(char *ri){
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
     memset(&data, 0, sizeof(data));
-
     while (!flag && (ret = dbcp->get(dbcp, &key, &data, DB_NEXT)) == 0) {
         if (strncmp(key.data, ri, key.size) == 0) {
             new_ae = calloc(1,sizeof(AE));
@@ -2513,7 +2495,17 @@ ACP *db_get_acp(char *ri){
         if(!strcmp(colname, "lbl")){
             memset(buf,0, 256);
             strncpy(buf, sqlite3_column_text(res, col), bytes-1);
-            cJSON_AddItemToObject(json, "lbl", cJSON_CreateString(buf+1));
+            cJSON_AddItemToObject(json, "lbl", string_to_cjson_string_list_item(buf+1));
+            continue;
+        }else if(!strcmp(colname, "pv")){
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            cJSON_AddItemToObject(json, "pv", string_to_cjson_string_list_item(buf));
+            continue;
+        }else if(!strcmp(colname, "pvs")){
+            memset(buf,0, 256);
+            strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            cJSON_AddItemToObject(json, "pvs", string_to_cjson_string_list_item(buf));
             continue;
         }
 
@@ -2936,6 +2928,71 @@ int db_update_grp(GRP *grp_object){
     return 1;
 }
 
+int db_update_csr(CSR* csr_object){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_update_csr");
+    char *sql, *err_msg = NULL;
+    int rc = 0;
+    char buf[256]={0};
+    sqlite3_stmt *stmt;
+
+    if (csr_object->ri == NULL) {
+        fprintf(stderr, "ri is NULL\n");
+        return -1;
+    }
+
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
+
+    sql = "UPDATE general SET rn=?, lbl=?, lt=?, et=?, acpi=? WHERE ri=?;";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+
+    db_test_and_set_bind_text(stmt, 1, csr_object->rn);
+    db_test_and_set_bind_text(stmt, 2, csr_object->lbl);
+    db_test_and_set_bind_text(stmt, 3, csr_object->lt);
+    db_test_and_set_bind_text(stmt, 4, csr_object->et);
+    db_test_and_set_bind_text(stmt, 5, csr_object->acpi);
+    db_test_and_set_bind_text(stmt, 6, csr_object->ri);
+    
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+
+    sqlite3_finalize(stmt);
+
+    sql = "UPDATE csr SET cst=?, csi=?, poa=?, nl=?, rr=? WHERE ri=?;";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+    db_test_and_set_bind_int(stmt, 1, csr_object->cst);
+    db_test_and_set_bind_text(stmt, 2, csr_object->csi);
+    db_test_and_set_bind_text(stmt, 3, csr_object->poa);
+    db_test_and_set_bind_text(stmt, 4, csr_object->nl);
+    sqlite3_bind_int(stmt, 5, csr_object->ri);
+    db_test_and_set_bind_text(stmt, 6, csr_object->ri);
+
+    rc = sqlite3_step(stmt);
+
+    if(rc != SQLITE_DONE){
+        logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+        return 0;
+    }
+    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_finalize(stmt);
+
+    return 1;
+}
+
 char *get_table_name(ResourceType ty){
     char * tableName = NULL;
     switch(ty){
@@ -3328,7 +3385,7 @@ int db_delete_csr(char *ri){
 
     //dbp = DB_CREATE_(dbp);
     //DB_OPEN( database);
-    dbcp = DB_GET_CURSOR(csrDBp);
+    dbcp = DB_GET_CURSOR(resourceDBp);
 
     /* Initialize the key/data return pair. */
     memset(&key, 0, sizeof(key));
@@ -3533,7 +3590,7 @@ RTNode *db_get_all_csr_rtnode(){
 
     #else
     const char* TYPE = "16-";
-    BC* dbcp;
+    DBC* dbcp;
     DBT key, data;
     int ret;
 
@@ -3909,6 +3966,35 @@ RTNode *db_get_all_acp_rtnode(){
             coltype = sqlite3_column_type(res, col);
 
             if(bytes == 0) continue;
+
+            if(!strcmp(colname, "lbl")){
+                memset(buf,0, 256);
+                strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+                cJSON_AddItemToObject(json, "lbl", string_to_cjson_string_list_item(buf+1));
+                continue;
+            }
+            // else if(!strcmp(colname, "pvacop")){
+            //     memset(buf,0, 256);
+            //     strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            //     cJSON_AddItemToObject(json, "pvacop", string_to_cjson_int_list_item(buf));
+            //     continue;
+            // }else if(!strcmp(colname, "pvacor")){
+            //     memset(buf,0, 256);
+            //     strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            //     cJSON_AddItemToObject(json, "pvacor", string_to_cjson_string_list_item(buf));
+            //     continue;
+            // }else if(!strcmp(colname, "pvsacop")){
+            //     memset(buf,0, 256);
+            //     strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            //     cJSON_AddItemToObject(json, "pvsacop", string_to_cjson_int_list_item(buf));
+            //     continue;
+            // }else if(!strcmp(colname, "pvsacor")){
+            //     memset(buf,0, 256);
+            //     strncpy(buf, sqlite3_column_text(res, col), bytes-1);
+            //     cJSON_AddItemToObject(json, "pvsacor", string_to_cjson_string_list_item(buf));
+            //     continue;
+            // }
+
             switch(coltype){
                 case SQLITE_TEXT:
                     memset(buf, 0, 256);
@@ -3923,10 +4009,10 @@ RTNode *db_get_all_acp_rtnode(){
         cJSON_AddItemToObject(root, "m2m:acp", json);
         acp = cjson_to_acp(root);
         if(!head) {
-            head = create_rtnode(acp,RT_SUB);
+            head = create_rtnode(acp,RT_ACP);
             rtnode = head;
         } else {
-            rtnode->sibling_right = create_rtnode(acp, RT_SUB);
+            rtnode->sibling_right = create_rtnode(acp, RT_ACP);
             rtnode->sibling_right->sibling_left = rtnode;
             rtnode = rtnode->sibling_right;
         }   

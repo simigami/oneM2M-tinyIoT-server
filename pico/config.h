@@ -15,6 +15,10 @@
 #define REMOTE_CSE_PORT ""
 #endif
 
+// AE Settings
+// #define ALLOW_AE_ORIGIN "C*,S*" , no blankspace allowed
+#define ALLOW_AE_ORIGIN "C*,S*"
+
 #define MONO_THREAD 1 // 0 → multi-thread, 1 → mono-thread
 
 #define MAX_PAYLOAD_SIZE 65536 
@@ -26,7 +30,7 @@
 
 // DB Settings
 /* Select which Database to use. */
-//#define BERKELEY_DB
+// #define BERKELEY_DB
 #define SQLITE_DB
 
 // Group Settings
@@ -63,7 +67,6 @@
 
 #endif
 
-#include "logger.h"
 #define LOG_LEVEL LOG_LEVEL_DEBUG
 #define LOG_BUFFER_SIZE MAX_PAYLOAD_SIZE
 

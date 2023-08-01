@@ -45,6 +45,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop);
 int check_payload_empty(oneM2MPrimitive *o2pt);
 int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode);
 int check_aei_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode);
+int check_aei_invalid(oneM2MPrimitive *o2pt);
 int check_resource_type_equal(oneM2MPrimitive *o2pt);
 int check_resource_type_invalid(oneM2MPrimitive *o2pt);
 int result_parse_uri(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
