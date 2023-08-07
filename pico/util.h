@@ -15,6 +15,8 @@ void free_o2pt(oneM2MPrimitive *o2pt);
 void free_all_resource(RTNode *rtnode);
 void log_runtime(double start);
 
+void update_resource(cJSON *old, cJSON *new);
+
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) ;
@@ -30,7 +32,7 @@ RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 char *get_ri_rtnode(RTNode *rtnode);
 char *get_pi_rtnode(RTNode *rtnode);
 char *get_rn_rtnode(RTNode *rtnode);
-char *get_acpi_rtnode(RTNode *rtnode);
+cJSON *get_acpi_rtnode(RTNode *rtnode);
 char *get_ct_rtnode(RTNode *rtnode);
 char *get_et_rtnode(RTNode *rtnode);
 char *get_lt_rtnode(RTNode *rtnode);
@@ -38,7 +40,20 @@ int get_st_rtnode(RTNode *rtnode);
 int get_cs_rtnode(RTNode *rtnode);
 char *get_lbl_rtnode(RTNode *rtnode);
 char *get_uri_rtnode(RTNode *rtnode);
+char *ri_to_uri(char *ri);
 cJSON *getResource(cJSON *root, ResourceType ty);
+
+//validation
+bool is_attr_valid(cJSON *obj, ResourceType ty);
+int validate_ae(oneM2MPrimitive *o2pt, cJSON *ae, Operation op);
+int validate_cnt(oneM2MPrimitive *o2pt, cJSON *cnt, Operation op);
+int validate_cin(oneM2MPrimitive *o2pt, cJSON *parent_cnt, cJSON *cin, Operation op);
+int validate_sub(oneM2MPrimitive *o2pt, cJSON *sub, Operation op);
+int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op);
+int validate_grp(oneM2MPrimitive *o2pt, cJSON *grp);
+int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new);
+int validate_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode, cJSON *csr, Operation op);
+
 
 //error
 int check_privilege(oneM2MPrimitive *o2pt, RTNode *target_rtnode, ACOP acop);
@@ -60,7 +75,7 @@ void db_store_fail(oneM2MPrimitive *o2pt);
 char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
 void delete_cin_under_cnt_mni_mbs(RTNode *rtnode);
-int net_to_bit(char *net);
+int net_to_bit(cJSON *net);
 int get_acop(oneM2MPrimitive *o2pt, RTNode *node);
 int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
@@ -68,7 +83,7 @@ void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
 bool is_rn_valid_char(char c);
 
-int validate_grp(GRP *grp);
+
 bool isMinDup(char **mid, int idx, char *new_mid);
 
 ResourceType http_parse_object_type(header_t *headers, int cnt);
@@ -77,13 +92,15 @@ ResourceType parse_object_type_cjson(cJSON *cjson);
 bool isFopt(char *str);
 bool endswith(char *str, char *match);
 
-void handle_error(oneM2MPrimitive *o2pt, int rsc, char *err);
+int handle_error(oneM2MPrimitive *o2pt, int rsc, char *err);
 
 int rsc_to_http_status(int rsc);
 
+char *get_resource_key(ResourceType ty);
+
 cJSON *o2pt_to_json(oneM2MPrimitive *o2pt);
 void remove_mid(char **mid, int idx, int cnm);
-int handle_csy(GRP *grp, int i);
+int handle_csy(cJSON *grp, cJSON *mid_obj, int csy, int i);
 int get_number_from_cjson(cJSON *json);
 cJSON *qs_to_json(char* qs);
 cJSON *handle_uril(cJSON *uril, char *new_uri, FilterOperation fo);

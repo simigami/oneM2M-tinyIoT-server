@@ -22,6 +22,7 @@
 ResourceTree *rt;
 void route(oneM2MPrimitive *o2pt);
 void stop_server(int sig);
+cJSON *ATTRIBUTES;
 char *PORT = SERVER_PORT;
 int terminate = 0;
 #ifdef ENABLE_MQTT
@@ -31,6 +32,26 @@ int mqtt_thread_id;
 
 int main(int argc, char **argv) {
 	signal(SIGINT, stop_server);
+	ATTRIBUTES = cJSON_Parse(
+        "{ \
+            \"general\": [\"rn\", \"ri\", \"pi\", \"ct\", \"et\", \"lt\", \"uri\", \"acpi\", \"lbl\", \"ty\"], \
+            \"m2m:ae\": [\"ri\", \"api\", \"aei\", \"rr\", \"poa\", \"apn\", \"srv\"], \
+            \"m2m:cnt\": [\"ri\", \"cr\", \"mni\", \"mbs\", \"mia\", \"st\", \"cni\", \"cbs\"], \
+            \"m2m:cin\": [\"ri\", \"cs\", \"cr\", \"con\"], \
+            \"m2m:acp\": [\"ri\", \"pv\", \"pvs\"], \
+            \"m2m:sub\": [\"ri\", \"enc\", \"exc\", \"nu\", \"gpi\", \"nfu\", \"bn\", \"rl\", \"sur\", \"nct\", \"net\", \"cr\", \"su\"], \
+            \"m2m:grp\": [\"ri\", \"cr\", \"mt\", \"cnm\", \"mnm\", \"mid\", \"macp\", \"mtv\", \"csy\", \"gn\"], \
+            \"m2m:csr\": [\"ri\", \"cst\", \"poa\", \"cb\", \"csi\", \"mei\", \"tri\", \"rr\", \"nl\", \"srv\"], \
+            \"m2m:cb\": [\"ri\", \"cst\", \"csi\", \"srt\", \"poa\", \"srv\"] \
+        }"
+    );
+
+    if(ATTRIBUTES == NULL){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create attributes");
+        logger("DB", LOG_LEVEL_DEBUG, "%s", cJSON_GetErrorPtr());
+        return 0;
+    }
+
 	if(!init_dbp()){
 		logger("MAIN", LOG_LEVEL_ERROR, "DB Error");
 		return 0;
@@ -75,11 +96,10 @@ void route(oneM2MPrimitive *o2pt) {
 		return;
 	}
 
-	if(o2pt->fc && o2pt->fc->fu != FU_DISCOVERY){
-		o2pt->rsc = RSC_BAD_REQUEST;
-		set_o2pt_pc(o2pt, "{\"m2m:dbg\":\"Only Filter Usage Discovery Supported\"}");
-		log_runtime(start);
-		return;
+	if(o2pt->fc){
+		if(rsc = validate_filter_criteria(o2pt) > 4000){
+			return rsc;
+		}
 	}
 
 	if(o2pt->isFopt)

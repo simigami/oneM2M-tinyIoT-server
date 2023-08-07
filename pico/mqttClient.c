@@ -171,20 +171,14 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
         if(pjson->valueint) o2pt->ty = pjson->valueint;
         else o2pt->ty = atoi(pjson->valuestring);
     }
-
+    int rsc = 0;
     pjson = cJSON_GetObjectItem(json, "fc");
     if(pjson){
-        if((o2pt->fc = parseFilterCriteria(pjson)) == NULL){
-            if(o2pt->pc)
-                free(o2pt->pc);
-            o2pt->pc = strdup("{\"m2m:dbg\": \"Invalid FilterCriteria\"}");
-            o2pt->rsc = RSC_BAD_REQUEST;
+        o2pt->fc = pjson;
+        if(rsc = validate_filter_criteria(o2pt) > 4000){
+            handle_error(o2pt, rsc, "Invalid FilterCriteria");
             mqtt_respond_to_client(o2pt, req_type);
             goto exit;
-
-        }else{
-            if(o2pt->fc->fu == FU_DISCOVERY)
-                o2pt->op = OP_DISCOVERY;
         }
     }
 

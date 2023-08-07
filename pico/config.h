@@ -15,10 +15,6 @@
 #define REMOTE_CSE_PORT ""
 #endif
 
-// AE Settings
-// #define ALLOW_AE_ORIGIN "C*,S*" , no blankspace allowed
-#define ALLOW_AE_ORIGIN "C*,S*"
-
 #define MONO_THREAD 1 // 0 → multi-thread, 1 → mono-thread
 
 #define MAX_PAYLOAD_SIZE 65536 
@@ -28,13 +24,17 @@
 #define MAX_TREE_VIEWER_SIZE 65536
 #define DEFAULT_EXPIRE_TIME -3600*24*365*2
 
-// DB Settings
-/* Select which Database to use. */
-// #define BERKELEY_DB
-#define SQLITE_DB
+
+// AE Settings
+// #define ALLOW_AE_ORIGIN "C*,S*" , no blankspace allowed
+#define ALLOW_AE_ORIGIN "C*,S*"
+
+// CNT Settings
+#define DEFAULT_MAX_NR_INSTANCES 10
+#define DEFAULT_MAX_BYTE_SIZE 1024
 
 // Group Settings
-#define CONSISTENCY_POLICY SET_MIXED
+#define DEFAULT_CONSISTENCY_POLICY CSY_SET_MIXED
 
 
 // MQTT Settings
