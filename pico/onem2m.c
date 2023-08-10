@@ -980,7 +980,6 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	o2pt->rsc = RSC_DELETED;
 	return RSC_DELETED;
 }
-
 int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag) {
 	switch(rtnode->ty) {
 	case RT_AE : 
@@ -1073,9 +1072,7 @@ int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	if(pjson = cJSON_GetObjectItem(m2m_grp, "mid")){
 		cJSON_SetIntValue(cJSON_GetObjectItem(target_rtnode->obj, "cnm"), cJSON_GetArraySize(pjson));
 	}
-
 	update_resource(target_rtnode->obj, m2m_grp);
-
 	result = db_update_resource(m2m_grp, cJSON_GetObjectItem(target_rtnode->obj, "ri")->valuestring, RT_GRP);
 
 	if(!result){
@@ -1393,8 +1390,17 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	
 	
 	urilSize = cJSON_GetArraySize(uril);
-	int lim = cJSON_GetNumberValue(cJSON_GetObjectItem(fc, "lim"));
-	int ofst = cJSON_GetNumberValue(cJSON_GetObjectItem(fc, "ofst"));
+	cJSON *lim_obj = cJSON_GetObjectItem(fc, "lim");
+	cJSON *ofst_obj = cJSON_GetObjectItem(fc, "ofst");
+	int lim = INT_MAX;
+	int ofst = 0;
+	if(lim_obj){
+		lim = cJSON_GetNumberValue(lim_obj);
+	}
+	if(ofst_obj){
+		ofst = cJSON_GetNumberValue(ofst_obj);
+	}
+	
 	if(lim < urilSize - ofst){
 		logger("O2M", LOG_LEVEL_DEBUG, "limit exceeded");
 		for(int i = 0 ; i < ofst ; i++){
@@ -1500,7 +1506,9 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 				port = "80";
 			}
 			http_forwarding(o2pt, host, port);
-		}else if (strncmp(ptr, "mqtt://", 7) == 0){
+		}
+		#ifdef ENABLE_MQTT
+		else if (strncmp(ptr, "mqtt://", 7) == 0){
 			host = ptr + 7;
 			port = strchr(host, ':');
 			if(port){
@@ -1509,6 +1517,7 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			}
 			mqtt_forwarding(o2pt, host, port, csr);
 		}
+		#endif
 		ptr = strtok(NULL, ",");
 	}
 

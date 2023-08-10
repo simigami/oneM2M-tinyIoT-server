@@ -1294,6 +1294,8 @@ cJSON* db_get_filter_criteria(char *to, cJSON *fc) {
     }
 
     if(pjson = cJSON_GetObjectItem(fc, "ty")){
+
+        strcat(sql, "(");
         
         if(cJSON_IsArray(pjson)){
             cJSON_ArrayForEach(ptr, pjson){
@@ -1305,6 +1307,8 @@ cJSON* db_get_filter_criteria(char *to, cJSON *fc) {
             sprintf(buf, " ty = %d", cJSON_GetNumberValue(pjson));
             strcat(sql, buf);
         }        
+
+        strcat(sql, ") ");
         filterOptionStr(fo, sql);
     }
 

@@ -146,7 +146,7 @@ static int mqtt_message_cb(MqttClient *client, MqttMessage *msg,
 
     pjson = cJSON_GetObjectItem(json, "to");
     if(!pjson) return invalidRequest();
-    o2pt->to = strdup(pjson->valuestring+1);
+    o2pt->to = strdup(pjson->valuestring);
 
     pjson = cJSON_GetObjectItem(json, "fr");
     if(!pjson) return invalidRequest();

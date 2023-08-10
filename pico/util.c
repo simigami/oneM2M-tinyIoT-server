@@ -19,7 +19,7 @@
 extern ResourceTree *rt;
 
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
-	logger("O2M", LOG_LEVEL_DEBUG, "Call parse_uri");
+	logger("O2M", LOG_LEVEL_DEBUG, "Call parse_uri %s", o2pt->to);
 	
 	char uri_array[MAX_URI_SIZE];
 	char *uri_parse = uri_array;
@@ -563,7 +563,7 @@ RTNode *latest_cin_list(RTNode* cinList, int num) {
 
 void log_runtime(double start) {
 	double end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
-	logger("UTIL", LOG_LEVEL_DEBUG, "Run time : %lf", end-start);
+	logger("UTIL", LOG_LEVEL_INFO, "Run time : %lf", end-start);
 }
 
 
@@ -1061,8 +1061,8 @@ int validate_grp(oneM2MPrimitive *o2pt, cJSON *grp){
 
 		for(int j = 0 ; j < i ; j++){
 			if(cJSON_GetArrayItem(midArr, j) && !strcmp(mid, cJSON_GetStringValue(cJSON_GetArrayItem(midArr, j)))){
-				cJSON_DeleteItemFromArray(midArr, i);
 				dup = true;
+				cJSON_DeleteItemFromArray(midArr, i);
 				break;
 			}
 		}
@@ -1121,7 +1121,7 @@ int validate_grp(oneM2MPrimitive *o2pt, cJSON *grp){
 }
 
 int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
-	logger("UTIL", LOG_LEVEL_DEBUG, "Validating GRP");
+	logger("UTIL", LOG_LEVEL_DEBUG, "Validating GRP Update");
 	int rsc = 0;
 	bool hasFopt = false;
 	bool isLocalResource = true;
@@ -1152,12 +1152,6 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 		return RSC_BAD_REQUEST;
 	}
 
-	if(pjson = cJSON_GetObjectItem(grp_old, "mnm")){
-		if(pjson->valueint < cJSON_GetArraySize(midArr)){
-			handle_error(o2pt, RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED, "`mnm` is less than `mid` size");
-			return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
-		}
-	}
 
 	if(pjson = cJSON_GetObjectItem(grp_new, "mnm")){
 		if(pjson->valueint < cJSON_GetArraySize(midArr)){
@@ -1170,6 +1164,12 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 			return RSC_BAD_REQUEST;
 		}
 	}
+	else if(pjson = cJSON_GetObjectItem(grp_old, "mnm")){
+		if(pjson->valueint < cJSON_GetArraySize(midArr)){
+			handle_error(o2pt, RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED, "`mnm` is less than `mid` size");
+			return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
+		}
+	}
 
 	RTNode *rt_node;
 
@@ -1178,9 +1178,11 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 	bool dup = false;
 	cJSON_ArrayForEach(mid_obj, midArr){
 		char *mid = cJSON_GetStringValue(mid_obj);
+		logger("UTIL", LOG_LEVEL_DEBUG, "mid : %s, %d", mid, i);
 
 		for(int j = 0 ; j < i ; j++){
-			if(cJSON_GetArrayItem(midArr, j) && !strcmp(mid, cJSON_GetStringValue(cJSON_GetArrayItem(midArr, j)))){
+			if(!strcmp(mid, cJSON_GetStringValue(cJSON_GetArrayItem(midArr, j)))){
+				logger("UTIL", LOG_LEVEL_DEBUG, "Duplicated");
 				cJSON_DeleteItemFromArray(midArr, i);
 				dup = true;
 				break;
@@ -1189,7 +1191,8 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 
 		if(dup){ 
 			dup = false;
-			continue;
+			if(i == cJSON_GetArraySize(midArr)) break;
+			else continue;
 		}
 
 		isLocalResource = true;
@@ -1211,7 +1214,6 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 			tStr = strdup(mid);
 			if(hasFopt && strlen(mid) > 5)  // remove fopt 
 				tStr[strlen(mid) - 5] = '\0';
-			logger("util-t", LOG_LEVEL_DEBUG, "%s",tStr);
 
 			if((rt_node = find_rtnode_by_uri(rt->cb, tStr))){
 				if(mt != 0 && rt_node->ty != mt)
@@ -1233,7 +1235,7 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 			free(tStr);
 			tStr = NULL;
 		}else{
-			return RSC_NOT_IMPLEMENTED;
+			return handle_error(o2pt, RSC_NOT_IMPLEMENTED, "remote resource is not supported");
 		}
 		i++;
 	}
