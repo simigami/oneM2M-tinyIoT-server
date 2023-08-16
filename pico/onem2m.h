@@ -298,7 +298,7 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
 int validate_filter_criteria(oneM2MPrimitive *o2pt);
 
 bool do_uri_exist(cJSON* list, char *uri);
-cJSON *cjson_merge_arrays_by_operation(cJSON* arr1, cJSON* arr2, FilterOperation fo);
+void cjson_merge_objs_by_operation(cJSON* obj1, cJSON* obj2, FilterOperation fo);
 
 bool isValidFcAttr(char* attr);
 void parse_filter_criteria(cJSON *fc);

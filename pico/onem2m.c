@@ -45,6 +45,7 @@ void init_cse(cJSON* cse) {
 	cJSON_AddNumberToObject(cse, "ty", RT_CSE);
 	cJSON_AddStringToObject(cse, "uri", CSE_BASE_NAME);
 	cJSON_AddStringToObject(cse, "csi", csi);
+	cJSON_AddBoolToObject(cse, "rr", true);
 	
 	// TODO - add acpi, poa
 	
@@ -61,6 +62,7 @@ void add_general_attribute(cJSON *root, RTNode *parent_rtnode, ResourceType ty){
 
 	ptr = resource_identifier(ty, ct);
 	cJSON_AddStringToObject(root, "ri", ptr);
+
 	if(cJSON_GetObjectItem(root, "rn") == NULL){
 		cJSON_AddStringToObject(root, "rn", ptr);
 	}
@@ -74,148 +76,6 @@ void add_general_attribute(cJSON *root, RTNode *parent_rtnode, ResourceType ty){
 	ptr = get_local_time(DEFAULT_EXPIRE_TIME);
 	cJSON_AddStringToObject(root, "et", ptr);
 	free(ptr); ptr = NULL;
-}
-
-void init_csr(CSR* csr, RTNode *parent_rtnode){
-	char *ct = get_local_time(0);
-	
-	csr->ri = resource_identifier(RT_CSR, ct);
-
-	csr->ct = strdup(ct);
-	csr->lt = strdup(ct);
-	if(!csr->rn){
-		csr->rn = (char*)malloc((strlen(csr->csi) + 1) * sizeof(char));
-		strcpy(csr->rn, csr->csi);
-	}
-
-	csr->pi = strdup(get_ri_rtnode(parent_rtnode));
-
-	logger("O2", LOG_LEVEL_DEBUG, "%s/%s", parent_rtnode->uri, csr->rn);
-	csr->uri = (char*) malloc( (strlen(parent_rtnode->uri) + strlen(csr->rn) + 2) * sizeof(char));
-	sprintf(csr->uri, "%s/%s", get_uri_rtnode(parent_rtnode), csr->rn);
-	
-	csr->ty = RT_CSR;
-	
-	free(ct); ct = NULL;
-}
-
-void init_ae(AE* ae, RTNode *parent_rtnode, char *origin) {
-	int origin_size;
-	char *uri[128];
-
-	ae->ct = get_local_time(0);
-	ae->et = get_local_time(DEFAULT_EXPIRE_TIME);
-
-	if(origin && (origin_size = strlen(origin)) > 0) {
-		ae->ri = (char *)malloc(sizeof(char) * (origin_size + 1));
-		strcpy(ae->ri, origin);
-
-	} else {
-		ae->ri = resource_identifier(RT_AE, ae->ct);
-	}
-
-	if(!ae->rn) 
-		ae->rn = strdup(ae->ri);
-	
-	ae->pi = strdup(get_ri_rtnode(parent_rtnode));
-	ae->lt = strdup(ae->ct);
-	ae->aei = strdup(ae->ri);
-
-	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), ae->rn);
-	ae->uri = strdup(uri);
-
-	
-	ae->ty = RT_AE;
-}
-
-void init_cnt(CNT* cnt, RTNode *parent_rtnode) {
-	char uri[128] = {0};
-	cnt->ct = get_local_time(0);
-	cnt->et = get_local_time(DEFAULT_EXPIRE_TIME);
-	cnt->ri = resource_identifier(RT_CNT, cnt->ct);
-	
-	if(!cnt->rn) {
-		cnt->rn = (char*)malloc((strlen(cnt->ri) + 1) * sizeof(char));
-		strcpy(cnt->rn, cnt->ri);
-	}
-	
-	cnt->pi = strdup(get_ri_rtnode(parent_rtnode));
-	cnt->lt = strdup(cnt->ct);;
-	
-	cnt->ty = RT_CNT;
-	cnt->st = 0;
-	cnt->cni = 0;
-	cnt->cbs = 0;
-
-	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), cnt->rn);
-	cnt->uri = strdup(uri);
-}
-
-void init_cin(CIN* cin, RTNode *parent_rtnode) {
-	char uri[256] = {0};
-	cin->ct = get_local_time(0);
-	cin->et = get_local_time(DEFAULT_EXPIRE_TIME);
-	cin->ri = resource_identifier(RT_CIN, cin->ct);
-	
-	cin->rn = strdup(cin->ri);
-	cin->pi = strdup(get_ri_rtnode(parent_rtnode));
-	cin->lt = strdup(cin->ct);
-	
-	cin->ty = RT_CIN;
-	cin->st = 0;
-	cin->cs = strlen(cin->con);
-	sprintf(uri, "%s/%s",get_uri_rtnode(parent_rtnode), cin->rn);
-	cin->uri = strdup(uri);
-}
-
-void init_sub(SUB* sub, RTNode *parent_rtnode) {
-	char uri[256] = {0};
-	sub->ct = get_local_time(0);
-	sub->et = get_local_time(DEFAULT_EXPIRE_TIME);
-	sub->ri = resource_identifier(RT_SUB, sub->ct);
-
-	if(!sub->rn) {
-		sub->rn = (char*)malloc((strlen(sub->ri) + 1) * sizeof(char));
-		strcpy(sub->rn, sub->ri);
-	}
-
-	if(!sub->net) {
-		sub->net = (char*)malloc(2*sizeof(char));
-		strcpy(sub->net,"1");
-	}
-
-	sprintf(uri, "/%s/%s", get_uri_rtnode(parent_rtnode), sub->rn);
-	sub->pi = strdup(get_ri_rtnode(parent_rtnode));
-	sub->lt = strdup(sub->ct);
-
-	sub->sur = strdup(uri);
-	sub->uri = strdup(uri);
-
-	sub->ty = RT_SUB;
-	sub->nct = 0;
-}
-
-void init_acp(ACP* acp, RTNode *parent_rtnode) {
-	char *ct = get_local_time(0);
-	char *et = get_local_time(DEFAULT_EXPIRE_TIME);
-	char *ri = resource_identifier(RT_ACP, ct);
-	char uri[128] = {0};
-
-	if(!acp->rn) {
-		acp->rn = (char*)malloc((strlen(acp->ri) + 1) * sizeof(char));
-		strcpy(acp->rn, acp->ri);
-	}
-	
-	acp->ri = strdup(ri);
-	acp->pi = strdup(get_ri_rtnode(parent_rtnode));
-	acp->et = strdup(et);
-	acp->ct = strdup(ct);
-	acp->lt = strdup(ct);
-
-	sprintf(uri, "%s/%s", get_uri_rtnode(parent_rtnode), acp->rn);
-	acp->uri = strdup(uri);
-	
-	acp->ty = RT_ACP;
 }
 
 RTNode* create_rtnode(cJSON *obj, ResourceType ty){
@@ -258,6 +118,7 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 
 	add_general_attribute(csr, parent_rtnode, RT_CSR);
 	cJSON_AddStringToObject(csr, "csi", o2pt->fr);
+	cJSON_ReplaceItemInObject(csr, "ri", cJSON_Duplicate( cJSON_GetObjectItem(csr, "rn"), 1));
 
 	int rsc = validate_csr(o2pt, parent_rtnode, csr, OP_CREATE);
 	if(rsc != RSC_OK){
@@ -302,11 +163,6 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	}
 	cJSON *root = cJSON_Duplicate(o2pt->cjson_pc, 1);
 	cJSON *ae = cJSON_GetObjectItem(root, "m2m:ae");
-	// if(!is_attr_valid(ae, RT_AE)){
-	// 	handle_error(o2pt, RSC_BAD_REQUEST, "wrong attribute(s) submitted");
-	// 	cJSON_Delete(root);
-	// 	return o2pt->rsc;
-	// }
 
 	add_general_attribute(ae, parent_rtnode, RT_AE);
 	if(o2pt->fr && strlen(o2pt->fr) > 0) {
@@ -431,6 +287,16 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(rsc != RSC_OK){
 		cJSON_Delete(root);
 		return rsc;
+	}
+	cJSON *pjson = NULL;
+	if(pjson = cJSON_GetObjectItem(cin, "cr")){
+		if(pjson->type == cJSON_NULL){
+			cJSON_AddStringToObject(cin, "cr", o2pt->fr);
+		}else{
+			handle_error(o2pt, RSC_BAD_REQUEST, "creator attribute with arbitary value is not allowed");
+			cJSON_Delete(root);
+			return o2pt->rsc;
+		}
 	}
 
 	RTNode *cin_rtnode = create_rtnode(cin, RT_CIN);
@@ -604,18 +470,6 @@ int update_cnt(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	result = validate_cnt(o2pt, m2m_cnt, OP_UPDATE); //TODO - add UPDATE validation
 	if(result != RSC_OK) return result;
 
-
-	// if(cnt->mbs != INT_MIN && cnt->mbs < 0) {
-	// 	handle_error(o2pt, RSC_BAD_REQUEST, "attribute `mbs` is invalid");
-	// 	return o2pt->rsc;
-	// }
-	// if(cnt->mni != INT_MIN && cnt->mni < 0) {
-	// 	handle_error(o2pt, RSC_BAD_REQUEST, "attribute `mni` is invalid");
-	// 	return o2pt->rsc;
-	// }
-	//set_rtnode_update(target_rtnode, after);
-	
-
 	cJSON_AddNumberToObject(m2m_cnt, "st", cJSON_GetObjectItem(cnt, "st")->valueint + 1);
 	update_resource(target_rtnode->obj, m2m_cnt);
 
@@ -692,255 +546,6 @@ int update_csr(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	o2pt->pc = cJSON_PrintUnformatted(csr);
 	o2pt->rsc = RSC_UPDATED;
 	return RSC_UPDATED;
-}
-
-int set_ae_update(oneM2MPrimitive *o2pt, cJSON *m2m_ae, AE* ae) {
-	cJSON *rr = cJSON_GetObjectItemCaseSensitive(m2m_ae, "rr");
-	cJSON *lbl = cJSON_GetObjectItem(m2m_ae, "lbl");
-	cJSON *srv = cJSON_GetObjectItem(m2m_ae, "srv");
-	cJSON *et = cJSON_GetObjectItem(m2m_ae, "et");
-	cJSON *acpi = cJSON_GetObjectItem(m2m_ae, "acpi");
-
-	if(acpi) {
-		if(rr || lbl || srv || et) {
-			handle_error(o2pt, RSC_BAD_REQUEST, "`acpi` must be only attribute in update");
-			return -1;
-		} else if(!ae->acpi && strcmp(o2pt->fr, ae->origin)) {
-			handle_error(o2pt, RSC_ORIGINATOR_HAS_NO_PRIVILEGE, "originator has no privilege on udpate `acpi`");
-			return -1;
-		} else if(!check_acpi_valid(o2pt, acpi)) {
-			return -1;
-		} else {
-			if(ae->acpi) free(ae->acpi);
-			ae->acpi = cjson_string_list_item_to_string(acpi);
-		}
-	}
-
-	if(rr) {
-		if(cJSON_IsTrue(rr)) {
-			ae->rr = true;
-		} else {
-			ae->rr = false;
-		}
-	}
-
-	if(et) {
-		if(ae->et) free(ae->et);
-		ae->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
-		strcpy(ae->et, et->valuestring);
-	}
-
-	if(lbl) {
-		if(ae->lbl) free(ae->lbl);
-		ae->lbl = cjson_string_list_item_to_string(lbl);
-	}
-
-	if(srv) {
-		if(ae->srv) free(ae->srv);
-		ae->srv = cjson_string_list_item_to_string(srv);
-	}
-
-	if(ae->lt) free(ae->lt);
-	ae->lt = get_local_time(0);
-	return 1;
-}
-
-int set_cnt_update(oneM2MPrimitive *o2pt, cJSON *m2m_cnt, CNT* cnt) {
-	cJSON *lbl = cJSON_GetObjectItem(m2m_cnt, "lbl");
-	cJSON *acpi = cJSON_GetObjectItem(m2m_cnt, "acpi");
-	cJSON *mni = cJSON_GetObjectItem(m2m_cnt, "mni");
-	cJSON *mbs = cJSON_GetObjectItem(m2m_cnt, "mbs");
-	cJSON *et = cJSON_GetObjectItem(m2m_cnt, "et");
-
-	if(et) {
-		if(cnt->et) free(cnt->et);
-		cnt->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
-		strcpy(cnt->et, et->valuestring);
-	}
-
-	if(acpi) {
-		if(cnt->acpi) free(cnt->acpi);
-		cnt->acpi = cjson_string_list_item_to_string(acpi);
-	}
-	
-	if(lbl) {
-		if(cnt->lbl) free(cnt->lbl);
-		cnt->lbl = cjson_string_list_item_to_string(lbl);
-	}
-
-	if(mni) {
-		cnt->mni = mni->valueint;
-	}
-
-	if(mbs) {
-		cnt->mbs = mbs->valueint;
-	}
-
-	if(cnt->lt) free(cnt->lt);
-	cnt->lt = get_local_time(0);
-
-	return 1;
-}
-
-int set_acp_update(oneM2MPrimitive *o2pt, cJSON *m2m_acp, ACP* acp) {
-	cJSON *pv_acr = cJSON_GetObjectItem(m2m_acp, "pv");
-	cJSON *pvs_acr = cJSON_GetObjectItem(m2m_acp, "pvs");
-	cJSON *et = cJSON_GetObjectItem(m2m_acp, "et");
-	cJSON *lbl = cJSON_GetObjectItem(m2m_acp, "lbl");
-	cJSON *pv_acor = NULL;
-	cJSON *pv_acop = NULL;
-	cJSON *pvs_acor = NULL;
-	cJSON *pvs_acop = NULL;
-	char pv_acor_str[256] = {'\0'};
-	char pv_acop_str[256] = {'\0'};
-	char pvs_acor_str[256] =  {'\0'};
-	char pvs_acop_str[256] =  {'\0'};
-
-	if(pvs_acr) {
-		pvs_acr = cJSON_GetObjectItem(pvs_acr, "acr");
-
-		if(pvs_acr) {
-			int acr_size = cJSON_GetArraySize(pvs_acr);
-
-			for(int i=0; i<acr_size; i++) {
-				cJSON *arr_item = cJSON_GetArrayItem(pvs_acr, i);
-				pvs_acor = cJSON_GetObjectItem(arr_item, "acor");
-				pvs_acop = cJSON_GetObjectItem(arr_item, "acop");
-
-				if(pvs_acor && pvs_acop) {
-					char acop[3];
-					sprintf(acop, "%d", pvs_acop->valueint);
-					int acor_size = cJSON_GetArraySize(pvs_acor);
-
-					for(int j=0; j<acor_size; j++) {
-						char *acor = cJSON_GetArrayItem(pvs_acor, j)->valuestring;
-						strcat(pvs_acor_str, acor);
-						strcat(pvs_acop_str, acop);
-						if(j != acor_size - 1) {
-							strcat(pvs_acor_str, ",");
-							strcat(pvs_acop_str, ",");
-						}
-					}
-					logger("O2", LOG_LEVEL_DEBUG, "pvs_acor_str: %s", pvs_acor_str);
-					if(i < acr_size - 1) {
-						strcat(pvs_acor_str, ",");
-						strcat(pvs_acop_str, ",");
-					}
-				}
-
-				
-			}
-		}
-		if(pvs_acor_str[0] != '\0' && pvs_acop_str[0] != '\0') {
-			if(acp->pvs_acor) free(acp->pvs_acor);
-			if(acp->pvs_acop) free(acp->pvs_acop);
-			acp->pvs_acor = strdup(pvs_acor_str);
-			acp->pvs_acop = strdup(pvs_acop_str);
-		} else {
-			handle_error(o2pt, RSC_BAD_REQUEST, "attribute `pvs` is mandatory");
-			return RSC_BAD_REQUEST;
-		}
-	}
-
-	if(lbl) {
-		if(acp->lbl) free(acp->lbl);
-		acp->lbl = cjson_string_list_item_to_string(lbl);
-	}
-
-	if(et) {
-		if(acp->et) free(acp->et);
-		acp->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
-		strcpy(acp->et, et->valuestring);
-	}
-
-	if(pv_acr) {
-		pv_acr = cJSON_GetObjectItem(pv_acr, "acr");
-
-		if(pv_acr) {
-			int acr_size = cJSON_GetArraySize(pv_acr);
-
-			for(int i=0; i<acr_size; i++) {
-				cJSON *arr_item = cJSON_GetArrayItem(pv_acr, i);
-				pv_acor = cJSON_GetObjectItem(arr_item, "acor");
-				pv_acop = cJSON_GetObjectItem(arr_item, "acop");
-
-				if(pv_acor && pv_acop) {
-					char acop[3];
-					sprintf(acop, "%d", pv_acop->valueint);
-					int acor_size = cJSON_GetArraySize(pv_acor);
-
-					for(int j=0; j<acor_size; j++) {
-						char *acor = cJSON_GetArrayItem(pv_acor, j)->valuestring;
-						strcat(pv_acor_str, acor);
-						strcat(pv_acop_str, acop);
-						if(j != acor_size - 1) {
-							strcat(pv_acor_str, ",");
-							strcat(pv_acop_str, ",");
-						}
-					}
-					if(i < acr_size - 1) {
-						strcat(pvs_acor_str, ",");
-						strcat(pvs_acop_str, ",");
-					}
-				}
-			}
-		}
-		if(pv_acor_str[0] != '\0' && pv_acop_str[0] != '\0') {
-			if(acp->pv_acor) free(acp->pv_acor);
-			if(acp->pv_acop) free(acp->pv_acop);
-			acp->pv_acor = strdup(pv_acor_str);
-			acp->pv_acop = strdup(pv_acop_str);
-		} else {
-			acp->pv_acor = acp->pv_acop = NULL;
-		}
-	}	
-
-	if(acp->lt) free(acp->lt);
-	acp->lt = get_local_time(0);
-
-	return 1;
-}
-
-int set_csr_update(oneM2MPrimitive *o2pt, cJSON *m2m_csr, CSR* csr){
-	cJSON *lbl = cJSON_GetObjectItem(m2m_csr, "lbl");
-	cJSON *acpi = cJSON_GetObjectItem(m2m_csr, "acpi");
-	cJSON *poa = cJSON_GetObjectItem(m2m_csr, "poa");
-	cJSON *csi = cJSON_GetObjectItem(m2m_csr, "csi");
-	cJSON *cb = cJSON_GetObjectItem(m2m_csr, "cb");
-	cJSON *et = cJSON_GetObjectItem(m2m_csr, "et");
-
-	if(et) {
-		if(csr->et) free(csr->et);
-		csr->et = (char *)malloc((strlen(et->valuestring) + 1) * sizeof(char));
-		strcpy(csr->et, et->valuestring);
-	}
-
-	if(acpi) {
-		if(csr->acpi) free(csr->acpi);
-		csr->acpi = cjson_string_list_item_to_string(acpi);
-	}
-
-	if(lbl) {
-		if(csr->lbl) free(csr->lbl);
-		csr->lbl = cjson_string_list_item_to_string(lbl);
-	}
-
-	if(poa) {
-		if(csr->poa) free(csr->poa);
-		csr->poa = cjson_string_list_item_to_string(poa);
-	}
-
-	if(csi) {
-		if(csr->csi) free(csr->csi);
-		csr->csi = cjson_string_list_item_to_string(csi);
-	}
-
-	if(cb) {
-		if(csr->cb) free(csr->cb);
-		csr->cb = cjson_string_list_item_to_string(cb);
-	}
-	
-	return 1;
 }
 
 int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
@@ -1170,6 +775,11 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e != -1) e = check_rn_duplicate(o2pt, parent_rtnode);
 	if(e == -1) return o2pt->rsc;
 
+	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty)){
+		handle_error(o2pt, RSC_BAD_REQUEST, "invalid attribute");
+		return;
+	}
+
 	switch(o2pt->ty) {	
 	case RT_AE :
 		logger("O2M", LOG_LEVEL_INFO, "Create AE");
@@ -1241,6 +851,11 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(e != -1) e = check_privilege(o2pt, target_rtnode, ACOP_UPDATE);
 	if(e != -1) e = check_rn_duplicate(o2pt, target_rtnode->parent);
 	if(e == -1) return o2pt->rsc;
+
+	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty)){
+		handle_error(o2pt, RSC_BAD_REQUEST, "invalid attribute");
+		return;
+	}
 	
 	switch(ty) {
 		case RT_AE :
@@ -1293,6 +908,10 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 		return RSC_NOT_FOUND;
 	}
 	logger("O2M", LOG_LEVEL_DEBUG, "handle fopt");
+
+	if( check_macp_privilege(o2pt, parent_rtnode, o2pt->op) == -1){
+		return;
+	}
 
 
 	grp = parent_rtnode->obj;
@@ -1370,25 +989,47 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	logger("MAIN", LOG_LEVEL_DEBUG, "Discover Resource");
 	cJSON *fc = o2pt->fc;
-	cJSON *pjson = NULL;
+	cJSON *pjson = NULL, *pjson2 = NULL;
+	cJSON *acpi_obj = NULL;
 	cJSON *root = cJSON_CreateObject();
 	cJSON *uril = NULL;
+	cJSON *json = NULL;
 	int urilSize = 0;
 	if(!o2pt->fc){
 		logger("O2M", LOG_LEVEL_WARN, "Empty Filter Criteria");
 		return RSC_BAD_REQUEST;
 	}
+	logger("O2M", LOG_LEVEL_DEBUG, "Filter Criteria : %s", cJSON_Print(o2pt->fc));
 
-	uril = db_get_filter_criteria(o2pt->to, o2pt->fc);
+	json = db_get_filter_criteria(o2pt->to, o2pt->fc);
 
-	// TODO - Check OPS
 	if(pjson = cJSON_GetObjectItem(o2pt->fc, "ops")){
+		bool valid = true;
+		int ops = pjson->valueint;
+		cJSON_ArrayForEach(pjson2, json){
+			if(!valid){
+				cJSON_DeleteItemFromObject(json, pjson2->prev->string);
+			}
+			valid = true;
+			if(cJSON_IsArray(pjson2)){
+
+				cJSON_ArrayForEach(acpi_obj, pjson2){
+					if(!has_privilege(o2pt->fr, acpi_obj->valuestring, ops)){
+						valid = false;
+						break;
+					}
+				}
+			}
+		}
 	}
 
-
-
+	uril = cJSON_CreateArray();
+	cJSON_ArrayForEach(pjson, json){
+		cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->string));
+	}
 	
-	
+	cJSON_Delete(json);
+
 	urilSize = cJSON_GetArraySize(uril);
 	cJSON *lim_obj = cJSON_GetObjectItem(fc, "lim");
 	cJSON *ofst_obj = cJSON_GetObjectItem(fc, "ofst");

@@ -125,21 +125,24 @@ RTNode *find_csr_rtnode_by_uri(RTNode *cb, char *uri){
 	return rtnode;
 }
 
-RTNode *find_rtnode_by_uri(RTNode *cb, char *target_uri) {
+RTNode *find_rtnode_by_uri(RTNode *cb, char *uri) {
 	RTNode *rtnode = cb, *parent_rtnode = NULL;
-	target_uri = strtok(target_uri, "/");
-	if(!target_uri) return NULL;
+	char *target_uri = strdup(uri);
+	char *ptr = strtok(target_uri, "/");
+	if(!ptr) return NULL;
 
 	char ri[64];
-	strcpy(ri, target_uri);
+	strcpy(ri, ptr);
 
 	char uri_array[64][MAX_URI_SIZE];
 	int index = -1;
 
-	while(target_uri) {
-		strcpy(uri_array[++index], target_uri);
-		target_uri = strtok(NULL, "/");
+	while(ptr) {
+		strcpy(uri_array[++index], ptr);
+		ptr = strtok(NULL, "/");
 	}
+
+	free(target_uri);
 
 	for(int i=0; i<=index; i++) {
 		while(rtnode) {
@@ -568,6 +571,7 @@ void log_runtime(double start) {
 
 
 void init_server() {
+	char poa[128] = {0};
 	if(SERVER_TYPE == MN_CSE){
 		logger("UTIL", LOG_LEVEL_DEBUG, "MN-CSE");
 		// oneM2MPrimitive csr;
@@ -590,6 +594,11 @@ void init_server() {
 		init_cse(cse);
 		db_store_resource(cse, CSE_BASE_NAME);
 	}
+	sprintf(poa, "http://%s:%s", SERVER_HOST, SERVER_PORT);
+
+	cJSON *poa_obj = cJSON_CreateArray();
+	cJSON_AddItemToArray(poa_obj, cJSON_CreateString(poa));
+	cJSON_AddItemToObject(cse, "poa", poa_obj);
 
 	rt->cb = create_rtnode(cse, RT_CSE);
 	rt->cb->uri = CSE_BASE_NAME;
@@ -713,7 +722,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 	if(rtnode->ty != RT_CSE) {
 		if(get_acpi_rtnode(rtnode) || rtnode->ty == RT_ACP) {
 			deny = true;
-			if((get_acop(o2pt, rtnode) & acop) == acop) {
+			if((get_acop(o2pt->fr, rtnode) & acop) == acop) {
 				deny = false;
 			}
 		}
@@ -727,13 +736,36 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 	return false;
 }
 
-int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
-	char origin[64];
+int check_macp_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop){
+	bool deny = false;
+	if(!o2pt->fr) {
+		deny = true;
+	} else if(!strcmp(o2pt->fr, "CAdmin")) {
+		return false;
+	} else if(strcmp(o2pt->fr, get_ri_rtnode(rtnode))) {
+		deny = true;
+	}
+
+	cJSON *macp = cJSON_GetObjectItem(rtnode->obj, "macp");
+	if(macp && cJSON_GetArraySize(macp) > 0) {
+		deny = true;
+		if((get_acop_macp(o2pt->fr, rtnode) & acop) == acop) {
+			deny = false;
+		}
+	}
+
+	if(deny) {
+		handle_error(o2pt, RSC_ORIGINATOR_HAS_NO_PRIVILEGE, "originator has no privilege");
+		return -1;
+	}
+
+	return 0;
+}
+
+int get_acop(char *origin, RTNode *rtnode) {
 	int acop = 0;
-	
-	if(o2pt->fr) {
-		strcpy(origin, o2pt->fr);
-	} else {
+	logger("UTIL", LOG_LEVEL_DEBUG, "get_acop : %s", origin);
+	if(!origin) {
 		strcpy(origin, "all");
 	}
 
@@ -752,7 +784,33 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	while(cb->parent) cb = cb->parent;
 	cJSON *acpi = NULL;
 	cJSON_ArrayForEach(acpi, acpiArr) {
-		RTNode *acp = find_rtnode_by_ri(cb, acpi->valuestring);
+		RTNode *acp = find_rtnode_by_uri(cb, acpi->valuestring);
+		if(acp) {
+			acop = (acop | get_acop_origin(origin, acp, 0));
+			acop = (acop | get_acop_origin("all", acp, 0));
+		}
+	}
+	return acop;
+}
+
+int get_acop_macp(char *origin, RTNode *rtnode){
+	int acop = 0;
+	logger("UTIL", LOG_LEVEL_DEBUG, "get_acop_macp : %s", origin);
+	if(!origin) {
+		strcpy(origin, "all");
+	}
+
+	if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
+
+	cJSON *macp = cJSON_GetObjectItem(rtnode->obj, "macp");
+	if(!macp) return 0;
+
+	RTNode *cb = rtnode;
+	while(cb->parent) cb = cb->parent;
+	cJSON *acpi = NULL;
+	cJSON_ArrayForEach(acpi, macp) {
+		
+		RTNode *acp = find_rtnode_by_uri(cb, acpi->valuestring);
 		if(acp) {
 			acop = (acop | get_acop_origin(origin, acp, 0));
 			acop = (acop | get_acop_origin("all", acp, 0));
@@ -797,6 +855,19 @@ int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 	}
 
 	return ret_acop;
+}
+
+int has_privilege(char *origin, char *acpi, ACOP acop) {
+	
+	RTNode *acp = find_rtnode_by_uri(rt->cb, acpi);
+	int result = get_acop_origin(origin, acp, 0);
+	logger("UTIL", LOG_LEVEL_DEBUG, "has_privilege : %d", result);
+	result = result | get_acop_origin("all", acp, 0);
+	logger("UTIL", LOG_LEVEL_DEBUG, "has_privilege : %d", result);
+	if( (result & acop) == acop) {
+		return 1;
+	}
+	return 0;
 }
 
 int check_rn_duplicate(oneM2MPrimitive *o2pt, RTNode *rtnode) {
@@ -1053,6 +1124,19 @@ int validate_grp(oneM2MPrimitive *o2pt, cJSON *grp){
 		}
 	}
 
+	// validate macp
+	if(pjson = cJSON_GetObjectItem(grp, "macp")){
+		if(!cJSON_IsArray(pjson)){
+			handle_error(o2pt, RSC_BAD_REQUEST, "`macp` should be array");
+			return RSC_BAD_REQUEST;
+		}else if(cJSON_GetArraySize(pjson) == 0){
+			handle_error(o2pt, RSC_BAD_REQUEST, "`macp` should not be empty");
+		}else{
+			if( validate_acpi(o2pt, pjson, OP_CREATE)  != RSC_OK )
+				return;
+		}
+	}
+
 	// member id check
 	int i = 0;
 	bool dup = false;
@@ -1169,6 +1253,11 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 			handle_error(o2pt, RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED, "`mnm` is less than `mid` size");
 			return RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED;
 		}
+	}
+
+	if(pjson = cJSON_GetObjectItem(grp_new, "macp")){
+		if(validate_acpi(o2pt, pjson, OP_UPDATE) != RSC_OK)
+		return RSC_BAD_REQUEST;
 	}
 
 	RTNode *rt_node;
@@ -1755,7 +1844,8 @@ bool is_attr_valid(cJSON *obj, ResourceType ty){
 	general_attrs = cJSON_GetObjectItem(ATTRIBUTES, "general");
 	if(!attrs) return false;
 	
-	cJSON *pjson = obj->child;
+	cJSON *pjson = cJSON_GetObjectItem(obj->child, get_resource_key(ty));
+	
 	cJSON *attr = NULL;
 	while(pjson){
 		logger("UTIL", LOG_LEVEL_DEBUG, "%s", pjson->string);
@@ -1777,6 +1867,7 @@ bool is_attr_valid(cJSON *obj, ResourceType ty){
 			}
 		}
 		if(!flag){
+			logger("UTIL", LOG_LEVEL_DEBUG, "invalid attribute : %s", pjson->string);
 			return false;
 		}
 		pjson = pjson->next;
@@ -1786,18 +1877,18 @@ bool is_attr_valid(cJSON *obj, ResourceType ty){
 	return true;
 }
 
+/**
+ * Get Request Primitive and acpi attribute and validate it.
+*/
 int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op){
 	if(!acpiAttr) {
-		handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
-		return RSC_BAD_REQUEST;
+		return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 	}
 	if( !cJSON_IsArray(acpiAttr) && !cJSON_IsNull(acpiAttr)){
-		handle_error(o2pt, RSC_BAD_REQUEST, "attribute `acpi` is in invalid form");
-		return RSC_BAD_REQUEST;
+		return handle_error(o2pt, RSC_BAD_REQUEST, "attribute `acpi` is in invalid form");
 	}
 	if(cJSON_IsArray(acpiAttr) && cJSON_GetArraySize(acpiAttr) == 0){
-		handle_error(o2pt, RSC_BAD_REQUEST, "attribute `acpi` is empty");
-		return RSC_BAD_REQUEST;
+		return handle_error(o2pt, RSC_BAD_REQUEST, "attribute `acpi` is empty");
 	}
 
 
@@ -1806,14 +1897,16 @@ int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op){
 		RTNode *acp = NULL;
 		acp = find_rtnode_by_uri(rt->cb, acpi->valuestring);
 		if(!acp){
-			handle_error(o2pt, RSC_NOT_FOUND, "resource `acp` is not found");
-			return RSC_BAD_REQUEST;
+			return handle_error(o2pt, RSC_BAD_REQUEST, "resource `acp` is not found");
 		}else if(op == OP_UPDATE){
 			int acop = 0;
 			acop = (acop | get_acop_origin(o2pt->fr, acp, 1));
 			acop = (acop | get_acop_origin("all", acp, 1));
 			logger("UTIL", LOG_LEVEL_DEBUG, "acop-pvs : %d, op : %d", acop, op);
-			if((acop & op) != op){
+			if(!strcmp(o2pt->fr, "CAdmin")){
+
+			}
+			else if((acop & op) != op){
 				handle_error(o2pt, RSC_ORIGINATOR_HAS_NO_PRIVILEGE, "originator has no privilege");
 				return RSC_ORIGINATOR_HAS_NO_PRIVILEGE;
 			}
@@ -1828,41 +1921,34 @@ int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op){
 	cJSON *pjson = NULL;
 	char *ptr = NULL;
 	if(!acp) {
-		handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
-		return RSC_BAD_REQUEST;
+		return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 	}
 	if(op == OP_CREATE){
 		pjson = cJSON_GetObjectItem(acp, "pv");
 		if(!pjson){
-			handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
-			return RSC_BAD_REQUEST;
+			return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 		}else if(pjson->type == cJSON_NULL || !cJSON_GetObjectItem(pjson, "acr")){
-			handle_error(o2pt, RSC_BAD_REQUEST, "empty `pv` is not allowed");
-			return RSC_BAD_REQUEST;
+			return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pv` is not allowed");
 		}
 
 		pjson = cJSON_GetObjectItem(acp, "pvs");
 		if(!pjson){
-			handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
-			return RSC_BAD_REQUEST;
+			return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 		}else if( cJSON_IsNull(pjson) || !cJSON_GetObjectItem(pjson, "acr")){
-			handle_error(o2pt, RSC_BAD_REQUEST, "empty `pvs` is not allowed");
-			return RSC_BAD_REQUEST;
+			return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pvs` is not allowed");
 		}
 	}
 	if(op == OP_UPDATE){
 		pjson = cJSON_GetObjectItem(acp, "pv");
 		if(pjson){
 			if( cJSON_IsNull(pjson) || !cJSON_GetObjectItem(pjson, "acr")){
-				handle_error(o2pt, RSC_BAD_REQUEST, "empty `pv` is not allowed");
-				return RSC_BAD_REQUEST;
+				return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pv` is not allowed");
 			}
 		}
 		pjson = cJSON_GetObjectItem(acp, "pvs");
 		if (pjson){
 			if( cJSON_IsNull(pjson) || !cJSON_GetObjectItem(pjson, "acr")){
-				handle_error(o2pt, RSC_BAD_REQUEST, "empty `pvs` is not allowed");
-				return RSC_BAD_REQUEST;
+				return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pvs` is not allowed");
 			}
 		}
 	}
@@ -1911,6 +1997,19 @@ int validate_cnt(oneM2MPrimitive *o2pt, cJSON *cnt, Operation op){
 	if(!cnt) {
 		handle_error(o2pt, RSC_CONTENTS_UNACCEPTABLE, "insufficient mandatory attribute(s)");
 		return RSC_CONTENTS_UNACCEPTABLE;
+	}
+	
+	pjson = cJSON_GetObjectItem(cnt, "acpi");
+	if(pjson){
+		int result = validate_acpi(o2pt, pjson, op);
+		if(result != RSC_OK) return result;
+	}
+
+	if(op == OP_UPDATE){
+		if(pjson && cJSON_GetArraySize(pjson) > 1){
+			handle_error(o2pt, RSC_BAD_REQUEST, "only attribute `acpi` is allowed when updating `acpi`");
+			return RSC_BAD_REQUEST;
+		}
 	}
 	
 	pjson = cJSON_GetObjectItem(cnt, "mni");
@@ -1999,13 +2098,20 @@ int validate_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode, cJSON *csr, Opera
 
 	char *csi = NULL;
 
-	pjson = cJSON_GetObjectItem(csr, "csi");
-	if(pjson){
+	if(pjson = cJSON_GetObjectItem(csr, "csi")){
 		csi = pjson->valuestring;
 		if(check_csi_duplicate(csi, parent_rtnode) == -1){
-			handle_error(o2pt, RSC_ORIGINATOR_HAS_ALREADY_REGISTERD, "originator has already registered");
+			handle_error(o2pt, RSC_OPERATION_NOT_ALLOWED, "originator has already registered");
 			return o2pt->rsc;
 		}
+	}else{
+		return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
+	}
+
+	if(pjson = cJSON_GetObjectItem(csr, "cb")){
+		// TODO - check cb
+	}else{
+		return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 	}
 	
 

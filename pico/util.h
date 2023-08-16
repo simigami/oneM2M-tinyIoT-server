@@ -69,20 +69,21 @@ int check_payload_format(oneM2MPrimitive *o2pt);
 int check_rn_invalid(oneM2MPrimitive *o2pt, ResourceType ty);
 bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi);
 int check_csi_duplicate(char *new_csi, RTNode *rtnode);
-void db_store_fail(oneM2MPrimitive *o2pt);
+int check_macp_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop);
 
 //etc
 char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
 void delete_cin_under_cnt_mni_mbs(RTNode *rtnode);
 int net_to_bit(cJSON *net);
-int get_acop(oneM2MPrimitive *o2pt, RTNode *node);
+int get_acop(char* origin, RTNode *node);
+int get_acop_macp(char *origin, RTNode *rtnode);
 int get_acop_origin(char *origin, RTNode *acp, int flag);
 int get_value_querystring_int(char *key);
 void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
 bool is_rn_valid_char(char c);
-
+int has_privilege(char *origin, char *acpi, ACOP acop);
 
 bool isMinDup(char **mid, int idx, char *new_mid);
 

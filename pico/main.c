@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
             \"m2m:sub\": [\"ri\", \"enc\", \"exc\", \"nu\", \"gpi\", \"nfu\", \"bn\", \"rl\", \"sur\", \"nct\", \"net\", \"cr\", \"su\"], \
             \"m2m:grp\": [\"ri\", \"cr\", \"mt\", \"cnm\", \"mnm\", \"mid\", \"macp\", \"mtv\", \"csy\", \"gn\"], \
             \"m2m:csr\": [\"ri\", \"cst\", \"poa\", \"cb\", \"csi\", \"mei\", \"tri\", \"rr\", \"nl\", \"srv\"], \
-            \"m2m:cb\": [\"ri\", \"cst\", \"csi\", \"srt\", \"poa\", \"srv\"] \
+            \"m2m:cb\": [\"ri\", \"cst\", \"csi\", \"srt\", \"poa\", \"srv\", \"rr\"] \
         }"
     );
 
