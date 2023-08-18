@@ -752,6 +752,8 @@ int check_macp_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop){
 		if((get_acop_macp(o2pt->fr, rtnode) & acop) == acop) {
 			deny = false;
 		}
+	}else{
+		deny = false;
 	}
 
 	if(deny) {

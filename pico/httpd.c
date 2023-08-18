@@ -278,24 +278,13 @@ void handle_http_request(HTTPRequest *req, int slotno) {
 	} 
     
 	if(req->uri) {
-        // if(strncmp(req->uri, "/~/", 3) == 0) {
-        //     if(strncmp(req->uri + 3, CSE_BASE_RI, strlen(CSE_BASE_RI)) == 0) {
-        //         o2pt->to = (char *)malloc((strlen(req->uri) + 1) * sizeof(char));
-        //         strcpy(o2pt->to, req->uri+3 + strlen(CSE_BASE_RI) + 1);
-        //     }else{
-        //         o2pt->isForwarding = true;
-        //         // o2pt->to = (char *)malloc((strlen(req->uri) + 1) * sizeof(char));
-        //         // strcpy(o2pt->to, req->uri);
-        //         o2pt->to = strdup(req->uri);
-        //     }
-        // }else{
-            o2pt->to = (char *)malloc((strlen(req->uri) + 1) * sizeof(char));
-            strcpy(o2pt->to, req->uri+1);
-        // }
+        o2pt->to = (char *)malloc((strlen(req->uri) + 1) * sizeof(char));
+        strcpy(o2pt->to, req->uri+1);
        logger("HTTP", LOG_LEVEL_DEBUG, "to: %s", o2pt->to);
 	} 
     
     o2pt->op = http_parse_operation(req->method);    
+    logger("HTTP", LOG_LEVEL_INFO, "Request : %s", req->method);
 
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type(req->headers, req->header_count);
     else if(o2pt->op == OP_OPTIONS){

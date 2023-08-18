@@ -829,14 +829,13 @@ int retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 
 	if(e == -1) return o2pt->rsc;
 	cJSON *root = cJSON_CreateObject();
-	cJSON *obj = cJSON_Duplicate(target_rtnode->obj, 1);
 
-	cJSON_AddItemToObject(root, get_resource_key(target_rtnode->ty), obj);
+	cJSON_AddItemToObject(root, get_resource_key(target_rtnode->ty), target_rtnode->obj);
 
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cJSON_PrintUnformatted(root);
-	logger("O2M", LOG_LEVEL_INFO, "retrieve pc : %s", o2pt->pc);
 	cJSON_DetachItemFromObject(root, get_resource_key(target_rtnode->ty));
+	cJSON_Delete(root);
 	o2pt->rsc = RSC_OK;
 	return RSC_OK;
 }
