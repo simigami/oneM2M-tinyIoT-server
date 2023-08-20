@@ -855,17 +855,16 @@ int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 		}
 		if(found) break;
 	}
-
 	return ret_acop;
 }
 
 int has_privilege(char *origin, char *acpi, ACOP acop) {
-	
+	if(!origin) return 0;
+	if(!acpi) return 1;
+
 	RTNode *acp = find_rtnode_by_uri(rt->cb, acpi);
 	int result = get_acop_origin(origin, acp, 0);
-	logger("UTIL", LOG_LEVEL_DEBUG, "has_privilege : %d", result);
 	result = result | get_acop_origin("all", acp, 0);
-	logger("UTIL", LOG_LEVEL_DEBUG, "has_privilege : %d", result);
 	if( (result & acop) == acop) {
 		return 1;
 	}
@@ -1260,6 +1259,10 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 	if(pjson = cJSON_GetObjectItem(grp_new, "macp")){
 		if(validate_acpi(o2pt, pjson, OP_UPDATE) != RSC_OK)
 		return RSC_BAD_REQUEST;
+
+		if(cJSON_GetArraySize(pjson) == 0){
+			cJSON_DeleteItemFromObject(grp_new, "macp");
+		}
 	}
 
 	RTNode *rt_node;
@@ -1827,7 +1830,7 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 
 void update_resource(cJSON *old, cJSON *new){
 	cJSON *pjson = new->child;
-	while(pjson){
+	while(pjson){	
 		if(cJSON_GetObjectItem(old, pjson->string)){
 			cJSON_ReplaceItemInObject(old, pjson->string, cJSON_Duplicate(pjson, 1));
 		}else{

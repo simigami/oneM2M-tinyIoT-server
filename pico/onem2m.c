@@ -908,6 +908,10 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	}
 	logger("O2M", LOG_LEVEL_DEBUG, "handle fopt");
 
+	if(check_privilege(o2pt, parent_rtnode, o2pt->op) == -1){
+		return;
+	}
+
 	if( check_macp_privilege(o2pt, parent_rtnode, o2pt->op) == -1){
 		return;
 	}
@@ -993,7 +997,17 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	cJSON *root = cJSON_CreateObject();
 	cJSON *uril = NULL;
 	cJSON *json = NULL;
+	cJSON *noPrivList = cJSON_CreateArray();
 	int urilSize = 0;
+	if(check_privilege(o2pt, target_rtnode, ACOP_DISCOVERY) == -1){
+		uril = cJSON_CreateArray();
+		cJSON_AddItemToObject(root, "m2m:uril", uril);
+		if(o2pt->pc) free(o2pt->pc);
+		o2pt->pc = cJSON_PrintUnformatted(root);
+		cJSON_Delete(root);
+		return RSC_OK;
+	}
+
 	if(!o2pt->fc){
 		logger("O2M", LOG_LEVEL_WARN, "Empty Filter Criteria");
 		return RSC_BAD_REQUEST;
@@ -1001,32 +1015,48 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	logger("O2M", LOG_LEVEL_DEBUG, "Filter Criteria : %s", cJSON_Print(o2pt->fc));
 
 	json = db_get_filter_criteria(o2pt->to, o2pt->fc);
+	bool valid = true;
+
+	cJSON_ArrayForEach(pjson, json){
+		if(cJSON_IsArray(pjson)){
+			cJSON_ArrayForEach(acpi_obj, pjson){
+				if(!has_privilege(o2pt->fr, acpi_obj->valuestring, ACOP_DISCOVERY)){
+					logger("O2M", LOG_LEVEL_DEBUG, "%s No privilege", pjson->string);
+					cJSON_AddItemToArray(noPrivList, cJSON_CreateString(pjson->string));
+					break;
+				}
+			}
+		}
+	}
+
 
 	if(pjson = cJSON_GetObjectItem(o2pt->fc, "ops")){
-		bool valid = true;
 		int ops = pjson->valueint;
 		cJSON_ArrayForEach(pjson2, json){
-			if(!valid){
-				cJSON_DeleteItemFromObject(json, pjson2->prev->string);
-			}
-			valid = true;
 			if(cJSON_IsArray(pjson2)){
-
 				cJSON_ArrayForEach(acpi_obj, pjson2){
 					if(!has_privilege(o2pt->fr, acpi_obj->valuestring, ops)){
-						valid = false;
+						cJSON_AddItemToArray(noPrivList, cJSON_CreateString(pjson->string));
 						break;
 					}
 				}
 			}
 		}
 	}
-
+	logger("O2M", LOG_LEVEL_DEBUG, "noPrivList : %s", cJSON_Print(noPrivList));
 	uril = cJSON_CreateArray();
 	cJSON_ArrayForEach(pjson, json){
-		cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->string));
+		valid = true;
+		cJSON_ArrayForEach(pjson2, noPrivList){
+			if(!strncmp(pjson->string, pjson2->valuestring, strlen(pjson2->valuestring))){
+				valid = false;
+				break;
+			}
+		}
+		if(valid)
+			cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->string));
 	}
-	
+	cJSON_Delete(noPrivList);
 	cJSON_Delete(json);
 
 	urilSize = cJSON_GetArraySize(uril);
