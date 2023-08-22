@@ -23,6 +23,8 @@ ResourceTree *rt;
 void route(oneM2MPrimitive *o2pt);
 void stop_server(int sig);
 cJSON *ATTRIBUTES;
+cJSON *ACP_SUPPORT_ACR;
+cJSON *ACP_SUPPORT_ACCO;
 char *PORT = SERVER_PORT;
 int terminate = 0;
 #ifdef ENABLE_MQTT
@@ -33,17 +35,17 @@ int mqtt_thread_id;
 int main(int argc, char **argv) {
 	signal(SIGINT, stop_server);
 	ATTRIBUTES = cJSON_Parse(
-        "{ \
-            \"general\": [\"rn\", \"ri\", \"pi\", \"ct\", \"et\", \"lt\", \"uri\", \"acpi\", \"lbl\", \"ty\"], \
-            \"m2m:ae\": [\"ri\", \"api\", \"aei\", \"rr\", \"poa\", \"apn\", \"srv\"], \
-            \"m2m:cnt\": [\"ri\", \"cr\", \"mni\", \"mbs\", \"mia\", \"st\", \"cni\", \"cbs\"], \
-            \"m2m:cin\": [\"ri\", \"cs\", \"cr\", \"con\"], \
-            \"m2m:acp\": [\"ri\", \"pv\", \"pvs\"], \
-            \"m2m:sub\": [\"ri\", \"enc\", \"exc\", \"nu\", \"gpi\", \"nfu\", \"bn\", \"rl\", \"sur\", \"nct\", \"net\", \"cr\", \"su\"], \
-            \"m2m:grp\": [\"ri\", \"cr\", \"mt\", \"cnm\", \"mnm\", \"mid\", \"macp\", \"mtv\", \"csy\", \"gn\"], \
-            \"m2m:csr\": [\"ri\", \"cst\", \"poa\", \"cb\", \"csi\", \"mei\", \"tri\", \"rr\", \"nl\", \"srv\"], \
-            \"m2m:cb\": [\"ri\", \"cst\", \"csi\", \"srt\", \"poa\", \"srv\", \"rr\"] \
-        }"
+	"{ \
+		\"general\": {\"rn\": \"\", \"ri\": \"\", \"pi\": \"\", \"ct\": \"\", \"et\": \"\", \"lt\": \"\" , \"uri\": \"\" , \"acpi\": [\"\"], \"lbl\": [\"\"], \"ty\":0}, \
+		\"m2m:ae\": {\"ri\": \"\", \"api\": \"\", \"aei\" : \"\", \"rr\": true, \"poa\":[\"\"], \"apn\":\"\", \"srv\":[\"\"]}, \
+		\"m2m:cnt\": {\"ri\":\"\", \"cr\": null, \"mni\":0, \"mbs\":0, \"mia\":0, \"st\":0, \"cni\":0, \"cbs\":0}, \
+		\"m2m:cin\": {\"ri\":\"\", \"cs\":0, \"cr\":null, \"con\":\"\"}, \
+		\"m2m:acp\": {\"ri\":\"\", \"pv\":{\"acr\":[{\"acor\":[\"\"],\"acop\":0, \"acco\":{\"acip\":{\"ipv4\":[\"\"], \"ipv6\":[\"\"]}}}]}, \"pvs\":{\"acr\":[{\"acor\":[\"\"],\"acop\":0, \"acco\":{\"acip\":{\"ipv4\":[\"\"], \"ipv6\":[\"\"]}}}]}}, \
+		\"m2m:sub\": {\"ri\":\"\", \"enc\":{\"net\":[1]}, \"exc\":0, \"nu\":[\"\"], \"gpi\":0, \"nfu\":0, \"bn\":0, \"rl\":0, \"sur\":0, \"nct\":0, \"cr\":\"\", \"su\":\"\"},\
+		\"m2m:grp\": {\"ri\":\"\", \"cr\":\"\", \"mt\":0, \"cnm\":0, \"mnm\":0, \"mid\":[\"\"], \"macp\":[\"\"], \"mtv\":true, \"csy\":0, \"gn\":0}, \
+		\"m2m:csr\": {\"ri\":\"\", \"cst\":0, \"poa\":[\"\"], \"cb\":\"\", \"csi\":\"\", \"mei\":\"\", \"tri\":\"\", \"rr\":true, \"nl\":\"\", \"srv\":[\"\"]},\
+		\"m2m:cb\": {\"ri\":\"\", \"cst\":0, \"csi\":\"\", \"srt\":[\"\"], \"poa\":[\"\"], \"srv\":[0], \"rr\":true} \
+	 }"
     );
 
     if(ATTRIBUTES == NULL){

@@ -307,7 +307,7 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	o2pt->rsc = RSC_CREATED;
 
 	// Add uri attribute
-	char *ptr = malloc(1024);
+	char ptr[1024] = {0};
 	cJSON *ri = cJSON_GetObjectItem(cin, "ri");
 	sprintf(ptr, "%s/%s", get_uri_rtnode(parent_rtnode), ri->valuestring);
 
@@ -317,13 +317,10 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "DB store fail"); 
 		free_rtnode(cin_rtnode);
 		cJSON_Delete(root);
-		free(ptr);	ptr = NULL;
 		return o2pt->rsc;
 	}
 
 	cJSON_Delete(root);
-	free(ptr);	ptr = NULL;
-
 	return RSC_CREATED;
 }
 
@@ -351,7 +348,7 @@ int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	o2pt->rsc = RSC_CREATED;
 
 	// Add uri attribute
-	char *ptr = malloc(1024);
+	char ptr[1024];
 	cJSON *rn = cJSON_GetObjectItem(sub, "rn");
 	sprintf(ptr, "%s/%s", get_uri_rtnode(parent_rtnode), rn->valuestring);	
 
@@ -360,13 +357,11 @@ int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(result != 1) { 
 		handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "DB store fail"); 
 		cJSON_Delete(root);
-		free(ptr);	ptr = NULL;
 		return o2pt->rsc;
 	}
 
 	RTNode* child_rtnode = create_rtnode(sub, RT_SUB);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
-	free(ptr);	ptr = NULL;
 	return RSC_CREATED;
 }
 
@@ -767,6 +762,7 @@ int update_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 
 int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	int rsc = 0;
+	char err_msg[256] = {0};
 	int e = check_resource_type_invalid(o2pt);
 	if(e != -1) e = check_payload_empty(o2pt);
 	if(e != -1) e = check_payload_format(o2pt);
@@ -775,8 +771,8 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e != -1) e = check_rn_duplicate(o2pt, parent_rtnode);
 	if(e == -1) return o2pt->rsc;
 
-	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty)){
-		handle_error(o2pt, RSC_BAD_REQUEST, "invalid attribute");
+	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty, err_msg)){
+		handle_error(o2pt, RSC_BAD_REQUEST, err_msg);
 		return;
 	}
 
@@ -842,6 +838,7 @@ int retrieve_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 
 int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	int rsc = 0;
+	char err_msg[256] = {0};
 	o2pt->ty = target_rtnode->ty;
 	int e = check_payload_empty(o2pt);
 	if(e != -1) e = check_payload_format(o2pt);
@@ -850,9 +847,10 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	if(e != -1) e = check_privilege(o2pt, target_rtnode, ACOP_UPDATE);
 	if(e != -1) e = check_rn_duplicate(o2pt, target_rtnode->parent);
 	if(e == -1) return o2pt->rsc;
+	
 
-	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty)){
-		handle_error(o2pt, RSC_BAD_REQUEST, "invalid attribute");
+	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty, err_msg)){
+		handle_error(o2pt, RSC_BAD_REQUEST, err_msg);
 		return;
 	}
 	
@@ -1161,13 +1159,12 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		logger("O2M", LOG_LEVEL_ERROR, "target_rtnode is not CSR");
 		return o2pt->rsc = RSC_NOT_FOUND;
 	}
-
-	CSR *csr = (CSR *)target_rtnode->obj;
-	char *poa_list = strdup(csr->poa);
-	char *ptr = strtok(poa_list, ",");
-	while(ptr){
-		if(strncmp(ptr, "http://", 7) == 0){
-			host = ptr + 7;
+	cJSON *csr = target_rtnode->obj;
+	cJSON *poa_list = cJSON_GetObjectItem(csr, "poa");
+	cJSON *poa = NULL;
+	cJSON_ArrayForEach(poa, poa_list){
+		if(strncmp(poa->valuestring, "http://", 7) == 0){
+			host = poa->valuestring;
 			port = strchr(host, ':');
 			if(port){
 				*port = '\0';
@@ -1178,8 +1175,8 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			http_forwarding(o2pt, host, port);
 		}
 		#ifdef ENABLE_MQTT
-		else if (strncmp(ptr, "mqtt://", 7) == 0){
-			host = ptr + 7;
+		else if(strncmp(poa->valuestring, "mqtt://", 7) == 0)){
+			host = poa->valuestring;
 			port = strchr(host, ':');
 			if(port){
 				*port = '\0';
@@ -1188,8 +1185,5 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			mqtt_forwarding(o2pt, host, port, csr);
 		}
 		#endif
-		ptr = strtok(NULL, ",");
 	}
-
-	free(poa_list);	
 }

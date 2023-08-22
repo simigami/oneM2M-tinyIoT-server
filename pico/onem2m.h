@@ -52,134 +52,6 @@ typedef struct {
 	char *uri;
 } CSE;
 
-typedef struct {
-	char *et;
-	char *ct;
-	char *lt;
-	char *rn;
-	char *ri;
-	char *pi;
-	char *api;
-	char *aei;
-	char *lbl;
-	char *srv;
-	char *poa;
-	char *acpi;
-	char *origin;
-	ResourceType ty;
-	bool rr;
-	char *uri;
-} AE;
-
-typedef struct {
-	char *et;
-	char *ct;
-	char *lt;
-	char *rn;
-	char *ri;
-	char *pi;
-	char *lbl;
-	char *acpi;
-	ResourceType ty;
-	int st;
-	int cni;
-	int cbs;
-	int mni;
-	int mbs;
-	char *cr;
-	char *uri;
-} CNT;
-
-typedef struct {
-	char *et;
-	char *ct;
-	char *lt;
-	char *rn;
-	char *ri;
-	char *pi;
-	char *con;	
-	ResourceType ty;
-	int st;
-	int cs;
-	char *uri;
-} CIN;
-
-typedef struct {
-	char *et;
-	char *ct;
-	char *lt;
-	char *rn;
-	char *ri;
-	char *pi;
-	char *nu;
-	char *net;
-	char *sur;
-	ResourceType ty;
-	int nct;
-	char *uri;
-	int net_bit;
-} SUB;
-
-typedef struct {
-	char *rn;
-	char *pi;
-	char *ri;
-	char *ct;
-	char *lt;
-	char *et;
-	char *pv_acor;
-	char *pv_acop;
-	char *pvs_acor;
-	char *pvs_acop;
-	char *uri;
-	char *lbl;
-	ResourceType ty;
-} ACP;
-
-typedef struct {
-	char *rn;
-	char *pi;
-	char *ri;
-	char *ct;
-	char *lt;
-	char *et;
-	char *acpi;
-	char *macp;
-	
-	ResourceType mt;
-	int mnm;
-	int cnm;
-
-	char **mid;
-	bool mtv;
-	ConsistencyStrategy csy;
-	char *uri;
-} GRP;
-
-typedef struct{
-	char *rn; //resource name
-	char *pi;
-	char *ri;
-	char *ct;
-	char *lt;
-	char *et;
-	char *lbl;
-	char *acpi;
-
-	CSEType cst;
-	char *csi; //cse-id
-	char *poa;
-	char *cb;
-	char *nl;
-
-	bool rr;
-	char *srv;
-
-	char *uri;
-	ResourceType ty;
-
-} CSR;
-
 //Resource Tree
 typedef struct RTNode {
 	struct RTNode *parent;
@@ -225,10 +97,10 @@ typedef struct _o{
 	bool isForwarding;
 	char *fopt;
 	bool errFlag;
+	char *ip;
 	ContentStatus cnst;
 	int cnot;
 	cJSON *fc;
-	//FilterCriteria *fc;
 }oneM2MPrimitive;
 
 typedef struct _n{
@@ -273,13 +145,6 @@ int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 void init_cse(cJSON* cse);
-void init_ae(AE* ae, RTNode *parent_rtnode, char *origin);
-void init_cnt(CNT* cnt, RTNode *parent_rtnode);
-void init_cin(CIN* cin, RTNode *parent_rtnode);
-void init_sub(SUB* sub, RTNode *parent_rtnode);
-void init_acp(ACP* acp, RTNode *parent_rtnode);
-void init_grp(GRP* grp, RTNode *parent_rtnode);
-void set_rtnode_update(RTNode* rtnode, void *after);
 
 //resource tree
 RTNode* create_rtnode(cJSON *resource, ResourceType ty);

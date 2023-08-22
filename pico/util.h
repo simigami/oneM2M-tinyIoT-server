@@ -44,7 +44,8 @@ char *ri_to_uri(char *ri);
 cJSON *getResource(cJSON *root, ResourceType ty);
 
 //validation
-bool is_attr_valid(cJSON *obj, ResourceType ty);
+bool is_attr_valid(cJSON *obj, ResourceType ty, char *err_msg);
+bool is_valid_acr(cJSON *acr);
 int validate_ae(oneM2MPrimitive *o2pt, cJSON *ae, Operation op);
 int validate_cnt(oneM2MPrimitive *o2pt, cJSON *cnt, Operation op);
 int validate_cin(oneM2MPrimitive *o2pt, cJSON *parent_cnt, cJSON *cin, Operation op);
@@ -76,14 +77,14 @@ char* get_local_time(int diff);
 char* resource_identifier(ResourceType ty, char *ct);
 void delete_cin_under_cnt_mni_mbs(RTNode *rtnode);
 int net_to_bit(cJSON *net);
-int get_acop(char* origin, RTNode *node);
-int get_acop_macp(char *origin, RTNode *rtnode);
-int get_acop_origin(char *origin, RTNode *acp, int flag);
+int get_acop(oneM2MPrimitive *o2pt, RTNode *node);
+int get_acop_macp(oneM2MPrimitive *o2pt, RTNode *rtnode);
+int get_acop_origin(oneM2MPrimitive *o2pt, RTNode *acp_rtnode, int flag);
 int get_value_querystring_int(char *key);
 void remove_invalid_char_json(char* json);
 int is_json_valid_char(char c);
 bool is_rn_valid_char(char c);
-int has_privilege(char *origin, char *acpi, ACOP acop);
+int has_privilege(oneM2MPrimitive *o2pt, char *acpi, ACOP acop);
 
 bool isMinDup(char **mid, int idx, char *new_mid);
 

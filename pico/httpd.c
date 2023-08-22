@@ -52,8 +52,8 @@ void serve_forever(const char *PORT) {
         clients[i] = -1;
     }   
 
-    logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s", "\033[92m", PORT, "\033[0m");  
     start_server(PORT); 
+    logger("HTTP", LOG_LEVEL_INFO, "Server started %shttp://127.0.0.1:%s%s", "\033[92m", PORT, "\033[0m");  
     // Ignore SIGCHLD to avoid zombie threads
     signal(SIGCHLD, SIG_IGN); 
     // ACCEPT connections
@@ -75,32 +75,25 @@ void serve_forever(const char *PORT) {
 
 // start server
 void start_server(const char *port) {
-    struct addrinfo hints, *res, *p;
-    // getaddrinfo for host
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    if (getaddrinfo(NULL, port, &hints, &res) != 0) {
-        perror("getaddrinfo() error");
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    // create socket
+    addr.sin_family = AF_INET;
+    inet_pton(AF_INET, SERVER_HOST, &(addr.sin_addr.s_addr));
+    addr.sin_port = htons(atoi(port));    
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    int option = 1;
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+    if(listenfd == -1) {
+        perror("socket() error");
         exit(1);
     }
-    // socket and 
-    for (p = res; p != NULL; p = p->ai_next) {
-        int option = 1;
-        listenfd = socket(p->ai_family, p->ai_socktype, 0);
-        setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
-        if (listenfd == -1)
-            continue;
-        if (bind(listenfd, p->ai_addr, p->ai_addrlen) == 0)
-            break;
-    }
-    if (p == NULL) {
-        perror("socket() or bind()");
+    // bind socket to address
+    if(bind(listenfd, &addr, sizeof(addr)) == -1) {
+        perror("bind() error");
         exit(1);
     }
-    freeaddrinfo(res);
-    // listen for incoming connections
+    
     if (listen(listenfd, QUEUE_SIZE) != 0) {
         perror("listen() error");
         exit(1);
@@ -285,6 +278,16 @@ void handle_http_request(HTTPRequest *req, int slotno) {
     
     o2pt->op = http_parse_operation(req->method);    
     logger("HTTP", LOG_LEVEL_INFO, "Request : %s", req->method);
+
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+    getsockname(clients[slotno], (struct sockaddr *)&client_addr, &client_addr_len);
+    o2pt->ip = (char *)malloc((INET_ADDRSTRLEN + 1) * sizeof(char));
+     logger("HTTP", LOG_LEVEL_INFO, "Client connected %d.%d.%d.%d\n",
+         (int)(client_addr.sin_addr.s_addr&0xFF), (int)((client_addr.sin_addr.s_addr&0xFF00)>>8), (int)((client_addr.sin_addr.s_addr&0xFF0000)>>16), (int)((client_addr.sin_addr.s_addr&0xFF000000)>>24));
+
+    inet_ntop(AF_INET, &(client_addr.sin_addr.s_addr), o2pt->ip, INET_ADDRSTRLEN);
+    logger("HTTP", LOG_LEVEL_DEBUG, "ip: %s", o2pt->ip);
 
 	if(o2pt->op == OP_CREATE) o2pt->ty = http_parse_object_type(req->headers, req->header_count);
     else if(o2pt->op == OP_OPTIONS){

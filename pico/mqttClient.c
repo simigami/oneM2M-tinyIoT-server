@@ -613,7 +613,7 @@ int mqtt_notify(oneM2MPrimitive *o2pt, char* noti_json, NotiTarget *nt){
     return NULL;
 }
 
-int mqtt_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, CSR *csr){
+int mqtt_forwarding(oneM2MPrimitive *o2pt, char *host, char *port, cJSON *csr){
     int rc = 0;
     int sfd = 0;
     MqttObject mqttObj;

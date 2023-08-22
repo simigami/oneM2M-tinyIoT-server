@@ -18,6 +18,7 @@
 
 extern ResourceTree *rt;
 
+
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	logger("O2M", LOG_LEVEL_DEBUG, "Call parse_uri %s", o2pt->to);
 	
@@ -118,7 +119,8 @@ RTNode *find_csr_rtnode_by_uri(RTNode *cb, char *uri){
 			rtnode = rtnode->sibling_right;
 			continue;
 		}
-		if(rtnode->obj && !strcmp(((CSR *) rtnode->obj)->csi, target_uri)) break;
+		cJSON *csi = cJSON_GetObjectItem(rtnode->obj, "csi");
+		if(rtnode->obj && !strcmp(cJSON_GetStringValue(csi), target_uri)) break;
 		rtnode = rtnode->sibling_right;
 	}
 	
@@ -722,7 +724,7 @@ int check_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop) {
 	if(rtnode->ty != RT_CSE) {
 		if(get_acpi_rtnode(rtnode) || rtnode->ty == RT_ACP) {
 			deny = true;
-			if((get_acop(o2pt->fr, rtnode) & acop) == acop) {
+			if((get_acop(o2pt, rtnode) & acop) == acop) {
 				deny = false;
 			}
 		}
@@ -749,7 +751,7 @@ int check_macp_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop){
 	cJSON *macp = cJSON_GetObjectItem(rtnode->obj, "macp");
 	if(macp && cJSON_GetArraySize(macp) > 0) {
 		deny = true;
-		if((get_acop_macp(o2pt->fr, rtnode) & acop) == acop) {
+		if((get_acop_macp(o2pt, rtnode) & acop) == acop) {
 			deny = false;
 		}
 	}else{
@@ -764,18 +766,20 @@ int check_macp_privilege(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop){
 	return 0;
 }
 
-int get_acop(char *origin, RTNode *rtnode) {
+int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 	int acop = 0;
-	logger("UTIL", LOG_LEVEL_DEBUG, "get_acop : %s", origin);
-	if(!origin) {
-		strcpy(origin, "all");
+	logger("UTIL", LOG_LEVEL_DEBUG, "get_acop : %s", o2pt->fr);
+	char *origin = NULL;
+	if(!o2pt->fr) {
+		origin = strdup("all");
+	}else{
+		origin = strdup(o2pt->fr);
 	}
 
     if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
 
 	if(rtnode->ty == RT_ACP) {
-		acop = (acop | get_acop_origin(origin, rtnode, 1));
-		acop = (acop | get_acop_origin("all", rtnode, 1));
+		acop = (acop | get_acop_origin(o2pt, rtnode, 1));
 		return acop;
 	}
 
@@ -788,19 +792,23 @@ int get_acop(char *origin, RTNode *rtnode) {
 	cJSON_ArrayForEach(acpi, acpiArr) {
 		RTNode *acp = find_rtnode_by_uri(cb, acpi->valuestring);
 		if(acp) {
-			acop = (acop | get_acop_origin(origin, acp, 0));
-			acop = (acop | get_acop_origin("all", acp, 0));
+			acop = (acop | get_acop_origin(o2pt, acp, 0));
 		}
 	}
 	return acop;
 }
 
-int get_acop_macp(char *origin, RTNode *rtnode){
+int get_acop_macp(oneM2MPrimitive *o2pt, RTNode *rtnode){
 	int acop = 0;
-	logger("UTIL", LOG_LEVEL_DEBUG, "get_acop_macp : %s", origin);
-	if(!origin) {
-		strcpy(origin, "all");
+	logger("UTIL", LOG_LEVEL_DEBUG, "get_acop_macp : %s", o2pt->fr);
+	char *origin = NULL;
+	if(!o2pt->fr) {
+		origin = strdup("all");
+	}else{
+		origin = strdup(o2pt->fr);
 	}
+
+	if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
 
 	if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
 
@@ -814,17 +822,32 @@ int get_acop_macp(char *origin, RTNode *rtnode){
 		
 		RTNode *acp = find_rtnode_by_uri(cb, acpi->valuestring);
 		if(acp) {
-			acop = (acop | get_acop_origin(origin, acp, 0));
-			acop = (acop | get_acop_origin("all", acp, 0));
+			acop = (acop | get_acop_origin(o2pt, acp, 0));
 		}
 	}
 
 	return acop;
 }
 
-int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
-	if(!origin) return 0;
+int check_acco(cJSON *acco, char *ip){
+	logger("UTIL", LOG_LEVEL_DEBUG, "check_acco : %s", ip);
+	if(!acco) return 1;
+	if(!ip) return 1;
 
+	cJSON *acip = cJSON_GetObjectItem(acco, "acip");
+	cJSON *ipv4 = cJSON_GetObjectItem(acip, "ipv4");
+	cJSON *ipv6 = cJSON_GetObjectItem(acip, "ipv6");
+	cJSON *pjson = NULL;
+
+	cJSON_ArrayForEach(pjson, ipv4){
+		logger("UTIL", LOG_LEVEL_DEBUG, "check_acco/ipv4 : %s", pjson->valuestring);
+		if(!strcmp(pjson->valuestring, ip)) 
+			return 1;
+	}
+	return 0;
+}
+
+int get_acop_origin(oneM2MPrimitive *o2pt, RTNode *acp_rtnode, int flag) {
 	int ret_acop = 0, cnt = 0;
 	cJSON *acp = acp_rtnode->obj;
 	
@@ -832,6 +855,13 @@ int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 	cJSON *acr = NULL;
 	cJSON *acor = NULL;
 	bool found = false;
+	char *origin = NULL;
+
+	if(!o2pt->fr) {
+		origin = strdup("all");
+	}else{
+		origin = strdup(o2pt->fr);
+	}
 
 	if(flag){
 		privilege = cJSON_GetObjectItem(acp, "pvs");
@@ -843,28 +873,34 @@ int get_acop_origin(char *origin, RTNode *acp_rtnode, int flag) {
 		cJSON_ArrayForEach(acor, cJSON_GetObjectItem(acr, "acor")){
 			if(acor->valuestring[strlen(acor->valuestring)-1] == '*') {
 				if(!strncmp(acor->valuestring, origin, strlen(acor->valuestring)-1)) {
-					ret_acop = (ret_acop | cJSON_GetObjectItem(acr, "acop")->valueint);
-					found = true;
+					if(check_acco(cJSON_GetObjectItem(acr, "acco"), o2pt->ip)){
+						ret_acop = (ret_acop | cJSON_GetObjectItem(acr, "acop")->valueint);
+					}
 					break;
 				}
 			} else if(!strcmp(acor->valuestring, origin)) {
-				ret_acop = (ret_acop | cJSON_GetObjectItem(acr, "acop")->valueint);
-				found = true;
+				if(check_acco(cJSON_GetObjectItem(acr, "acco"), o2pt->ip)){
+					ret_acop = (ret_acop | cJSON_GetObjectItem(acr, "acop")->valueint);
+				}
 				break;
-			}			
+			}else if(!strcmp(acor->valuestring, "all")){
+				if(check_acco(cJSON_GetObjectItem(acr, "acco"), o2pt->ip)){
+					ret_acop = (ret_acop | cJSON_GetObjectItem(acr, "acop")->valueint);
+				}
+				break;
+			}
 		}
-		if(found) break;
 	}
 	return ret_acop;
 }
 
-int has_privilege(char *origin, char *acpi, ACOP acop) {
+int has_privilege(oneM2MPrimitive *o2pt, char *acpi, ACOP acop) {
+	char *origin = o2pt->fr;
 	if(!origin) return 0;
 	if(!acpi) return 1;
 
 	RTNode *acp = find_rtnode_by_uri(rt->cb, acpi);
-	int result = get_acop_origin(origin, acp, 0);
-	result = result | get_acop_origin("all", acp, 0);
+	int result = get_acop_origin(o2pt, acp, 0);
 	if( (result & acop) == acop) {
 		return 1;
 	}
@@ -1034,6 +1070,13 @@ int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 	return 0;
 }
 
+/**
+ * @brief set rsc and error msg to oneM2MPrimitive
+ * @param o2pt oneM2MPrimitive
+ * @param rsc error code
+ * @param err error message
+ * @return error code
+*/
 int handle_error(oneM2MPrimitive *o2pt, int rsc, char *err){
 	logger("UTIL", LOG_LEVEL_ERROR, err);
 	o2pt->rsc = rsc;
@@ -1541,41 +1584,6 @@ char *get_lt_rtnode(RTNode *rtnode){
 	}
 }
 
-char *get_lbl_rtnode(RTNode *rtnode){
-	char *lbl = NULL;
-	switch ((rtnode->ty)){
-		case RT_CSE:
-		case RT_ACP:
-		case RT_CIN:
-		case RT_GRP:
-			break;
-		
-		case RT_AE:
-			lbl = ((AE *) rtnode->obj)->lbl;
-			break;
-		case RT_CNT:
-			lbl = ((CNT *) rtnode->obj)->lbl;
-			break;
-		default:
-			break;
-	}
-	return lbl;
-}
-
-int get_st_rtnode(RTNode *rtnode){
-	if(rtnode->ty != RT_CNT)
-		return -1;
-
-	return ((CNT *) rtnode->obj)->st;
-}
-
-int get_cs_rtnode(RTNode *rtnode){
-	if(rtnode->ty != RT_CIN)
-		return -1;
-
-	return ((CIN *) rtnode->obj)->cs;
-}
-
 char *get_uri_rtnode(RTNode *rtnode){
 	return rtnode->uri;
 }
@@ -1707,7 +1715,7 @@ bool check_acpi_valid(oneM2MPrimitive *o2pt, cJSON *acpi) {
 			handle_error(o2pt, RSC_NOT_FOUND, "resource `acp` does not found");
 			break;
 		} else {
-			if((get_acop_origin(o2pt->fr, acp_rtnode, 1) & ACOP_UPDATE) != ACOP_UPDATE) {
+			if((get_acop_origin(o2pt, acp_rtnode, 1) & ACOP_UPDATE) != ACOP_UPDATE) {
 				ret = false;
 				handle_error(o2pt, RSC_ORIGINATOR_HAS_NO_PRIVILEGE, "originator has no privilege");
 				break;
@@ -1840,7 +1848,85 @@ void update_resource(cJSON *old, cJSON *new){
 	}
 }
 
-bool is_attr_valid(cJSON *obj, ResourceType ty){
+/**
+ * @brief validate sub attribute
+ * @param obj attribute supported
+ * @param attr attribute to validate
+ * @param err_msg error message
+ * @return true if valid, false if invalid
+ * */
+bool validate_sub_attr(cJSON *obj, cJSON *attr, char* err_msg){
+	if(!attr) return false;
+	if(!obj) return false;
+	cJSON *verifier = NULL;
+	cJSON *verifiee = NULL;
+
+	verifier = cJSON_GetObjectItem(obj, attr->string);
+	if(!verifier && obj->type == cJSON_Array){
+		verifier = obj;
+	}
+	
+	if(!verifier){
+		if(err_msg){
+			sprintf(err_msg, "invalid attribute : %s", attr->string);
+		}
+		return false;
+	}
+	if(attr->type != cJSON_NULL && verifier->type != attr->type){ // if attribute type is null it is deleting attribute(on update)
+		if(verifier->type == cJSON_True || verifier->type == cJSON_False){
+			if(attr->type == cJSON_True || attr->type == cJSON_False){
+			}else{
+				if(err_msg){
+					sprintf(err_msg, "invalid attribute type : %s", attr->string);
+				}
+				return false;
+			}
+		}else{
+			if(err_msg){
+				sprintf(err_msg, "invalid attribute type : %s", attr->string);
+			}
+			return false;
+		}
+		
+	} 
+	if(attr->type == cJSON_Object){
+		cJSON_ArrayForEach(verifiee, attr){
+			if(cJSON_GetArraySize(verifiee) > 0){
+				if(!validate_sub_attr(verifier, verifiee, err_msg)){
+					return false;
+				}
+			}
+		}
+	}else if(attr->type == cJSON_Array){
+		cJSON_ArrayForEach(verifiee, attr){
+			if(verifiee->type != verifier->child->type){
+				if(err_msg){
+					sprintf(err_msg, "invalid attribute type : %s", attr->string);
+				}
+				return false;
+			}
+			if(verifiee->type == cJSON_Object){
+				cJSON *verifiee_child = NULL;
+				cJSON_ArrayForEach(verifiee_child, verifiee){
+					if(!validate_sub_attr(verifier->child, verifiee_child, err_msg)){
+						return false;
+					}
+				}
+			}
+		}
+	}
+	
+	return true;
+}
+
+/**
+ * @brief validate requested attribute
+ * @param obj attribute received
+ * @param ty resource type
+ * @param err_msg buffer for error message
+ * @return true if valid, false if invalid
+*/
+bool is_attr_valid(cJSON *obj, ResourceType ty, char *err_msg){
 	extern cJSON* ATTRIBUTES;
 	cJSON *attrs = NULL;
 	cJSON *general_attrs = NULL;
@@ -1848,31 +1934,25 @@ bool is_attr_valid(cJSON *obj, ResourceType ty){
 	attrs = cJSON_GetObjectItem(ATTRIBUTES, get_resource_key(ty));
 	general_attrs = cJSON_GetObjectItem(ATTRIBUTES, "general");
 	if(!attrs) return false;
-	
-	cJSON *pjson = cJSON_GetObjectItem(obj->child, get_resource_key(ty));
-	
+	if(!general_attrs) return false;
+
+	cJSON *pjson = cJSON_GetObjectItem(obj, get_resource_key(ty));
 	cJSON *attr = NULL;
+	if(!pjson) return false;
+	pjson = pjson->child;
 	while(pjson){
-		logger("UTIL", LOG_LEVEL_DEBUG, "%s", pjson->string);
-		cJSON_ArrayForEach(attr, attrs){
-			if(!strcmp(attr->valuestring, pjson->string)){
-				flag = true;
-				break;
-			}
+		if(validate_sub_attr(attrs, pjson, err_msg)){
+			flag = true;
 		}
 		if(flag){
 			pjson = pjson->next;
 			flag = false;
 			continue;
 		}
-		cJSON_ArrayForEach(attr, general_attrs){
-			if(!strcmp(attr->valuestring, pjson->string)){
-				flag = true;
-				break;
-			}
+		if(validate_sub_attr(general_attrs, pjson, err_msg)){
+			flag = true;
 		}
 		if(!flag){
-			logger("UTIL", LOG_LEVEL_DEBUG, "invalid attribute : %s", pjson->string);
 			return false;
 		}
 		pjson = pjson->next;
@@ -1884,6 +1964,10 @@ bool is_attr_valid(cJSON *obj, ResourceType ty){
 
 /**
  * Get Request Primitive and acpi attribute and validate it.
+ * @param o2pt oneM2M request primitive
+ * @param acpiAttr acpi attribute cJSON object
+ * @param op operation type
+ * @return 0 if valid, -1 if invalid
 */
 int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op){
 	if(!acpiAttr) {
@@ -1905,8 +1989,7 @@ int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op){
 			return handle_error(o2pt, RSC_BAD_REQUEST, "resource `acp` is not found");
 		}else if(op == OP_UPDATE){
 			int acop = 0;
-			acop = (acop | get_acop_origin(o2pt->fr, acp, 1));
-			acop = (acop | get_acop_origin("all", acp, 1));
+			acop = (acop | get_acop_origin(o2pt, acp, 1));
 			logger("UTIL", LOG_LEVEL_DEBUG, "acop-pvs : %d, op : %d", acop, op);
 			if(!strcmp(o2pt->fr, "CAdmin")){
 
@@ -1922,6 +2005,13 @@ int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op){
 	return RSC_OK;
 }
 
+/**
+ * @brief validate acp resource
+ * @param o2pt oneM2M request primitive
+ * @param acp acp attribute cJSON object
+ * @param op operation type
+ * @return 0 if valid, -1 if invalid
+*/
 int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op){
 	cJSON *pjson = NULL;
 	char *ptr = NULL;

@@ -278,7 +278,7 @@ int db_store_resource(cJSON *obj, char *uri){
     sql = malloc(1024);
     sprintf(sql, "INSERT INTO general (");
     for(int i = 0 ; i < general_cnt ; i++){
-        strcat(sql, cJSON_GetArrayItem(GENERAL_ATTR, i)->valuestring);
+        strcat(sql, cJSON_GetArrayItem(GENERAL_ATTR, i)->string);
         strcat(sql, ",");
     }
 
@@ -297,18 +297,17 @@ int db_store_resource(cJSON *obj, char *uri){
 
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_INFO, sql);
         free(sql);
         logger("DB", LOG_LEVEL_ERROR, "prepare error");
         return 0;
     }
 
     for(int i = 0 ; i < general_cnt ; i++){
-        if(strcmp(cJSON_GetArrayItem(GENERAL_ATTR, i)->valuestring, "uri") == 0){
+        if(strcmp(cJSON_GetArrayItem(GENERAL_ATTR, i)->string, "uri") == 0){
             sqlite3_bind_text(stmt, i+1, uri, strlen(uri), SQLITE_STATIC);
             continue;
         }
-        pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(GENERAL_ATTR, i)->valuestring);
+        pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(GENERAL_ATTR, i)->string);
         if(pjson){
             db_test_and_bind_value(stmt, i+1, pjson);
         }else{
@@ -330,7 +329,7 @@ int db_store_resource(cJSON *obj, char *uri){
     sql[0] = '\0';
     sprintf(sql, "INSERT INTO %s (", get_table_name(ty));
     for(int i = 0 ; i < cJSON_GetArraySize(specific_attr) ; i++){
-        strcat(sql, cJSON_GetArrayItem(specific_attr, i)->valuestring);
+        strcat(sql, cJSON_GetArrayItem(specific_attr, i)->string);
         strcat(sql, ",");
     }
 
@@ -343,17 +342,15 @@ int db_store_resource(cJSON *obj, char *uri){
 
     sql[strlen(sql)-1] = ')';
     strcat(sql, ";");
-    logger("DB", LOG_LEVEL_INFO, sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_INFO, sql);
         logger("DB", LOG_LEVEL_ERROR, "prepare error");
         free(sql);
         return 0;
     }
 
     for(int i = 0 ; i < cJSON_GetArraySize(specific_attr) ; i++){
-        pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(specific_attr, i)->valuestring);
+        pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(specific_attr, i)->string);
         if(pjson){
             db_test_and_bind_value(stmt, i+1, pjson);
         }else{
@@ -391,7 +388,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
     sql = malloc(1024);
     sprintf(sql, "UPDATE general SET ");
     for(int i = 0 ; i < general_cnt ; i++){
-        char *attr = cJSON_GetArrayItem(GENERAL_ATTR, i)->valuestring;
+        char *attr = cJSON_GetArrayItem(GENERAL_ATTR, i)->string;
         if(cJSON_GetObjectItem(obj, attr)){
             strcat(sql, attr);
             strcat(sql, "=?,");
@@ -414,7 +411,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
         }
         int idx = 1;
         for(int i = 0 ; i < general_cnt ; i++){
-            pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(GENERAL_ATTR, i)->valuestring);
+            pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(GENERAL_ATTR, i)->string);
             if(pjson){
                 db_test_and_bind_value(stmt, idx, pjson);
                 idx++;
@@ -438,7 +435,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
     idx = 0;
     sprintf(sql, "UPDATE %s SET ", get_table_name(ty));
     for(int i = 0 ; i < cJSON_GetArraySize(specific_attr) ; i++){
-        char *attr = cJSON_GetArrayItem(specific_attr, i)->valuestring;
+        char *attr = cJSON_GetArrayItem(specific_attr, i)->string;
         if(cJSON_GetObjectItem(obj, attr)){
             strcat(sql, attr);
             strcat(sql, "=?,");
@@ -458,7 +455,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
 
         idx = 1;
         for(int i = 0 ; i < cJSON_GetArraySize(specific_attr) ; i++){
-            pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(specific_attr, i)->valuestring);
+            pjson = cJSON_GetObjectItem(obj, cJSON_GetArrayItem(specific_attr, i)->string);
             if(pjson){
                 db_test_and_bind_value(stmt, idx, pjson);
                 idx++;
@@ -586,57 +583,6 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
-        sqlite3_close(db);
-        return 0;
-    }
-    return 1;
-}
-
-int db_delete_sub(char* ri) {
-    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_sub");
-
-    char sql[1024] = {0};
-    char *err_msg;
-    int rc; 
-
-    sprintf(sql, "DELETE FROM sub WHERE ri='%s';", ri);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
-        sqlite3_close(db);
-        return 0;
-    }
-
-    sprintf(sql, "DELETE FROM general WHERE ri='%s';", ri);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
-        sqlite3_close(db);
-        return 0;
-    }
-
-    return 1;
-}
-
-int db_delete_acp(char* ri) {
-    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_acp");
-
-    char sql[1024] = {0};
-    char *err_msg;
-    int rc; 
-
-    sprintf(sql, "DELETE FROM acp WHERE ri='%s';", ri);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
-        sqlite3_close(db);
-        return 0;
-    }
-
-    sprintf(sql, "DELETE FROM general WHERE ri='%s';", ri);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource %s", err_msg);
         sqlite3_close(db);
         return 0;
     }
@@ -805,7 +751,6 @@ RTNode *db_get_all_cnt_rtnode(){
         json = cJSON_CreateObject();
         root = cJSON_CreateObject();
         
-        CNT* cnt = NULL;
         for(int col = 0 ; col < cols; col++){
             
             colname = sqlite3_column_name(res, col);
@@ -872,7 +817,6 @@ RTNode *db_get_all_sub_rtnode(){
         json = cJSON_CreateObject();
         root = cJSON_CreateObject();
         cols = sqlite3_column_count(res);
-        SUB* sub = NULL;
         for(int col = 0 ; col < cols; col++){
             
             colname = sqlite3_column_name(res, col);
@@ -938,8 +882,6 @@ RTNode *db_get_all_acp_rtnode(){
 
     while(rc == SQLITE_ROW){
         json = cJSON_CreateObject();
-        ACP* acp = NULL;
-        
         for(int col = 0 ; col < cols; col++){
             
             colname = sqlite3_column_name(res, col);
@@ -986,7 +928,6 @@ RTNode *db_get_all_grp_rtnode(){
     int cols = 0, bytes = 0, coltype = 0;
     cJSON *json = NULL, *root = NULL;
     sqlite3_stmt *res;
-    GRP* grp = NULL;
     char *colname = NULL;
     char sql[1024] = {0}, buf[256] = {0};
 
@@ -1003,7 +944,6 @@ RTNode *db_get_all_grp_rtnode(){
     cJSON *arr = NULL;
     while(rc == SQLITE_ROW){
         cols = sqlite3_column_count(res);
-        grp = (GRP*) calloc(1, sizeof(GRP));
         json = cJSON_CreateObject();
         
         for(int col = 0 ; col < cols; col++){
@@ -1119,8 +1059,6 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
  * Oldest Flag = 0, Latest flag = 1
 */
 cJSON *db_get_cin_laol(RTNode *parent_rtnode, int laol){
-    CIN *cin = NULL;
-
     char sql[1024] = {0}, buf[256] = {0};
     char *ord = NULL, *colname;
     int rc = 0;
