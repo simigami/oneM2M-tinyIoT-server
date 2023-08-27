@@ -36,6 +36,10 @@ cJSON* db_get_filter_criteria(char *to, cJSON *fc);
 cJSON *db_get_parent_filter_criteria(char *to, cJSON *fc);
 cJSON *db_get_child_filter_criteria(char *to, cJSON *fc);
 
+int db_delete_one_cin_mni(RTNode *cnt);
+
+
+void db_test_and_bind_value(sqlite3_stmt *stmt, int index, cJSON *obj);
 void db_test_and_set_bind_text(sqlite3_stmt *stmt, int index, char* context);
 void db_test_and_set_bind_int(sqlite3_stmt *stmt, int index, int value);
 

@@ -5,7 +5,6 @@
 #include <time.h>
 #include <math.h>
 #include <ctype.h>
-#include <malloc.h>
 #include <sys/timeb.h>
 #include <limits.h>
 #include "onem2m.h"
@@ -551,9 +550,9 @@ int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign) {
 	cJSON *st = cJSON_GetObjectItem(cnt, "st");
 
 	cJSON_SetIntValue(cni, cni->valueint + sign);
-	cJSON_SetIntValue(cbs, cbs->valueint + sign * cJSON_GetObjectItem(cin, "cs")->valueint);
+	cJSON_SetIntValue(cbs, cbs->valueint + (sign * cJSON_GetObjectItem(cin, "cs")->valueint));
 	cJSON_SetIntValue(st, st->valueint + 1);
-	logger("O2", LOG_LEVEL_DEBUG, "cni: %d, cbs: %d, st: %d", cJSON_GetObjectItem(cnt, "cni")->valueint, cJSON_GetObjectItem(cnt, "cbs")->valueint, cJSON_GetObjectItem(cnt, "st")->valueint);
+	logger("O2", LOG_LEVEL_DEBUG, "cni: %d, cbs: %d, st: %d", cni->valueint, cbs->valueint, st->valueint);
 	delete_cin_under_cnt_mni_mbs(cnt_rtnode);	
 
 	db_update_resource(cnt, cJSON_GetObjectItem(cnt, "ri")->valuestring, RT_CNT);
@@ -772,8 +771,7 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e == -1) return o2pt->rsc;
 
 	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty, err_msg)){
-		handle_error(o2pt, RSC_BAD_REQUEST, err_msg);
-		return;
+		return handle_error(o2pt, RSC_BAD_REQUEST, err_msg);
 	}
 
 	switch(o2pt->ty) {	
@@ -850,8 +848,7 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	
 
 	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty, err_msg)){
-		handle_error(o2pt, RSC_BAD_REQUEST, err_msg);
-		return;
+		return handle_error(o2pt, RSC_BAD_REQUEST, err_msg);
 	}
 	
 	switch(ty) {
@@ -907,11 +904,11 @@ int fopt_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	logger("O2M", LOG_LEVEL_DEBUG, "handle fopt");
 
 	if(check_privilege(o2pt, parent_rtnode, o2pt->op) == -1){
-		return;
+		return o2pt->rsc;
 	}
 
 	if( check_macp_privilege(o2pt, parent_rtnode, o2pt->op) == -1){
-		return;
+		return o2pt->rsc;
 	}
 
 
@@ -1175,7 +1172,7 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			http_forwarding(o2pt, host, port);
 		}
 		#ifdef ENABLE_MQTT
-		else if(strncmp(poa->valuestring, "mqtt://", 7) == 0)){
+		else if(strncmp(poa->valuestring, "mqtt://", 7) == 0){
 			host = poa->valuestring;
 			port = strchr(host, ':');
 			if(port){

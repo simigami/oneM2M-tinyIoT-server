@@ -5,7 +5,6 @@
 #include <time.h>
 #include <math.h>
 #include <ctype.h>
-#include <malloc.h>
 #include <sys/timeb.h>
 #include "onem2m.h"
 #include "util.h"
@@ -429,7 +428,7 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 	cJSON *cbs_obj = NULL;
 	cJSON *mni_obj = NULL;
 	cJSON *mbs_obj = NULL;
-	int cni, mni, cbs, mbs;
+	int cni, mni, cbs, mbs, tmp = 0;
 
 	if(cni_obj = cJSON_GetObjectItem(cnt, "cni")) {
 		cni = cni_obj->valueint;
@@ -450,24 +449,32 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 
 	if(cni <= mni && cbs <= mbs) return;
 
-	RTNode *head = db_get_cin_rtnode_list(rtnode);
-	RTNode *right;
-
-	while((mni >= 0 && cni > mni) || (mbs >= 0 && cbs > mbs)) {
-		if(head) {
-			logger("UTI", LOG_LEVEL_DEBUG, "%s", cJSON_GetObjectItem(head->obj, "con")->valuestring);
-			right = head->sibling_right;
-			db_delete_onem2m_resource(head);
-			cbs -= cJSON_GetObjectItem(head->obj, "cs")->valueint;
-			cni--;
-			free_rtnode(head);
-			head = right;
-		} else {
-			break;
+	if(cni == mni+1){
+		tmp = db_delete_one_cin_mni(rtnode);
+		if(tmp == -1){
+			logger("UTIL", LOG_LEVEL_ERROR, "delete_cin_under_cnt_mni_mbs error");
 		}
+		cbs -= tmp;
+		cni--;
+	}else{
+		RTNode *head = db_get_cin_rtnode_list(rtnode);
+		RTNode *right;
+
+		while((mni >= 0 && cni > mni) || (mbs >= 0 && cbs > mbs)) {
+			if(head) {
+				right = head->sibling_right;
+				db_delete_onem2m_resource(head);
+				cbs -= cJSON_GetObjectItem(head->obj, "cs")->valueint;
+				cni--;
+				free_rtnode(head);
+				head = right;
+			} else {
+				break;
+			}
+		}
+		if(head) free_rtnode_list(head);
 	}
 
-	if(head) free_rtnode_list(head);
 
 	if( cni_obj->valueint != cni){
 		cJSON_SetIntValue(cni_obj, cni);
@@ -1177,7 +1184,7 @@ int validate_grp(oneM2MPrimitive *o2pt, cJSON *grp){
 			handle_error(o2pt, RSC_BAD_REQUEST, "`macp` should not be empty");
 		}else{
 			if( validate_acpi(o2pt, pjson, OP_CREATE)  != RSC_OK )
-				return;
+				return o2pt->rsc;
 		}
 	}
 

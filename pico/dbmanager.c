@@ -480,6 +480,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
 
 void db_test_and_bind_value(sqlite3_stmt *stmt, int index, cJSON *obj){
     if(!obj) return;
+    char *temp = NULL;
     switch(obj->type){
         case cJSON_String:
             db_test_and_set_bind_text(stmt, index, obj->valuestring);
@@ -489,7 +490,7 @@ void db_test_and_bind_value(sqlite3_stmt *stmt, int index, cJSON *obj){
             break;
         case cJSON_Array:
         case cJSON_Object:
-            char *temp = cJSON_PrintUnformatted(obj);
+            temp = cJSON_PrintUnformatted(obj);
             db_test_and_set_bind_text(stmt, index, temp);
             free(temp);
             break;
@@ -565,7 +566,7 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
         }
     }
 
-    if(rtnode->ty == RT_CNT){
+    else if(rtnode->ty == RT_CNT){
         int childResources[3] = {RT_CNT, RT_SUB, RT_GRP, RT_CIN};
 
         for(int i = 0 ; i < 3 ; i++){
@@ -587,6 +588,52 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
         return 0;
     }
     return 1;
+}
+
+int db_delete_one_cin_mni(RTNode *cnt){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_cin_mni");
+    char sql[1024] = {0};
+    char *err_msg;
+    sqlite3_stmt *res;
+    int rc; 
+
+    char *latest_ri = NULL;
+    int latest_cs = 0;
+
+    sprintf(sql, "SELECT general.ri, cs from general, cin WHERE pi='%s' AND general.ri = cin.ri ORDER BY general.lt ASC LIMIT 1;", get_ri_rtnode(cnt));
+    logger("DB", LOG_LEVEL_DEBUG, "SQL : %s", sql);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return -1;
+    }
+
+    if(sqlite3_step(res) != SQLITE_ROW){
+        return 0;
+    }
+
+    latest_ri = sqlite3_column_text(res, 0);
+    latest_cs = sqlite3_column_int(res, 1);
+
+    logger("DB", LOG_LEVEL_DEBUG, "latest_ri : %s, latest_cs : %d", latest_ri, latest_cs);
+
+    sprintf(sql, "DELETE FROM general WHERE ri='%s';", latest_ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from general/ msg : %s", err_msg);
+        sqlite3_close(db);
+        return -1;
+    }
+
+    sprintf(sql, "DELETE FROM cin WHERE ri='%s';", latest_ri);
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from cin/ msg : %s", err_msg);
+        sqlite3_close(db);
+        return -1;
+    }
+    return latest_cs;
 }
 
 

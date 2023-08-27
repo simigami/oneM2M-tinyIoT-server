@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <malloc.h>
 #include "onem2mTypes.h"
 #include "util.h"
 #include "cJSON.h"

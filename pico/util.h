@@ -43,6 +43,8 @@ char *get_uri_rtnode(RTNode *rtnode);
 char *ri_to_uri(char *ri);
 cJSON *getResource(cJSON *root, ResourceType ty);
 
+void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, int net);
+
 //validation
 bool is_attr_valid(cJSON *obj, ResourceType ty, char *err_msg);
 bool is_valid_acr(cJSON *acr);
@@ -54,6 +56,7 @@ int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op);
 int validate_grp(oneM2MPrimitive *o2pt, cJSON *grp);
 int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new);
 int validate_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode, cJSON *csr, Operation op);
+int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op);
 
 
 //error

@@ -31,14 +31,14 @@
 
 // CNT Settings
 #define DEFAULT_MAX_NR_INSTANCES 10
-#define DEFAULT_MAX_BYTE_SIZE 1024
+#define DEFAULT_MAX_BYTE_SIZE 65536
 
 // Group Settings
 #define DEFAULT_CONSISTENCY_POLICY CSY_SET_MIXED
 
 
 // MQTT Settings
-#define ENABLE_MQTT
+//#define ENABLE_MQTT
 
 #ifdef ENABLE_MQTT
 #define MQTT_HOST            "127.0.0.1"
