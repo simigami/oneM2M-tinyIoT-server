@@ -167,7 +167,7 @@ void cjson_merge_objs_by_operation(cJSON* obj1, cJSON* obj2, FilterOperation fo)
 
 bool isValidFcAttr(char* attr);
 void parse_filter_criteria(cJSON *fc);
-
+void route(oneM2MPrimitive *o2pt);
 
 #define ALL_ACOP ACOP_CREATE + ACOP_RETRIEVE + ACOP_UPDATE + ACOP_DELETE + ACOP_NOTIFY + ACOP_DISCOVERY
 

@@ -1,4 +1,3 @@
-#include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -100,7 +99,7 @@ void route(oneM2MPrimitive *o2pt) {
 
 	if(o2pt->fc){
 		if(rsc = validate_filter_criteria(o2pt) > 4000){
-			return rsc;
+			return;
 		}
 	}
 

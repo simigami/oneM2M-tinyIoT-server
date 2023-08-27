@@ -22,4 +22,6 @@ remake: clean all
 
 clean:
 	@rm -rf *.o
+	@rm -rf wolfmqtt/*.o
+	@rm -rf sqlite/*.o
 	@rm -rf $(RELEXE)

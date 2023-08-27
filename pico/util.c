@@ -14,6 +14,7 @@
 #include "config.h"
 #include "dbmanager.h"
 #include "jsonparser.h"
+#include "mqttClient.h"
 
 extern ResourceTree *rt;
 
