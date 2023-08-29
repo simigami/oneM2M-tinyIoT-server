@@ -4,7 +4,7 @@
 
 #define SERVER_TYPE IN_CSE
 
-#define SERVER_HOST "127.0.0.1"
+#define SERVER_HOST "0.0.0.0"
 #define SERVER_PORT "3000"
 #define CSE_BASE_NAME "TinyIoT"
 #define CSE_BASE_RI "tinyiot"
@@ -38,7 +38,7 @@
 
 
 // MQTT Settings
-//#define ENABLE_MQTT
+// #define ENABLE_MQTT
 
 #ifdef ENABLE_MQTT
 #define MQTT_HOST            "127.0.0.1"

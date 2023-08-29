@@ -372,11 +372,6 @@ int create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 
 	cJSON *root = cJSON_Duplicate(o2pt->cjson_pc, 1);
 	cJSON *acp = cJSON_GetObjectItem(root, "m2m:acp");
-	// if(!is_attr_valid(acp, RT_ACP)){
-	// 	handle_error(o2pt, RSC_BAD_REQUEST, "wrong attribute(s) submitted");
-	// 	cJSON_Delete(root);
-	// 	return o2pt->rsc;
-	// }
 
 	add_general_attribute(acp, parent_rtnode, RT_ACP);
 
@@ -567,11 +562,10 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 		handle_error(o2pt, RSC_OPERATION_NOT_ALLOWED, "CSE can not be deleted");
 		return RSC_OPERATION_NOT_ALLOWED;
 	}
-	if(target_rtnode->ty == RT_AE || target_rtnode->ty == RT_CNT || target_rtnode->ty == RT_GRP || target_rtnode->ty == RT_ACP) {
-		if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
-			return o2pt->rsc;
-		}
+	if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
+		return o2pt->rsc;
 	}
+	
 	delete_rtnode_and_db_data(o2pt, target_rtnode,1);
 	target_rtnode = NULL;
 	if(o2pt->pc) free(o2pt->pc);

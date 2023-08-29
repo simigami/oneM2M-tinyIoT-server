@@ -273,7 +273,6 @@ int db_store_resource(cJSON *obj, char *uri){
     ResourceType ty = cJSON_GetObjectItem(obj, "ty")->valueint;
 
 
-    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg);
 
     sql = malloc(1024);
     sprintf(sql, "INSERT INTO general (");
@@ -295,10 +294,12 @@ int db_store_resource(cJSON *obj, char *uri){
     sqlite3_stmt *stmt;
     int rc = 0;
 
+    sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, &err_msg);
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
         free(sql);
         logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return 0;
     }
 
@@ -319,6 +320,7 @@ int db_store_resource(cJSON *obj, char *uri){
     if(rc != SQLITE_DONE){
         free(sql);
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return 0;
     }
 
@@ -346,6 +348,7 @@ int db_store_resource(cJSON *obj, char *uri){
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "prepare error");
         free(sql);
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return 0;
     }
 
@@ -363,12 +366,13 @@ int db_store_resource(cJSON *obj, char *uri){
     if(rc != SQLITE_DONE){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
         free(sql);
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return 0;
     }
     
     sqlite3_finalize(stmt);
     free(sql);
-    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &err_msg);
     return 1;
 }
 
@@ -407,6 +411,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
         if(rc != SQLITE_OK){
             free(sql);
             logger("DB", LOG_LEVEL_ERROR, "prepare error");
+            sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
             return 0;
         }
         int idx = 1;
@@ -423,6 +428,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
         if(rc != SQLITE_DONE){
             free(sql);
             logger("DB", LOG_LEVEL_ERROR, "Failed Update SQL: %s, msg : %s", sql, err_msg);
+            sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
             return 0;
         }
 
@@ -450,6 +456,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
         if(rc != SQLITE_OK){
             logger("DB", LOG_LEVEL_ERROR, "prepare error");
             free(sql);
+            sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
             return 0;
         }
 
@@ -467,13 +474,14 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
         if(rc != SQLITE_DONE){
             logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
             free(sql);
+            sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
             return 0;
         }
         
         sqlite3_finalize(stmt);
     }
     
-    sqlite3_exec(db, "COMMIT TRANSACTION", NULL, NULL, &err_msg);
+    sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &err_msg);
     free(sql);
     return 1;
 }
@@ -535,11 +543,35 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
         return 0;
     }
 
+
+    if(rtnode->ty == RT_CNT){
+        sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, &err_msg);
+        sprintf(sql, "DELETE FROM cin WHERE cin.ri IN (SELECT ri FROM general where ty=4 AND uri LIKE '%s/%%');", get_uri_rtnode(rtnode));
+        logger("DB", LOG_LEVEL_DEBUG, "SQL : %s", sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+        if(rc != SQLITE_OK){
+            logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
+            sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
+            return 0;
+        }
+
+        sprintf(sql, "DELETE FROM general WHERE ty=4 AND uri LIKE '%s/%%';", get_uri_rtnode(rtnode));
+        rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+        if(rc != SQLITE_OK){
+            logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
+            sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
+            return 0;
+        }
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
+    }
+
+    sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, &err_msg);
+
     sprintf(sql, "DELETE FROM general WHERE ri='%s';", get_ri_rtnode(rtnode));
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from general/ msg : %s", err_msg);
-        sqlite3_close(db);
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return 0;
     }
 
@@ -548,50 +580,16 @@ int db_delete_onem2m_resource(RTNode *rtnode) {
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
-        sqlite3_close(db);
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return 0;
     }
 
-    if(rtnode->ty == RT_AE){
-        int childResources[3] = {RT_CNT, RT_SUB, RT_GRP, RT_CIN};
+    sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
 
-        for(int i = 0 ; i < 3 ; i++){
-            sprintf(sql, "DELETE FROM %s WHERE ri IN (SELECT ri FROM general where uri LIKE '%s/%%');", get_table_name(childResources[i]), get_uri_rtnode(rtnode));
-            rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-            if(rc != SQLITE_OK){
-                logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
-                sqlite3_close(db);
-                return 0;
-            }
-        }
-    }
-
-    else if(rtnode->ty == RT_CNT){
-        int childResources[3] = {RT_CNT, RT_SUB, RT_GRP, RT_CIN};
-
-        for(int i = 0 ; i < 3 ; i++){
-            sprintf(sql, "DELETE FROM %s WHERE ri IN (SELECT ri FROM general where uri LIKE '%s/%%');", get_table_name(childResources[i]), get_uri_rtnode(rtnode));
-            rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-            if(rc != SQLITE_OK){
-                logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
-                sqlite3_close(db);
-                return 0;
-            }
-        }
-    }
-
-    sprintf(sql, "DELETE FROM general WHERE uri LIKE '%s%%';", get_uri_rtnode(rtnode));
-    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
-    if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from %s/ msg : %s", tableName, err_msg);
-        sqlite3_close(db);
-        return 0;
-    }
     return 1;
 }
 
 int db_delete_one_cin_mni(RTNode *cnt){
-    logger("DB", LOG_LEVEL_DEBUG, "Call db_delete_cin_mni");
     char sql[1024] = {0};
     char *err_msg;
     sqlite3_stmt *res;
@@ -601,7 +599,6 @@ int db_delete_one_cin_mni(RTNode *cnt){
     int latest_cs = 0;
 
     sprintf(sql, "SELECT general.ri, cs from general, cin WHERE pi='%s' AND general.ri = cin.ri ORDER BY general.lt ASC LIMIT 1;", get_ri_rtnode(cnt));
-    logger("DB", LOG_LEVEL_DEBUG, "SQL : %s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     
     if(rc != SQLITE_OK){

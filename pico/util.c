@@ -6,6 +6,8 @@
 #include <math.h>
 #include <ctype.h>
 #include <sys/timeb.h>
+#include <arpa/inet.h>
+
 #include "onem2m.h"
 #include "util.h"
 #include "httpd.h"
@@ -844,13 +846,60 @@ int check_acco(cJSON *acco, char *ip){
 
 	cJSON *acip = cJSON_GetObjectItem(acco, "acip");
 	cJSON *ipv4 = cJSON_GetObjectItem(acip, "ipv4");
-	cJSON *ipv6 = cJSON_GetObjectItem(acip, "ipv6");
 	cJSON *pjson = NULL;
+	char *ip_str = NULL;
+	int res = 0;
+	struct in_addr addr, addr2;
+	char *subnet_ptr;
+	int mask = 0xFFFFFFFF;
 
 	cJSON_ArrayForEach(pjson, ipv4){
 		logger("UTIL", LOG_LEVEL_DEBUG, "check_acco/ipv4 : %s", pjson->valuestring);
-		if(!strcmp(pjson->valuestring, ip)) 
-			return 1;
+		ip_str = strdup(pjson->valuestring);
+		mask = 1;
+
+		subnet_ptr = strchr(ip_str, '/');
+
+		if(subnet_ptr){
+			subnet_ptr[0] = '\0';
+			subnet_ptr++;
+			for(int i = 0 ; i < atoi(subnet_ptr) - 1 ; i++){
+				mask = mask << 1;
+				mask = mask | 1;
+			}
+
+
+			res = inet_pton(AF_INET, ip_str, &addr);
+			if(res == 0){
+				logger("UTIL", LOG_LEVEL_DEBUG, "check_acco/ipv4 : %s is not valid ipv4 address", ip_str);
+				continue;
+			}else if(res == -1){
+				logger("UTIL", LOG_LEVEL_DEBUG, "check_acco/ipv4 : inet_pton error");
+				continue;
+			}
+
+			res = inet_pton(AF_INET, ip, &addr2);
+			if(res == 0){
+				logger("UTIL", LOG_LEVEL_DEBUG, "check_acco/ipv4 : %s is not valid ipv4 address", ip);
+				continue;
+			}else if(res == -1){
+				logger("UTIL", LOG_LEVEL_DEBUG, "check_acco/ipv4 : inet_pton error");
+				continue;
+			}
+			logger("UTIL", LOG_LEVEL_DEBUG, "addr & mask : %X, addr2 & mask : %X", (addr.s_addr & mask), (addr2.s_addr & mask));
+
+			if((addr.s_addr & mask) == (addr2.s_addr & mask)){
+				free(ip_str);
+				return 1;
+			}
+		}else{
+			if(!strcmp(ip_str, ip)) {
+				free(ip_str);
+				return 1;
+			}
+		}
+		
+		free(ip_str);
 	}
 	return 0;
 }
@@ -2013,6 +2062,47 @@ int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op){
 	return RSC_OK;
 }
 
+int validate_acr(oneM2MPrimitive *o2pt, cJSON *acr_attr){
+	cJSON *acr = NULL;
+	cJSON *acop = NULL;
+	cJSON *acco = NULL;
+	cJSON *acip = NULL;
+	cJSON *ipv4 = NULL;
+	char *ptr = NULL;
+
+	int mask = 0;
+
+	cJSON_ArrayForEach(acr, acr_attr){
+		acop = cJSON_GetObjectItem(acr, "acop");
+		if( acop->valueint > 63 || acop->valueint < 0){
+			return handle_error(o2pt, RSC_BAD_REQUEST, "attribute `acop` is invalid");
+		}
+		acco = cJSON_GetObjectItem(acr, "acco");
+
+		if(acco){
+			if(acip = cJSON_GetObjectItem(acco, "acip") ){
+				cJSON_ArrayForEach(ipv4, cJSON_GetObjectItem(acip, "ipv4")){
+					if(ptr = strchr(ipv4->valuestring, '/')){
+						mask = atoi(ptr+1);
+						if(mask > 32 || mask < 0){
+							return handle_error(o2pt, RSC_BAD_REQUEST, "ip in attribute `acip` is invalid");
+						}
+						*ptr = '\0';
+					}
+					struct sockaddr_in sa;
+					if(inet_pton(AF_INET, ipv4->valuestring, &(sa.sin_addr)) != 1){
+						*ptr = '/';
+						return handle_error(o2pt, RSC_BAD_REQUEST, "ip in attribute `acip` is invalid");
+					}
+					*ptr = '/';
+				}
+			}
+		}
+	}
+
+	return RSC_OK;
+}
+
 /**
  * @brief validate acp resource
  * @param o2pt oneM2M request primitive
@@ -2026,12 +2116,17 @@ int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op){
 	if(!acp) {
 		return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 	}
+
+
 	if(op == OP_CREATE){
 		pjson = cJSON_GetObjectItem(acp, "pv");
 		if(!pjson){
 			return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 		}else if(pjson->type == cJSON_NULL || !cJSON_GetObjectItem(pjson, "acr")){
 			return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pv` is not allowed");
+		}else{
+			if(validate_acr(o2pt, cJSON_GetObjectItem(pjson, "acr")) != RSC_OK)
+				return o2pt->rsc;
 		}
 
 		pjson = cJSON_GetObjectItem(acp, "pvs");
@@ -2039,6 +2134,10 @@ int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op){
 			return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
 		}else if( cJSON_IsNull(pjson) || !cJSON_GetObjectItem(pjson, "acr")){
 			return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pvs` is not allowed");
+		}else{
+			if(validate_acr(o2pt, cJSON_GetObjectItem(pjson, "acr")) != RSC_OK){
+				return o2pt->rsc;
+			}
 		}
 	}
 	if(op == OP_UPDATE){
@@ -2047,11 +2146,20 @@ int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op){
 			if( cJSON_IsNull(pjson) || !cJSON_GetObjectItem(pjson, "acr")){
 				return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pv` is not allowed");
 			}
+		}else{
+			if(validate_acr(o2pt, cJSON_GetObjectItem(pjson, "acr")) != RSC_OK){
+				return o2pt->rsc;
+			}
 		}
+
 		pjson = cJSON_GetObjectItem(acp, "pvs");
 		if (pjson){
 			if( cJSON_IsNull(pjson) || !cJSON_GetObjectItem(pjson, "acr")){
 				return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pvs` is not allowed");
+			}
+		}else{
+			if(validate_acr(o2pt, cJSON_GetObjectItem(pjson, "acr")) != RSC_OK){
+				return o2pt->rsc;
 			}
 		}
 	}

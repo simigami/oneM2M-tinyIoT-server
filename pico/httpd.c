@@ -200,22 +200,17 @@ void respond(int slot) {
         //t = strtok(NULL, "\r\n");
         t = strtok(NULL, "\n");
         if(t && t[0] == '\r') t+=2; // now the *t shall be the beginning of user payload
-        
-        logger("HTTP", LOG_LEVEL_DEBUG, "Payload: %s", t); // print user payload
         t2 = request_header(req->headers, req->header_count, "Content-Length"); // and the related header if there is
         req->payload = t;
         req->payload_size = t2 ? atol(t2) : 0;
-
-        if(req->payload_size > 0 && (req->payload == NULL)) {
+        if(req->payload_size > 0 && ((req->payload == NULL) || strlen(req->payload) == 0) ) {   // if there is payload but it is not in the buffer
             flag = true;
             req->payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
-            recv(clients[slot], req->payload, MAX_PAYLOAD_SIZE, 0);
+            recv(clients[slot], req->payload, MAX_PAYLOAD_SIZE, 0); // receive payload
         }
 
         if(req->payload) normalize_payload(req->payload);
-        // bind clientfd to stdout, making it easier to write
-        
-        //dup2(clientfd, STDOUT_FILENO);
+
         // call router
         handle_http_request(req, slot);    
         // tidy up
@@ -279,9 +274,10 @@ void handle_http_request(HTTPRequest *req, int slotno) {
     o2pt->op = http_parse_operation(req->method);    
     logger("HTTP", LOG_LEVEL_INFO, "Request : %s", req->method);
 
+    /* get client ip address */
     struct sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
-    getsockname(clients[slotno], (struct sockaddr *)&client_addr, &client_addr_len);
+    getpeername(clients[slotno], (struct sockaddr *)&client_addr, &client_addr_len);
     o2pt->ip = (char *)malloc((INET_ADDRSTRLEN + 1) * sizeof(char));
      logger("HTTP", LOG_LEVEL_INFO, "Client connected %d.%d.%d.%d\n",
          (int)(client_addr.sin_addr.s_addr&0xFF), (int)((client_addr.sin_addr.s_addr&0xFF00)>>8), (int)((client_addr.sin_addr.s_addr&0xFF0000)>>16), (int)((client_addr.sin_addr.s_addr&0xFF000000)>>24));
