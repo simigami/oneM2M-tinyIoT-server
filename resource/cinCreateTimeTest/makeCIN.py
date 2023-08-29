@@ -4,7 +4,8 @@ import time
 import multiprocessing
 
 # target_ip = "192.168.0.96"
-target_ip = "127.0.0.1"
+# target_ip = "127.0.0.1"
+target_ip = "192.168.1.44"
 target_port = 3000
 
 # target_ip = "34.22.78.31"
@@ -76,11 +77,6 @@ def runTest(cnt:int, proc_idx:int, queue: multiprocessing.Queue):
     time_arr = []
     for _ in range(cnt):
         time_arr.append(makeCIN())
-
-    print(f"Process {proc_idx}")
-    print(f"\tmin: {min(time_arr)}")
-    print(f"\tmax: {max(time_arr)}")
-    print(f"\tavg: {sum(time_arr) / len(time_arr)}")
     queue.put(time_arr)
 
             
@@ -88,7 +84,7 @@ def runTest(cnt:int, proc_idx:int, queue: multiprocessing.Queue):
 
 if __name__ == "__main__":
     cin_cnt = 100
-    process_cnt = 3
+    process_cnt = 5
     setup()
     time_arr = {}
     total_time = []
@@ -101,7 +97,12 @@ if __name__ == "__main__":
 
         for i in range(process_cnt):
             process_arr[i].join()
-            total_time += time_arr[i].get()
+            temp = time_arr[i].get()
+            print(f"Process {i}")
+            print(f"\tmin: {min(temp)}")
+            print(f"\tmax: {max(temp)}")
+            print(f"\tavg: {sum(temp) / len(temp)}")
+            total_time += temp
     else:
         for i in range(cin_cnt):
             total_time.append(makeCIN())
