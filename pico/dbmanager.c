@@ -1187,33 +1187,33 @@ cJSON* db_get_filter_criteria(char *to, cJSON *fc) {
     strcat(sql, buf);
 
     if(pjson = cJSON_GetObjectItem(fc, "cra")){
-        sprintf(buf, "ct>'%d' ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, "ct>'%d' ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "crb")){
-        sprintf(buf, "ct<='%d' ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, "ct<='%d' ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "exa")){
-        sprintf(buf, "et>'%d' ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, "et>'%d' ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "exb")){
-        sprintf(buf, "et<='%d' ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, "et<='%d' ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
 
     if(pjson = cJSON_GetObjectItem(fc, "ms")){
-        sprintf(buf, "lt>'%d' ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, "lt>'%d' ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "us")){
-        sprintf(buf, "lt<='%d' ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, "lt<='%d' ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
@@ -1254,25 +1254,25 @@ cJSON* db_get_filter_criteria(char *to, cJSON *fc) {
     }
 
     if(pjson = cJSON_GetObjectItem(fc, "sza")){
-        sprintf(buf, " ri IN (SELECT ri FROM 'cin' WHERE cs >= %d) ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, " ri IN (SELECT ri FROM 'cin' WHERE cs >= %d) ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
 
     if(pjson = cJSON_GetObjectItem(fc, "szb")){
-        sprintf(buf, " ri IN (SELECT ri FROM 'cin' WHERE cs < %d) ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, " ri IN (SELECT ri FROM 'cin' WHERE cs < %d) ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
 
     if(pjson = cJSON_GetObjectItem(fc, "sts")){
-        sprintf(buf, " ri IN (SELECT ri FROM 'cnt' WHERE st < %d) ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, " ri IN (SELECT ri FROM 'cnt' WHERE st < %d) ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
 
     if(pjson = cJSON_GetObjectItem(fc, "stb")){
-        sprintf(buf, " ri IN (SELECT ri FROM 'cnt' WHERE st >= %d) ", cJSON_GetNumberValue(pjson));
+        sprintf(buf, " ri IN (SELECT ri FROM 'cnt' WHERE st >= %d) ", pjson->valueint);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
@@ -1536,7 +1536,7 @@ cJSON *db_get_child_filter_criteria(char *to, cJSON *fc){
             }
             sql[strlen(sql) -2] = '\0';
         }else{
-            sprintf(buf, " ty = %d ", cJSON_GetNumberValue(pjson));
+            sprintf(buf, " ty = %d ", pjson->valueint);
             strcat(sql, buf);
         }
         filterOptionStr(fo, sql);
