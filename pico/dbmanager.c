@@ -43,7 +43,7 @@ int init_dbp(){
     }
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS csr ( \
-        ri VARCHAR(200), cst VARCHAR(45), poa VARCHAR(200), cb VARCHAR(200), csi VARCHAR(200), mei VARCHAR(45), \
+        ri VARCHAR(200), cst INT, poa VARCHAR(200), cb VARCHAR(200), csi VARCHAR(200), mei VARCHAR(45), \
         tri VARCHAR(45), rr INT, nl VARCHAR(45), srv VARCHAR(45));");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
@@ -130,7 +130,7 @@ int init_dbp(){
 
 int close_dbp(){
     if(db)
-        sqlite3_close(db);
+        sqlite3_close_v2(db);
     db = NULL;
     return 1;
 }
@@ -224,6 +224,7 @@ cJSON *db_get_resource(char *ri, ResourceType ty){
 
     if(sqlite3_step(stmt) != SQLITE_ROW){
         free(sql);
+        sqlite3_finalize(stmt);
         return NULL;
     }
 
@@ -252,6 +253,7 @@ cJSON *db_get_resource(char *ri, ResourceType ty){
                     cJSON_AddItemToObject(resource, colname, arr);
                 }else{
                     cJSON_AddItemToObject(resource, colname, cJSON_CreateString(buf));
+                    cJSON_Delete(arr);
                 }
                 break;
             case SQLITE_INTEGER:
@@ -260,6 +262,8 @@ cJSON *db_get_resource(char *ri, ResourceType ty){
         }
     }
 
+    sqlite3_finalize(stmt);
+    free(sql);
     return resource;
 
 }
@@ -300,6 +304,7 @@ int db_store_resource(cJSON *obj, char *uri){
         free(sql);
         logger("DB", LOG_LEVEL_ERROR, "prepare error");
         sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
+        sqlite3_finalize(stmt);
         return 0;
     }
 
@@ -320,6 +325,7 @@ int db_store_resource(cJSON *obj, char *uri){
     if(rc != SQLITE_DONE){
         free(sql);
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
+        sqlite3_finalize(stmt);
         sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return 0;
     }
@@ -367,12 +373,13 @@ int db_store_resource(cJSON *obj, char *uri){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
         free(sql);
         sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
+        sqlite3_finalize(stmt);
         return 0;
     }
+    sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &err_msg);
     
     sqlite3_finalize(stmt);
     free(sql);
-    sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &err_msg);
     return 1;
 }
 
@@ -456,6 +463,7 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
         if(rc != SQLITE_OK){
             logger("DB", LOG_LEVEL_ERROR, "prepare error");
             free(sql);
+            sqlite3_finalize(stmt);
             sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
             return 0;
         }
@@ -619,7 +627,6 @@ int db_delete_one_cin_mni(RTNode *cnt){
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from general/ msg : %s", err_msg);
-        sqlite3_close(db);
         return -1;
     }
 
@@ -627,9 +634,9 @@ int db_delete_one_cin_mni(RTNode *cnt){
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot delete resource from cin/ msg : %s", err_msg);
-        sqlite3_close(db);
         return -1;
     }
+    sqlite3_finalize(res);
     return latest_cs;
 }
 
@@ -748,6 +755,7 @@ RTNode *db_get_all_ae_rtnode(){
                         cJSON_AddItemToObject(json, colname, arr);
                     }else{
                         cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                        cJSON_Delete(arr);
                     }
                     break;
                 case SQLITE_INTEGER:
@@ -813,6 +821,7 @@ RTNode *db_get_all_cnt_rtnode(){
                         cJSON_AddItemToObject(json, colname, arr);
                     }else{
                         cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                        cJSON_Delete(arr);
                     }
                     break;
                 case SQLITE_INTEGER:
@@ -1131,6 +1140,7 @@ cJSON *db_get_cin_laol(RTNode *parent_rtnode, int laol){
     }
 
     if(sqlite3_step(res) != SQLITE_ROW){
+        sqlite3_finalize(res);
         return 0;
     }
     cols = sqlite3_column_count(res);

@@ -12,13 +12,14 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <fcntl.h>
 
 #define MAX_CONNECTIONS 1024
 #define BUF_SIZE 65535
-#define QUEUE_SIZE 64
+#define QUEUE_SIZE 128
 
 pthread_mutex_t mutex_lock;
 int listenfd;
@@ -57,16 +58,23 @@ void serve_forever(const char *PORT) {
     // Ignore SIGCHLD to avoid zombie threads
     signal(SIGCHLD, SIG_IGN); 
     // ACCEPT connections
+    int on = 1;
     while (1) {
         clients[slot] = accept(listenfd, (struct sockaddr *)&clientaddr, &addrlen);
+        setsockopt(clients[slot], IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));    
         if (clients[slot] < 0) {
             perror("accept() error");
             //exit(1);
             clients[slot] = -1;
         } else {
             pthread_t thread_id;
-            pthread_create(&thread_id, NULL, respond_thread, (void*)&slots[slot]);
-            if(MONO_THREAD) pthread_join(thread_id, NULL);
+            if(MONO_THREAD) {
+                respond(slot);
+                close(clients[slot]);
+                clients[slot] = -1;
+            }else{
+                pthread_create(&thread_id, NULL, respond_thread, (void*)&slots[slot]);
+            }
         }
         while (clients[slot] != -1)
             slot = (slot + 1) % MAX_CONNECTIONS;
@@ -79,11 +87,21 @@ void start_server(const char *port) {
     memset(&addr, 0, sizeof(addr));
     // create socket
     addr.sin_family = AF_INET;
-    inet_pton(AF_INET, SERVER_HOST, &(addr.sin_addr.s_addr));
+    inet_pton(AF_INET, "0.0.0.0", &(addr.sin_addr.s_addr));
     addr.sin_port = htons(atoi(port));    
-    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    listenfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int option = 1;
+    struct linger {
+        int l_onoff;
+        int l_linger;
+    };
+    struct linger _linger;
+    _linger.l_onoff = 0;
+    _linger.l_linger = 0;
+
     setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+    setsockopt(listenfd, IPPROTO_TCP, TCP_NODELAY, &option, sizeof(option));
+    setsockopt(listenfd, IPPROTO_TCP, TCP_QUICKACK, &option, sizeof(option));
     if(listenfd == -1) {
         perror("socket() error");
         exit(1);
@@ -148,78 +166,80 @@ void respond(int slot) {
     buf[slot] = malloc(BUF_SIZE*sizeof(char));
     rcvd = recv(clients[slot], buf[slot], BUF_SIZE, 0); 
 
+    double start;
 
+    start = (double)clock() / CLOCKS_PER_SEC; // runtime check - start
     if (rcvd < 0){ // receive error
         logger("HTTP", LOG_LEVEL_ERROR, "recv() error");
         return;
     } else if (rcvd == 0) { // receive socket closed
         logger("HTTP", LOG_LEVEL_ERROR, "Client disconnected upexpectedly");
         return;
-    } else { // message received
-        pthread_mutex_lock(&mutex_lock);  
-        buf[slot][rcvd] = '\0';
-        logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf[slot]);
-        memcpy(buffer, buf[slot], rcvd);
-
-        req->method = strtok(buffer, " \t\r\n");
-        req->uri = strtok(NULL, " \t");
-        req->prot = strtok(NULL, " \t\r\n");   
-        if(!req->uri) {
-            logger("HTTP", LOG_LEVEL_ERROR, "URI is NULL");
-            return;
-        } 
-        uri_unescape(req->uri);
-    
-        logger("HTTP", LOG_LEVEL_DEBUG, "\x1b[36m[%s] %s\x1b[0m",req->method, req->uri); 
-        req->qs = strchr(req->uri, '?');    
-        if (req->qs)
-            *req->qs++ = '\0'; // split URI
-        else
-            req->qs = req->uri - 1; // use an empty string  
-
-        req->headers = (header_t *) malloc(sizeof(header_t) * 20);
-        header_t *h = req->headers;
-        char *t, *t2;
-        while (h < req->headers + 16) {
-            char *key, *val;  
-            key = strtok(NULL, "\r\n: \t");
-            if (!key)
-                break;    
-            val = strtok(NULL, "\r\n");
-            while (*val && *val == ' ')
-                val++;    
-            h->name = key;
-            h->value = val;
-            h++;
-            req->header_count++;
-            t = val + 1 + strlen(val);
-            if (t[1] == '\r' && t[2] == '\n')
-                break;
-            //fprintf(stderr, "[H] %s: %s, %x\n", key, val, *t); // print request headers 
-        }
-        //t = strtok(NULL, "\r\n");
-        t = strtok(NULL, "\n");
-        if(t && t[0] == '\r') t+=2; // now the *t shall be the beginning of user payload
-        t2 = request_header(req->headers, req->header_count, "Content-Length"); // and the related header if there is
-        req->payload = t;
-        req->payload_size = t2 ? atol(t2) : 0;
-        if(req->payload_size > 0 && ((req->payload == NULL) || strlen(req->payload) == 0) ) {   // if there is payload but it is not in the buffer
-            flag = true;
-            req->payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
-            recv(clients[slot], req->payload, MAX_PAYLOAD_SIZE, 0); // receive payload
-        }
-
-        if(req->payload) normalize_payload(req->payload);
-
-        // call router
-        handle_http_request(req, slot);    
-        // tidy up
-        fflush(stdout);
-        shutdown(STDOUT_FILENO, SHUT_WR);
-        //close(STDOUT_FILENO);
     }
+    // message received
+    pthread_mutex_lock(&mutex_lock);  
+    buf[slot][rcvd] = '\0';
+    logger("HTTP", LOG_LEVEL_DEBUG, "\n\n%s\n",buf[slot]);
+    memcpy(buffer, buf[slot], rcvd);
+
+    req->method = strtok(buffer, " \t\r\n");
+    req->uri = strtok(NULL, " \t");
+    req->prot = strtok(NULL, " \t\r\n");   
+    if(!req->uri) {
+        logger("HTTP", LOG_LEVEL_ERROR, "URI is NULL");
+        return;
+    } 
+    uri_unescape(req->uri);
+
+    logger("HTTP", LOG_LEVEL_DEBUG, "\x1b[36m[%s] %s\x1b[0m",req->method, req->uri); 
+    req->qs = strchr(req->uri, '?');    
+    if (req->qs)
+        *req->qs++ = '\0'; // split URI
+    else
+        req->qs = req->uri - 1; // use an empty string  
+
+    req->headers = (header_t *) malloc(sizeof(header_t) * 20);
+    header_t *h = req->headers;
+    char *t, *t2;
+    while (h < req->headers + 16) {
+        char *key, *val;  
+        key = strtok(NULL, "\r\n: \t");
+        if (!key)
+            break;    
+        val = strtok(NULL, "\r\n");
+        while (*val && *val == ' ')
+            val++;    
+        h->name = key;
+        h->value = val;
+        h++;
+        req->header_count++;
+        t = val + 1 + strlen(val);
+        if (t[1] == '\r' && t[2] == '\n')
+            break;
+        //fprintf(stderr, "[H] %s: %s, %x\n", key, val, *t); // print request headers 
+    }
+    //t = strtok(NULL, "\r\n");
+    t = strtok(NULL, "\n");
+    if(t && t[0] == '\r') t+=2; // now the *t shall be the beginning of user payload
+    t2 = request_header(req->headers, req->header_count, "Content-Length"); // and the related header if there is
+    req->payload = t;
+    req->payload_size = t2 ? atol(t2) : 0;
+    if(req->payload_size > 0 && ((req->payload == NULL) || strlen(req->payload) == 0) ) {   // if there is payload but it is not in the buffer
+        flag = true;
+        req->payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
+        recv(clients[slot], req->payload, MAX_PAYLOAD_SIZE, 0); // receive payload
+    }
+
+    if(req->payload) normalize_payload(req->payload);
+
+    // call router
+    handle_http_request(req, slot);    
+    
+    double end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
+	logger("UTIL", LOG_LEVEL_INFO, "Run time : %lf", end-start);
     if(flag) free(req->payload);
     free(req->headers);
+    free(req);
     free(buf[slot]);
     pthread_mutex_unlock(&mutex_lock);
 }

@@ -75,6 +75,7 @@ void add_general_attribute(cJSON *root, RTNode *parent_rtnode, ResourceType ty){
 	ptr = get_local_time(DEFAULT_EXPIRE_TIME);
 	cJSON_AddStringToObject(root, "et", ptr);
 	free(ptr); ptr = NULL;
+	free(ct);
 }
 
 RTNode* create_rtnode(cJSON *obj, ResourceType ty){
@@ -197,6 +198,10 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	// Add to resource tree
 	RTNode* child_rtnode = create_rtnode(ae, RT_AE);
 	add_child_resource_tree(parent_rtnode, child_rtnode); 
+
+	cJSON_DetachItemFromObject(root, "m2m:ae");
+	cJSON_Delete(root);
+
 	return o2pt->rsc = RSC_CREATED;
 }
 
@@ -253,11 +258,11 @@ int create_cnt(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	}
 	free(ptr);	ptr = NULL;
 
-	cJSON *uri = cJSON_GetObjectItem(cnt, "uri");
-	cJSON_DeleteItemFromObject(cnt, "uri");
-
 	RTNode* child_rtnode = create_rtnode(cnt, RT_CNT);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
+
+	cJSON_DetachItemFromObject(root, "m2m:cnt");
+	cJSON_Delete(root);
 
 	return RSC_CREATED;
 }
@@ -315,11 +320,9 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(result != 1) { 
 		handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "DB store fail"); 
 		free_rtnode(cin_rtnode);
-		cJSON_Delete(root);
 		return o2pt->rsc;
 	}
-
-	cJSON_Delete(root);
+	free_rtnode(cin_rtnode);
 	return RSC_CREATED;
 }
 
@@ -361,6 +364,10 @@ int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 
 	RTNode* child_rtnode = create_rtnode(sub, RT_SUB);
 	add_child_resource_tree(parent_rtnode,child_rtnode);
+
+	cJSON_DetachItemFromObject(root, "m2m:sub");
+	cJSON_Delete(root);
+
 	return RSC_CREATED;
 }
 
@@ -403,6 +410,10 @@ int create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	// Add to resource tree
 	RTNode* child_rtnode = create_rtnode(acp, RT_ACP);
 	add_child_resource_tree(parent_rtnode, child_rtnode); 
+
+	cJSON_DetachItemFromObject(root, "m2m:acp");
+	cJSON_Delete(root);
+
 	return o2pt->rsc = RSC_CREATED;
 }
 
@@ -612,8 +623,10 @@ int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag) {
 }
 
 void free_rtnode(RTNode *rtnode) {
-	if(rtnode->uri && rtnode->ty != RT_CSE)
+	if(rtnode->uri){
 		free(rtnode->uri);
+		rtnode->uri = NULL;
+	}
 	cJSON_Delete(rtnode->obj);
 	if(rtnode->parent && rtnode->parent->child == rtnode){
 		rtnode->parent->child = rtnode->sibling_right;
@@ -724,6 +737,8 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	RTNode *child_rtnode = create_rtnode(grp, RT_GRP);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
 
+	cJSON_DetachItemFromObject(root, "m2m:grp");
+	cJSON_Delete(root);
 
 	free(uri); uri = NULL;
 	return rsc;
@@ -761,7 +776,7 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	if(e != -1) e = check_payload_format(o2pt);
 	if(e != -1) e = check_resource_type_equal(o2pt);
 	if(e != -1) e = check_privilege(o2pt, parent_rtnode, ACOP_CREATE);
-	if(e != -1) e = check_rn_duplicate(o2pt, parent_rtnode);
+	if(e != -1 && o2pt->ty != RT_CIN) e = check_rn_duplicate(o2pt, parent_rtnode);
 	if(e == -1) return o2pt->rsc;
 
 	if(!is_attr_valid(o2pt->cjson_pc, o2pt->ty, err_msg)){

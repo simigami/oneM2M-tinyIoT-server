@@ -449,7 +449,6 @@ void delete_cin_under_cnt_mni_mbs(RTNode *rtnode) {
 	}else{
 		mbs = DEFAULT_MAX_BYTE_SIZE;
 	}
-
 	if(cni <= mni && cbs <= mbs) return;
 
 	if(cni == mni+1){
@@ -613,7 +612,7 @@ void init_server() {
 	cJSON_AddItemToObject(cse, "poa", poa_obj);
 
 	rt->cb = create_rtnode(cse, RT_CSE);
-	rt->cb->uri = CSE_BASE_NAME;
+	// rt->cb->uri = CSE_BASE_NAME;
 
  	init_resource_tree();
 }
@@ -786,10 +785,14 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 		origin = strdup(o2pt->fr);
 	}
 
-    if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
+    if(!strcmp(origin, "CAdmin")) {
+		free(origin);
+		return ALL_ACOP;
+	}
 
 	if(rtnode->ty == RT_ACP) {
 		acop = (acop | get_acop_origin(o2pt, rtnode, 1));
+		free(origin);
 		return acop;
 	}
 
@@ -805,6 +808,8 @@ int get_acop(oneM2MPrimitive *o2pt, RTNode *rtnode) {
 			acop = (acop | get_acop_origin(o2pt, acp, 0));
 		}
 	}
+
+	free(origin);
 	return acop;
 }
 
@@ -818,9 +823,10 @@ int get_acop_macp(oneM2MPrimitive *o2pt, RTNode *rtnode){
 		origin = strdup(o2pt->fr);
 	}
 
-	if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
-
-	if(!strcmp(origin, "CAdmin")) return ALL_ACOP;
+	if(!strcmp(origin, "CAdmin")) {
+		free(origin);
+		return ALL_ACOP;
+	}
 
 	cJSON *macp = cJSON_GetObjectItem(rtnode->obj, "macp");
 	if(!macp) return 0;
@@ -836,11 +842,11 @@ int get_acop_macp(oneM2MPrimitive *o2pt, RTNode *rtnode){
 		}
 	}
 
+	free(origin);
 	return acop;
 }
 
 int check_acco(cJSON *acco, char *ip){
-	logger("UTIL", LOG_LEVEL_DEBUG, "check_acco : %s", ip);
 	if(!acco) return 1;
 	if(!ip) return 1;
 
@@ -854,7 +860,6 @@ int check_acco(cJSON *acco, char *ip){
 	int mask = 0xFFFFFFFF;
 
 	cJSON_ArrayForEach(pjson, ipv4){
-		logger("UTIL", LOG_LEVEL_DEBUG, "check_acco/ipv4 : %s", pjson->valuestring);
 		ip_str = strdup(pjson->valuestring);
 		mask = 1;
 
@@ -948,6 +953,7 @@ int get_acop_origin(oneM2MPrimitive *o2pt, RTNode *acp_rtnode, int flag) {
 			}
 		}
 	}
+	free(origin);
 	return ret_acop;
 }
 
@@ -1057,12 +1063,21 @@ int check_aei_invalid(oneM2MPrimitive *o2pt) {
 		cJSON *item = cJSON_GetArrayItem(cjson, i);
 		char *origin = strdup(item->valuestring);
 		if(origin[strlen(origin)-1] == '*') {
-			if(!strncmp(aei, origin, strlen(origin)-1)) return 0;
-		} else if(!strcmp(origin, aei)) return 0;
+			if(!strncmp(aei, origin, strlen(origin)-1)) {
+				cJSON_Delete(cjson);
+				free(origin);
+				return 0;
+			}
+		} else if(!strcmp(origin, aei)){
+			cJSON_Delete(cjson);
+			free(origin);
+			return 0;
+		} 
 
 		free(origin); origin = NULL;
 	}
 	o2pt->rsc = RSC_BAD_REQUEST;
+	cJSON_Delete(cjson);
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = strdup("{\"m2m:dbg\":\"originator is invalid\"}");
 	return -1;
@@ -1316,7 +1331,6 @@ int validate_grp_update(oneM2MPrimitive *o2pt, cJSON *grp_old, cJSON *grp_new){
 
 	int mt = 0;
 	int csy = DEFAULT_CONSISTENCY_POLICY;
-	logger("UTIL", LOG_LEVEL_DEBUG, "m2m : %s", cJSON_Print(grp_new));
 
 	if(pjson = cJSON_GetObjectItem(grp_new, "mt")){
 		mt = pjson->valueint;
@@ -1539,6 +1553,8 @@ void free_o2pt(oneM2MPrimitive *o2pt){
 		free(o2pt->fopt);
 	if(o2pt->rvi)
 		free(o2pt->rvi);
+	if(o2pt->ip)
+		free(o2pt->ip);
 	if(o2pt->cjson_pc)
 		cJSON_Delete(o2pt->cjson_pc);
 	free(o2pt);
@@ -2062,6 +2078,12 @@ int validate_acpi(oneM2MPrimitive *o2pt, cJSON *acpiAttr, Operation op){
 	return RSC_OK;
 }
 
+/**
+ * @brief validate acr attribute especially acip
+ * @param o2pt oneM2M request primitive
+ * @param acr_attr acr attribute cJSON object
+ * @return RSC_OK if valid, else if invalid
+*/
 int validate_acr(oneM2MPrimitive *o2pt, cJSON *acr_attr){
 	cJSON *acr = NULL;
 	cJSON *acop = NULL;
@@ -2242,17 +2264,6 @@ int validate_cin(oneM2MPrimitive *o2pt, cJSON *parent_cnt, cJSON *cin, Operation
 	cJSON *pjson = NULL, *pjson2 = NULL;
 	char *ptr = NULL;
 
-	if(!cin) {
-		handle_error(o2pt, RSC_CONTENTS_UNACCEPTABLE, "insufficient mandatory attribute(s)");
-		return RSC_CONTENTS_UNACCEPTABLE;
-	}
-
-	pjson = cJSON_GetObjectItem(cin, "con");
-	if(pjson && cJSON_IsNumber(pjson)){
-		handle_error(o2pt, RSC_BAD_REQUEST, "attribute `con` cannot be number");
-		return RSC_BAD_REQUEST;
-	}
-
 	cJSON *mbs = NULL;
 	cJSON *cs = NULL;
 	if(mbs = cJSON_GetObjectItem(parent_cnt, "mbs")){
@@ -2273,30 +2284,6 @@ int validate_cin(oneM2MPrimitive *o2pt, cJSON *parent_cnt, cJSON *cin, Operation
 int validate_sub(oneM2MPrimitive *o2pt, cJSON *sub, Operation op){
 	cJSON *pjson = NULL;
 	char *ptr = NULL;
-
-	if(!sub) {
-		handle_error(o2pt, RSC_CONTENTS_UNACCEPTABLE, "insufficient mandatory attribute(s)");
-		return RSC_CONTENTS_UNACCEPTABLE;
-	}
-
-	pjson = cJSON_GetObjectItem(sub, "exc");
-	if(pjson && pjson->type != cJSON_Number){
-		handle_error(o2pt, RSC_BAD_REQUEST, "attribute `exc` should be number");
-		return RSC_BAD_REQUEST;
-	}
-
-	pjson = cJSON_GetObjectItem(sub, "nu");
-	if(pjson && pjson->type != cJSON_Array){
-		handle_error(o2pt, RSC_BAD_REQUEST, "attribute `nu` should be Array");
-		return RSC_BAD_REQUEST;
-	}
-
-	pjson = cJSON_GetObjectItem(sub, "nct");
-	if(pjson && pjson->type != cJSON_Number){
-		handle_error(o2pt, RSC_BAD_REQUEST, "attribute `nct` should be number");
-		return RSC_BAD_REQUEST;
-	}
-
 
 	return RSC_OK;
 }
