@@ -1187,33 +1187,33 @@ cJSON* db_get_filter_criteria(char *to, cJSON *fc) {
     strcat(sql, buf);
 
     if(pjson = cJSON_GetObjectItem(fc, "cra")){
-        sprintf(buf, "ct>'%d' ", pjson->valueint);
+        sprintf(buf, "ct>'%s' ", pjson->valuestring);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "crb")){
-        sprintf(buf, "ct<='%d' ", pjson->valueint);
+        sprintf(buf, "ct<='%s' ", pjson->valuestring);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "exa")){
-        sprintf(buf, "et>'%d' ", pjson->valueint);
+        sprintf(buf, "et>'%s' ", pjson->valuestring);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "exb")){
-        sprintf(buf, "et<='%d' ", pjson->valueint);
+        sprintf(buf, "et<='%s' ", pjson->valuestring);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
 
     if(pjson = cJSON_GetObjectItem(fc, "ms")){
-        sprintf(buf, "lt>'%d' ", pjson->valueint);
+        sprintf(buf, "lt>'%s' ", pjson->valuestring);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
     if(pjson = cJSON_GetObjectItem(fc, "us")){
-        sprintf(buf, "lt<='%d' ", pjson->valueint);
+        sprintf(buf, "lt<='%s' ", pjson->valuestring);
         strcat(sql, buf);
         filterOptionStr(fo, sql);
     }
