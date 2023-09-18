@@ -32,7 +32,7 @@ RTNode* db_get_all_grp_rtnode();
 
 RTNode* db_get_cin_rtnode_list(RTNode *rtnode);
 cJSON *db_get_cin_laol(RTNode *parent_rtnode, int laol);
-cJSON* db_get_filter_criteria(char *to, cJSON *fc);
+cJSON* db_get_filter_criteria(oneM2MPrimitive *o2pt);
 cJSON *db_get_parent_filter_criteria(char *to, cJSON *fc);
 cJSON *db_get_child_filter_criteria(char *to, cJSON *fc);
 

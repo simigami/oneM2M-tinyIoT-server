@@ -1823,6 +1823,49 @@ char** http_split_uri(char *uri){
 	}
 }
 
+cJSON *getDiscoverableAcp(oneM2MPrimitive *o2pt, RTNode *rtnode){
+	cJSON *acp_list = cJSON_CreateArray();
+	while(rtnode){
+		if(rtnode->ty == RT_ACP){
+			if( (get_acop_origin(o2pt, rtnode, 0) & ACOP_DISCOVERY) == ACOP_DISCOVERY){
+				cJSON_AddItemToArray(acp_list, cJSON_CreateString(get_uri_rtnode(rtnode)));
+			}
+		}
+		if(rtnode->child){
+			cJSON *pjson = NULL;
+			cJSON *child_acp_list = getDiscoverableAcp(o2pt, rtnode->child);
+			cJSON_ArrayForEach(pjson, child_acp_list){
+				cJSON_AddItemToArray(acp_list, cJSON_CreateString(pjson->valuestring));
+			}
+			cJSON_Delete(child_acp_list);
+		}
+		rtnode = rtnode->sibling_right;
+	}
+	return acp_list;
+}
+
+cJSON *getAcopDiscovery(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop){
+	cJSON *acp_list = cJSON_CreateArray();
+
+	while(rtnode){
+		if(rtnode->ty == RT_ACP){
+			if( (get_acop_origin(o2pt, rtnode, 0) & acop) == acop){
+				cJSON_AddItemToArray(acp_list, cJSON_CreateString(get_uri_rtnode(rtnode)));
+			}
+		}
+		if(rtnode->child){
+			cJSON *pjson = NULL;
+			cJSON *child_acp_list = getAcopDiscovery(o2pt, rtnode->child, acop);
+			cJSON_ArrayForEach(pjson, child_acp_list){
+				cJSON_AddItemToArray(acp_list, cJSON_CreateString(pjson->valuestring));
+			}
+			cJSON_Delete(child_acp_list);
+		}
+		rtnode = rtnode->sibling_right;
+	}
+	return acp_list;
+}
+
 void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, int net) {
 	logger("UTIL", LOG_LEVEL_DEBUG, "notify_to_nu");
 	cJSON *sub = sub_rtnode->obj;
@@ -2116,7 +2159,8 @@ int validate_acr(oneM2MPrimitive *o2pt, cJSON *acr_attr){
 						*ptr = '/';
 						return handle_error(o2pt, RSC_BAD_REQUEST, "ip in attribute `acip` is invalid");
 					}
-					*ptr = '/';
+					if(ptr)
+						*ptr = '/';
 				}
 			}
 		}

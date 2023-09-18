@@ -1018,51 +1018,7 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	}
 	logger("O2M", LOG_LEVEL_DEBUG, "Filter Criteria : %s", cJSON_Print(o2pt->fc));
 
-	json = db_get_filter_criteria(o2pt->to, o2pt->fc);
-	bool valid = true;
-
-	cJSON_ArrayForEach(pjson, json){
-		if(cJSON_IsArray(pjson)){
-			cJSON_ArrayForEach(acpi_obj, pjson){
-				if(!has_privilege(o2pt->fr, acpi_obj->valuestring, ACOP_DISCOVERY)){
-					logger("O2M", LOG_LEVEL_DEBUG, "%s No privilege", pjson->string);
-					cJSON_AddItemToArray(noPrivList, cJSON_CreateString(pjson->string));
-					break;
-				}
-			}
-		}
-	}
-
-
-	if(pjson = cJSON_GetObjectItem(o2pt->fc, "ops")){
-		int ops = pjson->valueint;
-		cJSON_ArrayForEach(pjson2, json){
-			if(cJSON_IsArray(pjson2)){
-				cJSON_ArrayForEach(acpi_obj, pjson2){
-					if(!has_privilege(o2pt->fr, acpi_obj->valuestring, ops)){
-						cJSON_AddItemToArray(noPrivList, cJSON_CreateString(pjson->string));
-						break;
-					}
-				}
-			}
-		}
-	}
-	logger("O2M", LOG_LEVEL_DEBUG, "noPrivList : %s", cJSON_Print(noPrivList));
-	uril = cJSON_CreateArray();
-	cJSON_ArrayForEach(pjson, json){
-		valid = true;
-		cJSON_ArrayForEach(pjson2, noPrivList){
-			if(!strncmp(pjson->string, pjson2->valuestring, strlen(pjson2->valuestring))){
-				valid = false;
-				break;
-			}
-		}
-		if(valid)
-			cJSON_AddItemToArray(uril, cJSON_CreateString(pjson->string));
-	}
-	cJSON_Delete(noPrivList);
-	cJSON_Delete(json);
-
+	uril = db_get_filter_criteria(o2pt);
 	urilSize = cJSON_GetArraySize(uril);
 	cJSON *lim_obj = cJSON_GetObjectItem(fc, "lim");
 	cJSON *ofst_obj = cJSON_GetObjectItem(fc, "ofst");
@@ -1075,15 +1031,9 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		ofst = cJSON_GetNumberValue(ofst_obj);
 	}
 	
-	if(lim < urilSize - ofst){
+	if(urilSize > lim){
 		logger("O2M", LOG_LEVEL_DEBUG, "limit exceeded");
-		for(int i = 0 ; i < ofst ; i++){
-			cJSON_DeleteItemFromArray(uril, 0);
-		}
-		urilSize = cJSON_GetArraySize(uril);
-		for(int i = lim ; i < urilSize; i++){
-			cJSON_DeleteItemFromArray(uril, lim);
-		}
+		cJSON_DeleteItemFromArray(uril, urilSize);
 		o2pt->cnst = CS_PARTIAL_CONTENT;
 		o2pt->cnot = ofst + lim;
 	}

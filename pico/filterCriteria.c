@@ -119,4 +119,8 @@ void parse_filter_criteria(cJSON *fc){
             }
         }
     }
+
+    if(!cJSON_GetObjectItem(fc, "fo")){
+        cJSON_AddNumberToObject(fc, "fo", 1);
+    }
 }

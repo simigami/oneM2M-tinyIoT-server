@@ -21,6 +21,9 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) ;
 
+cJSON *getDiscoverableAcp(oneM2MPrimitive *o2pt, RTNode *rtnode);
+cJSON *getAcopDiscovery(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop);
+
 //Resource Tree
 void init_resource_tree();
 int add_child_resource_tree(RTNode *parent, RTNode *child);
