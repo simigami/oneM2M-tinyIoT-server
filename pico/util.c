@@ -1823,17 +1823,17 @@ char** http_split_uri(char *uri){
 	}
 }
 
-cJSON *getDiscoverableAcp(oneM2MPrimitive *o2pt, RTNode *rtnode){
+cJSON *getNonDiscoverableAcp(oneM2MPrimitive *o2pt, RTNode *rtnode){
 	cJSON *acp_list = cJSON_CreateArray();
 	while(rtnode){
 		if(rtnode->ty == RT_ACP){
-			if( (get_acop_origin(o2pt, rtnode, 0) & ACOP_DISCOVERY) == ACOP_DISCOVERY){
+			if( (get_acop_origin(o2pt, rtnode, 0) & ACOP_DISCOVERY) != ACOP_DISCOVERY){
 				cJSON_AddItemToArray(acp_list, cJSON_CreateString(get_uri_rtnode(rtnode)));
 			}
 		}
 		if(rtnode->child){
 			cJSON *pjson = NULL;
-			cJSON *child_acp_list = getDiscoverableAcp(o2pt, rtnode->child);
+			cJSON *child_acp_list = getNonDiscoverableAcp(o2pt, rtnode->child);
 			cJSON_ArrayForEach(pjson, child_acp_list){
 				cJSON_AddItemToArray(acp_list, cJSON_CreateString(pjson->valuestring));
 			}
@@ -1844,18 +1844,18 @@ cJSON *getDiscoverableAcp(oneM2MPrimitive *o2pt, RTNode *rtnode){
 	return acp_list;
 }
 
-cJSON *getAcopDiscovery(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop){
+cJSON *getNoPermAcopDiscovery(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop){
 	cJSON *acp_list = cJSON_CreateArray();
 
 	while(rtnode){
 		if(rtnode->ty == RT_ACP){
-			if( (get_acop_origin(o2pt, rtnode, 0) & acop) == acop){
+			if( (get_acop_origin(o2pt, rtnode, 0) & acop) != acop){
 				cJSON_AddItemToArray(acp_list, cJSON_CreateString(get_uri_rtnode(rtnode)));
 			}
 		}
 		if(rtnode->child){
 			cJSON *pjson = NULL;
-			cJSON *child_acp_list = getAcopDiscovery(o2pt, rtnode->child, acop);
+			cJSON *child_acp_list = getNoPermAcopDiscovery(o2pt, rtnode->child, acop);
 			cJSON_ArrayForEach(pjson, child_acp_list){
 				cJSON_AddItemToArray(acp_list, cJSON_CreateString(pjson->valuestring));
 			}

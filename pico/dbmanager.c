@@ -1255,32 +1255,41 @@ cJSON* db_get_filter_criteria(oneM2MPrimitive *o2pt) {
     }
 
     // get only discoverable resource
-    cJSON *acpiList =  getDiscoverableAcp(o2pt, rt->cb);
-    logger("DB", LOG_LEVEL_DEBUG, "discoveryacpiList : %s", cJSON_PrintUnformatted(acpiList));
-    strcat (sql, "(");
-    cJSON_ArrayForEach(ptr, acpiList){
-        if(cJSON_IsString(ptr)){
-            sprintf(buf, "acpi LIKE '%%\"%s\"%%' OR ", cJSON_GetStringValue(ptr));
-            strcat(sql, buf);
-        }
-    }
-    cJSON_Delete(acpiList);
-
-    strcat(sql, "acpi IS NULL)");
-    filterOptionStr(fo, sql);
-
-    if(pjson = cJSON_GetObjectItem(fc, "ops")){
-        strcat(sql, " (");
-        acpiList =  getAcopDiscovery(o2pt, rt->cb, pjson->valueint);
-        cJSON_ArrayForEach(ptr, acpiList){
+    cJSON *acpiList =  getNonDiscoverableAcp(o2pt, rt->cb);
+    cJSON *forbiddenURI =  getForbiddenUri(acpiList);
+    if(cJSON_GetArraySize(forbiddenURI) > 0){
+        strcat (sql, "(");
+        cJSON_ArrayForEach(ptr, forbiddenURI){
             if(cJSON_IsString(ptr)){
-                sprintf(buf, "acpi LIKE '%%\"%s\"%%' OR ", cJSON_GetStringValue(ptr));
+                sprintf(buf, "uri NOT LIKE '%s%%' OR ", cJSON_GetStringValue(ptr));
                 strcat(sql, buf);
             }
         }
-        strcat(sql, "acpi IS NULL)");
-        cJSON_Delete(acpiList);
+        sql[strlen(sql)- 3] = '\0';
+        strcat(sql, ")");
         filterOptionStr(fo, sql);
+    }
+
+    cJSON_Delete(acpiList);
+    cJSON_Delete(forbiddenURI);
+
+    if(pjson = cJSON_GetObjectItem(fc, "ops")){
+        acpiList =  getNoPermAcopDiscovery(o2pt, rt->cb, pjson->valueint);
+        forbiddenURI = getForbiddenUri(acpiList);
+        if(cJSON_GetArraySize(forbiddenURI) > 0){
+            strcat(sql, " (");
+            cJSON_ArrayForEach(ptr, forbiddenURI){
+                if(cJSON_IsString(ptr)){
+                    sprintf(buf, "uri NOT LIKE '%s%%' OR ", cJSON_GetStringValue(ptr));
+                    strcat(sql, buf);
+                }
+            }
+            sql[strlen(sql)- 3] = '\0';
+            strcat(sql, ")");
+            filterOptionStr(fo, sql);
+        }
+        cJSON_Delete(forbiddenURI);
+        cJSON_Delete(acpiList);
     }
     
 
@@ -1413,9 +1422,6 @@ cJSON* db_get_filter_criteria(oneM2MPrimitive *o2pt) {
     }
     strcat(sql, ";");
 
-    
-
-    logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
@@ -1447,4 +1453,45 @@ bool do_uri_exist(cJSON *list, char *uri){
         }
     }
     return false;
+}
+
+cJSON *getForbiddenUri(cJSON *acp_list){
+    char buf[256] = {0};
+    int rc = 0;
+    int cols = 0, bytes = 0, coltype = 0;
+    cJSON *json, *root;
+    sqlite3_stmt *res = NULL;
+    char *colname = NULL;
+    char sql[2048] = {0};
+    cJSON *ptr = NULL;
+    cJSON *result = cJSON_CreateArray();
+
+    if(cJSON_GetArraySize(acp_list) == 0){
+        return result;
+    }
+
+    strcat(sql, "SELECT uri FROM 'general' WHERE ");
+    cJSON_ArrayForEach(ptr, acp_list){
+        if(cJSON_IsString(ptr)){
+            sprintf(buf, "acpi LIKE '%%\"%s\"%%' OR ", cJSON_GetStringValue(ptr));
+            strcat(sql, buf);
+        }
+    }
+    sql[strlen(sql) - 3] = '\0';
+    strcat(sql, ";");
+    logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);
+        return 0;
+    }
+
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW){
+        cJSON_AddItemToArray(result, cJSON_CreateString(sqlite3_column_text(res, 0)));
+        rc = sqlite3_step(res);
+    }
+
+    sqlite3_finalize(res); 
+    return result;
 }

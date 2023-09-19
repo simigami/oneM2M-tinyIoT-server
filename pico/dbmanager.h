@@ -33,10 +33,9 @@ RTNode* db_get_all_grp_rtnode();
 RTNode* db_get_cin_rtnode_list(RTNode *rtnode);
 cJSON *db_get_cin_laol(RTNode *parent_rtnode, int laol);
 cJSON* db_get_filter_criteria(oneM2MPrimitive *o2pt);
-cJSON *db_get_parent_filter_criteria(char *to, cJSON *fc);
-cJSON *db_get_child_filter_criteria(char *to, cJSON *fc);
 
 int db_delete_one_cin_mni(RTNode *cnt);
+cJSON *getForbiddenUri(cJSON *acp_list);
 
 
 void db_test_and_bind_value(sqlite3_stmt *stmt, int index, cJSON *obj);
