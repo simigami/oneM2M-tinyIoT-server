@@ -7,6 +7,15 @@
 #include "logger.h"
 #include "config.h"
 
+char *log_buffer;
+
+void logger_init(){
+    log_buffer = malloc(sizeof(char) * LOG_BUFFER_SIZE);
+}
+
+void logger_free(){
+    free(log_buffer);
+}
 
 int logger(const char* tag,  LOGLEVEL level, const char *msg, ...){
 
@@ -53,13 +62,10 @@ int logger(const char* tag,  LOGLEVEL level, const char *msg, ...){
         t[24] = '\0';
         fprintf(stderr, "%s \033[0;%dm%-5s\033[0m [%s]: ", t, fcolor, llChar, tag);
 
-        t = malloc(sizeof(char) * LOG_BUFFER_SIZE);
-
         va_start(ap, msg);
-        charsCnt = vsnprintf(t, LOG_BUFFER_SIZE, msg, ap);
+        charsCnt = vsnprintf(log_buffer, LOG_BUFFER_SIZE, msg, ap);
         va_end(ap);
-        fprintf(stderr, "%s\n", t);
-        free(t);
+        fprintf(stderr, "%s\n", log_buffer);
     }
 
     return charsCnt;

@@ -1001,7 +1001,7 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	cJSON *root = cJSON_CreateObject();
 	cJSON *uril = NULL;
 	cJSON *json = NULL;
-	cJSON *noPrivList = cJSON_CreateArray();
+
 	int urilSize = 0;
 	if(check_privilege(o2pt, target_rtnode, ACOP_DISCOVERY) == -1){
 		uril = cJSON_CreateArray();
@@ -1016,7 +1016,6 @@ int discover_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		logger("O2M", LOG_LEVEL_WARN, "Empty Filter Criteria");
 		return RSC_BAD_REQUEST;
 	}
-	logger("O2M", LOG_LEVEL_DEBUG, "Filter Criteria : %s", cJSON_Print(o2pt->fc));
 
 	uril = db_get_filter_criteria(o2pt);
 	urilSize = cJSON_GetArraySize(uril);

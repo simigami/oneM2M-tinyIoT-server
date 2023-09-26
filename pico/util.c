@@ -1501,6 +1501,7 @@ int rsc_to_http_status(int rsc){
 			return 201;
 
 		case RSC_BAD_REQUEST:
+		case RSC_ORIGINATOR_HAS_NO_PRIVILEGE:
 		case RSC_NOT_FOUND:
 		case RSC_MAX_NUMBER_OF_MEMBER_EXCEEDED:
 			return 400;
@@ -1557,6 +1558,7 @@ void free_o2pt(oneM2MPrimitive *o2pt){
 		free(o2pt->ip);
 	if(o2pt->cjson_pc)
 		cJSON_Delete(o2pt->cjson_pc);
+	memset(o2pt, 0, sizeof(o2pt));
 	free(o2pt);
 	o2pt = NULL;
 }
@@ -2051,6 +2053,7 @@ bool is_attr_valid(cJSON *obj, ResourceType ty, char *err_msg){
 	general_attrs = cJSON_GetObjectItem(ATTRIBUTES, "general");
 	if(!attrs) return false;
 	if(!general_attrs) return false;
+	if(!cJSON_IsObject(attrs)) return false;
 
 	cJSON *pjson = cJSON_GetObjectItem(obj, get_resource_key(ty));
 	cJSON *attr = NULL;

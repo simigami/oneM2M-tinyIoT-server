@@ -101,7 +101,9 @@ void start_server(const char *port) {
 
     setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
     setsockopt(listenfd, IPPROTO_TCP, TCP_NODELAY, &option, sizeof(option));
-    setsockopt(listenfd, IPPROTO_TCP, TCP_QUICKACK, &option, sizeof(option));
+    #ifdef TCP_KEEPALIVE
+    setsockopt(listenfd, IPPROTO_TCP, TCP_KEEPALIVE, &option, sizeof(option));
+    #endif
     if(listenfd == -1) {
         perror("socket() error");
         exit(1);
@@ -264,8 +266,7 @@ void handle_http_request(HTTPRequest *req, int slotno) {
     
     
 	if(req->payload) {
-		o2pt->pc = (char *)malloc((req->payload_size + 1) * sizeof(char));
-		strcpy(o2pt->pc, req->payload);
+        o2pt->pc = strdup(req->payload);
 		o2pt->cjson_pc = cJSON_Parse(o2pt->pc);
 	} 
     
@@ -288,7 +289,7 @@ void handle_http_request(HTTPRequest *req, int slotno) {
 	if(req->uri) {
         o2pt->to = (char *)malloc((strlen(req->uri) + 1) * sizeof(char));
         strcpy(o2pt->to, req->uri+1);
-       logger("HTTP", LOG_LEVEL_DEBUG, "to: %s", o2pt->to);
+        logger("HTTP", LOG_LEVEL_DEBUG, "to: %s", o2pt->to);
 	} 
     
     o2pt->op = http_parse_operation(req->method);    
@@ -299,7 +300,7 @@ void handle_http_request(HTTPRequest *req, int slotno) {
     socklen_t client_addr_len = sizeof(client_addr);
     getpeername(clients[slotno], (struct sockaddr *)&client_addr, &client_addr_len);
     o2pt->ip = (char *)malloc((INET_ADDRSTRLEN + 1) * sizeof(char));
-     logger("HTTP", LOG_LEVEL_INFO, "Client connected %d.%d.%d.%d\n",
+    logger("HTTP", LOG_LEVEL_INFO, "Client connected %d.%d.%d.%d\n",
          (int)(client_addr.sin_addr.s_addr&0xFF), (int)((client_addr.sin_addr.s_addr&0xFF00)>>8), (int)((client_addr.sin_addr.s_addr&0xFF0000)>>16), (int)((client_addr.sin_addr.s_addr&0xFF000000)>>24));
 
     inet_ntop(AF_INET, &(client_addr.sin_addr.s_addr), o2pt->ip, INET_ADDRSTRLEN);

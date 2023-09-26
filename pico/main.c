@@ -33,6 +33,7 @@ int mqtt_thread_id;
 
 int main(int argc, char **argv) {
 	signal(SIGINT, stop_server);
+	logger_init();
 	ATTRIBUTES = cJSON_Parse(
 	"{ \
 		\"general\": {\"rn\": \"\", \"ri\": \"\", \"pi\": \"\", \"ct\": \"\", \"et\": \"\", \"lt\": \"\" , \"uri\": \"\" , \"acpi\": [\"\"], \"lbl\": [\"\"], \"ty\":0}, \
@@ -98,7 +99,7 @@ void route(oneM2MPrimitive *o2pt) {
 	}
 
 	if(o2pt->fc){
-		if(rsc = validate_filter_criteria(o2pt) > 4000){
+		if((rsc = validate_filter_criteria(o2pt)) > 4000){
 			return;
 		}
 	}
@@ -180,5 +181,6 @@ void stop_server(int sig){
 	free_all_resource(rt->cb);
 	free(rt);
 	logger("MAIN", LOG_LEVEL_INFO, "Done");
+	logger_free();
 	exit(0);
 }
