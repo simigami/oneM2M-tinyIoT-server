@@ -1,5 +1,5 @@
 CC=gcc
-RELCFLAGS = 
+RELCFLAGS = -g
 
 LIBS = -lpthread -lm -ldl
 

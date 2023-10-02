@@ -94,7 +94,7 @@ int has_privilege(oneM2MPrimitive *o2pt, char *acpi, ACOP acop);
 
 bool isMinDup(char **mid, int idx, char *new_mid);
 
-ResourceType http_parse_object_type(header_t *headers, int cnt);
+ResourceType http_parse_object_type(header_t *headers);
 ResourceType parse_object_type_cjson(cJSON *cjson);
 
 bool isFopt(char *str);

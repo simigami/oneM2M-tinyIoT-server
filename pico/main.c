@@ -22,8 +22,6 @@ ResourceTree *rt;
 void route(oneM2MPrimitive *o2pt);
 void stop_server(int sig);
 cJSON *ATTRIBUTES;
-cJSON *ACP_SUPPORT_ACR;
-cJSON *ACP_SUPPORT_ACCO;
 char *PORT = SERVER_PORT;
 int terminate = 0;
 #ifdef ENABLE_MQTT
@@ -64,6 +62,11 @@ int main(int argc, char **argv) {
 	}
 
 	init_server();
+
+	if(SERVER_TYPE == MN_CSE || SERVER_TYPE == ASN_CSE){
+		oneM2MPrimitive csr;	
+		http_send_get_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, "/", DEFAULT_REQUEST_HEADERS, "", "");
+	}
 	
 	#ifdef ENABLE_MQTT
 	mqtt_thread_id = pthread_create(&mqtt, NULL, mqtt_serve, "mqtt Client");
@@ -178,8 +181,10 @@ void stop_server(int sig){
 	logger("MAIN", LOG_LEVEL_INFO, "Closing DB...");
 	close_dbp();
 	logger("MAIN", LOG_LEVEL_INFO, "Cleaning ResourceTree...");
-	free_all_resource(rt->cb);
+	free_rtnode(rt->cb);
 	free(rt);
+	cJSON_Delete(ATTRIBUTES);
+
 	logger("MAIN", LOG_LEVEL_INFO, "Done");
 	logger_free();
 	exit(0);

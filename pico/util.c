@@ -271,8 +271,8 @@ int add_child_resource_tree(RTNode *parent, RTNode *child) {
 	return 1;
 }
 
-ResourceType http_parse_object_type(header_t *headers, int cnt) {
-	char *content_type = request_header(headers, cnt, "Content-Type");
+ResourceType http_parse_object_type(header_t *headers) {
+	char *content_type = search_header(headers, "Content-Type");
 	if(!content_type) return RT_MIXED;
 	char *str_ty = strstr(content_type, "ty=");
 	if(!str_ty) return RT_MIXED;
@@ -583,16 +583,6 @@ void log_runtime(double start) {
 
 void init_server() {
 	char poa[128] = {0};
-	if(SERVER_TYPE == MN_CSE){
-		logger("UTIL", LOG_LEVEL_DEBUG, "MN-CSE");
-		// oneM2MPrimitive csr;
-		// create_csr(&csr);
-		
-		// http_send_get_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, "/", DEFAULT_REQUEST_HEADERS, "", "");
-
-	} else if(SERVER_TYPE == IN_CSE){
-		logger("UTIL", LOG_LEVEL_DEBUG, "IN-CSE");
-	}
 
 	rt = (ResourceTree *)calloc(1, sizeof(rt));
 	
