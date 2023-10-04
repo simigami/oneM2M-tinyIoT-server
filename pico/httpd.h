@@ -31,6 +31,7 @@ typedef struct _request {
 
 typedef struct _response {
     int status_code;
+    char *protocol;
     char *status_msg;
     header_t *headers;
     char *payload;
@@ -57,8 +58,15 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port);
 
 // user shall implement this function
 void handle_http_request(HTTPRequest *req, int slotno);
-void http_send_get_request(char *host, int port, char *uri, char *header, char *qs, char *data);
 char *op_to_method(Operation op);
+void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *res);
+void add_header(char *key, char *value, header_t *header);
+
+void parse_http_request(HTTPRequest *req, char *packet);
+
+void free_HTTPRequest(HTTPRequest *req);
+void free_HTTPResponse(HTTPResponse *res);
+
 
 // Response
 #define HTTP_PROTOCOL_VERSION "HTTP/1.1"

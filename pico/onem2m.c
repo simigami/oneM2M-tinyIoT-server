@@ -21,7 +21,7 @@ extern ResourceTree *rt;
 void init_cse(cJSON* cse) {
 	char *ct = get_local_time(0);
 	char *csi = (char*)malloc(strlen(CSE_BASE_RI) + 2);
-	sprintf(csi, "/%s", CSE_BASE_RI);
+	sprintf(csi, "%s", CSE_BASE_RI);
 
 	cJSON *srt = cJSON_CreateArray();
 	cJSON_AddItemToArray(srt, cJSON_CreateNumber(1));
@@ -39,7 +39,11 @@ void init_cse(cJSON* cse) {
 	cJSON_AddStringToObject(cse, "rn", CSE_BASE_NAME);
 	cJSON_AddNumberToObject(cse, "cst", SERVER_TYPE);
 	cJSON_AddItemToObject(cse, "srt", srt);
-	cJSON_AddStringToObject(cse, "srv", "2a");
+
+	cJSON *srv = cJSON_CreateArray();
+	cJSON_AddItemToArray(srv, cJSON_CreateString("2a"));
+
+	cJSON_AddItemToObject(cse, "srv", srv);
 	cJSON_AddItemToObject(cse, "pi", cJSON_CreateNull());
 	cJSON_AddNumberToObject(cse, "ty", RT_CSE);
 	cJSON_AddStringToObject(cse, "uri", CSE_BASE_NAME);
@@ -50,6 +54,29 @@ void init_cse(cJSON* cse) {
 	
 	free(ct); ct = NULL;
 	free(csi); csi = NULL;
+}
+
+void init_csr(cJSON *csr){
+	char buf[256] = {0};
+
+	sprintf(buf, "/%s/%s", CSE_BASE_RI, CSE_BASE_NAME);
+	cJSON_AddItemToObject(csr, "cb", cJSON_CreateString(buf));
+	cJSON *dcse = cJSON_CreateArray();
+	cJSON_AddItemToObject(csr, "dcse", dcse);
+
+	cJSON *csz =  cJSON_CreateArray();
+	cJSON_AddItemToArray(csz, cJSON_CreateString("application/json"));
+
+
+	cJSON_SetIntValue(cJSON_GetObjectItem(csr, "ty"), RT_CSR);
+	cJSON_SetValuestring(cJSON_GetObjectItem(csr, "rn"), CSE_BASE_RI);
+	cJSON_DeleteItemFromObject(csr, "ri");
+	cJSON_DeleteItemFromObject(csr, "lt");
+	cJSON_DeleteItemFromObject(csr, "ct");
+	cJSON_DeleteItemFromObject(csr, "et");
+	cJSON_DeleteItemFromObject(csr, "srt");
+	cJSON_DeleteItemFromObject(csr, "ty");
+	cJSON_DeleteItemFromObject(csr, "pi");
 }
 
 void add_general_attribute(cJSON *root, RTNode *parent_rtnode, ResourceType ty){

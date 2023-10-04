@@ -145,6 +145,7 @@ int update_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int update_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 
 void init_cse(cJSON* cse);
+void init_csr(cJSON *csr);
 
 //resource tree
 RTNode* create_rtnode(cJSON *resource, ResourceType ty);
@@ -155,7 +156,7 @@ void free_rtnode_list(RTNode *rtnode);
 RTNode* restruct_resource_tree(RTNode *node, RTNode *list);
 RTNode* latest_cin_list(RTNode *cinList, int num); // use in viewer API
 RTNode* find_latest_oldest(RTNode* node, int flag);
-void set_node_uri(RTNode* rtnode);
+
 
 //etc
 int update_cnt_cin(RTNode *cnt_rtnode, RTNode *cin_rtnode, int sign);
@@ -168,6 +169,7 @@ void cjson_merge_objs_by_operation(cJSON* obj1, cJSON* obj2, FilterOperation fo)
 bool isValidFcAttr(char* attr);
 void parse_filter_criteria(cJSON *fc);
 void route(oneM2MPrimitive *o2pt);
+void add_general_attribute(cJSON *root, RTNode *parent_rtnode, ResourceType ty);
 
 #define ALL_ACOP ACOP_CREATE + ACOP_RETRIEVE + ACOP_UPDATE + ACOP_DELETE + ACOP_NOTIFY + ACOP_DISCOVERY
 

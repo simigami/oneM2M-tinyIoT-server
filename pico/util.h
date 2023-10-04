@@ -24,6 +24,11 @@ void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) ;
 cJSON *getNonDiscoverableAcp(oneM2MPrimitive *o2pt, RTNode *rtnode);
 cJSON *getNoPermAcopDiscovery(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop);
 
+// Remote-CSE
+int register_remote_cse();
+int create_local_csr();
+int deRegister_csr();
+
 //Resource Tree
 void init_resource_tree();
 int add_child_resource_tree(RTNode *parent, RTNode *child);

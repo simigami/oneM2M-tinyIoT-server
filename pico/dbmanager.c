@@ -45,7 +45,7 @@ int init_dbp(){
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS csr ( \
         ri VARCHAR(200), cst INT, poa VARCHAR(200), cb VARCHAR(200), csi VARCHAR(200), mei VARCHAR(45), \
-        tri VARCHAR(45), rr INT, nl VARCHAR(45), srv VARCHAR(45));");
+        tri VARCHAR(45), rr INT, nl VARCHAR(45), srv VARCHAR(45), dcse VARCHAR(200), csz VARCHAR(100)  );");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table[csr]: %s", err_msg);
@@ -115,7 +115,7 @@ int init_dbp(){
     }
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS cb ( \
-        ri VARCHAR(40), cst VARCHAR(45), csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45), rr INT);");
+        ri VARCHAR(40), cst INT, csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45), rr INT);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table[cb]: %s", err_msg);
@@ -328,7 +328,7 @@ int db_store_resource(cJSON *obj, char *uri){
         logger("DB", LOG_LEVEL_ERROR, "Failed Insert SQL: %s, msg : %s", sql, err_msg);
         sqlite3_finalize(stmt);
         sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
-        return 0;
+        return -1;
     }
 
     sqlite3_finalize(stmt);
@@ -351,12 +351,14 @@ int db_store_resource(cJSON *obj, char *uri){
 
     sql[strlen(sql)-1] = ')';
     strcat(sql, ";");
+
+    logger("DB", LOG_LEVEL_DEBUG, "SQL: %s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "prepare error");
         free(sql);
         sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
-        return 0;
+        return -1;
     }
 
     for(int i = 0 ; i < cJSON_GetArraySize(specific_attr) ; i++){
@@ -375,7 +377,7 @@ int db_store_resource(cJSON *obj, char *uri){
         free(sql);
         sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         sqlite3_finalize(stmt);
-        return 0;
+        return -1;
     }
     sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &err_msg);
     
@@ -1479,7 +1481,6 @@ cJSON *getForbiddenUri(cJSON *acp_list){
     }
     sql[strlen(sql) - 3] = '\0';
     strcat(sql, ";");
-    logger("DB", LOG_LEVEL_DEBUG, "%s", sql);
     rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Failed select, %d", rc);

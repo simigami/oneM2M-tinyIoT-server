@@ -380,31 +380,6 @@ void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
     send_http_request(nt->host, nt->port, &req, NULL);
 }
 
-void http_send_get_request(char *host, int port, char *uri, char *header, char *qs, char *data){
-    struct sockaddr_in serv_addr;
-    int sock = socket(PF_INET, SOCK_STREAM, 0);
-    if(sock == -1) {
-        logger("HTTP", LOG_LEVEL_ERROR, "socket error");
-        return;
-    }
-    char buffer[BUF_SIZE];
-    sprintf(buffer, "GET %s%s %s\r\n%s\r\n%s\r\n", uri, qs, HTTP_PROTOCOL_VERSION, header, data);
-
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(host);
-    serv_addr.sin_port = htons(port);
-
-    if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
-        logger("HTTP", LOG_LEVEL_ERROR, "connect error");
-        return;
-    }
-    logger("http", LOG_LEVEL_DEBUG, "%s", buffer);
-
-    send(sock, buffer, sizeof(buffer), 0);
-    close(sock);
-}
-
 void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port){
     struct sockaddr_in serv_addr;
         
@@ -448,8 +423,8 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port){
 
 void parse_http_request(HTTPRequest *req, char *packet){
     char *ptr = NULL;
-
-    req->method = strdup(strtok(packet, " \t\r\n"));
+    
+    req->method = op_to_method(http_parse_operation(strdup(strtok(packet, " \t\r\n"))));
     req->uri = strdup(strtok(NULL, " \t"));
     req->prot = strdup(strtok(NULL, " \t\r\n"));   
     if(!req->uri) {
@@ -497,9 +472,9 @@ void parse_http_request(HTTPRequest *req, char *packet){
 
 void parse_http_response(HTTPResponse *res, char *packet){
     char *ptr = NULL;
-
-    res->status_code = atoi(strtok(packet, " \t\r\n"));
-    res->status_msg = strdup(strtok(NULL, " \t\r\n"));
+    res->protocol = strdup(strtok(packet, " "));
+    res->status_code = atoi(strtok(NULL, " "));
+    res->status_msg = strdup(strtok(NULL, "\r\n"));
 
     res->headers = (header_t *) calloc(sizeof(header_t),1 );
     header_t *h = res->headers;
@@ -527,21 +502,29 @@ void parse_http_response(HTTPResponse *res, char *packet){
     if(t && t[0] == '\r') t+=2; // now the *t shall be the beginning of user payload
     t2 = search_header(res->headers, "Content-Length"); // and the related header if there is
     if(t) res->payload = strdup(t);
-    res->payload_size = t2 ? atol(t2) : 0;
+    res->payload_size = t2 ? atol(t2) : 0;  
 }
 
 void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *res){
     struct sockaddr_in serv_addr;
+    char *bs = "";
+    memset(&serv_addr, 0, sizeof(serv_addr));
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     int rcvd = 0;
 
     if(sock == -1) {
         logger("HTTP", LOG_LEVEL_ERROR, "socket error");
+        res->status_code = 500;
         return;
     }
-    
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
+    serv_addr.sin_addr.s_addr = inet_addr(host);
+        
     if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
         logger("HTTP", LOG_LEVEL_ERROR, "connect error");
+        res->status_code = 999;
+        close(sock);
         return;
     }
 
@@ -551,17 +534,31 @@ void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *re
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(tv));
 
     char header[2048] = {'\0'};
+    char buffer[BUF_SIZE] = {0};
     
+    sprintf(buffer, "%s:%d", host, port);
+    set_header("Host", buffer, header);
     header_t *h = req->headers;
     while(h)
     {
         set_header(h->name, h->value, header);
         h = h->next;
     }
+    char contentSize[32] = {0};
+    if(req->payload_size > 0) {
+        sprintf(contentSize, "%d", req->payload_size);
+        set_header("Content-Length", contentSize, header);
+    }
 
-    char buffer[BUF_SIZE];
-    sprintf(buffer, "%s %s%s %s\r\n%s\r\n%s\r\n", req->method, req->uri, req->qs, HTTP_PROTOCOL_VERSION, header, req->payload);
-    logger("http", LOG_LEVEL_DEBUG, "%s", buffer);
+    if(req->qs == NULL) req->qs = bs;
+
+    sprintf(buffer, "%s %s%s %s\r\n%s\r\n", req->method, req->uri, req->qs, HTTP_PROTOCOL_VERSION, header);
+    if(req->payload) {
+        strcat(buffer, req->payload);
+        strcat(buffer, "\r\n");
+    }
+
+    if(req->qs == bs) req->qs = NULL;
 
     send(sock, buffer, sizeof(buffer), 0);
 
@@ -581,11 +578,11 @@ void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *re
         res->status_code = 500;
     } else { // message received
         parse_http_response(res, buffer);
-        if(req->payload_size > 0 && ((req->payload == NULL) || strlen(req->payload) == 0) ) {   // if there is payload but it is not in the buffer
-            req->payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
-            recv(sock, req->payload, MAX_PAYLOAD_SIZE, 0); // receive payload
+        if(res->payload_size > 0 && ((res->payload == NULL) || strlen(res->payload) == 0) ) {   // if there is payload but it is not in the buffer
+            res->payload = (char *)calloc(MAX_PAYLOAD_SIZE, sizeof(char));
+            recv(sock, res->payload, MAX_PAYLOAD_SIZE, 0); // receive payload
         }
-        if(req->payload) normalize_payload(req->payload );
+        if(res->payload) normalize_payload(res->payload );
 
     }
     close(sock);
@@ -616,7 +613,6 @@ char *op_to_method(Operation op){
 }
 
 void add_header(char *key, char *value, header_t *header){
-    if(!header) header = (header_t *) calloc(sizeof(header_t), 1);
     header_t *h = header;
     while(h->next) h = h->next;
     h->next = (header_t *) calloc(sizeof(header_t), 1);
@@ -627,7 +623,6 @@ void add_header(char *key, char *value, header_t *header){
 void free_HTTPRequest(HTTPRequest *req){
     header_t *h = req->headers;
     header_t *tmp;
-    if(req->method) free(req->method);
     if(req->uri) free(req->uri);
     if(req->prot) free(req->prot);
     if(req->payload) free(req->payload);

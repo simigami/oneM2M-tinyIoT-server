@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 		\"m2m:acp\": {\"ri\":\"\", \"pv\":{\"acr\":[{\"acor\":[\"\"],\"acop\":0, \"acco\":{\"acip\":{\"ipv4\":[\"\"], \"ipv6\":[\"\"]}}}]}, \"pvs\":{\"acr\":[{\"acor\":[\"\"],\"acop\":0, \"acco\":{\"acip\":{\"ipv4\":[\"\"], \"ipv6\":[\"\"]}}}]}}, \
 		\"m2m:sub\": {\"ri\":\"\", \"enc\":{\"net\":[1]}, \"exc\":0, \"nu\":[\"\"], \"gpi\":0, \"nfu\":0, \"bn\":0, \"rl\":0, \"sur\":0, \"nct\":0, \"cr\":\"\", \"su\":\"\"},\
 		\"m2m:grp\": {\"ri\":\"\", \"cr\":\"\", \"mt\":0, \"cnm\":0, \"mnm\":0, \"mid\":[\"\"], \"macp\":[\"\"], \"mtv\":true, \"csy\":0, \"gn\":0}, \
-		\"m2m:csr\": {\"ri\":\"\", \"cst\":0, \"poa\":[\"\"], \"cb\":\"\", \"csi\":\"\", \"mei\":\"\", \"tri\":\"\", \"rr\":true, \"nl\":\"\", \"srv\":[\"\"]},\
+		\"m2m:csr\": {\"ri\":\"\", \"cst\":0, \"poa\":[\"\"], \"cb\":\"\", \"dcse\":[\"\"], \"csi\":\"\", \"mei\":\"\", \"tri\":\"\", \"csz\":[\"\"], \"rr\":true, \"nl\":\"\", \"srv\":[\"\"]},\
 		\"m2m:cb\": {\"ri\":\"\", \"cst\":0, \"csi\":\"\", \"srt\":[\"\"], \"poa\":[\"\"], \"srv\":[0], \"rr\":true} \
 	 }"
     );
@@ -64,8 +64,15 @@ int main(int argc, char **argv) {
 	init_server();
 
 	if(SERVER_TYPE == MN_CSE || SERVER_TYPE == ASN_CSE){
-		oneM2MPrimitive csr;	
-		http_send_get_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, "/", DEFAULT_REQUEST_HEADERS, "", "");
+		if ( register_remote_cse() != 0 ) {
+			logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE registration failed");
+			return 0;
+		}
+		
+		if( create_local_csr() ){
+			logger("MAIN", LOG_LEVEL_ERROR, "Local CSR creation failed");
+			return 0;
+		}
 	}
 	
 	#ifdef ENABLE_MQTT
@@ -175,6 +182,13 @@ int handle_onem2m_request(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 
 void stop_server(int sig){
 	logger("MAIN", LOG_LEVEL_INFO, "Shutting down server...");
+
+	logger("MAIN", LOG_LEVEL_INFO, "De-registrating cse...");
+	if(SERVER_TYPE == MN_CSE || SERVER_TYPE == ASN_CSE){
+		if ( deRegister_csr() != 0 ) {
+			logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE de-registration failed");
+		}
+	}
 	#ifdef ENABLE_MQTT
 	pthread_kill(mqtt, SIGINT);
 	#endif

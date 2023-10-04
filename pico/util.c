@@ -6,7 +6,9 @@
 #include <math.h>
 #include <ctype.h>
 #include <sys/timeb.h>
+#include <sys/ioctl.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 
 #include "onem2m.h"
 #include "util.h"
@@ -589,13 +591,37 @@ void init_server() {
 	cJSON *cse;
 
 	cse = db_get_resource(CSE_BASE_RI, RT_CSE);
+	
 
 	if(!cse){
 		cse = cJSON_CreateObject();
 		init_cse(cse);
 		db_store_resource(cse, CSE_BASE_NAME);
+	}else{
+		cJSON *rr = cJSON_GetObjectItem(cse, "rr");
+		if(rr->valueint == 1)
+			rr->type = cJSON_True;
+		else
+			rr->type = cJSON_False;
+			// cJSON_SetBoolValue(cJSON_GetObjectItem(cse, "rr"), false);
 	}
-	sprintf(poa, "http://%s:%s", SERVER_HOST, SERVER_PORT);
+	struct ifreq ifr;
+	char ipstr[40];
+	int s = socket(AF_INET, SOCK_DGRAM, 0);
+	strncpy(ifr.ifr_name, NIC_NAME, IFNAMSIZ);
+
+	if (ioctl(s, SIOCGIFADDR, &ifr) < 0) {
+		printf("Error");
+	} else {
+		inet_ntop(AF_INET, ifr.ifr_addr.sa_data+2,
+				ipstr,sizeof(struct sockaddr));
+	}
+	
+
+	logger("UTIL", LOG_LEVEL_INFO, "Server IP : %s", ipstr);
+	close(s);
+ 
+	sprintf(poa, "http://%s:%s", ipstr, SERVER_PORT);
 
 	cJSON *poa_obj = cJSON_CreateArray();
 	cJSON_AddItemToArray(poa_obj, cJSON_CreateString(poa));
@@ -1918,7 +1944,7 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 			// } else if(*p == '/') {
 			// 	strcpy(nt->target, p);
 			// }
-		} 
+		}
 
 		switch(nt->prot){
 			case PROT_HTTP:
@@ -2351,6 +2377,261 @@ int validate_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode, cJSON *csr, Opera
 	
 
 	return RSC_OK;
+}
+
+int register_remote_cse(){
+	char buf[1024];
+	HTTPRequest *req = (HTTPRequest *)malloc(sizeof(HTTPRequest));
+	HTTPResponse *res = (HTTPResponse *)malloc(sizeof(HTTPResponse));
+	sprintf(buf, "/%s/%s", REMOTE_CSE_NAME, CSE_BASE_RI);
+
+	req->method = "GET";
+	req->uri = strdup(buf);
+	req->qs = NULL;
+	req->prot = strdup("HTTP/1.1");
+	req->payload = NULL;
+	req->payload_size = 0;
+	req->headers = calloc(sizeof(header_t), 1);
+	add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
+	add_header("X-M2M-RI", "check-cse-registered", req->headers);
+	add_header("Accept", "application/json", req->headers);
+	add_header("Content-Type", "application/json", req->headers);
+	add_header("X-M2M-RVI", "2a", req->headers);
+
+	send_http_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, req, res);
+	logger("UTIL", LOG_LEVEL_DEBUG, "Remote CSE registration check: %d", res->status_code);
+	if(res->status_code == 999 || res->status_code == 500){
+		logger("UTIL", LOG_LEVEL_ERROR, "Remote CSE is not running");
+		free_HTTPRequest(req);
+		free_HTTPResponse(res);
+		return res->status_code;
+	}
+
+	if(res->status_code != 200 ){ 
+		free_HTTPRequest(req);
+		free_HTTPResponse(res);
+		logger("UTIL", LOG_LEVEL_DEBUG, "Remote CSE is not registered");
+		req = (HTTPRequest *)calloc(sizeof(HTTPRequest), 1);
+		res = (HTTPResponse *)calloc(sizeof(HTTPResponse), 1);
+		//register MN-CSE
+		req->method = "POST";
+		sprintf(buf, "/%s", REMOTE_CSE_NAME);
+		req->uri = strdup(buf);
+		req->qs = NULL;
+		req->prot = strdup("HTTP/1.1");
+
+		req->headers = calloc(sizeof(header_t), 1);
+		add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
+		add_header("X-M2M-RI", "register-cse", req->headers);
+		add_header("Accept", "application/json", req->headers);
+		add_header("Content-Type", "application/json;ty=16", req->headers);
+		add_header("X-M2M-RVI", "2a", req->headers);
+
+		cJSON *root = cJSON_CreateObject();
+		cJSON *csr = cJSON_Duplicate(rt->cb->obj, 1);
+		init_csr(csr);
+		cJSON_AddItemToObject(root, get_resource_key(RT_CSR), csr);
+		req->payload =  cJSON_PrintUnformatted(root);
+		cJSON_Delete(root);
+
+		req->payload_size = strlen(req->payload);
+		send_http_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, req, res);
+
+		char *rsc = 0;
+		if( rsc = search_header(res->headers, "X-M2M-RSC")){
+			if( atoi(rsc) != RSC_CREATED){
+				logger("UTIL", LOG_LEVEL_ERROR, "Remote CSE registration failed");
+				free_HTTPRequest(req);
+				free_HTTPResponse(res);
+				return atoi(rsc);
+			}
+		}else{
+			logger("UTIL", LOG_LEVEL_ERROR, "Remote CSE registration failed");
+			free_HTTPRequest(req);
+			free_HTTPResponse(res);
+			return -1;
+		}
+		
+	}
+
+	free_HTTPRequest(req);
+	free_HTTPResponse(res);
+
+	return 0;
+}
+
+int create_local_csr(){
+	char buf[256] = {0};
+
+	HTTPRequest *req = (HTTPRequest *)malloc(sizeof(HTTPRequest));
+	HTTPResponse *res = (HTTPResponse *)malloc(sizeof(HTTPResponse));
+
+	req->method = "GET";
+	req->uri = strdup("/"REMOTE_CSE_NAME);
+	req->qs = NULL;
+	req->prot = strdup("HTTP/1.1");
+	req->payload = NULL;
+	req->payload_size = 0;
+	req->headers = calloc(sizeof(header_t), 1);
+	add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
+	add_header("X-M2M-RI", "retrieve-cb", req->headers);
+	add_header("Accept", "application/json", req->headers);
+	add_header("Content-Type", "application/json", req->headers);
+	add_header("X-M2M-RVI", "2a", req->headers);
+
+	send_http_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, req, res);
+
+	if(res->status_code != 200 ){ 
+		logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE is not online : %d", res->status_code);
+		free_HTTPRequest(req);
+		free_HTTPResponse(res);
+		return res->status_code;
+	}
+	
+	cJSON * root = cJSON_Parse(res->payload);
+	cJSON *remote_cb = cJSON_GetObjectItem(root, get_resource_key(RT_CSE));
+
+	if(!remote_cb){
+		logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE not valid");
+		free_HTTPRequest(req);
+		free_HTTPResponse(res);
+		return -1;
+	}
+
+
+
+	cJSON *remote_ri = cJSON_GetObjectItem(remote_cb, "ri");
+	cJSON *remote_rn = cJSON_GetObjectItem(remote_cb, "rn");
+	cJSON *remote_csi = cJSON_GetObjectItem(remote_cb, "csi");
+	if(!remote_rn || !remote_csi){
+		logger("UTIL", LOG_LEVEL_ERROR, "Remote CSE not valid");
+		free_HTTPRequest(req);
+		free_HTTPResponse(res);
+		return -1;
+	}
+
+	cJSON *csr = cJSON_Duplicate(remote_cb, 1);
+	cJSON_DeleteItemFromObject(csr, "ct");
+	cJSON_DeleteItemFromObject(csr, "lt");
+	cJSON_DeleteItemFromObject(csr, "et");
+	cJSON_DeleteItemFromObject(csr, "acpi");
+	cJSON_DeleteItemFromObject(csr, "pi");
+	cJSON_DeleteItemFromObject(csr, "srt");
+	cJSON_DeleteItemFromObject(csr, "ctm");
+
+
+	cJSON_SetValuestring(cJSON_GetObjectItem(csr, "rn"), remote_ri->valuestring);
+	cJSON_SetValuestring(cJSON_GetObjectItem(csr, "ri"), remote_rn->valuestring);
+
+	cJSON_SetIntValue(cJSON_GetObjectItem(csr, "ty"), RT_CSR);
+
+	sprintf(buf, "%s/%s", remote_csi->valuestring, remote_rn->valuestring);
+	cJSON_AddItemToObject(csr, "cb", cJSON_CreateString(buf));
+
+	cJSON_Delete(root);
+
+	add_general_attribute(csr, rt->cb, RT_CSR);
+
+	// int rsc = validate_csr(o2pt, parent_rtnode, csr, OP_CREATE);
+	// if(rsc != RSC_OK){
+	// 	cJSON_Delete(root);
+	// 	return rsc;
+	// }
+
+	char *ptr = malloc(1024);
+	sprintf(ptr, "%s/%s", CSE_BASE_NAME, remote_rn->valuestring);	
+
+	int result = db_store_resource(csr, ptr);
+	if(result == -1) {
+		cJSON_Delete(root);
+		free(ptr);	ptr = NULL;
+		return RSC_INTERNAL_SERVER_ERROR;
+	}
+	free(ptr);	ptr = NULL;
+
+	RTNode* rtnode = create_rtnode(csr, RT_CSR);
+	add_child_resource_tree(rt->cb, rtnode);
+	//TODO: update descendent cse if update is needed
+
+	return 0;
+}
+
+int deRegister_csr(){
+	RTNode *rtnode = rt->cb->child;
+	while(rtnode){
+		if(rtnode->ty == RT_CSR){
+			cJSON *csr = rtnode->obj;
+			cJSON *csi = cJSON_GetObjectItem(csr, "csi");
+			cJSON *cb = cJSON_GetObjectItem(csr, "cb");
+
+			cJSON *poa = cJSON_GetObjectItem(csr, "poa");
+			cJSON *pjson = NULL;
+			cJSON_ArrayForEach(pjson, poa){
+				char *poa_str = pjson->valuestring;
+				Protocol prot = PROT_HTTP;
+
+				if(!strncmp(poa_str, "http://", 7)) {
+					prot = PROT_HTTP;
+				}else if(!strncmp(poa_str, "mqtt://", 7)) {
+					prot = PROT_MQTT;
+				}
+				char *p = poa_str + 7;
+				char *ptr = strchr(p, ':');
+				char *host = NULL;
+				int port = 80;
+				if(ptr){
+					*ptr = '\0';
+					port = atoi(ptr+1);
+				}
+				host = strdup(p);
+
+				*ptr = ':';
+
+				char buf[1024] = {0};
+
+				if(prot == PROT_HTTP){
+
+					HTTPRequest *req = (HTTPRequest *)malloc(sizeof(HTTPRequest));
+					HTTPResponse *res = (HTTPResponse *)malloc(sizeof(HTTPResponse));
+
+					req->method = "DELETE";
+					sprintf(buf, "/~%s/%s", cb->valuestring , CSE_BASE_RI);
+					req->uri = strdup(buf);
+					req->qs = NULL;
+					req->prot = strdup("HTTP/1.1");
+					req->payload = NULL;
+					req->payload_size = 0;
+					req->headers = calloc(sizeof(header_t), 1);
+					add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
+					add_header("X-M2M-RI", "delete-csr", req->headers);
+					add_header("Accept", "application/json", req->headers);
+					add_header("Content-Type", "application/json", req->headers);
+					add_header("X-M2M-RVI", "2a", req->headers);
+
+					send_http_request(host, port, req, res);
+
+					if(res->status_code != 200 ){ 
+						logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE is not online : %d", res->status_code);
+						logger("UTIL", LOG_LEVEL_DEBUG, "res : %s", res->payload);
+						free_HTTPRequest(req);
+						free_HTTPResponse(res);
+						return res->status_code;
+					}
+					free_HTTPRequest(req);
+					free_HTTPResponse(res);
+					free(host);
+				}else if(prot == PROT_MQTT){
+					//TODO - implement MQTT delete
+					#ifdef ENABLE_MQTT
+					mqtt_delete_csr(host, port, cb->valuestring);
+					#endif
+				}
+
+				db_delete_onem2m_resource(rtnode);
+			}
+		}
+		rtnode = rtnode->sibling_right;
+	}
 }
 
 #if SERVER_TYPE == MN_CSE
