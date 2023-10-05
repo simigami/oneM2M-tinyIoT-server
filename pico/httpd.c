@@ -295,6 +295,7 @@ void handle_http_request(HTTPRequest *req, int slotno) {
 
 void set_header(char *key, char *value, char *response_headers) {
     if(!value) return;
+    if(!response_headers) return;
     char header[128];
     sprintf(header, "%s: %s\r\n", key, value);
     strcat(response_headers, header);
@@ -345,7 +346,7 @@ void http_respond_to_client(oneM2MPrimitive *o2pt, int slotno) {
         case 209: status = "209 Conflict"; break;
         case 400: status = "400 Bad Request"; break;
         case 403: status = "403 Forbidden"; break;
-        case 404: status = "404 Not found"; break;
+        case 404: status = "404 Not Found"; break;
         case 406: status = "406 Not Acceptable"; break;
         case 413: status = "413 Payload Too Large"; break;
         case 500: status = "500 Internal Server Error"; break;
@@ -380,20 +381,25 @@ void http_notify(oneM2MPrimitive *o2pt, char *noti_json, NotiTarget *nt) {
     send_http_request(nt->host, nt->port, &req, NULL);
 }
 
-void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port){
+void http_forwarding(oneM2MPrimitive *o2pt, char *host, int port){
+    logger("HTTP", LOG_LEVEL_DEBUG, "http_forwarding");
     struct sockaddr_in serv_addr;
         
     int rcvd = 0;
     char buffer[BUF_SIZE];
-    HTTPRequest *req = malloc(sizeof(HTTPRequest));
-    HTTPResponse *res = malloc(sizeof(HTTPResponse));
+    HTTPRequest *req = (HTTPRequest *) calloc(sizeof(HTTPRequest), 1);
+    HTTPResponse *res =  (HTTPResponse *) calloc(sizeof(HTTPResponse), 1);
 
 
     req->method = op_to_method(o2pt->op);
-    req->headers = malloc(sizeof(header_t));
+    req->uri = malloc(sizeof(char) * (strlen(o2pt->to) + 1));
+    req->uri[0] = '/';
+    strcat(req->uri, o2pt->to);
+    
+    req->headers = (header_t *) calloc(sizeof(header_t), 1);
     add_header("Content-Type", "application/json", req->headers);
     add_header("X-M2M-Origin", o2pt->fr, req->headers);
-    add_header("X-M2M-RVI", o2pt->rvi, req->headers);
+    add_header("X-M2M-RVI", "2a", req->headers);
     add_header("X-M2M-RI", o2pt->rqi, req->headers);
     if(o2pt->ty > 0){
         sprintf(buffer, "application/json;ty=%d", o2pt->ty);
@@ -401,12 +407,10 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, char *port){
     }else{
         add_header("Content-Type", "application/json", req->headers);
     }
-    req->payload = o2pt->pc;
+    req->payload = strdup(o2pt->pc);
     req->payload_size = strlen(o2pt->pc);
 
-
-    send_http_request(host, port, &req, &res);
-
+    send_http_request(host, port, req, res);
     char *rsc = search_header(res->headers, "X-M2M-RSC");
     if(rsc) o2pt->rsc = atoi(rsc);
     if(o2pt->pc) {
@@ -520,7 +524,6 @@ void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *re
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
     serv_addr.sin_addr.s_addr = inet_addr(host);
-        
     if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
         logger("HTTP", LOG_LEVEL_ERROR, "connect error");
         res->status_code = 999;
@@ -549,7 +552,6 @@ void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *re
         sprintf(contentSize, "%d", req->payload_size);
         set_header("Content-Length", contentSize, header);
     }
-
     if(req->qs == NULL) req->qs = bs;
 
     sprintf(buffer, "%s %s%s %s\r\n%s\r\n", req->method, req->uri, req->qs, HTTP_PROTOCOL_VERSION, header);
@@ -561,7 +563,7 @@ void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *re
     if(req->qs == bs) req->qs = NULL;
 
     send(sock, buffer, sizeof(buffer), 0);
-
+    
     if(res == NULL){
         close(sock);
         return;
@@ -590,7 +592,7 @@ void send_http_request(char *host, int port,  HTTPRequest *req, HTTPResponse *re
 }
 
 char *op_to_method(Operation op){
-    char *method = NULL;;
+    char *method = NULL;
     switch (op){
         case OP_CREATE:
             method = "POST";
@@ -613,11 +615,14 @@ char *op_to_method(Operation op){
 }
 
 void add_header(char *key, char *value, header_t *header){
+    if(!value) return;
+    if(!header) return;
     header_t *h = header;
     while(h->next) h = h->next;
     h->next = (header_t *) calloc(sizeof(header_t), 1);
     h->next->name = strdup(key);
     h->next->value = strdup(value);
+    h->next->next = NULL;
 }
 
 void free_HTTPRequest(HTTPRequest *req){

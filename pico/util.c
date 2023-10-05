@@ -605,6 +605,8 @@ void init_server() {
 			rr->type = cJSON_False;
 			// cJSON_SetBoolValue(cJSON_GetObjectItem(cse, "rr"), false);
 	}
+
+	#ifdef NIC_NAME
 	struct ifreq ifr;
 	char ipstr[40];
 	int s = socket(AF_INET, SOCK_DGRAM, 0);
@@ -622,6 +624,9 @@ void init_server() {
 	close(s);
  
 	sprintf(poa, "http://%s:%s", ipstr, SERVER_PORT);
+	#else
+	sprintf(poa, "http://%s:%s", SERVER_IP, SERVER_PORT);
+	#endif
 
 	cJSON *poa_obj = cJSON_CreateArray();
 	cJSON_AddItemToArray(poa_obj, cJSON_CreateString(poa));
@@ -2381,8 +2386,9 @@ int validate_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode, cJSON *csr, Opera
 
 int register_remote_cse(){
 	char buf[1024];
-	HTTPRequest *req = (HTTPRequest *)malloc(sizeof(HTTPRequest));
-	HTTPResponse *res = (HTTPResponse *)malloc(sizeof(HTTPResponse));
+	HTTPRequest *req = (HTTPRequest *)calloc(sizeof(HTTPRequest), 1);
+	HTTPResponse *res = (HTTPResponse *)calloc(sizeof(HTTPResponse), 1);
+	int status_code = 0;
 	sprintf(buf, "/%s/%s", REMOTE_CSE_NAME, CSE_BASE_RI);
 
 	req->method = "GET";
@@ -2400,11 +2406,12 @@ int register_remote_cse(){
 
 	send_http_request(REMOTE_CSE_HOST, REMOTE_CSE_PORT, req, res);
 	logger("UTIL", LOG_LEVEL_DEBUG, "Remote CSE registration check: %d", res->status_code);
-	if(res->status_code == 999 || res->status_code == 500){
+	status_code = res->status_code;
+	if(status_code == 999 || status_code == 500){
 		logger("UTIL", LOG_LEVEL_ERROR, "Remote CSE is not running");
 		free_HTTPRequest(req);
 		free_HTTPResponse(res);
-		return res->status_code;
+		return status_code;
 	}
 
 	if(res->status_code != 200 ){ 
@@ -2591,8 +2598,8 @@ int deRegister_csr(){
 
 				if(prot == PROT_HTTP){
 
-					HTTPRequest *req = (HTTPRequest *)malloc(sizeof(HTTPRequest));
-					HTTPResponse *res = (HTTPResponse *)malloc(sizeof(HTTPResponse));
+					HTTPRequest *req = (HTTPRequest *)calloc(sizeof(HTTPRequest), 1);
+					HTTPResponse *res = (HTTPResponse *)calloc(sizeof(HTTPResponse), 1);
 
 					req->method = "DELETE";
 					sprintf(buf, "/~%s/%s", cb->valuestring , CSE_BASE_RI);
@@ -2604,7 +2611,6 @@ int deRegister_csr(){
 					req->headers = calloc(sizeof(header_t), 1);
 					add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
 					add_header("X-M2M-RI", "delete-csr", req->headers);
-					add_header("Accept", "application/json", req->headers);
 					add_header("Content-Type", "application/json", req->headers);
 					add_header("X-M2M-RVI", "2a", req->headers);
 
@@ -2612,7 +2618,6 @@ int deRegister_csr(){
 
 					if(res->status_code != 200 ){ 
 						logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE is not online : %d", res->status_code);
-						logger("UTIL", LOG_LEVEL_DEBUG, "res : %s", res->payload);
 						free_HTTPRequest(req);
 						free_HTTPResponse(res);
 						return res->status_code;

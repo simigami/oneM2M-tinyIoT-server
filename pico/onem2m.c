@@ -1136,7 +1136,6 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	logger("O2M", LOG_LEVEL_DEBUG, "Forwarding Resource");
 	char *host = NULL;
 	char *port = NULL;
-	logger("O2M", LOG_LEVEL_DEBUG, "target_rtnode->ty : %d", target_rtnode->ty);
 	if(target_rtnode->ty != RT_CSR){
 		logger("O2M", LOG_LEVEL_ERROR, "target_rtnode is not CSR");
 		return o2pt->rsc = RSC_NOT_FOUND;
@@ -1146,7 +1145,7 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 	cJSON *poa = NULL;
 	cJSON_ArrayForEach(poa, poa_list){
 		if(strncmp(poa->valuestring, "http://", 7) == 0){
-			host = poa->valuestring;
+			host = strdup(poa->valuestring+7);
 			port = strchr(host, ':');
 			if(port){
 				*port = '\0';
@@ -1154,7 +1153,8 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			}else{
 				port = "80";
 			}
-			http_forwarding(o2pt, host, port);
+			http_forwarding(o2pt, host, atoi(port));
+			logger("O2M", LOG_LEVEL_DEBUG, "http forwarding done");
 		}
 		#ifdef ENABLE_MQTT
 		else if(strncmp(poa->valuestring, "mqtt://", 7) == 0){
@@ -1167,5 +1167,6 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 			mqtt_forwarding(o2pt, host, port, csr);
 		}
 		#endif
+		free(host);
 	}
 }
