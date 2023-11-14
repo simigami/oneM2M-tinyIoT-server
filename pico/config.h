@@ -4,6 +4,7 @@
 
 #define SERVER_TYPE MN_CSE
 
+// #define NIC_NAME "eth0"
 #define NIC_NAME "en0"
 #define SERVER_PORT "3000"
 #define CSE_BASE_NAME "TinyIoT"
@@ -14,9 +15,14 @@
 #define REMOTE_CSE_NAME "cse-in"
 #define REMOTE_CSE_HOST "127.0.0.1"
 #define REMOTE_CSE_PORT 8000
+// #define REMOTE_CSE_ID "Mobius2"
+// #define REMOTE_CSE_NAME "Mobius"
+// #define REMOTE_CSE_HOST "127.0.0.1"
+// #define REMOTE_CSE_PORT 7579
 #endif
 
 #define MONO_THREAD 1 // 0 → multi-thread, 1 → mono-thread
+#define RR_INTERVAL 30 // seconds
 
 #define MAX_PAYLOAD_SIZE 65536 
 #define MAX_URI_SIZE 1024

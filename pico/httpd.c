@@ -229,23 +229,19 @@ void handle_http_request(HTTPRequest *req, int slotno) {
     
 
 	if((header = search_header(req->headers, "X-M2M-Origin"))) {
-		o2pt->fr = (char *)malloc((strlen(header) + 1) * sizeof(char));
-		strcpy(o2pt->fr, header);
+		o2pt->fr = strdup(header);
 	} 
 
 	if((header = search_header(req->headers, "X-M2M-RI")) && header) {
-		o2pt->rqi = (char *)malloc((strlen(header) + 1) * sizeof(char));
-		strcpy(o2pt->rqi, header);
+		o2pt->rqi = strdup(header);
 	} 
 
 	if((header = search_header(req->headers, "X-M2M-RVI")) && header) {
-		o2pt->rvi = (char *)malloc((strlen(header) + 1) * sizeof(char));
-		strcpy(o2pt->rvi, header);
+		o2pt->rvi = strdup(header);
 	} 
     
 	if(req->uri) {
-        o2pt->to = (char *)malloc((strlen(req->uri) + 1) * sizeof(char));
-        strcpy(o2pt->to, req->uri+1);
+        o2pt->to = strdup(req->uri+1); 
         logger("HTTP", LOG_LEVEL_DEBUG, "to: %s", o2pt->to);
 	} 
     
@@ -395,7 +391,6 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, int port){
     req->uri = malloc(sizeof(char) * (strlen(o2pt->to) + 1));
     req->uri[0] = '/';
     strcat(req->uri, o2pt->to);
-    
     req->headers = (header_t *) calloc(sizeof(header_t), 1);
     add_header("Content-Type", "application/json", req->headers);
     add_header("X-M2M-Origin", o2pt->fr, req->headers);
@@ -407,9 +402,14 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, int port){
     }else{
         add_header("Content-Type", "application/json", req->headers);
     }
-    req->payload = strdup(o2pt->pc);
-    req->payload_size = strlen(o2pt->pc);
-
+    if(o2pt->pc){
+        req->payload = strdup(o2pt->pc);
+        req->payload_size = strlen(o2pt->pc);
+    }else{
+        req->payload = NULL;
+        req->payload_size = 0;
+    }
+    logger("HTTP", LOG_LEVEL_DEBUG, "uri: %s", req->uri);
     send_http_request(host, port, req, res);
     char *rsc = search_header(res->headers, "X-M2M-RSC");
     if(rsc) o2pt->rsc = atoi(rsc);

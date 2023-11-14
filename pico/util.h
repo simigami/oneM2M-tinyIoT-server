@@ -16,7 +16,7 @@ void free_all_resource(RTNode *rtnode);
 void log_runtime(double start);
 
 void update_resource(cJSON *old, cJSON *new);
-
+int parsePoa(char *poa_str, Protocol *prot, char **host, int *port, char **path);
 RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb);
 int tree_viewer_api(oneM2MPrimitive *o2pt, RTNode *node);
 void tree_viewer_data(RTNode *node, char **viewer_data, int cin_size) ;
@@ -28,6 +28,13 @@ cJSON *getNoPermAcopDiscovery(oneM2MPrimitive *o2pt, RTNode *rtnode, ACOP acop);
 int register_remote_cse();
 int create_local_csr();
 int deRegister_csr();
+void add_rrnode(RRNode *rrnode);
+void detach_rrnode(RRNode *rrnode);
+
+// Announcement
+int create_remote_cba(char *poa);
+int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj);
+
 
 //Resource Tree
 void init_resource_tree();

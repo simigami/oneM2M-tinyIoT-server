@@ -62,10 +62,17 @@ typedef struct RTNode {
 	char *uri;
 	ResourceType ty;
 	cJSON *obj;
-}RTNode;
+} RTNode;
 
+//Reachablity Resource
+typedef struct RRNode {
+	struct RRNode *next;
+	char *uri;
+	struct RTNode *rtnode;
+} RRNode;
 typedef struct {  
 	RTNode *cb;
+	RRNode *rr_list;
 }ResourceTree;
 
 typedef enum {
@@ -170,6 +177,8 @@ bool isValidFcAttr(char* attr);
 void parse_filter_criteria(cJSON *fc);
 void route(oneM2MPrimitive *o2pt);
 void add_general_attribute(cJSON *root, RTNode *parent_rtnode, ResourceType ty);
+
+void check_reachablity();
 
 #define ALL_ACOP ACOP_CREATE + ACOP_RETRIEVE + ACOP_UPDATE + ACOP_DELETE + ACOP_NOTIFY + ACOP_DISCOVERY
 

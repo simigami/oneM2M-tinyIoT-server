@@ -94,6 +94,12 @@ typedef enum {
 	RT_FCI = 58,
 	RT_TSB = 60,
 	RT_ACTR = 63,
+	RT_ACPA = 10001,
+	RT_AEA = 10002,
+	RT_CNTA = 10003,
+	RT_CINA = 10004,
+	RT_CBA = 10005,
+	RT_GRPA = 10009,
 } ResourceType;
 
 typedef enum {

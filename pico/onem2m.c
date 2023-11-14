@@ -121,7 +121,20 @@ RTNode* create_rtnode(cJSON *obj, ResourceType ty){
 		rtnode->uri = strdup(uri->valuestring);
 		cJSON_DeleteItemFromObject(obj, "uri");
 	}
-		
+	
+	if(ty == RT_CSR){
+		cJSON *rr = cJSON_GetObjectItem(obj, "rr");
+		cJSON *cb = cJSON_GetObjectItem(obj, "cb");
+		if(rr && rr->type == cJSON_True){
+			logger("UTIL", LOG_LEVEL_INFO, "add rrnode");
+			RRNode *rrnode = (RRNode *)calloc(1, sizeof(RRNode));
+			rrnode->uri = malloc(strlen(cb->valuestring) + 3);
+			sprintf(rrnode->uri, "~%s", cb->valuestring);
+			rrnode->rtnode = rtnode;
+			rrnode->next = NULL;
+			add_rrnode(rrnode);
+		}
+	}
 	
 	return rtnode;
 }
@@ -174,6 +187,7 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 
 	RTNode* rtnode = create_rtnode(csr, RT_CSR);
 	add_child_resource_tree(parent_rtnode, rtnode);
+
 	//TODO: update descendent cse if update is needed
 	return RSC_CREATED;
 }
@@ -197,6 +211,16 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		cJSON_SetValuestring(ri, o2pt->fr);
 	}
 	cJSON_AddStringToObject(ae, "aei", cJSON_GetObjectItem(ae, "ri")->valuestring);
+	cJSON *at = cJSON_GetObjectItem(ae, "at");
+	if(at){
+		int rc =  create_remote_aea(parent_rtnode, ae);
+		logger("UTIL", LOG_LEVEL_INFO, "create_remote_aea rc = %d", rc);
+		if(rc == -1){
+			handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "create remote aea fail");
+			cJSON_Delete(root);
+			return RSC_INTERNAL_SERVER_ERROR;
+		}
+	}
 	
 	int rsc = validate_ae(o2pt, ae, OP_CREATE);
 
@@ -213,6 +237,7 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	sprintf(ptr, "%s/%s", get_uri_rtnode(parent_rtnode), rn->valuestring);
 	// Save to DB
 	int result = db_store_resource(ae, ptr);
+
 	if(result != 1) { 
 		handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "DB store fail");
 		cJSON_Delete(root);
@@ -463,7 +488,43 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 	}
 
 	update_resource(target_rtnode->obj, m2m_ae);
+	cJSON *at_list = cJSON_GetObjectItem(target_rtnode->obj, "at");
+	cJSON *pjson = NULL;
+	if(at_list){
+		cJSON *at = NULL;
+		cJSON *aa_list = cJSON_GetObjectItem(target_rtnode->obj, "aa") ;
+		cJSON *aa = NULL;
+		cJSON *root = cJSON_CreateObject();
+		cJSON *temp_ae = cJSON_CreateObject();
+		cJSON_AddItemToObject(root, "m2m:aeA", temp_ae);
+		cJSON_ArrayForEach(aa, aa_list){
+			if( pjson = cJSON_GetObjectItem(m2m_ae, aa->valuestring)){
+				cJSON_AddItemToObject(temp_ae, aa->valuestring, cJSON_Duplicate(pjson, 1));
+			}
+		}
+		if(pjson = cJSON_GetObjectItem(m2m_ae, "lbl")){
+			cJSON_AddItemToObject(temp_ae, "lbl", cJSON_Duplicate(pjson, 1));
+		}
+		cJSON_ArrayForEach(at, at_list){
+			if(at->valuestring[0] == '/'){
+				char buf[128] = {0};
+				oneM2MPrimitive * o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+				sprintf(buf, "~%s", at->valuestring);
+				o2pt->op = OP_UPDATE;
+				o2pt->to = strdup(buf);
+				o2pt->fr = "/"CSE_BASE_RI;
+				o2pt->ty = RT_AE;
+				o2pt->rqi = strdup("ae_update_announce");
+				o2pt->pc = cJSON_PrintUnformatted(root);
+				o2pt->isForwarding = true;
 
+				route(o2pt);
+			}else{
+				
+			}
+		}
+	}
+	
 
 	result = db_update_resource(m2m_ae, cJSON_GetObjectItem(target_rtnode->obj, "ri")->valuestring, RT_AE);
 
@@ -1169,4 +1230,63 @@ int forwarding_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode){
 		#endif
 		free(host);
 	}
+}
+
+int check_cse_reachable(RRNode *rrnode){
+	int status_code = 0;
+
+	oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(sizeof(oneM2MPrimitive), 1);
+	o2pt->ty = 0;
+	o2pt->op = OP_RETRIEVE;
+	o2pt->to = strdup(rrnode->uri);
+	o2pt->fr = strdup("/"CSE_BASE_RI);
+	o2pt->rqi = strdup("check-reachability");
+	o2pt->pc = NULL;
+	o2pt->fc = NULL;
+	o2pt->isForwarding = true;
+	route(o2pt);
+
+	logger("UTIL", LOG_LEVEL_DEBUG, "RR rslt: %d", o2pt->rsc);
+	status_code = o2pt->rsc;
+
+	return status_code;
+}
+
+void check_reachablity(){
+	logger("UTIL", LOG_LEVEL_DEBUG, "check reachability");
+	RRNode *rrnode = rt->rr_list;
+	RTNode *rtnode = NULL;
+	RTNode *left = NULL;
+	RTNode *right = NULL;
+	RRNode *del = NULL;
+
+	while(rrnode){
+		del = NULL;
+		if ( check_cse_reachable(rrnode) != RSC_OK ){
+			rtnode = rrnode->rtnode;
+			db_delete_onem2m_resource(rtnode);
+			left = rtnode->sibling_left;
+			right = rtnode->sibling_right;
+			if(left) {
+				left->sibling_right = right;
+			}
+			else {
+				rtnode->parent->child = right;
+			}
+			if(right){
+				right->sibling_left = left;
+			}
+			free_rtnode(rtnode);
+			rtnode = NULL;
+			del = rrnode;
+		}
+		rrnode = rrnode->next;
+		if(del){
+			detach_rrnode(del);
+			del = NULL;
+		}
+	}
+	
+
+	alarm(RR_INTERVAL);
 }

@@ -236,6 +236,10 @@ int net_to_bit(cJSON *net) {
 	return ret;
 }
 
+int add_rr_list(RTNode *rtnode){
+
+}
+
 int add_child_resource_tree(RTNode *parent, RTNode *child) {
 	RTNode *node = parent->child;
 	child->parent = parent;
@@ -356,6 +360,12 @@ char *get_resource_key(ResourceType ty){
 			break;
 		case RT_CSR:
 			key = "m2m:csr";
+			break;
+		case RT_CBA:
+			key = "m2m:cbA";
+			break;
+		case RT_AEA:
+			key = "m2m:aeA";
 			break;
 		default:
 			key = "general";
@@ -2547,7 +2557,7 @@ int create_local_csr(){
 
 	char *ptr = malloc(1024);
 	sprintf(ptr, "%s/%s", CSE_BASE_NAME, remote_rn->valuestring);	
-
+	cJSON_AddStringToObject(csr, "uri", cJSON_CreateString(ptr));
 	int result = db_store_resource(csr, ptr);
 	if(result == -1) {
 		cJSON_Delete(root);
@@ -2558,6 +2568,8 @@ int create_local_csr(){
 
 	RTNode* rtnode = create_rtnode(csr, RT_CSR);
 	add_child_resource_tree(rt->cb, rtnode);
+
+	
 	//TODO: update descendent cse if update is needed
 
 	return 0;
@@ -2639,10 +2651,259 @@ int deRegister_csr(){
 	}
 }
 
-#if SERVER_TYPE == MN_CSE
-bool isCSEAvailable(){
+char *create_remote_cba(char *poa){
+	logger("UTIL", LOG_LEVEL_DEBUG, "create_remote_cba");
+	Protocol prot = PROT_HTTP;
+	char *host = NULL;
+	int port = 80;
+	char *path = NULL;
 
-	return true;
+
+	if (parsePoa(poa, &prot, &host, &port, &path) == -1){
+		logger("UTIL", LOG_LEVEL_ERROR, "poa is invalid");
+		return -1;
+	}
+
+	char buf[1024] = {0};
+
+	if(prot == PROT_HTTP){
+
+		HTTPRequest *req = (HTTPRequest *)calloc(sizeof(HTTPRequest), 1);
+		HTTPResponse *res = (HTTPResponse *)calloc(sizeof(HTTPResponse), 1);
+
+		req->method = "POST";
+		req->uri = strdup(path);
+		req->qs = NULL;
+		req->prot = strdup("HTTP/1.1");
+		req->payload = NULL;
+		req->payload_size = 0;
+		req->headers = calloc(sizeof(header_t), 1);
+		add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
+		add_header("X-M2M-RI", "create-cba", req->headers);
+		add_header("Accept", "application/json", req->headers);
+		add_header("Content-Type", "application/json", req->headers);
+		add_header("X-M2M-RVI", "2a", req->headers);
+
+		cJSON *root = cJSON_CreateObject();
+		cJSON *cba = cJSON_CreateObject();
+		cJSON_AddItemToObject(root, get_resource_key(RT_CBA), cba);
+		cJSON_AddItemToObject(cba, "lnk", cJSON_CreateString("/"CSE_BASE_RI"/"CSE_BASE_NAME));
+		cJSON *srv = cJSON_Duplicate( cJSON_GetObjectItem(rt->cb->obj, "srv"), true);
+		cJSON_AddItemToObject(cba, "srv", srv);
+
+		req->payload =  cJSON_PrintUnformatted(root);
+		cJSON_Delete(root);
+
+		req->payload_size = strlen(req->payload);
+		send_http_request(host, port, req, res);
+
+		if(res->status_code != 200 ){ 
+			logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE is not online : %d", res->status_code);
+			free_HTTPRequest(req);
+			free_HTTPResponse(res);
+			return res->status_code;
+		}
+		free_HTTPRequest(req);
+		free_HTTPResponse(res);
+		free(host);
+	}else if(prot == PROT_MQTT){
+		//TODO - implement MQTT delete
+		#ifdef ENABLE_MQTT
+		mqtt_create_cba(host, port, cb->valuestring);
+		#endif
+	}
+	
+	free(host);
+	free(path);
+} 
+
+int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj){
+	logger("UTIL", LOG_LEVEL_DEBUG, "create_remote_aea");
+	char buf[256] = {0};
+	bool pannc = false;
+
+	// Check Parent Resource has attribute at
+	cJSON *at_obj = cJSON_GetObjectItem(ae_obj, "at");
+	cJSON *at = NULL;
+	cJSON *pat = cJSON_GetObjectItem(parent_rtnode->obj, "at");
+
+	cJSON_ArrayForEach(at, at_obj){
+		pannc = false;
+		char *cba_target = NULL;
+		cJSON *pjson = NULL;
+		cJSON_ArrayForEach(pjson, pat){
+			if(!strncmp(pjson->valuestring, at->valuestring, strlen(at->valuestring))){
+				pannc = true;
+				cba_target = strdup(pjson->valuestring);
+				break;
+			}
+		}
+		
+		if(!pannc){
+			if(at->valuestring[0] == '/'){
+				oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(sizeof(oneM2MPrimitive), 1);
+				o2pt->fr = strdup("/"CSE_BASE_RI);
+				sprintf(buf, "~%s%s", at->valuestring, at->valuestring);
+				o2pt->to = strdup(buf);
+				o2pt->op = OP_CREATE;
+				o2pt->ty = RT_CBA;
+				o2pt->rqi = strdup("create-cba");
+				o2pt->rvi = strdup("2a");
+
+				cJSON *root = cJSON_CreateObject();
+				cJSON *cba = cJSON_CreateObject();
+				cJSON_AddItemToObject(root, get_resource_key(RT_CBA), cba);
+				cJSON_AddStringToObject(cba, "lnk", cJSON_CreateString("/"CSE_BASE_RI"/"CSE_BASE_NAME));
+				cJSON *srv = cJSON_Duplicate( cJSON_GetObjectItem(parent_rtnode->obj, "srv"), true);
+				cJSON_AddItemToObject(cba, "srv", srv);
+				// cJSON_AddItemToObject(cba, "ty", cJSON_CreateNumber(RT_CBA));
+
+				o2pt->pc = cJSON_PrintUnformatted(root);
+				logger("UTIL", LOG_LEVEL_DEBUG, "create remote cba: %s", o2pt->pc);
+				cJSON_Delete(root);
+				o2pt->isForwarding = true;
+
+				route(o2pt);
+
+				logger("UTIL", LOG_LEVEL_DEBUG, "create remote cba: %s", o2pt->pc);
+				logger("UTIL", LOG_LEVEL_DEBUG, "rsc: %d", o2pt->rsc);
+				if(o2pt->rsc != RSC_CREATED){
+					logger("UTIL", LOG_LEVEL_ERROR, "Creation failed");
+					return -1;
+				}
+				cJSON *result = cJSON_Parse(o2pt->pc);
+				if(result){
+					// logger("UTIL", LOG_LEVEL_DEBUG, "cba_target: %s", cJSON_PrintUnformatted(result));
+					root = cJSON_GetObjectItem(result, get_resource_key(RT_CBA));
+					cba_target = strdup(cJSON_GetObjectItem(root, "ri")->valuestring);
+				}else{
+					logger("UTIL", LOG_LEVEL_ERROR, "%s", cJSON_GetErrorPtr());
+				}
+				// cJSO cJSON_CreateArray();
+				// rt->cb->obj
+				logger("UTIL", LOG_LEVEL_DEBUG, "cba_target: %s/%s", at->valuestring, cba_target);
+				cJSON_Delete(result);
+				free_o2pt(o2pt);
+			}else {
+				// create parent announcement resource
+				create_remote_cba(at->valuestring);
+			}
+
+			// create announcement resource
+			oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(sizeof(oneM2MPrimitive), 1);
+			sprintf(buf, "~%s/%s", at->valuestring, cba_target);
+			o2pt->fr = strdup("/"CSE_BASE_RI);
+			o2pt->to = strdup(buf);
+			o2pt->op = OP_CREATE;
+			o2pt->ty = RT_AEA;
+			o2pt->rqi = strdup("create-aea");
+			o2pt->rvi = strdup("2a");
+
+			cJSON *root = cJSON_CreateObject();
+			cJSON *aea = cJSON_CreateObject();
+			cJSON_AddItemToObject(root, get_resource_key(RT_AEA), aea);
+			sprintf(buf, "/%s/%s/%s", CSE_BASE_RI, get_uri_rtnode(parent_rtnode), cJSON_GetObjectItem(ae_obj, "rn")->valuestring);
+			cJSON_AddItemToObject(aea, "lnk", cJSON_CreateString(buf));
+			logger("UTIL", LOG_LEVEL_DEBUG, "tt %s", buf);
+			cJSON *srv = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "srv"), true);
+			cJSON_AddItemToObject(aea, "srv", srv);
+			cJSON *lbl = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "lbl"), true);
+			cJSON_AddItemToObject(aea, "lbl", lbl);
+
+			cJSON* aa = cJSON_GetObjectItem(ae_obj, "aa");
+			cJSON_ArrayForEach(pjson, aa){
+				cJSON *temp =  cJSON_GetObjectItem(ae_obj, pjson->valuestring);
+				cJSON_AddItemToObject(aea, pjson->valuestring, cJSON_Duplicate(temp, true));
+			}
+
+			o2pt->pc = cJSON_PrintUnformatted(root);
+			logger("UTIL", LOG_LEVEL_DEBUG, "create remote aea: %s", o2pt->pc);
+			cJSON_Delete(root);
+			o2pt->isForwarding = true;
+
+			route(o2pt);
+
+			logger("UTIL", LOG_LEVEL_DEBUG, "create remote aea: %s", o2pt->pc);
+
+			if(o2pt->rsc != RSC_CREATED){
+				logger("UTIL", LOG_LEVEL_ERROR, "Creation failed");
+				return -1;
+			}
+
+			cJSON *result = cJSON_Parse(o2pt->pc);
+			cJSON *aea_obj = cJSON_GetObjectItem(result, get_resource_key(RT_AEA));
+			char *aea_ri = cJSON_GetObjectItem(aea_obj, "ri")->valuestring;
+			logger("UTIL", LOG_LEVEL_DEBUG, "aea_ri: %s", aea_ri);
+			sprintf(buf, "%s/%s", at->valuestring, aea_ri);
+			cJSON_SetValuestring(at, buf);
+
+			cJSON_Delete(result);
+			free_o2pt(o2pt);
+			
+		}
+		free(cba_target);
+		
+	}
 }
 
-#endif
+int parsePoa(char *poa_str, Protocol *prot, char **host, int *port, char **path){
+	char *p = poa_str;
+	char *ptr = NULL;
+	if(!strncmp(poa_str, "http://", 7)) {
+		*prot = PROT_HTTP;
+	}else if(!strncmp(poa_str, "mqtt://", 7)) {
+		*prot = PROT_MQTT;
+	}else{
+		return -1;
+	}
+	p = poa_str + 7;
+	ptr = strchr(p, ':');
+	if(ptr){
+		*ptr = '\0';
+		*port = atoi(ptr+1);
+	}
+	*host = strdup(p);
+	*ptr = ':';
+	ptr = strchr(p, '/');
+	if(ptr){
+		*path = strdup(ptr);
+		*ptr = '\0';
+	}
+	return 0;
+}
+
+void add_rrnode(RRNode *rrnode){
+	RRNode *prrnode = rt->rr_list;
+	if(!prrnode){
+		rt->rr_list = rrnode;
+		return;
+	}
+	while(prrnode->next){
+		prrnode = prrnode->next;
+	}
+	prrnode->next = rrnode;
+}
+
+void detach_rrnode(RRNode *rrnode){
+	RRNode *prrnode = rt->rr_list;
+	if(!prrnode){
+		return;
+	}
+	if(prrnode == rrnode){
+		rt->rr_list = rrnode->next;
+		return;
+	}
+	while(prrnode->next){
+		if(prrnode->next == rrnode){
+			prrnode->next = rrnode->next;
+			return;
+		}
+		prrnode = prrnode->next;
+	}
+	if(rrnode->uri){
+		free(rrnode->uri);
+		rrnode->uri = NULL;
+	}
+	free(rrnode);
+	rrnode = NULL;
+}

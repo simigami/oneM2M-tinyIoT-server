@@ -55,7 +55,7 @@ int init_dbp(){
     }
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS ae ( \
-        ri VARCHAR(40), api VARCHAR(45), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45));");
+        ri VARCHAR(40), api VARCHAR(45), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45), at VARCHAR(200), aa VARCHAR(100));");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table[ae]: %s", err_msg);
