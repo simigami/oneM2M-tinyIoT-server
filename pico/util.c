@@ -2651,7 +2651,7 @@ int deRegister_csr(){
 	}
 }
 
-char *create_remote_cba(char *poa){
+int create_remote_cba(char *poa, char **cbA_url){
 	logger("UTIL", LOG_LEVEL_DEBUG, "create_remote_cba");
 	Protocol prot = PROT_HTTP;
 	char *host = NULL;
@@ -2663,11 +2663,11 @@ char *create_remote_cba(char *poa){
 		logger("UTIL", LOG_LEVEL_ERROR, "poa is invalid");
 		return -1;
 	}
+	logger("UTIL", LOG_LEVEL_DEBUG, "%d %s %d %s", prot, host, port, path);
 
 	char buf[1024] = {0};
 
 	if(prot == PROT_HTTP){
-
 		HTTPRequest *req = (HTTPRequest *)calloc(sizeof(HTTPRequest), 1);
 		HTTPResponse *res = (HTTPResponse *)calloc(sizeof(HTTPResponse), 1);
 
@@ -2681,7 +2681,7 @@ char *create_remote_cba(char *poa){
 		add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
 		add_header("X-M2M-RI", "create-cba", req->headers);
 		add_header("Accept", "application/json", req->headers);
-		add_header("Content-Type", "application/json", req->headers);
+		add_header("Content-Type", "application/json;ty=10005", req->headers);
 		add_header("X-M2M-RVI", "2a", req->headers);
 
 		cJSON *root = cJSON_CreateObject();
@@ -2695,17 +2695,22 @@ char *create_remote_cba(char *poa){
 		cJSON_Delete(root);
 
 		req->payload_size = strlen(req->payload);
+		logger("UTIL", LOG_LEVEL_DEBUG, "payload: %s", req->payload);
 		send_http_request(host, port, req, res);
 
-		if(res->status_code != 200 ){ 
-			logger("MAIN", LOG_LEVEL_ERROR, "Remote CSE is not online : %d", res->status_code);
+		if(res->status_code != 201 ){ 
+			logger("MAIN", LOG_LEVEL_ERROR, "cbA creation failed : %d", res->status_code);
+			logger("MAIN", LOG_LEVEL_ERROR, "%s", res->payload);
 			free_HTTPRequest(req);
 			free_HTTPResponse(res);
-			return res->status_code;
+			return -1;
 		}
+		cJSON *result = cJSON_Parse(res->payload);
+		cJSON *obj = cJSON_GetObjectItem(result, get_resource_key(RT_CBA));
+		*cbA_url =  strdup(cJSON_GetObjectItem(obj, "ri")->valuestring);
+
 		free_HTTPRequest(req);
 		free_HTTPResponse(res);
-		free(host);
 	}else if(prot == PROT_MQTT){
 		//TODO - implement MQTT delete
 		#ifdef ENABLE_MQTT
@@ -2713,8 +2718,10 @@ char *create_remote_cba(char *poa){
 		#endif
 	}
 	
+
 	free(host);
 	free(path);
+	return 0;
 } 
 
 int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj){
@@ -2780,65 +2787,137 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj){
 					logger("UTIL", LOG_LEVEL_ERROR, "%s", cJSON_GetErrorPtr());
 				}
 				// cJSO cJSON_CreateArray();
-				// rt->cb->obj
-				logger("UTIL", LOG_LEVEL_DEBUG, "cba_target: %s/%s", at->valuestring, cba_target);
+				// rt->cb->ob;
+				cJSON_Delete(result);
+				free_o2pt(o2pt);
+
+				o2pt = (oneM2MPrimitive *)calloc(sizeof(oneM2MPrimitive), 1);
+				sprintf(buf, "~%s/%s", at->valuestring, cba_target);
+				o2pt->fr = strdup("/"CSE_BASE_RI);
+				o2pt->to = strdup(buf);
+				o2pt->op = OP_CREATE;
+				o2pt->ty = RT_AEA;
+				o2pt->rqi = strdup("create-aea");
+				o2pt->rvi = strdup("2a");
+
+				root = cJSON_CreateObject();
+				cJSON *aea = cJSON_CreateObject();
+				cJSON_AddItemToObject(root, get_resource_key(RT_AEA), aea);
+				sprintf(buf, "/%s/%s/%s", CSE_BASE_RI, get_uri_rtnode(parent_rtnode), cJSON_GetObjectItem(ae_obj, "rn")->valuestring);
+				cJSON_AddItemToObject(aea, "lnk", cJSON_CreateString(buf));
+				logger("UTIL", LOG_LEVEL_DEBUG, "tt %s", buf);
+				srv = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "srv"), true);
+				cJSON_AddItemToObject(aea, "srv", srv);
+				cJSON *lbl = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "lbl"), true);
+				cJSON_AddItemToObject(aea, "lbl", lbl);
+
+				cJSON* aa = cJSON_GetObjectItem(ae_obj, "aa");
+				cJSON_ArrayForEach(pjson, aa){
+					cJSON *temp =  cJSON_GetObjectItem(ae_obj, pjson->valuestring);
+					cJSON_AddItemToObject(aea, pjson->valuestring, cJSON_Duplicate(temp, true));
+				}
+
+				o2pt->pc = cJSON_PrintUnformatted(root);
+				logger("UTIL", LOG_LEVEL_DEBUG, "create remote aea: %s", o2pt->pc);
+				cJSON_Delete(root);
+				o2pt->isForwarding = true;
+
+				route(o2pt);
+
+				logger("UTIL", LOG_LEVEL_DEBUG, "create remote aea: %s", o2pt->pc);
+
+				if(o2pt->rsc != RSC_CREATED){
+					logger("UTIL", LOG_LEVEL_ERROR, "Creation failed");
+					return -1;
+				}
+
+				result = cJSON_Parse(o2pt->pc);
+				cJSON *aea_obj = cJSON_GetObjectItem(result, get_resource_key(RT_AEA));
+				char *aea_ri = cJSON_GetObjectItem(aea_obj, "ri")->valuestring;
+				logger("UTIL", LOG_LEVEL_DEBUG, "aea_ri: %s", aea_ri);
+				sprintf(buf, "%s/%s", at->valuestring, aea_ri);
+				cJSON_SetValuestring(at, buf);
+
 				cJSON_Delete(result);
 				free_o2pt(o2pt);
 			}else {
 				// create parent announcement resource
-				create_remote_cba(at->valuestring);
+				if ( create_remote_cba(at->valuestring, &cba_target) != 0 ){
+					logger("UTIL", LOG_LEVEL_ERROR, "Creation failed");
+					return -1;
+				}
+		
+
+				HTTPRequest *req = (HTTPRequest *)calloc(sizeof(HTTPRequest), 1);
+				HTTPResponse *res = (HTTPResponse *)calloc(sizeof(HTTPResponse), 1);
+				Protocol prot = PROT_HTTP;
+				char *host = NULL;
+				int port = 80;
+				char *path = NULL;
+
+				parsePoa(at->valuestring, &prot, &host, &port, &path);
+				sprintf(buf, "/%s",cba_target);
+				logger("UTIL", LOG_LEVEL_DEBUG, "cba_target: %s", buf);
+				req->method = "POST";
+				req->uri = strdup(buf);
+				req->qs = NULL;
+				req->prot = strdup("HTTP/1.1");
+				req->payload = NULL;
+				req->payload_size = 0;
+				req->headers = calloc(sizeof(header_t), 1);
+				add_header("X-M2M-Origin", "/"CSE_BASE_RI, req->headers);
+				add_header("X-M2M-RI", "create-aeA", req->headers);
+				add_header("Accept", "application/json", req->headers);
+				add_header("Content-Type", "application/json;ty=10002", req->headers);
+				add_header("X-M2M-RVI", "2a", req->headers);
+
+				cJSON *root = cJSON_CreateObject();
+				cJSON *aea = cJSON_CreateObject();
+				cJSON_AddItemToObject(root, get_resource_key(RT_AEA), aea);
+				sprintf(buf, "/%s/%s/%s", CSE_BASE_RI, get_uri_rtnode(parent_rtnode), cJSON_GetObjectItem(ae_obj, "rn")->valuestring);
+				cJSON_AddItemToObject(aea, "lnk", cJSON_CreateString(buf));
+				logger("UTIL", LOG_LEVEL_DEBUG, "tt %s", buf);
+				cJSON *srv = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "srv"), true);
+				cJSON_AddItemToObject(aea, "srv", srv);
+				cJSON *lbl = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "lbl"), true);
+				cJSON_AddItemToObject(aea, "lbl", lbl);
+
+				cJSON* aa = cJSON_GetObjectItem(ae_obj, "aa");
+				cJSON_ArrayForEach(pjson, aa){
+					cJSON *temp =  cJSON_GetObjectItem(ae_obj, pjson->valuestring);
+					cJSON_AddItemToObject(aea, pjson->valuestring, cJSON_Duplicate(temp, true));
+				}
+
+				req->payload =  cJSON_PrintUnformatted(root);
+				logger("UTIL", LOG_LEVEL_DEBUG, "payload: %s", req->payload);
+
+				req->payload_size = strlen(req->payload);
+				send_http_request(host, port, req, res);
+				cJSON_Delete(root);
+
+
+				if(res->status_code != 201 ){ 
+					logger("MAIN", LOG_LEVEL_ERROR, "aeA creation failed: %d", res->status_code);
+					logger("MAIN", LOG_LEVEL_ERROR, "%s", res->payload);
+					free_HTTPRequest(req);
+					free_HTTPResponse(res);
+					return -1;
+				}
+				cJSON *result = cJSON_Parse(res->payload);
+				cJSON *obj = cJSON_GetObjectItem(result, get_resource_key(RT_AEA));
+
+				char *aea_rn = cJSON_GetObjectItem(obj, "rn")->valuestring;
+				logger("UTIL", LOG_LEVEL_DEBUG, "aea_rn: %s", aea_rn);
+				sprintf(buf, "%s/%s", at->valuestring, aea_rn);
+				cJSON_SetValuestring(at, buf);
+
+				free_HTTPRequest(req);
+				free_HTTPResponse(res);
+
 			}
 
 			// create announcement resource
-			oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(sizeof(oneM2MPrimitive), 1);
-			sprintf(buf, "~%s/%s", at->valuestring, cba_target);
-			o2pt->fr = strdup("/"CSE_BASE_RI);
-			o2pt->to = strdup(buf);
-			o2pt->op = OP_CREATE;
-			o2pt->ty = RT_AEA;
-			o2pt->rqi = strdup("create-aea");
-			o2pt->rvi = strdup("2a");
-
-			cJSON *root = cJSON_CreateObject();
-			cJSON *aea = cJSON_CreateObject();
-			cJSON_AddItemToObject(root, get_resource_key(RT_AEA), aea);
-			sprintf(buf, "/%s/%s/%s", CSE_BASE_RI, get_uri_rtnode(parent_rtnode), cJSON_GetObjectItem(ae_obj, "rn")->valuestring);
-			cJSON_AddItemToObject(aea, "lnk", cJSON_CreateString(buf));
-			logger("UTIL", LOG_LEVEL_DEBUG, "tt %s", buf);
-			cJSON *srv = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "srv"), true);
-			cJSON_AddItemToObject(aea, "srv", srv);
-			cJSON *lbl = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "lbl"), true);
-			cJSON_AddItemToObject(aea, "lbl", lbl);
-
-			cJSON* aa = cJSON_GetObjectItem(ae_obj, "aa");
-			cJSON_ArrayForEach(pjson, aa){
-				cJSON *temp =  cJSON_GetObjectItem(ae_obj, pjson->valuestring);
-				cJSON_AddItemToObject(aea, pjson->valuestring, cJSON_Duplicate(temp, true));
-			}
-
-			o2pt->pc = cJSON_PrintUnformatted(root);
-			logger("UTIL", LOG_LEVEL_DEBUG, "create remote aea: %s", o2pt->pc);
-			cJSON_Delete(root);
-			o2pt->isForwarding = true;
-
-			route(o2pt);
-
-			logger("UTIL", LOG_LEVEL_DEBUG, "create remote aea: %s", o2pt->pc);
-
-			if(o2pt->rsc != RSC_CREATED){
-				logger("UTIL", LOG_LEVEL_ERROR, "Creation failed");
-				return -1;
-			}
-
-			cJSON *result = cJSON_Parse(o2pt->pc);
-			cJSON *aea_obj = cJSON_GetObjectItem(result, get_resource_key(RT_AEA));
-			char *aea_ri = cJSON_GetObjectItem(aea_obj, "ri")->valuestring;
-			logger("UTIL", LOG_LEVEL_DEBUG, "aea_ri: %s", aea_ri);
-			sprintf(buf, "%s/%s", at->valuestring, aea_ri);
-			cJSON_SetValuestring(at, buf);
-
-			cJSON_Delete(result);
-			free_o2pt(o2pt);
+			
 			
 		}
 		free(cba_target);
@@ -2847,28 +2926,33 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj){
 }
 
 int parsePoa(char *poa_str, Protocol *prot, char **host, int *port, char **path){
-	char *p = poa_str;
+	logger("UTIL", LOG_LEVEL_DEBUG, "parsePoa");
+	char *p = strdup(poa_str);
 	char *ptr = NULL;
 	if(!strncmp(poa_str, "http://", 7)) {
 		*prot = PROT_HTTP;
 	}else if(!strncmp(poa_str, "mqtt://", 7)) {
 		*prot = PROT_MQTT;
 	}else{
+		free(p);
 		return -1;
 	}
-	p = poa_str + 7;
-	ptr = strchr(p, ':');
+	ptr = strchr(p + 7, ':');
 	if(ptr){
 		*ptr = '\0';
 		*port = atoi(ptr+1);
 	}
-	*host = strdup(p);
+	*host = strdup(p+7);
 	*ptr = ':';
-	ptr = strchr(p, '/');
+	ptr = strchr(p+7, '/');
 	if(ptr){
 		*path = strdup(ptr);
 		*ptr = '\0';
 	}
+	if(!(*path)) {
+		*path = strdup("/");
+	}
+	free(p);
 	return 0;
 }
 

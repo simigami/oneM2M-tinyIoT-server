@@ -32,7 +32,7 @@ void add_rrnode(RRNode *rrnode);
 void detach_rrnode(RRNode *rrnode);
 
 // Announcement
-int create_remote_cba(char *poa);
+int create_remote_cba(char *poa, char **cbA_url);
 int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj);
 
 

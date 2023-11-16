@@ -128,8 +128,8 @@ RTNode* create_rtnode(cJSON *obj, ResourceType ty){
 		if(rr && rr->type == cJSON_True){
 			logger("UTIL", LOG_LEVEL_INFO, "add rrnode");
 			RRNode *rrnode = (RRNode *)calloc(1, sizeof(RRNode));
-			rrnode->uri = malloc(strlen(cb->valuestring) + 3);
-			sprintf(rrnode->uri, "~%s", cb->valuestring);
+			rrnode->uri = malloc(strlen(cb->valuestring) + strlen(CSE_BASE_RI) + 2);
+			sprintf(rrnode->uri, "~%s/%s", cb->valuestring, CSE_BASE_RI);
 			rrnode->rtnode = rtnode;
 			rrnode->next = NULL;
 			add_rrnode(rrnode);
@@ -663,6 +663,28 @@ int delete_onem2m_resource(oneM2MPrimitive *o2pt, RTNode* target_rtnode) {
 	}
 	if(check_privilege(o2pt, target_rtnode, ACOP_DELETE) == -1) {
 		return o2pt->rsc;
+	}
+
+	cJSON *at_list = cJSON_GetObjectItem(target_rtnode->obj, "at");
+	cJSON *at = NULL;
+
+	cJSON_ArrayForEach(at, at_list){
+		if(at->valuestring[0] == '/'){
+			char buf[128] = {0};
+			oneM2MPrimitive * o2pt = (oneM2MPrimitive *)calloc(1, sizeof(oneM2MPrimitive));
+			sprintf(buf, "~%s", at->valuestring);
+			o2pt->op = OP_DELETE;
+			o2pt->to = strdup(buf);
+			o2pt->fr = "/"CSE_BASE_RI;
+			o2pt->ty = RT_AE;
+			o2pt->rqi = strdup("ae_delete_announce");
+			o2pt->pc = NULL;
+			o2pt->isForwarding = true;
+
+			route(o2pt);
+		}else{
+			
+		}
 	}
 	
 	delete_rtnode_and_db_data(o2pt, target_rtnode,1);
