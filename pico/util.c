@@ -31,7 +31,7 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 	char *fopt_buf = NULL;
 
 	if(!strncmp(o2pt->to, "~/", 2)){
-        if(!strncmp(o2pt->to + 2, CSE_BASE_RI, strlen(CSE_BASE_RI))){
+        if(!strncmp(o2pt->to + 2, CSE_BASE_RI, strlen(CSE_BASE_RI)) && o2pt->to[2 + strlen(CSE_BASE_RI)] == '/'){
             char *temp = strdup(o2pt->to + 2 + strlen(CSE_BASE_RI) + 1);
             free(o2pt->to);
             o2pt->to = temp;
@@ -109,11 +109,11 @@ RTNode* parse_uri(oneM2MPrimitive *o2pt, RTNode *cb) {
 
 RTNode *find_csr_rtnode_by_uri(RTNode *cb, char *uri){
 	RTNode *rtnode = cb->child, *parent_rtnode = NULL;
+	logger("O2M", LOG_LEVEL_DEBUG, "uri : %s", uri);
 	char *target_uri = strtok(uri+3, "/");
 	target_uri -= 1;
 
 	if(!target_uri) return NULL;
-
 
 	logger("O2M", LOG_LEVEL_DEBUG, "target_uri : %s", target_uri);
 
@@ -2542,7 +2542,7 @@ int create_local_csr(){
 
 	cJSON_SetIntValue(cJSON_GetObjectItem(csr, "ty"), RT_CSR);
 
-	sprintf(buf, "%s/%s", remote_csi->valuestring, remote_rn->valuestring);
+	sprintf(buf, "/%s/%s", remote_csi->valuestring, remote_rn->valuestring);
 	cJSON_AddItemToObject(csr, "cb", cJSON_CreateString(buf));
 
 	cJSON_Delete(root);

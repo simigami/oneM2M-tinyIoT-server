@@ -21,7 +21,7 @@ extern ResourceTree *rt;
 void init_cse(cJSON* cse) {
 	char *ct = get_local_time(0);
 	char *csi = (char*)malloc(strlen(CSE_BASE_RI) + 2);
-	sprintf(csi, "%s", CSE_BASE_RI);
+	sprintf(csi, "/%s", CSE_BASE_RI);
 
 	cJSON *srt = cJSON_CreateArray();
 	cJSON_AddItemToArray(srt, cJSON_CreateNumber(1));
@@ -1491,7 +1491,7 @@ int check_cse_reachable(RRNode *rrnode){
 }
 
 void check_reachablity(){
-	logger("UTIL", LOG_LEVEL_DEBUG, "check reachability");
+	// logger("UTIL", LOG_LEVEL_DEBUG, "check reachability");
 	RRNode *rrnode = rt->rr_list;
 	RTNode *rtnode = NULL;
 	RTNode *left = NULL;
@@ -1500,6 +1500,7 @@ void check_reachablity(){
 
 	while(rrnode){
 		del = NULL;
+		logger("UTIL", LOG_LEVEL_DEBUG, "check reachability: %s", rrnode->uri);
 		if ( check_cse_reachable(rrnode) != RSC_OK ){
 			rtnode = rrnode->rtnode;
 			db_delete_onem2m_resource(rtnode);
