@@ -11,10 +11,10 @@
 #define CSE_BASE_RI "tinyiot"
 
 #if SERVER_TYPE == MN_CSE
-#define REMOTE_CSE_ID "id-in"
-#define REMOTE_CSE_NAME "cse-in"
+#define REMOTE_CSE_ID "id-mn"
+#define REMOTE_CSE_NAME "cse-mn"
 #define REMOTE_CSE_HOST "127.0.0.1"
-#define REMOTE_CSE_PORT 8000
+#define REMOTE_CSE_PORT 8081
 // #define REMOTE_CSE_ID "Mobius2"
 // #define REMOTE_CSE_NAME "Mobius"
 // #define REMOTE_CSE_HOST "127.0.0.1"

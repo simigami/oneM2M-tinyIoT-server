@@ -149,4 +149,9 @@ typedef enum {
 	NET_REPORT_ON_MISSING_DATA_POINTS = 8
 } NotificationEventType;
 
+typedef enum {
+	AST_UNI_DIRECTIONAL = 1,
+	AST_BI_DIRECTIONAL = 2,
+} AnnounceSyncType;
+
 #endif

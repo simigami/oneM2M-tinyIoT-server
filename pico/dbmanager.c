@@ -55,7 +55,7 @@ int init_dbp(){
     }
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS ae ( \
-        ri VARCHAR(40), api VARCHAR(45), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45), at VARCHAR(200), aa VARCHAR(100));");
+        ri VARCHAR(40), api VARCHAR(45), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45), at VARCHAR(200), aa VARCHAR(100), ast INT );");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table[ae]: %s", err_msg);
@@ -115,7 +115,7 @@ int init_dbp(){
     }
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS cb ( \
-        ri VARCHAR(40), cst INT, csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45), rr INT);");
+        ri VARCHAR(40), cst INT, csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45), rr INT, at VARCHAR(200), aa VARCHAR(100), ast INT );");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table[cb]: %s", err_msg);
@@ -124,6 +124,26 @@ int init_dbp(){
         return 0;
     }
 
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS cbA ( \
+        ri VARCHAR(40), cst INT, csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45), rr INT );");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table[cbA]: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+
+    strcpy(sql, "CREATE TABLE IF NOT EXISTS aeA ( \
+        ri VARCHAR(40), api VARCHAR(45), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45), at VARCHAR(200), aa VARCHAR(100), ast INT );");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Cannot create table[aeA]: %s", err_msg);
+        sqlite3_close(db);
+        free(sql);
+        return 0;
+    }
+    
     free(sql);
     return 1;
 }
@@ -353,9 +373,10 @@ int db_store_resource(cJSON *obj, char *uri){
     strcat(sql, ";");
 
     logger("DB", LOG_LEVEL_DEBUG, "SQL: %s", sql);
+
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK){
-        logger("DB", LOG_LEVEL_ERROR, "prepare error");
+        logger("DB", LOG_LEVEL_ERROR, "prepare error %d", rc);
         free(sql);
         sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, &err_msg);
         return -1;
@@ -494,6 +515,8 @@ int db_update_resource(cJSON *obj, char *ri, ResourceType ty){
     
     sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &err_msg);
     free(sql);
+
+    // Update uri of all child resources
     return 1;
 }
 

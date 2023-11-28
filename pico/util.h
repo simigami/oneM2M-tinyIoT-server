@@ -33,7 +33,9 @@ void detach_rrnode(RRNode *rrnode);
 
 // Announcement
 int create_remote_cba(char *poa, char **cbA_url);
-int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj);
+int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj);
+int deregister_remote_cba(char *cbA_url);
+int deregister_remote_aea(RTNode *parent_rtnode, cJSON *at_obj);
 
 
 //Resource Tree
