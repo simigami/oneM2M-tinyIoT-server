@@ -125,7 +125,7 @@ int init_dbp(){
     }
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS cbA ( \
-        ri VARCHAR(40), cst INT, csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45), rr INT );");
+        ri VARCHAR(40), cst INT, lnk VARCHAR(100), csi VARCHAR(45), srt VARCHAR(100), poa VARCHAR(200), nl VARCHAR(45), ncp VARCHAR(45), srv VARCHAR(45), rr INT );");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table[cbA]: %s", err_msg);
@@ -135,7 +135,7 @@ int init_dbp(){
     }
 
     strcpy(sql, "CREATE TABLE IF NOT EXISTS aeA ( \
-        ri VARCHAR(40), api VARCHAR(45), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45), at VARCHAR(200), aa VARCHAR(100), ast INT );");
+        ri VARCHAR(40), api VARCHAR(45), lnk VARCHAR(100), aei VARCHAR(200), rr VARCHAR(10), poa VARCHAR(255), apn VARCHAR(100), srv VARCHAR(45), at VARCHAR(200), aa VARCHAR(100), ast INT );");
     rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
     if(rc != SQLITE_OK){
         logger("DB", LOG_LEVEL_ERROR, "Cannot create table[aeA]: %s", err_msg);
@@ -220,6 +220,13 @@ char *get_table_name(ResourceType ty){
             break;
         case RT_CSR:
             tableName = "csr";
+            break;
+        case RT_AEA:
+            tableName = "aeA";
+            break;
+        case RT_CBA:
+            tableName = "cbA";
+            break;
     }
     return tableName;
 }
@@ -664,6 +671,117 @@ int db_delete_one_cin_mni(RTNode *cnt){
     }
     sqlite3_finalize(res);
     return latest_cs;
+}
+
+RTNode *db_get_all_resource_as_rtnode(){
+    logger("DB", LOG_LEVEL_DEBUG, "Call db_get_all_resource_as_rtnode");
+
+    int rc = 0;
+    int cols = 0;
+    int coltype = 0, bytes = 0;
+    int ty = 0;
+    cJSON *json, *root;
+    sqlite3_stmt *res;
+    char *colname = NULL;
+    char sql[1024] = {0};
+    char buf[256] = {0};
+
+    sprintf(sql, "SELECT * FROM general WHERE ty != 4;");
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, NULL);
+    if(rc != SQLITE_OK){
+        logger("DB", LOG_LEVEL_ERROR, "Failed select");
+        return 0;
+    }
+
+    RTNode* head = NULL, *rtnode = NULL;
+
+    rc = sqlite3_step(res);
+    cols = sqlite3_column_count(res);
+    cJSON *arr = NULL;
+    while(rc == SQLITE_ROW){
+        json = cJSON_CreateObject();
+        
+        for(int col = 0 ; col < cols; col++){
+            
+            colname = sqlite3_column_name(res, col);
+            bytes = sqlite3_column_bytes(res, col);
+            coltype = sqlite3_column_type(res, col);
+
+            if(bytes == 0) continue;
+            if(cJSON_GetObjectItem(json, colname))
+                continue;
+
+            switch(coltype){
+                case SQLITE_TEXT:
+                    memset(buf, 0, 256);
+                    strncpy(buf, sqlite3_column_text(res, col), bytes);
+                    arr = cJSON_Parse(buf);
+                    if(arr && (arr->type == cJSON_Array || arr->type == cJSON_Object)){
+                        cJSON_AddItemToObject(json, colname, arr);
+                    }else{
+                        cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                    }
+                    break;
+                case SQLITE_INTEGER:
+                    cJSON_AddItemToObject(json, colname, cJSON_CreateNumber(sqlite3_column_int(res, col)));
+                    break;
+            }
+        }
+        char sql2[1024] = {0};
+        ty = cJSON_GetObjectItem(json, "ty")->valueint;
+        sprintf(sql2, "SELECT * FROM %s WHERE ri='%s';", get_table_name(ty), cJSON_GetObjectItem(json, "ri")->valuestring);  
+
+        sqlite3_stmt *res2;
+        rc = sqlite3_prepare_v2(db, sql2, -1, &res2, NULL);
+        if(rc != SQLITE_OK){
+            logger("DB", LOG_LEVEL_ERROR, "Failed select");
+            return 0;
+        }
+
+        rc = sqlite3_step(res2);
+        int cols2 = sqlite3_column_count(res2);
+        while(rc == SQLITE_ROW){
+            for(int col = 0 ; col < cols2; col++){
+                colname = sqlite3_column_name(res2, col);
+                bytes = sqlite3_column_bytes(res2, col);
+                coltype = sqlite3_column_type(res2, col);
+
+                if(bytes == 0) continue;
+                if(cJSON_GetObjectItem(json, colname))
+                    continue;
+
+                switch(coltype){
+                    case SQLITE_TEXT:
+                        memset(buf, 0, 256);
+                        strncpy(buf, sqlite3_column_text(res2, col), bytes);
+                        arr = cJSON_Parse(buf);
+                        if(arr && (arr->type == cJSON_Array || arr->type == cJSON_Object)){
+                            cJSON_AddItemToObject(json, colname, arr);
+                        }else{
+                            cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                        }
+                        break;
+                    case SQLITE_INTEGER:
+                        cJSON_AddItemToObject(json, colname, cJSON_CreateNumber(sqlite3_column_int(res2, col)));
+                        break;
+                }
+            }
+            rc = sqlite3_step(res2);
+        }
+
+        if(!head) {
+            head = create_rtnode(json, ty);
+            rtnode = head;
+        } else {
+            rtnode->sibling_right = create_rtnode(json, ty);
+            rtnode->sibling_right->sibling_left = rtnode;
+            rtnode = rtnode->sibling_right;
+
+        }
+        rc = sqlite3_step(res);
+    }
+    sqlite3_finalize(res);
+    return head;
 }
 
 

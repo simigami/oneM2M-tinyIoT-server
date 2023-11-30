@@ -24,13 +24,16 @@ void init_cse(cJSON* cse) {
 	sprintf(csi, "/%s", CSE_BASE_RI);
 
 	cJSON *srt = cJSON_CreateArray();
-	cJSON_AddItemToArray(srt, cJSON_CreateNumber(1));
-	cJSON_AddItemToArray(srt, cJSON_CreateNumber(2));
-	cJSON_AddItemToArray(srt, cJSON_CreateNumber(3));
-	cJSON_AddItemToArray(srt, cJSON_CreateNumber(4));
-	cJSON_AddItemToArray(srt, cJSON_CreateNumber(5));
-	cJSON_AddItemToArray(srt, cJSON_CreateNumber(9));
-	cJSON_AddItemToArray(srt, cJSON_CreateNumber(16));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_ACP));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_AE));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_CNT));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_CIN));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_CSE));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_GRP));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_CSR));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_SUB));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_CBA));
+	cJSON_AddItemToArray(srt, cJSON_CreateNumber(RT_AEA));
 
 	
 	cJSON_AddStringToObject(cse, "ct", ct);
@@ -195,8 +198,9 @@ int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 }
 
 int create_cba(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	int e = check_rn_invalid(o2pt, RT_CBA);
-	if(e == -1) return o2pt->rsc;
+	// int e = check_rn_invalid(o2pt, RT_CBA);
+	// if(e == -1) return o2pt->rsc;
+	logger("UTIL", LOG_LEVEL_DEBUG, "%s", o2pt->cjson_pc);
 
 	if(parent_rtnode->ty != RT_CSE) {
 		handle_error(o2pt, RSC_INVALID_CHILD_RESOURCETYPE, "child type is invalid");
@@ -208,18 +212,20 @@ int create_cba(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		return o2pt->rsc;
 	}
 
+
+
 	cJSON *root = cJSON_Duplicate(o2pt->cjson_pc, 1);
 	cJSON *cba = cJSON_GetObjectItem(root, "m2m:cba");
 
 	add_general_attribute(cba, parent_rtnode, RT_CBA);
 	cJSON_AddStringToObject(cba, "cb", o2pt->fr);
-	cJSON_ReplaceItemInObject(cba, "ri", cJSON_Duplicate( cJSON_GetObjectItem(cba, "rn"), 1));
+	cJSON_ReplaceItemInObject(cba, "ri", cJSON_Duplicate( cJSON_GetObjectItem(cba, "ri"), 1));
 
-	int rsc = validate_csr(o2pt, parent_rtnode, cba, OP_CREATE);
-	if(rsc != RSC_OK){
-		cJSON_Delete(root);
-		return rsc;
-	}
+	// int rsc = validate_csr(o2pt, parent_rtnode, cba, OP_CREATE);
+	// if(rsc != RSC_OK){
+	// 	cJSON_Delete(root);
+	// 	return rsc;
+	// }
 
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cJSON_PrintUnformatted(root);
@@ -310,24 +316,19 @@ int create_ae(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 }
 
 int create_aea(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
-	int e = check_aei_duplicate(o2pt, parent_rtnode);
+	int e = check_aei_invalid(o2pt);
 	if(e != -1) e = check_rn_invalid(o2pt, RT_AE);
-	if(e != -1) e = check_aei_invalid(o2pt);
 	if(e == -1) return o2pt->rsc;
 
-	if(parent_rtnode->ty != RT_CSE) {
+	if(parent_rtnode->ty != RT_CBA) {
 		handle_error(o2pt, RSC_INVALID_CHILD_RESOURCETYPE, "child type is invalid");
 		return o2pt->rsc;
 	}
 	cJSON *root = cJSON_Duplicate(o2pt->cjson_pc, 1);
-	cJSON *ae = cJSON_GetObjectItem(root, "m2m:ae");
+	cJSON *aea = cJSON_GetObjectItem(root, "m2m:aeA");
 
-	add_general_attribute(ae, parent_rtnode, RT_AE);
-	if(o2pt->fr && strlen(o2pt->fr) > 0) {
-		cJSON* ri = cJSON_GetObjectItem(ae, "ri");
-		cJSON_SetValuestring(ri, o2pt->fr);
-	}
-	cJSON_AddStringToObject(ae, "aei", cJSON_GetObjectItem(ae, "ri")->valuestring);
+	add_general_attribute(aea, parent_rtnode, RT_AEA);
+
 	// int rsc = validate_aea(o2pt, ae, OP_CREATE); // TODO
 	int rsc = RSC_OK;
 	if(rsc != RSC_OK){
@@ -339,10 +340,10 @@ int create_aea(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	o2pt->pc = cJSON_PrintUnformatted(root);
 	// Add uri attribute
 	char *ptr = malloc(1024);
-	cJSON *rn = cJSON_GetObjectItem(ae, "rn");
+	cJSON *rn = cJSON_GetObjectItem(aea, "rn");
 	sprintf(ptr, "%s/%s", get_uri_rtnode(parent_rtnode), rn->valuestring);
 	// Save to DB
-	int result = db_store_resource(ae, ptr);
+	int result = db_store_resource(aea, ptr);
 
 	if(result != 1) { 
 		handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "DB store fail");
@@ -354,10 +355,10 @@ int create_aea(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	free(ptr);	ptr = NULL;
 
 	// Add to resource tree
-	RTNode* child_rtnode = create_rtnode(ae, RT_AE);
+	RTNode* child_rtnode = create_rtnode(aea, RT_AEA);
 	add_child_resource_tree(parent_rtnode, child_rtnode);
 
-	cJSON_DetachItemFromObject(root, "m2m:ae");
+	cJSON_DetachItemFromObject(root, "m2m:aeA");
 	cJSON_Delete(root);
 
 	return o2pt->rsc = RSC_CREATED;
@@ -1145,6 +1146,16 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		rsc = create_csr(o2pt, parent_rtnode);
 		break;
 
+	case RT_AEA:
+		logger("O2M", LOG_LEVEL_INFO, "Create AEA");
+		rsc = create_aea(o2pt, parent_rtnode);
+		break;
+
+	case RT_CBA:
+		logger("O2M", LOG_LEVEL_INFO, "Create CBA");
+		rsc = create_cba(o2pt, parent_rtnode);
+		break;
+
 	case RT_MIXED :
 		handle_error(o2pt, RSC_BAD_REQUEST, "resource type error");
 		rsc = o2pt->rsc;
@@ -1211,6 +1222,16 @@ int update_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *target_rtnode) {
 			logger("O2M", LOG_LEVEL_INFO, "Update GRP");
 			rsc = update_grp(o2pt, target_rtnode);
 			break;
+
+		// case RT_AEA:
+		// 	logger("O2M", LOG_LEVEL_INFO, "Update AEA");
+		// 	rsc = update_aea(o2pt, target_rtnode);
+		// 	break;
+
+		// case RT_CBA:
+		// 	logger("O2M", LOG_LEVEL_INFO, "Update CBA");
+		// 	rsc = update_cba(o2pt, target_rtnode);
+		// 	break;
 
 		default :
 			handle_error(o2pt, RSC_OPERATION_NOT_ALLOWED, "operation `update` is unsupported");

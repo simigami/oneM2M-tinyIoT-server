@@ -136,13 +136,9 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 int create_sub(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 int create_acp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
-
-int retrieve_cin(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-int retrieve_cin_latest(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-int retrieve_cin_by_ri(char *ri);
-int retrieve_sub(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-int retrieve_acp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
-int retrieve_grp(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
+int create_csr(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_cba(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
+int create_aea(oneM2MPrimitive *o2pt, RTNode *parent_rtnode);
 
 int update_cse(oneM2MPrimitive *o2pt, RTNode *target_rtnode);
 int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode);

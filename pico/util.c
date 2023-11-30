@@ -295,6 +295,8 @@ ResourceType http_parse_object_type(header_t *headers) {
 	case 9 : ty = RT_GRP; break;
 	case 16: ty = RT_CSR; break;
 	case 23 : ty = RT_SUB; break;
+	case 10002: ty = RT_AEA; break;
+	case 10005: ty = RT_CBA; break;
 	default : ty = RT_MIXED; break;
 	}
 	
@@ -401,6 +403,8 @@ ResourceType parse_object_type_cjson(cJSON *cjson) {
 	else if(cJSON_GetObjectItem(cjson, "m2m:grp")) ty = RT_GRP;
 	else if(cJSON_GetObjectItem(cjson, "m2m:acp")) ty = RT_ACP;
 	else if(cJSON_GetObjectItem(cjson, "m2m:csr")) ty = RT_CSR;
+	else if(cJSON_GetObjectItem(cjson, "m2m:cba")) ty = RT_CBA;
+	else if(cJSON_GetObjectItem(cjson, "m2m:aea")) ty = RT_AEA;
 	else ty = RT_MIXED;
 	
 	return ty;
@@ -417,6 +421,8 @@ char *resource_identifier(ResourceType ty, char *ct) {
 		case RT_ACP : strcpy(ri, "1-"); break;
 		case RT_GRP : strcpy(ri, "9-"); break;
 		case RT_CSR : strcpy(ri, "16-"); break; 
+		case RT_CBA : strcpy(ri, "10005-"); break;
+		case RT_AEA : strcpy(ri, "10002-"); break;
 	}
 
 	// struct timespec specific_time;
@@ -652,37 +658,47 @@ void init_resource_tree(){
 	RTNode *rtnode_list = (RTNode *)calloc(1,sizeof(RTNode));
 	RTNode *tail = rtnode_list;
 
-	RTNode* csr_list = db_get_all_csr_rtnode();
-	tail->sibling_right = csr_list;
-	if(csr_list) csr_list->sibling_left = tail;
+	RTNode *resource_list = db_get_all_resource_as_rtnode();
+	tail->sibling_right = resource_list;
+	if(resource_list) resource_list->sibling_left = tail;
 	while(tail->sibling_right) tail = tail->sibling_right;
+
+	// RTNode* csr_list = db_get_all_csr_rtnode();
+	// tail->sibling_right = csr_list;
+	// if(csr_list) csr_list->sibling_left = tail;
+	// while(tail->sibling_right) tail = tail->sibling_right;
+
+	// RTNode* cba_list = db_get_all_cba_rtnode();
+	// tail->sibling_right = cba_list;
+	// if(cba_list) cba_list->sibling_left = tail;
+	// while(tail->sibling_right) tail = tail->sibling_right;
 	
-	RTNode* ae_list = db_get_all_ae_rtnode();
-	tail->sibling_right = ae_list;
-	if(ae_list) ae_list->sibling_left = tail;
-	while(tail->sibling_right) tail = tail->sibling_right;
+	// RTNode* ae_list = db_get_all_ae_rtnode();
+	// tail->sibling_right = ae_list;
+	// if(ae_list) ae_list->sibling_left = tail;
+	// while(tail->sibling_right) tail = tail->sibling_right;
 
-	RTNode* cnt_list = db_get_all_cnt_rtnode();
-	tail->sibling_right = cnt_list;
-	if(cnt_list) cnt_list->sibling_left = tail;
-	while(tail->sibling_right) tail = tail->sibling_right;
+	// RTNode* cnt_list = db_get_all_cnt_rtnode();
+	// tail->sibling_right = cnt_list;
+	// if(cnt_list) cnt_list->sibling_left = tail;
+	// while(tail->sibling_right) tail = tail->sibling_right;
 	
 
-	RTNode* sub_list = db_get_all_sub_rtnode();
-	tail->sibling_right = sub_list;
-	if(sub_list) sub_list->sibling_left = tail;
-	while(tail->sibling_right) tail = tail->sibling_right;
+	// RTNode* sub_list = db_get_all_sub_rtnode();
+	// tail->sibling_right = sub_list;
+	// if(sub_list) sub_list->sibling_left = tail;
+	// while(tail->sibling_right) tail = tail->sibling_right;
 
 
-	RTNode* acp_list = db_get_all_acp_rtnode();
-	tail->sibling_right = acp_list;
-	if(acp_list) acp_list->sibling_left = tail;
-	while(tail->sibling_right) tail = tail->sibling_right;
+	// RTNode* acp_list = db_get_all_acp_rtnode();
+	// tail->sibling_right = acp_list;
+	// if(acp_list) acp_list->sibling_left = tail;
+	// while(tail->sibling_right) tail = tail->sibling_right;
 
-	RTNode* grp_list = db_get_all_grp_rtnode();
-	tail->sibling_right = grp_list;
-	if(grp_list) grp_list->sibling_left = tail;
-	while(tail->sibling_right) tail = tail->sibling_right;
+	// RTNode* grp_list = db_get_all_grp_rtnode();
+	// tail->sibling_right = grp_list;
+	// if(grp_list) grp_list->sibling_left = tail;
+	// while(tail->sibling_right) tail = tail->sibling_right;
 	
 	RTNode *temp = rtnode_list;
 	rtnode_list = rtnode_list->sibling_right;
@@ -1159,6 +1175,8 @@ bool is_rn_valid_char(char c) {
 
 int check_resource_type_equal(oneM2MPrimitive *o2pt) {	
 	if(o2pt->ty != parse_object_type_cjson(o2pt->cjson_pc)) {
+		char buf[256];
+		sprintf(buf, "resource type is not equal to payload type : %d", o2pt->ty);
 		handle_error(o2pt, RSC_BAD_REQUEST, "resource type is invalid");
 		return -1;
 	}
@@ -1167,7 +1185,7 @@ int check_resource_type_equal(oneM2MPrimitive *o2pt) {
 
 int check_resource_type_invalid(oneM2MPrimitive *o2pt) {
 	if(o2pt->ty == RT_MIXED) {
-		handle_error(o2pt, RSC_BAD_REQUEST, "resource type is invalid");
+		handle_error(o2pt, RSC_BAD_REQUEST, "resource type can't be 0(Mixed)");
 		return -1;
 	}
 	return 0;
@@ -2538,11 +2556,11 @@ int create_local_csr(){
 
 
 	cJSON_SetValuestring(cJSON_GetObjectItem(csr, "rn"), remote_ri->valuestring);
-	cJSON_SetValuestring(cJSON_GetObjectItem(csr, "ri"), remote_rn->valuestring);
+	cJSON_SetValuestring(cJSON_GetObjectItem(csr, "ri"), remote_ri->valuestring);
 
 	cJSON_SetIntValue(cJSON_GetObjectItem(csr, "ty"), RT_CSR);
 
-	sprintf(buf, "/%s/%s", remote_csi->valuestring, remote_rn->valuestring);
+	sprintf(buf, "%s/%s", remote_csi->valuestring, remote_rn->valuestring);
 	cJSON_AddItemToObject(csr, "cb", cJSON_CreateString(buf));
 
 	cJSON_Delete(root);
@@ -2696,6 +2714,7 @@ int create_remote_cba(char *poa, char **cbA_url){
 
 		req->payload_size = strlen(req->payload);
 		logger("UTIL", LOG_LEVEL_DEBUG, "payload: %s", req->payload);
+
 		send_http_request(host, port, req, res);
 
 		if(res->status_code != 201 ){ 

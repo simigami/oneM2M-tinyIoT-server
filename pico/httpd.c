@@ -392,7 +392,6 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, int port){
     req->uri[0] = '/';
     strcat(req->uri, o2pt->to);
     req->headers = (header_t *) calloc(sizeof(header_t), 1);
-    add_header("Content-Type", "application/json", req->headers);
     add_header("X-M2M-Origin", o2pt->fr, req->headers);
     add_header("X-M2M-RVI", "2a", req->headers);
     add_header("X-M2M-RI", o2pt->rqi, req->headers);
@@ -494,6 +493,7 @@ void parse_http_response(HTTPResponse *res, char *packet){
 
         h->name = strdup(key);
         h->value = strdup(val);
+  
         
         t = val + 1 + strlen(val);
         if (t[1] == '\r' && t[2] == '\n')
