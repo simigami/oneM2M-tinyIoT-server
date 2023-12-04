@@ -24,14 +24,6 @@ int db_delete_csr(char* ri);
 
 RTNode* db_get_all_resource_as_rtnode();
 
-RTNode* db_get_all_cse();
-RTNode* db_get_all_csr_rtnode();
-RTNode* db_get_all_ae_rtnode();
-RTNode* db_get_all_cnt_rtnode();
-RTNode* db_get_all_cin();
-RTNode* db_get_all_sub_rtnode();
-RTNode* db_get_all_acp_rtnode();
-RTNode* db_get_all_grp_rtnode();
 
 RTNode* db_get_cin_rtnode_list(RTNode *rtnode);
 cJSON *db_get_cin_laol(RTNode *parent_rtnode, int laol);

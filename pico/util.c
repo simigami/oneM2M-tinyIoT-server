@@ -663,55 +663,21 @@ void init_resource_tree(){
 	if(resource_list) resource_list->sibling_left = tail;
 	while(tail->sibling_right) tail = tail->sibling_right;
 
-	// RTNode* csr_list = db_get_all_csr_rtnode();
-	// tail->sibling_right = csr_list;
-	// if(csr_list) csr_list->sibling_left = tail;
-	// while(tail->sibling_right) tail = tail->sibling_right;
-
-	// RTNode* cba_list = db_get_all_cba_rtnode();
-	// tail->sibling_right = cba_list;
-	// if(cba_list) cba_list->sibling_left = tail;
-	// while(tail->sibling_right) tail = tail->sibling_right;
-	
-	// RTNode* ae_list = db_get_all_ae_rtnode();
-	// tail->sibling_right = ae_list;
-	// if(ae_list) ae_list->sibling_left = tail;
-	// while(tail->sibling_right) tail = tail->sibling_right;
-
-	// RTNode* cnt_list = db_get_all_cnt_rtnode();
-	// tail->sibling_right = cnt_list;
-	// if(cnt_list) cnt_list->sibling_left = tail;
-	// while(tail->sibling_right) tail = tail->sibling_right;
-	
-
-	// RTNode* sub_list = db_get_all_sub_rtnode();
-	// tail->sibling_right = sub_list;
-	// if(sub_list) sub_list->sibling_left = tail;
-	// while(tail->sibling_right) tail = tail->sibling_right;
-
-
-	// RTNode* acp_list = db_get_all_acp_rtnode();
-	// tail->sibling_right = acp_list;
-	// if(acp_list) acp_list->sibling_left = tail;
-	// while(tail->sibling_right) tail = tail->sibling_right;
-
-	// RTNode* grp_list = db_get_all_grp_rtnode();
-	// tail->sibling_right = grp_list;
-	// if(grp_list) grp_list->sibling_left = tail;
-	// while(tail->sibling_right) tail = tail->sibling_right;
-	
 	RTNode *temp = rtnode_list;
 	rtnode_list = rtnode_list->sibling_right;
 	if(rtnode_list) rtnode_list->sibling_left = NULL;
 	free_rtnode(temp);
 	temp = NULL;
+
+	temp = rtnode_list;
+
 	if(rtnode_list) restruct_resource_tree(rt->cb, rtnode_list);
 }
 
 RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 	RTNode *rtnode = list;
 	while(rtnode) {
-		logger("UTIL", LOG_LEVEL_DEBUG, "restruct_resource_tree : %s", get_ri_rtnode(rtnode));
+		// logger("UTIL", LOG_LEVEL_DEBUG, "restruct_resource_tree : %s", get_ri_rtnode(rtnode));
 		RTNode *right = rtnode->sibling_right;
 		if(!strcmp(get_ri_rtnode(parent_rtnode), get_pi_rtnode(rtnode))) {
 			RTNode *left = rtnode->sibling_left;
@@ -725,6 +691,7 @@ RTNode* restruct_resource_tree(RTNode *parent_rtnode, RTNode *list) {
 			if(right) right->sibling_left = left;
 			rtnode->sibling_left = rtnode->sibling_right = NULL;
 			add_child_resource_tree(parent_rtnode, rtnode);
+
 		}
 		rtnode = right;
 	}
@@ -2821,13 +2788,14 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 			}
 			sprintf(buf, "%s/%s", at->valuestring, cba_target);
 			cJSON_AddItemToArray(pat, cJSON_CreateString(buf));
-			logger("UTIL", LOG_LEVEL_DEBUG, "at added to cb: %s", cJSON_PrintUnformatted(rt->cb->obj));
+			free(cba_target);
+			cba_target = strdup(buf);
 			db_update_resource(rt->cb->obj, CSE_BASE_RI, RT_CSE);
 			logger("UTIL", LOG_LEVEL_DEBUG, "cbA Created/ target: %s", cba_target);
 		}
 		
 		// create aeA resource
-		if(at->valuestring[0] == '/'){
+		if(cba_target[0] == '/'){
 			oneM2MPrimitive *o2pt = (oneM2MPrimitive *)calloc(sizeof(oneM2MPrimitive), 1);
 			sprintf(buf, "~%s", cba_target);
 			o2pt->fr = strdup("/"CSE_BASE_RI);
@@ -2842,11 +2810,17 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 			cJSON_AddItemToObject(root, get_resource_key(RT_AEA), aea);
 			sprintf(buf, "/%s/%s/%s", CSE_BASE_RI, get_uri_rtnode(parent_rtnode), cJSON_GetObjectItem(ae_obj, "rn")->valuestring);
 			cJSON_AddItemToObject(aea, "lnk", cJSON_CreateString(buf));
-			logger("UTIL", LOG_LEVEL_DEBUG, "tt %s", buf);
+
 			cJSON *srv = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "srv"), true);
 			cJSON_AddItemToObject(aea, "srv", srv);
-			cJSON *lbl = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "lbl"), true);
-			cJSON_AddItemToObject(aea, "lbl", lbl);
+
+			cJSON *lbl = cJSON_GetObjectItem(ae_obj, "lbl");
+			if(lbl)
+				cJSON_AddItemToObject(aea, "lbl", cJSON_Duplicate(lbl, true));
+
+			cJSON *ast = cJSON_GetObjectItem(ae_obj, "ast");
+			if(ast)
+				cJSON_AddItemToObject(aea, "ast", cJSON_Duplicate(ast, true));
 
 			cJSON* aa = cJSON_GetObjectItem(ae_obj, "aa");
 			cJSON_ArrayForEach(pjson, aa){
@@ -2885,14 +2859,14 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 			int port = 80;
 			char *path = NULL;
 
-			if(parsePoa(at->valuestring, &prot, &host, &port, &path) == -1){
+			if(parsePoa(cba_target, &prot, &host, &port, &path) == -1){
 				logger("UTIL", LOG_LEVEL_ERROR, "at is invalid");
 				return -1;
 			}
-			sprintf(buf, "%s/%s", path, cba_target);
+			// sprintf(buf, "%s/%s", path, cba_target);
 			logger("UTIL", LOG_LEVEL_DEBUG, "cba_target: %s", buf);
 			req->method = "POST";
-			req->uri = strdup(buf);
+			req->uri = strdup(path);
 			req->qs = NULL;
 			req->prot = strdup("HTTP/1.1");
 			req->payload = NULL;
@@ -2909,16 +2883,21 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 			cJSON_AddItemToObject(root, get_resource_key(RT_AEA), aea);
 			sprintf(buf, "/%s/%s/%s", CSE_BASE_RI, get_uri_rtnode(parent_rtnode), cJSON_GetObjectItem(ae_obj, "rn")->valuestring);
 			cJSON_AddItemToObject(aea, "lnk", cJSON_CreateString(buf));
-			logger("UTIL", LOG_LEVEL_DEBUG, "tt %s", buf);
 			cJSON *srv = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "srv"), true);
 			cJSON_AddItemToObject(aea, "srv", srv);
-			cJSON *lbl = cJSON_Duplicate( cJSON_GetObjectItem(ae_obj, "lbl"), true);
-			cJSON_AddItemToObject(aea, "lbl", lbl);
+			cJSON *lbl =  cJSON_GetObjectItem(ae_obj, "lbl");
+			if(lbl)
+				cJSON_AddItemToObject(aea, "lbl", cJSON_Duplicate(lbl, true));
+
+			cJSON* ast = cJSON_GetObjectItem(ae_obj, "ast");
+			if(ast)
+				cJSON_AddItemToObject(aea, "ast", cJSON_Duplicate(ast, true));
 
 			cJSON* aa = cJSON_GetObjectItem(ae_obj, "aa");
 			cJSON_ArrayForEach(pjson, aa){
 				cJSON *temp =  cJSON_GetObjectItem(ae_obj, pjson->valuestring);
-				cJSON_AddItemToObject(aea, pjson->valuestring, cJSON_Duplicate(temp, true));
+				if(temp)
+					cJSON_AddItemToObject(aea, pjson->valuestring, cJSON_Duplicate(temp, true));
 			}
 
 			req->payload =  cJSON_PrintUnformatted(root);
@@ -2930,7 +2909,7 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 
 
 			if(res->status_code != 201 ){ 
-				logger("MAIN", LOG_LEVEL_ERROR, "aeA creation failed: %d", res->status_code);
+				logger("MAIN", LOG_LEVEL_ERROR, "remote aeA creation failed: %d", res->status_code);
 				logger("MAIN", LOG_LEVEL_ERROR, "%s", res->payload);
 				free_HTTPRequest(req);
 				free_HTTPResponse(res);
@@ -2941,7 +2920,7 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 
 			char *aea_rn = cJSON_GetObjectItem(obj, "rn")->valuestring;
 			logger("UTIL", LOG_LEVEL_DEBUG, "aea_rn %s", aea_rn);
-			sprintf(buf, "%s/%s/%s", at->valuestring, cba_target, aea_rn);
+			sprintf(buf, "%s/%s", cba_target, aea_rn);
 			cJSON_SetValuestring(at, buf);
 
 			free_HTTPRequest(req);
@@ -2951,6 +2930,17 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 	}
 
 	return 0;
+}
+
+int update_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, ){
+	logger("UTIL", LOG_LEVEL_DEBUG, "update_remote_aea");
+	char buf[256] = {0};
+	bool pannc = false;
+
+	// Check Parent Resource has attribute at
+	cJSON *at = NULL;
+	cJSON *pat = cJSON_GetObjectItem(parent_rtnode->obj, "at");
+
 }
 
 int deregister_remote_aea(RTNode *parent_rtnode, cJSON *at_obj){
