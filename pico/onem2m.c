@@ -454,6 +454,8 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	cJSON *pjson = NULL;
 	if(pjson = cJSON_GetObjectItem(cin, "cr")){
 		if(pjson->type == cJSON_NULL){
+			logger("UTIL", LOG_LEVEL_INFO, "add cr %s", o2pt->fr);
+			cJSON_DeleteItemFromObject(cin, "cr");
 			cJSON_AddStringToObject(cin, "cr", o2pt->fr);
 		}else{
 			handle_error(o2pt, RSC_BAD_REQUEST, "creator attribute with arbitary value is not allowed");

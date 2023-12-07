@@ -163,7 +163,6 @@ RTNode *find_rtnode_by_uri(RTNode *cb, char *uri) {
 
 	if(parent_rtnode) {
 		cJSON *cin = db_get_resource(uri_array[index], RT_CIN);
-		//CIN *cin = db_get_cin(uri_array[index]);
 		if(cin) {
 			cJSON *pi = cJSON_GetObjectItem(cin, "pi");
 			if(!strcmp(cJSON_GetStringValue(pi), get_ri_rtnode(parent_rtnode))) {
@@ -1213,8 +1212,8 @@ int validate_grp(oneM2MPrimitive *o2pt, cJSON *grp){
 	if(pjson = cJSON_GetObjectItem(grp, "mt")){
 		mt = pjson->valueint;
 	}else{
-		handle_error(o2pt, RSC_BAD_REQUEST, "`mt` is mandatory");
-		return RSC_BAD_REQUEST;
+		mt = RT_MIXED; // default is MIXED
+		// return handle_error(o2pt, RSC_BAD_REQUEST, "`mt` is mandatory");
 	}
 
 
@@ -2329,6 +2328,10 @@ int validate_cin(oneM2MPrimitive *o2pt, cJSON *parent_cnt, cJSON *cin, Operation
 
 	cJSON *mbs = NULL;
 	cJSON *cs = NULL;
+	if(pjson = cJSON_GetObjectItem(cin, "acpi")){
+		return handle_error(o2pt, RSC_BAD_REQUEST, "attribute `acpi` for `cin` is not supported");
+	}
+
 	if(mbs = cJSON_GetObjectItem(parent_cnt, "mbs")){
 		logger("UTIL", LOG_LEVEL_DEBUG, "mbs %d", mbs->valueint);
 		if(cs = cJSON_GetObjectItem(cin, "cs")){
@@ -2932,7 +2935,7 @@ int create_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, cJSON *at_obj){
 	return 0;
 }
 
-int update_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj, ){
+int update_remote_aea(RTNode *parent_rtnode, cJSON *ae_obj){
 	logger("UTIL", LOG_LEVEL_DEBUG, "update_remote_aea");
 	char buf[256] = {0};
 	bool pannc = false;

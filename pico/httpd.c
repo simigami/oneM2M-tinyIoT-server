@@ -229,6 +229,7 @@ void handle_http_request(HTTPRequest *req, int slotno) {
     
 
 	if((header = search_header(req->headers, "X-M2M-Origin"))) {
+        logger("HTTP", LOG_LEVEL_DEBUG, "fr: %s", header);
 		o2pt->fr = strdup(header);
 	} 
 
