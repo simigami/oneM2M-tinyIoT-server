@@ -720,6 +720,7 @@ RTNode *db_get_all_resource_as_rtnode(){
                         cJSON_AddItemToObject(json, colname, arr);
                     }else{
                         cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                        cJSON_Delete(arr);
                     }
                     break;
                 case SQLITE_INTEGER:
@@ -759,6 +760,7 @@ RTNode *db_get_all_resource_as_rtnode(){
                             cJSON_AddItemToObject(json, colname, arr);
                         }else{
                             cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                            cJSON_Delete(arr);
                         }
                         break;
                     case SQLITE_INTEGER:
@@ -828,6 +830,7 @@ RTNode* db_get_cin_rtnode_list(RTNode *parent_rtnode) {
                         cJSON_AddItemToObject(json, colname, arr);
                     }else{
                         cJSON_AddItemToObject(json, colname, cJSON_CreateString(buf));
+                        cJSON_Delete(arr);
                     }
                     break;
                 case SQLITE_INTEGER:

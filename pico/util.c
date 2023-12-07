@@ -1887,7 +1887,7 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 	logger("UTIL", LOG_LEVEL_DEBUG, "notify_to_nu");
 	cJSON *sub = sub_rtnode->obj;
 	int uri_len = 0, index = 0;
-	char *noti_json = cJSON_PrintUnformatted(noti_cjson);
+	char *noti_json = NULL;
 	char *p = NULL;
 	char port[10] = {'\0'};
 	bool isNoti = false;
@@ -1899,6 +1899,8 @@ void notify_to_nu(oneM2MPrimitive *o2pt, RTNode *sub_rtnode, cJSON *noti_cjson, 
 
 	cJSON *net_obj = cJSON_GetObjectItem(sub, "net");
 	if(!net_obj) return;
+
+	noti_json = cJSON_PrintUnformatted(noti_cjson);
 
 	cJSON_ArrayForEach(pjson, net_obj){
 		if(pjson->valueint == net) {
@@ -2206,8 +2208,8 @@ int validate_acp(oneM2MPrimitive *o2pt, cJSON *acp, Operation op){
 		pjson = cJSON_GetObjectItem(acp, "pv");
 		if(!pjson){
 			return handle_error(o2pt, RSC_BAD_REQUEST, "insufficient mandatory attribute(s)");
-		}else if(pjson->type == cJSON_NULL || !cJSON_GetObjectItem(pjson, "acr")){
-			return handle_error(o2pt, RSC_BAD_REQUEST, "empty `pv` is not allowed");
+		}else if(pjson->type == cJSON_NULL){
+			return handle_error(o2pt, RSC_BAD_REQUEST, "null `pv` is not allowed");
 		}else{
 			if(validate_acr(o2pt, cJSON_GetObjectItem(pjson, "acr")) != RSC_OK)
 				return o2pt->rsc;

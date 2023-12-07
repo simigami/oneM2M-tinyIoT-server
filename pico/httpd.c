@@ -199,6 +199,7 @@ void respond(int slot) {
     
     double end = (((double)clock()) / CLOCKS_PER_SEC); // runtime check - end
 	logger("UTIL", LOG_LEVEL_INFO, "Run time : %lf", end-start);
+    free(buf[slot]);
     free_HTTPRequest(req);
     pthread_mutex_unlock(&mutex_lock);
 }
@@ -428,7 +429,7 @@ void http_forwarding(oneM2MPrimitive *o2pt, char *host, int port){
 void parse_http_request(HTTPRequest *req, char *packet){
     char *ptr = NULL;
     
-    req->method = op_to_method(http_parse_operation(strdup(strtok(packet, " \t\r\n"))));
+    req->method = op_to_method(http_parse_operation(strtok(packet, " \t\r\n")));
     req->uri = strdup(strtok(NULL, " \t"));
     req->prot = strdup(strtok(NULL, " \t\r\n"));   
     if(!req->uri) {

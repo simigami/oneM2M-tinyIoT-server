@@ -108,6 +108,8 @@ void route(oneM2MPrimitive *o2pt) {
 	int e = result_parse_uri(o2pt, target_rtnode);
 	if(e != -1) e = check_payload_size(o2pt);
 	if(e == -1) {
+		if(target_rtnode)
+			free_rtnode(target_rtnode);
 		log_runtime(start);
 		return;
 	}
@@ -124,6 +126,7 @@ void route(oneM2MPrimitive *o2pt) {
 		rsc = handle_onem2m_request(o2pt, target_rtnode);
 	
 		if(o2pt->op != OP_DELETE && target_rtnode->ty == RT_CIN){
+			logger("MAIN", LOG_LEVEL_INFO, "delete cin resource");
 			free_rtnode(target_rtnode);
 			target_rtnode = NULL;
 		}

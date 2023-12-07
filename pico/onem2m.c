@@ -466,6 +466,7 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 
 	RTNode *cin_rtnode = create_rtnode(cin, RT_CIN);
 	update_cnt_cin(parent_rtnode, cin_rtnode, 1);
+
 	
 	if(o2pt->pc) free(o2pt->pc);
 	o2pt->pc = cJSON_PrintUnformatted(root);
@@ -483,6 +484,8 @@ int create_cin(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 		free_rtnode(cin_rtnode);
 		return o2pt->rsc;
 	}
+	cJSON_Delete(root);
+	cin_rtnode->obj = NULL;
 	free_rtnode(cin_rtnode);
 	return RSC_CREATED;
 }
@@ -599,6 +602,7 @@ int update_cb(cJSON *csr, cJSON *cb){
 int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) { // TODO deannounce when at removed
 	char invalid_key[][8] = {"ty", "pi", "ri", "rn", "ct"};
 	cJSON *m2m_ae = cJSON_GetObjectItem(o2pt->cjson_pc, "m2m:ae");
+	cJSON *pjson  = NULL;
 	int invalid_key_size = sizeof(invalid_key)/(8*sizeof(char));
 	for(int i=0; i<invalid_key_size; i++) {
 		if(cJSON_GetObjectItem(m2m_ae, invalid_key[i])) {
@@ -607,12 +611,19 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) { // TODO deannounce
 		}
 	}
 
+	if(cJSON_GetObjectItem(m2m_ae, "acpi") && cJSON_GetArraySize(m2m_ae) > 1){
+		handle_error(o2pt, RSC_BAD_REQUEST, "only `acpi` should be updated");
+		return RSC_BAD_REQUEST;
+	}
+
 	//TODO - validation process
 	int result = validate_ae(o2pt, m2m_ae, OP_UPDATE);
+	
 	if(result != RSC_OK){
 		logger("O2", LOG_LEVEL_ERROR, "validation failed");
 		return result;
 	}
+
 
 	cJSON *new_at_list = cJSON_GetObjectItem(m2m_ae, "at");
 	cJSON *delete_at_list = cJSON_CreateArray();
@@ -643,8 +654,12 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) { // TODO deannounce
 		}
 		idx++;
 	}
+
+	// deregister removed remote aea
 	if(cJSON_GetArraySize(delete_at_list) > 0)
 		deregister_remote_aea(target_rtnode->parent, delete_at_list);
+
+	cJSON_Delete(delete_at_list);
 
 	if(cJSON_GetArraySize(new_at_list) > 0){
 		if( create_remote_aea(target_rtnode->parent, target_rtnode->obj, new_at_list) != 0){
@@ -654,10 +669,18 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) { // TODO deannounce
 	}else{
 		cJSON_DeleteItemFromObject(m2m_ae, "at");
 	}
+	
+	//merge update resource
 	update_resource(target_rtnode->obj, m2m_ae); 
+
+	// remove acpi if acpi is null
+	if(pjson = cJSON_GetObjectItem(target_rtnode->obj, "acpi")){
+		if(pjson->type == cJSON_NULL)
+			cJSON_DeleteItemFromObject(target_rtnode->obj, "acpi");
+		pjson = NULL;
+	}
+
 	at_list = cJSON_GetObjectItem(target_rtnode->obj, "at");
-	logger("UTIL", LOG_LEVEL_DEBUG, "%s", cJSON_PrintUnformatted(at_list));
-	cJSON *pjson = NULL;
 	if(at_list){
 		cJSON *at = NULL;
 		cJSON *aa_list = cJSON_GetObjectItem(target_rtnode->obj, "aa") ;
@@ -724,6 +747,7 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) { // TODO deannounce
 
 						if(res->status_code != 200){
 							logger("UTIL", LOG_LEVEL_ERROR, "update announce fail");
+							cJSON_Delete(root);
 							return handle_error(o2pt, RSC_INTERNAL_SERVER_ERROR, "update announce fail");
 						}
 
@@ -741,10 +765,10 @@ int update_ae(oneM2MPrimitive *o2pt, RTNode *target_rtnode) { // TODO deannounce
 				
 			}
 		}
+
 		cJSON_Delete(root);
 	}
 	
-
 	result = db_update_resource(m2m_ae, cJSON_GetObjectItem(target_rtnode->obj, "ri")->valuestring, RT_AE);
 
 	cJSON *root = cJSON_CreateObject();
@@ -971,11 +995,15 @@ int delete_rtnode_and_db_data(oneM2MPrimitive *o2pt, RTNode *rtnode, int flag) {
 	case RT_CIN :
 		db_delete_onem2m_resource(rtnode);
 		update_cnt_cin(rtnode->parent, rtnode,-1);
+		
 		break;
 	}
 
 	notify_onem2m_resource(o2pt, rtnode);
-	if(rtnode->ty == RT_CIN) return 1;
+	if(rtnode->ty == RT_CIN){
+		free_rtnode(rtnode);
+		return 1;
+	} 
 
 	RTNode *left = rtnode->sibling_left;
 	RTNode *right = rtnode->sibling_right;
@@ -1001,7 +1029,8 @@ void free_rtnode(RTNode *rtnode) {
 		free(rtnode->uri);
 		rtnode->uri = NULL;
 	}
-	cJSON_Delete(rtnode->obj);
+	if(rtnode->obj);
+		cJSON_Delete(rtnode->obj);
 	if(rtnode->parent && rtnode->parent->child == rtnode){
 		rtnode->parent->child = rtnode->sibling_right;
 	}
@@ -1094,7 +1123,7 @@ int create_grp(oneM2MPrimitive *o2pt, RTNode *parent_rtnode){
 	}
 	
 	if(o2pt->pc) free(o2pt->pc);
-	o2pt->pc = cJSON_PrintUnformatted(o2pt->cjson_pc);
+	o2pt->pc = cJSON_PrintUnformatted(root);
 	o2pt->rsc = RSC_CREATED;
 
 	cJSON *rn = cJSON_GetObjectItem(grp, "rn");
@@ -1171,6 +1200,7 @@ int create_onem2m_resource(oneM2MPrimitive *o2pt, RTNode *parent_rtnode) {
 	case RT_CIN :
 		logger("O2M", LOG_LEVEL_INFO, "Create CIN");
 		rsc = create_cin(o2pt, parent_rtnode);
+
 		break;
 
 	case RT_SUB :
@@ -1560,11 +1590,15 @@ int check_cse_reachable(RRNode *rrnode){
 
 void check_reachablity(){
 	// logger("UTIL", LOG_LEVEL_DEBUG, "check reachability");
-	RRNode *rrnode = rt->rr_list;
+	RRNode *rrnode = NULL;
 	RTNode *rtnode = NULL;
 	RTNode *left = NULL;
 	RTNode *right = NULL;
 	RRNode *del = NULL;
+	logger("UTIL", LOG_LEVEL_DEBUG, "%x", rt);
+	if(rt && rt->rr_list){
+		rrnode =  rt->rr_list;
+	}
 
 	while(rrnode){
 		del = NULL;
